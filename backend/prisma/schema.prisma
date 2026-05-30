@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model bang_gia_phong {
+  ma_bang_gia   Int                     @id @default(autoincrement())
+  ma_loai_phong Int
+  ngay          DateTime                @db.Date
+  don_gia       Decimal                 @db.Decimal(12, 0)
+  loai_gia      bang_gia_phong_loai_gia @default(co_ban)
+  ngay_tao      DateTime                @default(now()) @db.DateTime(0)
+  loai_phong    loai_phong              @relation(fields: [ma_loai_phong], references: [ma_loai_phong], onUpdate: Restrict, map: "fk_bgp_lp")
+
+  @@unique([ma_loai_phong, ngay], map: "uq_bgp")
+}
+
+model chi_tiet_dat_phong {
+  ma_chi_tiet  Int                         @id @default(autoincrement())
+  ma_dat_phong Int
+  ngay         DateTime                    @db.Date
+  don_gia      Decimal                     @db.Decimal(12, 0)
+  loai_gia     chi_tiet_dat_phong_loai_gia @default(co_ban)
+  dat_phong    dat_phong                   @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_ctdp_dp")
+
+  @@unique([ma_dat_phong, ngay], map: "uq_ctdp")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chinh_sach_huy {
+  ma_chinh_sach  Int                       @id @default(autoincrement())
+  ma_khach_san   Int
+  so_ngay_truoc  Int
+  phan_tram_hoan Decimal                   @db.Decimal(5, 2)
+  mo_ta          String?                   @db.Text
+  trang_thai     chinh_sach_huy_trang_thai @default(hoat_dong)
+  khach_san      khach_san                 @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_csh_ks")
+
+  @@index([ma_khach_san], map: "fk_csh_ks")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model danh_gia {
+  ma_danh_gia      Int                 @id @default(autoincrement())
+  ma_dat_phong     Int                 @unique(map: "ma_dat_phong")
+  ma_khach_hang    Int
+  duyet_boi_id     Int?
+  so_sao           Int                 @db.TinyInt
+  diem_sach_se     Int?                @db.TinyInt
+  diem_dich_vu     Int?                @db.TinyInt
+  diem_vi_tri      Int?                @db.TinyInt
+  noi_dung         String?             @db.Text
+  phan_hoi_doi_tac String?             @db.Text
+  ngay_phan_hoi    DateTime?           @db.DateTime(0)
+  trang_thai       danh_gia_trang_thai @default(cho_duyet)
+  ngay_danh_gia    DateTime            @default(now()) @db.DateTime(0)
+  ngay_duyet       DateTime?           @db.DateTime(0)
+  nguoi_dung       nguoi_dung?         @relation(fields: [duyet_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_dg_admin")
+  dat_phong        dat_phong           @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_dg_dp")
+  khach_hang       khach_hang          @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_dg_kh")
+
+  @@index([duyet_boi_id], map: "fk_dg_admin")
+  @@index([ma_khach_hang], map: "fk_dg_kh")
+}
+
+model dat_phong {
+  ma_dat_phong       Int                      @id @default(autoincrement())
+  ma_khach_hang      Int
+  ma_loai_phong      Int
+  ma_khuyen_mai      Int?
+  ma_don_hang        String                   @unique(map: "ma_don_hang") @db.VarChar(20)
+  ma_xac_nhan        String?                  @db.VarChar(20)
+  ngay_nhan_phong    DateTime                 @db.Date
+  ngay_tra_phong     DateTime                 @db.Date
+  so_khach           Int
+  ten_nguoi_nhan     String                   @db.VarChar(100)
+  sdt_nguoi_nhan     String                   @db.VarChar(15)
+  tong_tien_goc      Decimal                  @db.Decimal(12, 0)
+  tien_giam          Decimal                  @default(0) @db.Decimal(12, 0)
+  thanh_toan_cuoi    Decimal                  @db.Decimal(12, 0)
+  phuong_thuc_tt     dat_phong_phuong_thuc_tt
+  trang_thai         dat_phong_trang_thai     @default(cho_xac_nhan)
+  ghi_chu            String?                  @db.Text
+  ngay_dat           DateTime                 @default(now()) @db.DateTime(0)
+  chi_tiet_dat_phong chi_tiet_dat_phong[]
+  danh_gia           danh_gia?
+  khach_hang         khach_hang               @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_dp_kh")
+  khuyen_mai         khuyen_mai?              @relation(fields: [ma_khuyen_mai], references: [ma_khuyen_mai], onDelete: Restrict, onUpdate: Restrict, map: "fk_dp_km")
+  loai_phong         loai_phong               @relation(fields: [ma_loai_phong], references: [ma_loai_phong], onUpdate: Restrict, map: "fk_dp_lp")
+  hoa_hong           hoa_hong?
+  hoan_tien          hoan_tien?
+  thanh_toan         thanh_toan?
+  thong_bao          thong_bao[]
+
+  @@index([ma_khach_hang], map: "fk_dp_kh")
+  @@index([ma_khuyen_mai], map: "fk_dp_km")
+  @@index([ma_loai_phong], map: "fk_dp_lp")
+}
+
+model dia_diem {
+  ma_dia_diem  Int         @id @default(autoincrement())
+  ten_dia_diem String      @db.VarChar(100)
+  tinh_thanh   String?     @db.VarChar(100)
+  mo_ta        String?     @db.Text
+  khach_san    khach_san[]
+}
+
+model doi_tac {
+  ma_doi_tac                                   Int                 @id @default(autoincrement())
+  ma_nguoi_dung                                Int                 @unique(map: "ma_nguoi_dung")
+  nguoi_cap_id                                 Int
+  ten_cong_ty                                  String              @db.VarChar(150)
+  ma_so_thue                                   String?             @db.VarChar(20)
+  so_dien_thoai                                String?             @db.VarChar(15)
+  dia_chi                                      String?             @db.Text
+  trang_thai                                   doi_tac_trang_thai  @default(hoat_dong)
+  ngay_cap_tai_khoan                           DateTime            @default(now()) @db.DateTime(0)
+  nguoi_dung_doi_tac_nguoi_cap_idTonguoi_dung  nguoi_dung          @relation("doi_tac_nguoi_cap_idTonguoi_dung", fields: [nguoi_cap_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoicap")
+  nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung nguoi_dung          @relation("doi_tac_ma_nguoi_dungTonguoi_dung", fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoidung")
+  hoa_hong                                     hoa_hong[]
+  khach_san                                    khach_san[]
+  yeu_cau_tien_nghi                            yeu_cau_tien_nghi[]
+
+  @@index([nguoi_cap_id], map: "fk_dt_nguoicap")
+}
+
+model hinh_anh {
+  ma_hinh_anh    Int                     @id @default(autoincrement())
+  loai_doi_tuong hinh_anh_loai_doi_tuong
+  ma_doi_tuong   Int
+  url            String                  @db.VarChar(255)
+  la_anh_chinh   Boolean                 @default(false)
+  thu_tu         Int                     @default(0)
+  ngay_tao       DateTime                @default(now()) @db.DateTime(0)
+}
+
+model hoa_hong {
+  ma_hoa_hong      Int                 @id @default(autoincrement())
+  ma_dat_phong     Int                 @unique(map: "ma_dat_phong")
+  ma_doi_tac       Int
+  ty_le_hoa_hong   Decimal             @db.Decimal(5, 2)
+  so_tien_hoa_hong Decimal             @db.Decimal(12, 0)
+  trang_thai       hoa_hong_trang_thai @default(chua_thu)
+  ngay_tinh        DateTime            @default(now()) @db.DateTime(0)
+  dat_phong        dat_phong           @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_hh_dp")
+  doi_tac          doi_tac             @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_hh_dt")
+
+  @@index([ma_doi_tac], map: "fk_hh_dt")
+}
+
+model hoan_tien {
+  ma_hoan_tien  Int                  @id @default(autoincrement())
+  ma_dat_phong  Int                  @unique(map: "ma_dat_phong")
+  ma_thanh_toan Int
+  xu_ly_boi_id  Int?
+  so_tien_hoan  Decimal              @db.Decimal(12, 0)
+  ly_do         String?              @db.Text
+  trang_thai    hoan_tien_trang_thai @default(cho_xu_ly)
+  ngay_yeu_cau  DateTime             @default(now()) @db.DateTime(0)
+  ngay_xu_ly    DateTime?            @db.DateTime(0)
+  nguoi_dung    nguoi_dung?          @relation(fields: [xu_ly_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ht_admin")
+  dat_phong     dat_phong            @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_ht_dp")
+  thanh_toan    thanh_toan           @relation(fields: [ma_thanh_toan], references: [ma_thanh_toan], onUpdate: Restrict, map: "fk_ht_tt")
+
+  @@index([xu_ly_boi_id], map: "fk_ht_admin")
+  @@index([ma_thanh_toan], map: "fk_ht_tt")
+}
+
+model khach_hang {
+  ma_khach_hang         Int                     @id @default(autoincrement())
+  ma_nguoi_dung         Int                     @unique(map: "ma_nguoi_dung")
+  ho_ten                String                  @db.VarChar(100)
+  anh_dai_dien          String?                 @db.VarChar(255)
+  ngay_sinh             DateTime?               @db.Date
+  gioi_tinh             khach_hang_gioi_tinh?
+  tong_tien_da_chi      Decimal                 @default(0) @db.Decimal(12, 0)
+  tong_lan_dat          Int                     @default(0)
+  danh_gia              danh_gia[]
+  dat_phong             dat_phong[]
+  nguoi_dung            nguoi_dung              @relation(fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_kh_nguoidung")
+  khach_hang_khuyen_mai khach_hang_khuyen_mai[]
+}
+
+model khach_hang_khuyen_mai {
+  ma_kh_km      Int                              @id @default(autoincrement())
+  ma_khach_hang Int
+  ma_khuyen_mai Int
+  trang_thai    khach_hang_khuyen_mai_trang_thai @default(chua_dung)
+  ngay_cap      DateTime                         @default(now()) @db.DateTime(0)
+  ngay_su_dung  DateTime?                        @db.DateTime(0)
+  khach_hang    khach_hang                       @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_khkm_kh")
+  khuyen_mai    khuyen_mai                       @relation(fields: [ma_khuyen_mai], references: [ma_khuyen_mai], onUpdate: Restrict, map: "fk_khkm_km")
+
+  @@unique([ma_khach_hang, ma_khuyen_mai], map: "uq_kh_km")
+  @@index([ma_khuyen_mai], map: "fk_khkm_km")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model khach_san {
+  ma_khach_san        Int                   @id @default(autoincrement())
+  ma_doi_tac          Int
+  ma_dia_diem         Int
+  duyet_boi_admin_id  Int?
+  ten                 String                @db.VarChar(150)
+  dia_chi             String                @db.Text
+  mo_ta               String?               @db.Text
+  so_sao              Int?                  @db.TinyInt
+  gio_nhan_phong      DateTime?             @db.Time(0)
+  gio_tra_phong       DateTime?             @db.Time(0)
+  trang_thai          khach_san_trang_thai  @default(cho_duyet)
+  ly_do_tu_choi       String?               @db.Text
+  ngay_tao            DateTime              @default(now()) @db.DateTime(0)
+  ngay_duyet          DateTime?             @db.DateTime(0)
+  chinh_sach_huy      chinh_sach_huy[]
+  nguoi_dung          nguoi_dung?           @relation(fields: [duyet_boi_admin_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ks_admin")
+  dia_diem            dia_diem              @relation(fields: [ma_dia_diem], references: [ma_dia_diem], onUpdate: Restrict, map: "fk_ks_diadiem")
+  doi_tac             doi_tac               @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_ks_doitac")
+  khach_san_tien_nghi khach_san_tien_nghi[]
+  khuyen_mai          khuyen_mai[]
+  loai_phong          loai_phong[]
+
+  @@index([duyet_boi_admin_id], map: "fk_ks_admin")
+  @@index([ma_dia_diem], map: "fk_ks_diadiem")
+  @@index([ma_doi_tac], map: "fk_ks_doitac")
+}
+
+model khach_san_tien_nghi {
+  ma_ks_tien_nghi Int       @id @default(autoincrement())
+  ma_khach_san    Int
+  ma_tien_nghi    Int
+  khach_san       khach_san @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_kstn_ks")
+  tien_nghi       tien_nghi @relation(fields: [ma_tien_nghi], references: [ma_tien_nghi], onUpdate: Restrict, map: "fk_kstn_tn")
+
+  @@unique([ma_khach_san, ma_tien_nghi], map: "uq_ks_tn")
+  @@index([ma_tien_nghi], map: "fk_kstn_tn")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model khuyen_mai {
+  ma_khuyen_mai         Int                     @id @default(autoincrement())
+  tao_boi_id            Int
+  ma_khach_san          Int?
+  ma_code               String                  @unique(map: "ma_code") @db.VarChar(30)
+  ten                   String                  @db.VarChar(100)
+  loai_nguon            khuyen_mai_loai_nguon
+  loai_giam             khuyen_mai_loai_giam
+  gia_tri               Decimal                 @db.Decimal(10, 2)
+  giam_toi_da           Decimal?                @db.Decimal(12, 0)
+  don_hang_toi_thieu    Decimal                 @default(0) @db.Decimal(12, 0)
+  nguong_ap_dung        Decimal?                @db.Decimal(12, 0)
+  ngay_bat_dau          DateTime                @db.Date
+  ngay_ket_thuc         DateTime                @db.Date
+  so_luot_toi_da        Int?
+  so_luot_da_dung       Int                     @default(0)
+  trang_thai            khuyen_mai_trang_thai   @default(hoat_dong)
+  dat_phong             dat_phong[]
+  khach_hang_khuyen_mai khach_hang_khuyen_mai[]
+  khach_san             khach_san?              @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_ks")
+  nguoi_dung            nguoi_dung              @relation(fields: [tao_boi_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_km_taoboi")
+
+  @@index([ma_khach_san], map: "fk_km_ks")
+  @@index([tao_boi_id], map: "fk_km_taoboi")
+}
+
+model loai_phong {
+  ma_loai_phong        Int                    @id @default(autoincrement())
+  ma_khach_san         Int
+  ten_loai             String                 @db.VarChar(100)
+  dien_tich            Decimal?               @db.Decimal(5, 1)
+  suc_chua             Int
+  so_luong_phong       Int
+  gia_co_ban           Decimal                @db.Decimal(12, 0)
+  mo_ta                String?                @db.Text
+  trang_thai           loai_phong_trang_thai  @default(hoat_dong)
+  ngay_tao             DateTime               @default(now()) @db.DateTime(0)
+  bang_gia_phong       bang_gia_phong[]
+  dat_phong            dat_phong[]
+  khach_san            khach_san              @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_lp_ks")
+  loai_phong_tien_nghi loai_phong_tien_nghi[]
+
+  @@index([ma_khach_san], map: "fk_lp_ks")
+}
+
+model loai_phong_tien_nghi {
+  ma_lp_tien_nghi Int        @id @default(autoincrement())
+  ma_loai_phong   Int
+  ma_tien_nghi    Int
+  loai_phong      loai_phong @relation(fields: [ma_loai_phong], references: [ma_loai_phong], onUpdate: Restrict, map: "fk_lptn_lp")
+  tien_nghi       tien_nghi  @relation(fields: [ma_tien_nghi], references: [ma_tien_nghi], onUpdate: Restrict, map: "fk_lptn_tn")
+
+  @@unique([ma_loai_phong, ma_tien_nghi], map: "uq_lp_tn")
+  @@index([ma_tien_nghi], map: "fk_lptn_tn")
+}
+
+model nguoi_dung {
+  ma_nguoi_dung                             Int                   @id @default(autoincrement())
+  email                                     String                @unique(map: "email") @db.VarChar(100)
+  so_dien_thoai                             String                @unique(map: "so_dien_thoai") @db.VarChar(15)
+  mat_khau                                  String                @db.VarChar(255)
+  vai_tro                                   nguoi_dung_vai_tro
+  trang_thai                                nguoi_dung_trang_thai @default(hoat_dong)
+  otp_code                                  String?               @db.VarChar(10)
+  otp_het_han                               DateTime?             @db.DateTime(0)
+  reset_token                               String?               @db.VarChar(255)
+  token_het_han                             DateTime?             @db.DateTime(0)
+  ngay_tao                                  DateTime              @default(now()) @db.DateTime(0)
+  dang_nhap_cuoi                            DateTime?             @db.DateTime(0)
+  danh_gia                                  danh_gia[]
+  doi_tac_doi_tac_nguoi_cap_idTonguoi_dung  doi_tac[]             @relation("doi_tac_nguoi_cap_idTonguoi_dung")
+  doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung doi_tac?              @relation("doi_tac_ma_nguoi_dungTonguoi_dung")
+  hoan_tien                                 hoan_tien[]
+  khach_hang                                khach_hang?
+  khach_san                                 khach_san[]
+  khuyen_mai                                khuyen_mai[]
+  thong_bao                                 thong_bao[]
+  yeu_cau_tien_nghi                         yeu_cau_tien_nghi[]
+}
+
+model thanh_toan {
+  ma_thanh_toan Int                   @id @default(autoincrement())
+  ma_dat_phong  Int                   @unique(map: "ma_dat_phong")
+  so_tien       Decimal               @db.Decimal(12, 0)
+  ma_giao_dich  String?               @db.VarChar(100)
+  phuong_thuc   String                @db.VarChar(50)
+  trang_thai    thanh_toan_trang_thai @default(cho)
+  thoi_gian     DateTime              @default(now()) @db.DateTime(0)
+  hoan_tien     hoan_tien[]
+  dat_phong     dat_phong             @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_tt_dp")
+}
+
+model thong_bao {
+  ma_thong_bao  Int            @id @default(autoincrement())
+  ma_nguoi_dung Int
+  ma_dat_phong  Int?
+  tieu_de       String         @db.VarChar(200)
+  noi_dung      String         @db.Text
+  loai          thong_bao_loai
+  da_doc        Boolean        @default(false)
+  ngay_gui      DateTime       @default(now()) @db.DateTime(0)
+  dat_phong     dat_phong?     @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onDelete: Restrict, onUpdate: Restrict, map: "fk_tb_dp")
+  nguoi_dung    nguoi_dung     @relation(fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_tb_nd")
+
+  @@index([ma_dat_phong], map: "fk_tb_dp")
+  @@index([ma_nguoi_dung], map: "fk_tb_nd")
+}
+
+model tien_nghi {
+  ma_tien_nghi         Int                    @id @default(autoincrement())
+  ten                  String                 @db.VarChar(100)
+  bieu_tuong           String?                @db.VarChar(100)
+  loai                 tien_nghi_loai         @default(ca_hai)
+  trang_thai           tien_nghi_trang_thai   @default(hoat_dong)
+  ngay_tao             DateTime               @default(now()) @db.DateTime(0)
+  khach_san_tien_nghi  khach_san_tien_nghi[]
+  loai_phong_tien_nghi loai_phong_tien_nghi[]
+  yeu_cau_tien_nghi    yeu_cau_tien_nghi[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model yeu_cau_tien_nghi {
+  ma_yeu_cau       Int                          @id @default(autoincrement())
+  ma_doi_tac       Int
+  admin_xu_ly_id   Int?
+  tien_nghi_tao_id Int?
+  ten_de_xuat      String                       @db.VarChar(100)
+  mo_ta            String?                      @db.Text
+  trang_thai       yeu_cau_tien_nghi_trang_thai @default(cho_xu_ly)
+  phan_hoi         String?                      @db.Text
+  ngay_yeu_cau     DateTime                     @default(now()) @db.DateTime(0)
+  ngay_phan_hoi    DateTime?                    @db.DateTime(0)
+  nguoi_dung       nguoi_dung?                  @relation(fields: [admin_xu_ly_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_yctn_admin")
+  doi_tac          doi_tac                      @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_yctn_doitac")
+  tien_nghi        tien_nghi?                   @relation(fields: [tien_nghi_tao_id], references: [ma_tien_nghi], onDelete: Restrict, onUpdate: Restrict, map: "fk_yctn_tiennghi")
+
+  @@index([admin_xu_ly_id], map: "fk_yctn_admin")
+  @@index([ma_doi_tac], map: "fk_yctn_doitac")
+  @@index([tien_nghi_tao_id], map: "fk_yctn_tiennghi")
+}
+
+enum hinh_anh_loai_doi_tuong {
+  khach_san
+  loai_phong
+}
+
+enum khach_hang_khuyen_mai_trang_thai {
+  chua_dung
+  da_dung
+  het_han
+}
+
+enum tien_nghi_loai {
+  khach_san
+  phong
+  ca_hai
+}
+
+enum bang_gia_phong_loai_gia {
+  co_ban
+  cuoi_tuan
+  le_tet
+  cao_diem
+}
+
+enum chi_tiet_dat_phong_loai_gia {
+  co_ban
+  cuoi_tuan
+  le_tet
+  cao_diem
+}
+
+enum nguoi_dung_vai_tro {
+  khach_hang
+  doi_tac
+  admin
+}
+
+enum tien_nghi_trang_thai {
+  hoat_dong
+  an
+}
+
+enum chinh_sach_huy_trang_thai {
+  hoat_dong
+  an
+}
+
+enum hoa_hong_trang_thai {
+  chua_thu
+  da_thu
+}
+
+enum khach_hang_gioi_tinh {
+  nam
+  nu
+  khac
+}
+
+enum khuyen_mai_loai_nguon {
+  he_thong
+  doi_tac
+}
+
+enum nguoi_dung_trang_thai {
+  hoat_dong
+  bi_khoa
+}
+
+enum thanh_toan_trang_thai {
+  cho
+  thanh_cong
+  that_bai
+}
+
+enum thong_bao_loai {
+  dat_phong
+  thanh_toan
+  danh_gia
+  khuyen_mai
+  he_thong
+  tien_nghi
+}
+
+enum hoan_tien_trang_thai {
+  cho_xu_ly
+  dang_xu_ly
+  da_hoan
+  tu_choi
+}
+
+enum khuyen_mai_loai_giam {
+  phan_tram
+  so_tien
+}
+
+enum yeu_cau_tien_nghi_trang_thai {
+  cho_xu_ly
+  da_tao
+  tu_choi
+}
+
+enum doi_tac_trang_thai {
+  hoat_dong
+  bi_khoa
+}
+
+enum loai_phong_trang_thai {
+  hoat_dong
+  an
+}
+
+enum khach_san_trang_thai {
+  cho_duyet
+  da_duyet
+  tu_choi
+  yeu_cau_sua
+  hoat_dong
+  bi_khoa
+}
+
+enum danh_gia_trang_thai {
+  cho_duyet
+  hien_thi
+  an
+}
+
+enum dat_phong_phuong_thuc_tt {
+  truc_tuyen
+  tai_khach_san
+}
+
+enum dat_phong_trang_thai {
+  cho_xac_nhan
+  da_xac_nhan
+  tu_choi
+  hoan_thanh
+  da_huy
+}
+
+enum khuyen_mai_trang_thai {
+  hoat_dong
+  het_han
+  an
+}
