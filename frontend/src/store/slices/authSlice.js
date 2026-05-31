@@ -20,8 +20,6 @@ export const register = createAsyncThunk('auth/register', async (data, { rejectW
   }
 });
 
-// Action lấy thông tin user hiện tại — gọi khi app khởi động để kiểm tra token còn hợp lệ không
-// Chạy: App.jsx khởi động → dispatch(getMe) → gọi /auth/me với token → cập nhật Redux
 export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue }) => {
   try {
     const res = await authService.getMe();
@@ -34,7 +32,6 @@ export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue 
 const authSlice = createSlice({
   name: 'auth',
 
-  // State khởi đầu: lấy từ localStorage để giữ đăng nhập khi refresh trang
   initialState: {
     user: getUser(),  
     token: getToken(), 

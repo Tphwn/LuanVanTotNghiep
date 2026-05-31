@@ -1,5 +1,3 @@
-
-
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
@@ -11,7 +9,7 @@ const App = () => {
 
   useEffect(() => {
     if (token) dispatch(getMe());
-  }, []); 
+  }, []);
 
   return <AppRoutes />;
 };

@@ -1,14 +1,11 @@
 import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { ROUTES } from '../constants/routes';
+import ROUTES from '../constants/routes';
 
 const RoleRoute = ({ children, allowedRoles }) => {
   const { token, user } = useSelector((state) => state.auth);
   if (!token) return <Navigate to={ROUTES.LOGIN} replace />;
-
-  if (!allowedRoles.includes(user?.vai_tro)) {
-    return <Navigate to={ROUTES.HOME} replace />;
-  }
+  if (!allowedRoles.includes(user?.vai_tro)) return <Navigate to={ROUTES.HOME} replace />;
   return children;
 };
 
