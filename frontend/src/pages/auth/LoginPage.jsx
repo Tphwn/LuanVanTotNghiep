@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { login, clearError } from '../../store/slices/authSlice';
 import ROUTES from '../../constants/routes';
-import ROLES from '../../constants/roles';
+import getRedirectRoute from '../../utils/redirect';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -25,13 +25,12 @@ const LoginPage = () => {
     dispatch(login(formData));
   };
 
-  useEffect(() => {
-    if (user) {
-      if (user.vai_tro === ROLES.ADMIN) navigate(ROUTES.ADMIN.DASHBOARD);
-      else if (user.vai_tro === ROLES.DOI_TAC) navigate(ROUTES.PARTNER.DASHBOARD);
-      else navigate(ROUTES.HOME);
-    }
-  }, [user]);
+ useEffect(() => {
+  if (user) {
+    const redirectPath = getRedirectRoute(user);
+    navigate(redirectPath, { replace: true });
+  }
+}, [user, navigate]);
 
   return (
     <div style={{
@@ -66,8 +65,6 @@ const LoginPage = () => {
             ⚠️ {error}
           </div>
         )}
-
-        {/* Form */}
         <form onSubmit={handleSubmit}>
           <Input
             label="Email"

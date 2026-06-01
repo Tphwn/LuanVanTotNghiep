@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, clearError } from '../../store/slices/authSlice';
 import ROUTES from '../../constants/routes';
+import getRedirectRoute from '../../utils/redirect';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -34,8 +35,10 @@ const RegisterPage = () => {
   };
 
   useEffect(() => {
-    if (user) navigate(ROUTES.HOME);
-  }, [user]);
+    if (user) {
+      navigate(getRedirectRoute(user), { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div style={{
@@ -51,7 +54,7 @@ const RegisterPage = () => {
         <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>🏨</div>
           <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
-            Tạo tài khoản
+          ĐĂNG KÝ TÀI KHOẢN
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-md)' }}>
             Đăng ký để trải nghiệm dịch vụ

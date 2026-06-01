@@ -1,0 +1,91 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+}
+
+.header {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.brand {
+  margin: 0;
+}
+
+.brandLink {
+  text-decoration: none;
+  color: #117d62;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.userActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.logoutButton {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background-color: #f8f8f8;
+  font-size: 14px;
+}
+
+.logoutButton:hover {
+  background-color: #f1f1f1;
+}
+
+.nav {
+  display: flex;
+  gap: 1.5rem;
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+}
+
+.navLink {
+  text-decoration: none;
+  color: #333;
+  font-size: 14px;
+  padding: 0.5rem 0;
+  position: relative;
+}
+
+.navLink:hover {
+  color: #117d62;
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #117d62;
+  transition: width 0.3s ease;
+}
+
+.navLink:hover::after {
+  width: 100%;
+}
+
+.main {
+  flex: 1;
+  padding: 1.5rem 2rem;
+}
