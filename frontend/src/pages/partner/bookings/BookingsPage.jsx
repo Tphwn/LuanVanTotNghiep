@@ -1,4 +1,4 @@
-const BookingManagePage = () => {
+const BookingsPage = () => {
   return (
     <div>
       <h1 style={{ marginBottom: '1.5rem' }}>Quản lý đặt phòng</h1>
@@ -35,4 +35,4 @@ const BookingManagePage = () => {
   );
 };
 
-export default BookingManagePage;
+export default BookingsPage;

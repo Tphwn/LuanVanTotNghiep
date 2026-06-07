@@ -15,21 +15,25 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import HomePage from '../pages/customer/HomePage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
-import PartnerHotelsPage from '../pages/partner/HotelsPage';
-import PartnerRoomsPage from '../pages/partner/RoomsPage';
-import PartnerBookingsPage from '../pages/partner/BookingManagePage';
-import PartnerAmenitiesPage from '../pages/partner/AmenitiesPage';
-import PartnerImagesPage from '../pages/partner/ImagesPage';
-import PartnerAccountPage from '../pages/partner/AccountPage';
+import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
+import PartnerRoomsPage from '../pages/partner/rooms/RoomsPage';
+import PartnerBookingsPage from '../pages/partner/bookings/BookingsPage';
+import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
+import PartnerFinancePage from '../pages/partner/finance/RevenuePage';
+import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
+import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
-import AdminUsersPage from '../pages/admin/UsersPage';
-import AdminHotelsPage from '../pages/admin/HotelsPage';
-import AdminBookingsPage from '../pages/admin/BookingsPage';
-import AdminPaymentsPage from '../pages/admin/PaymentsPage';
-import AdminCommissionsPage from '../pages/admin/CommissionsPage';
-import AdminRefundsPage from '../pages/admin/RefundsPage';
-import AdminReportsPage from '../pages/admin/ReportsPage';
-
+import AdminUsersPage from '../pages/admin/users/UsersPage';
+import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
+import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
+import AdminPaymentsPage from '../pages/admin/finance/PaymentsPage';
+import AdminFinancePage from '../pages/admin/finance/FinancePage';
+import AdminReportsPage from '../pages/admin/reports/RevenueReportPage';
+import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
+import AdminRoomTypesPage from '../pages/admin/rooms/RoomsPage';
+import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
+import PartnersPage from '../pages/admin/users/PartnersPage';
+import UserDetailPage from '../pages/admin/users/UserDetailPage';
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -38,10 +42,10 @@ const AppRoutes = () => {
       <Routes>
         {/* Public */}
         <Route path={ROUTES.LOGIN} element={
-          token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <LoginPage />
+          token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><LoginPage /></MainLayout>
         } />
         <Route path={ROUTES.REGISTER} element={
-          token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <RegisterPage />
+          token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><RegisterPage /></MainLayout>
         } />
 
         {/* Customer */}
@@ -60,7 +64,8 @@ const AppRoutes = () => {
           <Route path="hotels" element={<PartnerHotelsPage />} />
           <Route path="rooms" element={<PartnerRoomsPage />} />
           <Route path="bookings" element={<PartnerBookingsPage />} />
-          <Route path="amenities" element={<PartnerAmenitiesPage />} />
+          <Route path="reviews" element={<PartnerReviewsPage />} />
+          <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
         </Route>
@@ -77,9 +82,13 @@ const AppRoutes = () => {
           <Route path="hotels" element={<AdminHotelsPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
-          <Route path="commissions" element={<AdminCommissionsPage />} />
-          <Route path="refunds" element={<AdminRefundsPage />} />
+          <Route path="amenities" element={<AdminAmenitiesPage />} />
+          <Route path="room-types" element={<AdminRoomTypesPage />} />
+          <Route path="reviews" element={<AdminReviewsPage />} />
+          <Route path="finance" element={<AdminFinancePage />} />
           <Route path="reports" element={<AdminReportsPage />} />
+          <Route path="partners" element={<PartnersPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />

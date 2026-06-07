@@ -1,4 +1,4 @@
-const PartnerRoomsPage = () => {
+const RoomsPage = () => {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -21,4 +21,4 @@ const PartnerRoomsPage = () => {
   );
 };
 
-export default PartnerRoomsPage;
+export default RoomsPage;

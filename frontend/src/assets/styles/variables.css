@@ -44,4 +44,8 @@
   --font-size-lg: 16px;
   --font-size-xl: 20px;
   --font-size-title: 24px;
+  /* Breakpoints */
+/* Mobile:  < 768px  */
+/* Tablet:  768px - 1024px */
+/* Desktop: > 1024px */
 }

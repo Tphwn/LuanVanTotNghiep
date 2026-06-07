@@ -1,4 +1,4 @@
-const PartnerHotelsPage = () => {
+const HotelsPage = () => {
   return (
     <div>
       <h1>🏨 Quản lý khách sạn</h1>
@@ -20,4 +20,4 @@ const PartnerHotelsPage = () => {
   );
 };
 
-export default PartnerHotelsPage;
+export default HotelsPage;

@@ -1,4 +1,4 @@
-const PartnerAccountPage = () => {
+const ProfilePage = () => {
   return (
     <div>
       <h1 style={{ marginBottom: '1.5rem' }}>Quản lý tài khoản</h1>
@@ -25,4 +25,4 @@ const PartnerAccountPage = () => {
   );
 };
 
-export default PartnerAccountPage;
+export default ProfilePage;

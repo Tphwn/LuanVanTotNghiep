@@ -5,7 +5,7 @@ import { setToken, setUser, removeToken, removeUser, getToken, getUser } from '.
 export const login = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
   try {
     const res = await authService.login(data);
-    return res.data.data; 
+    return res.data?.data ?? res.data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || 'Đăng nhập thất bại');
   }
@@ -14,7 +14,7 @@ export const login = createAsyncThunk('auth/login', async (data, { rejectWithVal
 export const register = createAsyncThunk('auth/register', async (data, { rejectWithValue }) => {
   try {
     const res = await authService.register(data);
-    return res.data.data;
+    return res.data?.data ?? res.data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || 'Đăng ký thất bại');
   }
@@ -23,7 +23,7 @@ export const register = createAsyncThunk('auth/register', async (data, { rejectW
 export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue }) => {
   try {
     const res = await authService.getMe();
-    return res.data.data;
+    return res.data?.data ?? res.data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.message);
   }

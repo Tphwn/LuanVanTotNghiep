@@ -14,12 +14,20 @@ const ROUTES = {
     HOTELS: '/partner/hotels',
     ROOMS: '/partner/rooms',
     BOOKINGS: '/partner/bookings',
+    REVIEWS: '/partner/reviews',
+    FINANCE: '/partner/finance',
   },
   ADMIN: {
     DASHBOARD: '/admin/dashboard',
     USERS: '/admin/users',
     HOTELS: '/admin/hotels',
     BOOKINGS: '/admin/bookings',
+    PAYMENTS: '/admin/payments',
+    AMENITIES: '/admin/amenities',
+    ROOM_TYPES: '/admin/room-types',
+    REVIEWS: '/admin/reviews',
+    FINANCE: '/admin/finance',
+    REPORTS: '/admin/reports',
   },
 };
 

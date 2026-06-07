@@ -20,17 +20,25 @@ const LoginPage = () => {
     if (error) dispatch(clearError());
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(login(formData));
+    try {
+      const result = await dispatch(login(formData)).unwrap();
+      if (result?.user) {
+        const redirectPath = getRedirectRoute(result.user);
+        navigate(redirectPath, { replace: true });
+      }
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
   };
 
- useEffect(() => {
-  if (user) {
-    const redirectPath = getRedirectRoute(user);
-    navigate(redirectPath, { replace: true });
-  }
-}, [user, navigate]);
+  useEffect(() => {
+    if (user) {
+      const redirectPath = getRedirectRoute(user);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div style={{

@@ -1,4 +1,4 @@
-const ReportsPage = () => {
+const RevenueReportPage = () => {
   return (
     <div>
       <h1>📈 Báo cáo thống kê</h1>
@@ -47,4 +47,4 @@ const ReportsPage = () => {
   );
 };
 
-export default ReportsPage;
+export default RevenueReportPage;

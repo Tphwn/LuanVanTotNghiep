@@ -1,72 +1,31 @@
 import { Link, useLocation } from 'react-router-dom';
 
-const PartnerSidebar = () => {
+const partnerMenus = [
+  { icon: '📊', name: 'Tổng quan',  path: '/partner/dashboard' },
+  { icon: '🏨', name: 'Khách sạn', path: '/partner/hotels' },
+  { icon: '🛏️', name: 'Loại phòng', path: '/partner/rooms' },
+  { icon: '📅', name: 'Đặt phòng', path: '/partner/bookings' },
+  { icon: '⭐', name: 'Đánh giá',   path: '/partner/reviews' },
+  { icon: '💼', name: 'Tài chính',  path: '/partner/finance' },
+  { icon: '🖼️', name: 'Hình ảnh',  path: '/partner/images' },
+  { icon: '👤', name: 'Tài khoản', path: '/partner/account' },
+];
+
+const PartnerSidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
 
-  const menus = [
-    {
-      name: 'Tổng quan',
-      path: '/partner/dashboard',
-    },
-    {
-      name: 'Khách sạn',
-      path: '/partner/hotels',
-    },
-    {
-      name: 'Loại phòng',
-      path: '/partner/rooms',
-    },
-    {
-      name: 'Đặt phòng',
-      path: '/partner/bookings',
-    },
-    {
-      name: 'Tiện nghi',
-      path: '/partner/amenities',
-    },
-    {
-      name: 'Hình ảnh',
-      path: '/partner/images',
-    },
-    {
-      name: 'Tài khoản',
-      path: '/partner/account',
-    },
-  ];
-
   return (
-    <aside
-      style={{
-        width: '260px',
-        background: '#fff',
-        borderRadius: '28px',
-        border: '1px solid rgba(15, 23, 42, 0.06)',
-        padding: '20px',
-        boxShadow: '0 14px 40px rgba(15, 23, 42, 0.05)',
-        minHeight: 'calc(100vh - 104px)',
-      }}
-    >
-      <div style={{ marginBottom: '24px' }}>
-        <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>Điều hướng</p>
-        <h3 style={{ margin: '10px 0 0', fontSize: '1.15rem', color: '#0f172a' }}>Partner Menu</h3>
-      </div>
-
-      {menus.map((item) => (
+    <aside className={`sidebar-panel ${isOpen ? 'open' : ''}`}>
+      <p className="sidebar-label">Quản lý đối tác</p>
+      <h3 className="sidebar-title">Partner Panel</h3>
+      {partnerMenus.map((item) => (
         <Link
           key={item.path}
           to={item.path}
-          style={{
-            display: 'block',
-            padding: '14px 16px',
-            marginBottom: '10px',
-            borderRadius: '16px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            color: location.pathname === item.path ? '#fff' : '#334155',
-            background: location.pathname === item.path ? '#117d62' : '#f8fafc',
-            transition: 'all 0.2s ease',
-          }}
+          className={`sidebar-menu-item ${location.pathname === item.path ? 'active' : ''}`}
+          onClick={onClose}
         >
+          <span className="menu-icon">{item.icon}</span>
           {item.name}
         </Link>
       ))}

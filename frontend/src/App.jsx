@@ -8,8 +8,10 @@ const App = () => {
   const { token } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (token) dispatch(getMe());
-  }, []);
+    if (token) {
+      dispatch(getMe());
+    }
+  }, [token, dispatch]);
 
   return <AppRoutes />;
 };
