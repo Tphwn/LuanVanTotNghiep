@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// === CÁC MODEL BẠN ĐÃ CÓ ===
 model bang_gia_phong {
   ma_bang_gia   Int                     @id @default(autoincrement())
   ma_loai_phong Int
@@ -30,7 +31,6 @@ model chi_tiet_dat_phong {
   @@unique([ma_dat_phong, ngay], map: "uq_ctdp")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model chinh_sach_huy {
   ma_chinh_sach  Int                       @id @default(autoincrement())
   ma_khach_san   Int
@@ -43,7 +43,6 @@ model chinh_sach_huy {
   @@index([ma_khach_san], map: "fk_csh_ks")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model danh_gia {
   ma_danh_gia      Int                 @id @default(autoincrement())
   ma_dat_phong     Int                 @unique(map: "ma_dat_phong")
@@ -104,7 +103,9 @@ model dat_phong {
 model dia_diem {
   ma_dia_diem  Int         @id @default(autoincrement())
   ten_dia_diem String      @db.VarChar(100)
+  slug         String?     @db.VarChar(100) // Thêm dòng này
   tinh_thanh   String?     @db.VarChar(100)
+  quoc_gia     String?     @db.VarChar(100) // Thêm dòng này
   mo_ta        String?     @db.Text
   khach_san    khach_san[]
 }
@@ -199,7 +200,6 @@ model khach_hang_khuyen_mai {
   @@index([ma_khuyen_mai], map: "fk_khkm_km")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model khach_san {
   ma_khach_san        Int                   @id @default(autoincrement())
   ma_doi_tac          Int
@@ -239,7 +239,6 @@ model khach_san_tien_nghi {
   @@index([ma_tien_nghi], map: "fk_kstn_tn")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model khuyen_mai {
   ma_khuyen_mai         Int                     @id @default(autoincrement())
   tao_boi_id            Int
@@ -348,19 +347,32 @@ model thong_bao {
   @@index([ma_nguoi_dung], map: "fk_tb_nd")
 }
 
+// === MODEL ĐÃ ĐƯỢC SỬA LỖI RELATIONS ===
 model tien_nghi {
-  ma_tien_nghi         Int                    @id @default(autoincrement())
-  ten                  String                 @db.VarChar(100)
-  bieu_tuong           String?                @db.VarChar(100)
-  loai                 tien_nghi_loai         @default(ca_hai)
-  trang_thai           tien_nghi_trang_thai   @default(hoat_dong)
-  ngay_tao             DateTime               @default(now()) @db.DateTime(0)
+  ma_tien_nghi Int             @id @default(autoincrement())
+  ten          String          @db.VarChar(100)
+  bieu_tuong   String?         @db.VarChar(100)
+  loai         loai_enum
+  trang_thai   trang_thai_enum @default(hoat_dong)
+  ngay_tao     DateTime        @default(now()) @db.DateTime(0)
+
+  // CÁC MỐI QUAN HỆ BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO
   khach_san_tien_nghi  khach_san_tien_nghi[]
   loai_phong_tien_nghi loai_phong_tien_nghi[]
   yeu_cau_tien_nghi    yeu_cau_tien_nghi[]
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum loai_enum {
+  khach_san
+  phong
+  ca_hai
+}
+
+enum trang_thai_enum {
+  hoat_dong
+  an
+}
+
 model yeu_cau_tien_nghi {
   ma_yeu_cau       Int                          @id @default(autoincrement())
   ma_doi_tac       Int
@@ -381,6 +393,7 @@ model yeu_cau_tien_nghi {
   @@index([tien_nghi_tao_id], map: "fk_yctn_tiennghi")
 }
 
+// === CÁC ENUM GIỮ NGUYÊN ===
 enum hinh_anh_loai_doi_tuong {
   khach_san
   loai_phong

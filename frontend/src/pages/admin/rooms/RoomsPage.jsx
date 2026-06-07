@@ -1,4 +1,7 @@
+import { useNavigate } from 'react-router-dom';
+
 const RoomsPage = () => {
+  const navigate = useNavigate();
   const roomTypes = [
     { id: 'RT001', hotel: 'Hotel Luxury', type: 'Deluxe', guests: 2, price: '1.200.000đ' },
     { id: 'RT002', hotel: 'Sunrise Hotel', type: 'Suite', guests: 4, price: '2.500.000đ' },
@@ -35,9 +38,17 @@ const RoomsPage = () => {
               <td style={{ padding: '12px 14px' }}>{room.guests}</td>
               <td style={{ padding: '12px 14px' }}>{room.price}</td>
               <td style={{ padding: '12px 14px' }}>
-                <button style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #0958d9', background: '#fff', color: '#0958d9', cursor: 'pointer' }}>
-                  Chỉnh sửa
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #0958d9', background: '#fff', color: '#0958d9', cursor: 'pointer' }}
+                    onClick={() => navigate(`/admin/room-types/${room.id}`)}
+                  >
+                    Xem chi tiết
+                  </button>
+                  <button style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #0958d9', background: '#fff', color: '#0958d9', cursor: 'pointer' }}>
+                    Chỉnh sửa
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
