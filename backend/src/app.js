@@ -7,7 +7,7 @@ const { notFound } = require("./middlewares/notFound");
 
 const authMiddleware = require("./middlewares/auth.middleware");
 const adminMiddleware = require("./middlewares/adminMiddleware");
-
+const adminHotelRoutes = require('./modules/admin/hotel/hotel.routes');
 const app = express();
 
 /* =========================
@@ -48,16 +48,18 @@ app.use(
   adminMiddleware,
   require("./modules/admin/user/adminUser.routes")
 );
-
+app.use('/api/admin/hotels', authMiddleware, adminMiddleware, adminHotelRoutes);
+app.use('/api/partner/rooms', authMiddleware, require('./modules/roomType/roomType.routes'));
 /* =========================
    AMENITY ROUTES
 ========================= */
 
+app.use('/api/amenities/requests', require('./modules/amenity/amenityRequest.routes'));
 app.use(
   "/api/amenities",
   require("./modules/amenity/amenity.routes")
 );
-
+app.use('/api/partner/hotels', require('./modules/hotel/hotel.routes'));
 /* =========================
    404 + ERROR HANDLER
 ========================= */

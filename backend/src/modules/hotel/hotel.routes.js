@@ -1,11 +1,14 @@
-const router = require('express').Router();
-const controller = require('./hotel.controller');
+const express = require('express');
+const router = express.Router();
+const ctrl = require('./hotel.controller');
+const authMiddleware = require('../../middlewares/auth.middleware');
 
-router.get('/', controller.getAllHotels);
-router.get('/:id', controller.getHotelById);
-router.patch('/:id/approve', controller.approveHotel);
-router.patch('/:id/reject', controller.rejectHotel);
-router.patch('/:id/request-info', controller.requestInfo);
-router.patch('/:id/lock-toggle', controller.toggleLock);
+router.get('/dia-diem',  ctrl.getDiaDiem);
+router.get('/amenities', ctrl.getAmenitiesForHotel);
+
+router.get('/',     authMiddleware, ctrl.getMyHotels);
+router.get('/:id',  authMiddleware, ctrl.getById);
+router.post('/',    authMiddleware, ctrl.create);
+router.put('/:id',  authMiddleware, ctrl.update);
 
 module.exports = router;

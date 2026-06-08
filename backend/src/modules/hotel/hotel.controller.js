@@ -1,91 +1,102 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const hotelService = require('./hotel.service');
+const prisma = require('../../config/prisma');
 
-// 1. Lấy tất cả khách sạn (có filter nếu cần)
-exports.getAllHotels = async (req, res) => {
-    try {
-        const hotels = await prisma.khach_san.findMany({
-            include: { doi_tac: true } // Lấy thông tin đối tác hiển thị ra list
-        });
-        res.status(200).json({ success: true, data: hotels });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+// Helper để lấy ID đối tác từ request.
+// Hàm này cũng tự động gửi phản hồi lỗi nếu người dùng không hợp lệ.
+const getPartnerIdFromRequest = async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Yêu cầu xác thực không hợp lệ.' });
+    return null;
+  }
+
+  const partner = await prisma.doi_tac.findUnique({
+    where: { ma_nguoi_dung: userId },
+    select: { ma_doi_tac: true },
+  });
+
+  if (!partner) {
+    res.status(403).json({ success: false, message: 'Tài khoản không phải là đối tác.' });
+    return null;
+  }
+
+  return partner.ma_doi_tac;
 };
 
-// 2. Xem chi tiết khách sạn (Gồm tiện nghi, phòng, ảnh, thống kê)
-exports.getHotelById = async (req, res) => {
-    try {
-        const hotel = await prisma.khach_san.findUnique({
-            where: { ma_khach_san: Number(req.params.id) },
-            include: {
-                doi_tac: true,
-                loai_phong: true,
-                tien_nghi: true,
-                hinh_anh: true,
-                dat_phong: true // Dùng để tính toán thống kê
-            }
-        });
+exports.getMyHotels = async (req, res) => {
+  try {
+    const doiTacId = await getPartnerIdFromRequest(req, res);
+    if (!doiTacId) return; // Phản hồi lỗi đã được gửi bởi helper
 
-        if (!hotel) return res.status(404).json({ success: false, message: "Không tìm thấy khách sạn" });
-        
-        res.status(200).json({ success: true, data: hotel });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    const data = await hotelService.getMyHotels(doiTacId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// 3. Duyệt khách sạn
-exports.approveHotel = async (req, res) => {
-    try {
-        const hotel = await prisma.khach_san.update({
-            where: { ma_khach_san: Number(req.params.id) },
-            data: { trang_thai: 'hoat_dong' }
-        });
-        res.json({ success: true, data: hotel });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+exports.getById = async (req, res) => {
+  try {
+    const doiTacId = await getPartnerIdFromRequest(req, res);
+    if (!doiTacId) return;
+
+    const hotelId = Number(req.params.id);
+    const data = await hotelService.getById(hotelId);
+
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn.' });
     }
+
+    // Lỗ hổng bảo mật: Kiểm tra khách sạn có thuộc về đối tác không
+    if (data.ma_doi_tac !== doiTacId) {
+      return res.status(403).json({ success: false, message: 'Không có quyền truy cập khách sạn này.' });
+    }
+
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// 4. Từ chối kèm lý do
-exports.rejectHotel = async (req, res) => {
-    try {
-        const { lyDo } = req.body;
-        const hotel = await prisma.khach_san.update({
-            where: { ma_khach_san: Number(req.params.id) },
-            data: { trang_thai: 'tu_choi', ghi_chu: lyDo } 
-        });
-        res.json({ success: true, data: hotel });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+exports.create = async (req, res) => {
+  try {
+    const doiTacId = await getPartnerIdFromRequest(req, res);
+    if (!doiTacId) return;
+
+    const data = await hotelService.create(req.body, doiTacId);
+    res.status(201).json({ success: true, data, message: 'Tạo khách sạn thành công, chờ admin duyệt' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// 5. Yêu cầu sửa thông tin
-exports.requestInfo = async (req, res) => {
-    try {
-        const { ghiChu } = req.body;
-        const hotel = await prisma.khach_san.update({
-            where: { ma_khach_san: Number(req.params.id) },
-            data: { trang_thai: 'yeu_cau_sua', ghi_chu: ghiChu }
-        });
-        res.json({ success: true, data: hotel });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+exports.update = async (req, res) => {
+  try {
+    const doiTacId = await getPartnerIdFromRequest(req, res);
+    if (!doiTacId) return;
+
+    const hotelId = Number(req.params.id);
+    const data = await hotelService.update(hotelId, req.body, doiTacId);
+    res.json({ success: true, data, message: 'Cập nhật thành công' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-// 6. Khóa / Mở khóa
-exports.toggleLock = async (req, res) => {
-    try {
-        const { trangThai } = req.body; // 'hoat_dong' hoặc 'bi_khoa'
-        const hotel = await prisma.khach_san.update({
-            where: { ma_khach_san: Number(req.params.id) },
-            data: { trang_thai: trangThai }
-        });
-        res.json({ success: true, data: hotel });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+exports.getDiaDiem = async (req, res) => {
+  try {
+    const data = await hotelService.getDiaDiem();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getAmenitiesForHotel = async (req, res) => {
+  try {
+    const data = await hotelService.getAmenitiesForHotel();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };

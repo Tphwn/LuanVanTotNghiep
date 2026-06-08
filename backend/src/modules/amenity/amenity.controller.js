@@ -39,3 +39,39 @@ exports.delete = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+// GET yêu cầu tiện nghi
+exports.getRequests = async (req, res) => {
+  try {
+    const data = await amenityService.getRequests();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Duyệt yêu cầu
+exports.approveRequest = async (req, res) => {
+  try {
+    const data = await amenityService.approveRequest(
+      req.params.id,
+      req.user?.id || 1
+    );
+    res.json({ success: true, data, message: 'Đã duyệt và tạo tiện nghi mới' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Từ chối yêu cầu
+exports.rejectRequest = async (req, res) => {
+  try {
+    const data = await amenityService.rejectRequest(
+      req.params.id,
+      req.user?.id || 1,
+      req.body.phan_hoi
+    );
+    res.json({ success: true, data, message: 'Đã từ chối yêu cầu' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
