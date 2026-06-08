@@ -3,72 +3,81 @@ import api from "../../services/api";
 
 const ENDPOINT = "/amenities";
 
-// GET
-export const fetchAmenities = createAsyncThunk(
-  "amenities/fetch",
-  async (params) => {
-    const res = await api.get(ENDPOINT, { params });
-    return res.data.data;
-  }
-);
+// ===== TIỆN NGHI =====
+export const fetchAmenities = createAsyncThunk("amenities/fetch", async () => {
+  const res = await api.get(ENDPOINT);
+  return res.data.data;
+});
 
-// CREATE
-export const addAmenity = createAsyncThunk(
-  "amenities/add",
-  async (data) => {
-    const res = await api.post(ENDPOINT, data);
-    return res.data.data;
-  }
-);
+export const addAmenity = createAsyncThunk("amenities/add", async (data) => {
+  const res = await api.post(ENDPOINT, data);
+  return res.data.data;
+});
 
-// UPDATE
-export const updateAmenity = createAsyncThunk(
-  "amenities/update",
-  async ({ id, data }) => {
-    const res = await api.put(`${ENDPOINT}/${id}`, data);
-    return res.data.data;
-  }
-);
+export const updateAmenity = createAsyncThunk("amenities/update", async ({ id, data }) => {
+  const res = await api.put(`${ENDPOINT}/${id}`, data);
+  return res.data.data;
+});
 
-// DELETE
-export const removeAmenity = createAsyncThunk(
-  "amenities/delete",
-  async (id) => {
-    await api.delete(`${ENDPOINT}/${id}`);
-    return id;
-  }
-);
+export const removeAmenity = createAsyncThunk("amenities/delete", async (id) => {
+  await api.delete(`${ENDPOINT}/${id}`);
+  return id;
+});
+
+// ===== YÊU CẦU TIỆN NGHI =====
+export const fetchRequests = createAsyncThunk("amenities/fetchRequests", async () => {
+  const res = await api.get(`${ENDPOINT}/requests`);
+  return res.data.data;
+});
+
+export const approveRequest = createAsyncThunk("amenities/approveRequest", async (id) => {
+  const res = await api.patch(`${ENDPOINT}/requests/${id}/approve`);
+  return res.data.data;
+});
+
+export const rejectRequest = createAsyncThunk("amenities/rejectRequest", async ({ id, phan_hoi }) => {
+  const res = await api.patch(`${ENDPOINT}/requests/${id}/reject`, { phan_hoi });
+  return res.data.data;
+});
 
 const amenitySlice = createSlice({
   name: "amenities",
   initialState: {
     list: [],
+    requests: [],   // danh sách yêu cầu từ đối tác
     loading: false,
   },
-
   reducers: {},
-
   extraReducers: (builder) => {
     builder
+      // Tiện nghi
+      .addCase(fetchAmenities.pending,   (state) => { state.loading = true; })
       .addCase(fetchAmenities.fulfilled, (state, action) => {
+        state.loading = false;
         state.list = action.payload;
       })
-
       .addCase(addAmenity.fulfilled, (state, action) => {
         state.list.unshift(action.payload);
       })
-
       .addCase(updateAmenity.fulfilled, (state, action) => {
-        const index = state.list.findIndex(
-          (i) => i.ma_tien_nghi === action.payload.ma_tien_nghi
-        );
-        if (index !== -1) state.list[index] = action.payload;
+        const i = state.list.findIndex(x => x.ma_tien_nghi === action.payload.ma_tien_nghi);
+        if (i !== -1) state.list[i] = action.payload;
+      })
+      .addCase(removeAmenity.fulfilled, (state, action) => {
+        state.list = state.list.filter(x => x.ma_tien_nghi !== action.payload);
       })
 
-      .addCase(removeAmenity.fulfilled, (state, action) => {
-        state.list = state.list.filter(
-          (i) => i.ma_tien_nghi !== action.payload
-        );
+      // Yêu cầu
+      .addCase(fetchRequests.fulfilled, (state, action) => {
+        state.requests = action.payload;
+      })
+      .addCase(approveRequest.fulfilled, (state, action) => {
+        const i = state.requests.findIndex(x => x.ma_yeu_cau === action.payload.ma_yeu_cau);
+        if (i !== -1) state.requests[i] = action.payload;
+      })
+      .addCase(rejectRequest.fulfilled, (state, action) => {
+        const i = state.requests.findIndex(x => x.ma_yeu_cau === action.payload.ma_yeu_cau);
+        if (i !== -1) state.requests[i] = action.payload;
       });
   },
 });

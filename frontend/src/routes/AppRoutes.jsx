@@ -16,7 +16,7 @@ import HomePage from '../pages/customer/HomePage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
-import PartnerRoomsPage from '../pages/partner/rooms/RoomsPage';
+import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingsPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
 import PartnerFinancePage from '../pages/partner/finance/RevenuePage';
@@ -64,11 +64,13 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<PartnerDashboardPage />} />
           <Route path="hotels" element={<PartnerHotelsPage />} />
           <Route path="rooms" element={<PartnerRoomsPage />} />
+          <Route path="hotels/:hotelId/rooms" element={<PartnerRoomsPage />} />
           <Route path="bookings" element={<PartnerBookingsPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
+          
         </Route>
 
         {/* Admin */}

@@ -148,12 +148,19 @@ const HotelsPage = () => {
                     <td style={{ color: "#b36b00" }}>{hotel.so_sao ? "⭐".repeat(hotel.so_sao) : "Chưa đánh giá"}</td>
                     <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                     <td style={{ textAlign: "center" }}>
-                      {/* Nút xem chi tiết luôn hiển thị */}
-                      <button className="btn btn-outline btn-sm" onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`)} style={{ marginRight: 6 }}>
-                        👁️ Xem
+                      <td>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() =>
+                          navigate(`/admin/users/${user.ma_nguoi_dung}`)
+                        }
+                      >
+                        Xem chi tiết
+                       
                       </button>
-
-                      {/* Các nút hiện theo trạng thái */}
+                    </div>
+                  </td>
                       {hotel.trang_thai === "cho_duyet" && (
                         <div style={{ display: "inline-flex", gap: 6 }}>
                           <button className="btn btn-primary btn-sm" onClick={() => handleApprove(hotel)}>Duyệt</button>
