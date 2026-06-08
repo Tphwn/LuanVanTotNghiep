@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// === CÁC MODEL BẠN ĐÃ CÓ ===
 model bang_gia_phong {
   ma_bang_gia   Int                     @id @default(autoincrement())
   ma_loai_phong Int
@@ -103,9 +102,9 @@ model dat_phong {
 model dia_diem {
   ma_dia_diem  Int         @id @default(autoincrement())
   ten_dia_diem String      @db.VarChar(100)
-  slug         String?     @db.VarChar(100) // Thêm dòng này
+  slug         String?     @db.VarChar(100)
   tinh_thanh   String?     @db.VarChar(100)
-  quoc_gia     String?     @db.VarChar(100) // Thêm dòng này
+  quoc_gia     String?     @db.VarChar(100)
   mo_ta        String?     @db.Text
   khach_san    khach_san[]
 }
@@ -276,6 +275,7 @@ model loai_phong {
   mo_ta                String?                @db.Text
   trang_thai           loai_phong_trang_thai  @default(hoat_dong)
   ngay_tao             DateTime               @default(now()) @db.DateTime(0)
+  so_giuong            Int                    @default(1)
   bang_gia_phong       bang_gia_phong[]
   dat_phong            dat_phong[]
   khach_san            khach_san              @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_lp_ks")
@@ -347,30 +347,16 @@ model thong_bao {
   @@index([ma_nguoi_dung], map: "fk_tb_nd")
 }
 
-// === MODEL ĐÃ ĐƯỢC SỬA LỖI RELATIONS ===
 model tien_nghi {
-  ma_tien_nghi Int             @id @default(autoincrement())
-  ten          String          @db.VarChar(100)
-  bieu_tuong   String?         @db.VarChar(100)
-  loai         loai_enum
-  trang_thai   trang_thai_enum @default(hoat_dong)
-  ngay_tao     DateTime        @default(now()) @db.DateTime(0)
-
-  // CÁC MỐI QUAN HỆ BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO
+  ma_tien_nghi         Int                    @id @default(autoincrement())
+  ten                  String                 @db.VarChar(100)
+  bieu_tuong           String?                @db.VarChar(100)
+  loai                 loai_enum
+  trang_thai           trang_thai_enum        @default(hoat_dong)
+  ngay_tao             DateTime               @default(now()) @db.DateTime(0)
   khach_san_tien_nghi  khach_san_tien_nghi[]
   loai_phong_tien_nghi loai_phong_tien_nghi[]
   yeu_cau_tien_nghi    yeu_cau_tien_nghi[]
-}
-
-enum loai_enum {
-  khach_san
-  phong
-  ca_hai
-}
-
-enum trang_thai_enum {
-  hoat_dong
-  an
 }
 
 model yeu_cau_tien_nghi {
@@ -393,7 +379,17 @@ model yeu_cau_tien_nghi {
   @@index([tien_nghi_tao_id], map: "fk_yctn_tiennghi")
 }
 
-// === CÁC ENUM GIỮ NGUYÊN ===
+enum loai_enum {
+  khach_san
+  phong
+  ca_hai
+}
+
+enum trang_thai_enum {
+  hoat_dong
+  an
+}
+
 enum hinh_anh_loai_doi_tuong {
   khach_san
   loai_phong
@@ -403,12 +399,6 @@ enum khach_hang_khuyen_mai_trang_thai {
   chua_dung
   da_dung
   het_han
-}
-
-enum tien_nghi_loai {
-  khach_san
-  phong
-  ca_hai
 }
 
 enum bang_gia_phong_loai_gia {
@@ -429,11 +419,6 @@ enum nguoi_dung_vai_tro {
   khach_hang
   doi_tac
   admin
-}
-
-enum tien_nghi_trang_thai {
-  hoat_dong
-  an
 }
 
 enum chinh_sach_huy_trang_thai {

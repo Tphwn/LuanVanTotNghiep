@@ -73,7 +73,9 @@ const partnerRoomSlice = createSlice({
     builder
       // Fetch Rooms
       .addCase(fetchRooms.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(fetchRooms.fulfilled, (state, action) => {
+     .addCase(fetchRooms.fulfilled, (state, action) => {
+        console.log("FETCH SUCCESS:", action.payload);
+
         state.loading = false;
         state.list = action.payload;
       })

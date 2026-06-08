@@ -1,10 +1,38 @@
-import { useState, useRef } from 'react';
-const RoomFormModal = ({ amenities, myHotels, onClose, onSubmit, loading }) => {
+import { useState, useRef, useEffect } from 'react';
+const RoomFormModal = ({ amenities, myHotels, defaultHotelId, onClose, onSubmit, loading, initialData }) => {
   const fileInputRef = useRef(null);
   const [form, setForm] = useState({
+    ma_khach_san: defaultHotelId || '',
     ten_loai: '', dien_tich: '', gia_co_ban: '', so_giuong: 1, 
     suc_chua: 2, so_luong_phong: 1, tien_nghi_ids: [], mo_ta: '', file: null
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        ma_khach_san: initialData.ma_khach_san || defaultHotelId || '',
+        ten_loai: initialData.ten_loai || '',
+        dien_tich: initialData.dien_tich || '',
+        gia_co_ban: initialData.gia_co_ban || '',
+        so_giuong: initialData.so_giuong || 1,
+        suc_chua: initialData.suc_chua || 2,
+        so_luong_phong: initialData.so_luong_phong || 1,
+        tien_nghi_ids: initialData.loai_phong_tien_nghi?.map(x => x.ma_tien_nghi) || [],
+        mo_ta: initialData.mo_ta || '',
+        file: null,
+      });
+      return;
+    }
+
+    if (defaultHotelId) {
+      setForm(prev => ({ ...prev, ma_khach_san: defaultHotelId }));
+      return;
+    }
+
+    if (!form.ma_khach_san && myHotels?.length === 1) {
+      setForm(prev => ({ ...prev, ma_khach_san: myHotels[0].ma_khach_san }));
+    }
+  }, [initialData, defaultHotelId, myHotels]);
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -60,18 +88,18 @@ const RoomFormModal = ({ amenities, myHotels, onClose, onSubmit, loading }) => {
                 <div>
                     <label style={labelStyle}>Chọn khách sạn *</label>
                     <select 
-                        style={inputStyle} 
-                        value={form.ma_khach_san || ''} 
-                        onChange={e => handleChange('ma_khach_san', e.target.value)}
-                    >
-                        <option value="">-- Chọn khách sạn --</option>
-                        {/* Thêm || [] để tránh lỗi crash nếu chưa tải xong dữ liệu */}
-                        {(myHotels || []).map(h => (
-                        <option key={h.ma_khach_san} value={h.ma_khach_san}>
-                            {h.ten}
-                        </option>
-                        ))}
-                    </select>
+                style={inputStyle} 
+                value={form.ma_khach_san || ''} 
+                onChange={e => handleChange('ma_khach_san', e.target.value)}
+            >
+                <option value="">-- Chọn khách sạn --</option>
+                {/* Thêm || [] để tránh lỗi crash nếu chưa tải xong dữ liệu */}
+                {(myHotels || []).map(h => (
+                <option key={h.ma_khach_san} value={h.ma_khach_san}>
+                    {h.ten}
+                </option>
+                ))}
+            </select>
                     </div>
                 <div style={{ marginBottom: 12 }}>
                   <label style={labelStyle}>Tên hiển thị loại phòng *</label>

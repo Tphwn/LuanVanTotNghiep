@@ -1,10 +1,22 @@
 const service = require('./roomType.service');
 
 exports.getRooms = async (req, res) => {
-  try { const data = await service.getByHotel(req.query.ma_ks); res.json({ success: true, data }); }
-  catch (err) { res.status(500).json({ success: false, message: err.message }); }
-};
+  try {
+    const data = await service.getByHotel(req.query.ma_ks);
 
+    console.log(JSON.stringify(data, null, 2));
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 exports.create = async (req, res) => {
   try {
     console.log("Dữ liệu nhận từ Frontend:", req.body);
