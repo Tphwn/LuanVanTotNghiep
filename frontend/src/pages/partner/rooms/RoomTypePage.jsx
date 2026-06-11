@@ -21,7 +21,7 @@ const RoomTypePage = ({ ma_khach_san }) => {
   const [modal, setModal] = useState(null);
 
   useEffect(() => { 
-    // Chỉ gọi API khi đã có ID khách sạn để tránh lỗi 500
+    console.log("DEBUG - activeHotelId hiện tại là:", activeHotelId);
     if (activeHotelId) {
       dispatch(fetchRooms(activeHotelId));
     }
@@ -65,7 +65,23 @@ const RoomTypePage = ({ ma_khach_san }) => {
         <h1>Quản lý loại phòng</h1>
         <button className="btn btn-primary" onClick={() => setModal('add')}>+ Thêm phòng</button>
       </div>
-
+      <div style={{ marginBottom: '20px' }}>
+        <label>Chọn khách sạn để xem phòng: </label>
+        <select 
+          value={activeHotelId || ''} 
+          onChange={(e) => {
+            // Cập nhật lại URL khi chọn khách sạn mới
+            window.location.href = `/partner/rooms?ma_ks=${e.target.value}`;
+          }}
+        >
+          <option value="">-- Vui lòng chọn khách sạn --</option>
+          {myHotels.map(h => (
+            <option key={h.ma_khach_san} value={h.ma_khach_san}>
+              {h.ten}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="content-card">
         <table className="data-table">
           <thead>

@@ -17,16 +17,15 @@ import HomePage from '../pages/customer/HomePage';
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
 import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
-import PartnerBookingsPage from '../pages/partner/bookings/BookingsPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
-import PartnerFinancePage from '../pages/partner/finance/RevenuePage';
+import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminUsersPage from '../pages/admin/users/UsersPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
-import AdminPaymentsPage from '../pages/admin/finance/PaymentsPage';
+import AdminPaymentsPage from '../pages/admin/payment/PaymentsPage';
 import AdminFinancePage from '../pages/admin/finance/FinancePage';
 import AdminReportsPage from '../pages/admin/reports/RevenueReportPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
@@ -35,6 +34,9 @@ import AdminRoomDetailPage from '../pages/admin/rooms/RoomDetailPage';
 import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
+import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
+import PricingPage from '../pages/partner/pricing/PricingPage';
+
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -70,7 +72,7 @@ const AppRoutes = () => {
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
-          
+          <Route path="pricing" element={<PricingPage />} />
         </Route>
 
         {/* Admin */}

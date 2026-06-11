@@ -50,6 +50,8 @@ app.use(
 );
 app.use('/api/admin/hotels', authMiddleware, adminMiddleware, adminHotelRoutes);
 app.use('/api/partner/rooms', authMiddleware, require('./modules/roomType/roomType.routes'));
+app.use('/api/admin/bookings', require('./modules/admin/booking/adminBooking.routes'));
+app.use('/api/admin/payments', require('./modules/admin/payment/adminPayment.routes'));
 /* =========================
    AMENITY ROUTES
 ========================= */
@@ -60,6 +62,12 @@ app.use(
   require("./modules/amenity/amenity.routes")
 );
 app.use('/api/partner/hotels', require('./modules/hotel/hotel.routes'));
+app.use('/api/partner/bookings', require('./modules/booking/booking.routes'));
+app.use('/api/partner/pricing', require('./modules/pricing/pricing.routes'));
+app.use(
+  '/api/partner/finance',
+  require('./modules/finance/finance.routes')
+);
 /* =========================
    404 + ERROR HANDLER
 ========================= */

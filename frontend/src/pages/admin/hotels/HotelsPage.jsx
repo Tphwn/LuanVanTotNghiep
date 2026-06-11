@@ -147,35 +147,70 @@ const HotelsPage = () => {
                     <td>{hotel.thanh_pho}</td>
                     <td style={{ color: "#b36b00" }}>{hotel.so_sao ? "⭐".repeat(hotel.so_sao) : "Chưa đánh giá"}</td>
                     <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                    <td style={{ textAlign: "center" }}>
-                      <td>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() =>
-                          navigate(`/admin/users/${user.ma_nguoi_dung}`)
-                        }
-                      >
-                        Xem chi tiết
-                       
-                      </button>
-                    </div>
-                  </td>
-                      {hotel.trang_thai === "cho_duyet" && (
-                        <div style={{ display: "inline-flex", gap: 6 }}>
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(hotel)}>Duyệt</button>
-                          <button className="btn btn-info btn-sm" style={{ background: '#17a2b8', color: '#fff', border: 'none'}} onClick={() => handleRequestInfo(hotel)}>Yêu cầu sửa</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleReject(hotel)}>Từ chối</button>
-                        </div>
-                      )}
+                   <td style={{ textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() =>
+                            navigate(`/admin/hotels/${hotel.ma_khach_san}`)
+                          }
+                        >
+                          Xem chi tiết
+                        </button>
 
-                      {hotel.trang_thai === "hoat_dong" && (
-                        <button className="btn btn-danger btn-sm" onClick={() => handleLockToggle(hotel)}>Khóa</button>
-                      )}
+                        {hotel.trang_thai === "cho_duyet" && (
+                          <>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleApprove(hotel)}
+                            >
+                              Duyệt
+                            </button>
 
-                      {hotel.trang_thai === "bi_khoa" && (
-                        <button className="btn btn-success btn-sm" style={{ background: '#1a7a4a', color: '#fff', border: 'none'}} onClick={() => handleLockToggle(hotel)}>Mở khóa</button>
-                      )}
+                            <button
+                              className="btn btn-info btn-sm"
+                              style={{
+                                background: "#17a2b8",
+                                color: "#fff",
+                                border: "none",
+                              }}
+                              onClick={() => handleRequestInfo(hotel)}
+                            >
+                              Yêu cầu sửa
+                            </button>
+
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleReject(hotel)}
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
+
+                        {hotel.trang_thai === "hoat_dong" && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleLockToggle(hotel)}
+                          >
+                            Khóa
+                          </button>
+                        )}
+
+                        {hotel.trang_thai === "bi_khoa" && (
+                          <button
+                            className="btn btn-success btn-sm"
+                            style={{
+                              background: "#1a7a4a",
+                              color: "#fff",
+                              border: "none",
+                            }}
+                            onClick={() => handleLockToggle(hotel)}
+                          >
+                            Mở khóa
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
