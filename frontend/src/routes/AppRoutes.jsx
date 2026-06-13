@@ -7,7 +7,7 @@ import getRedirectRoute from '../utils/redirect';
 import MainLayout from '../layouts/MainLayout';
 import PartnerLayout from '../layouts/PartnerLayout';
 import AdminLayout from '../layouts/AdminLayout';
-import ProtectedRoute from './ProtectedRoute';
+
 import RoleRoute from './RoleRoute';
 
 import LoginPage from '../pages/auth/LoginPage';
@@ -22,11 +22,10 @@ import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
-import AdminUsersPage from '../pages/admin/users/UsersPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
 import AdminPaymentsPage from '../pages/admin/payment/PaymentsPage';
-import AdminFinancePage from '../pages/admin/finance/FinancePage';
+import AdminFinancePage from "../pages/admin/finance/AdminFinancePage";
 import AdminReportsPage from '../pages/admin/reports/RevenueReportPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AdminRoomTypesPage from '../pages/admin/rooms/RoomTypesPage';
@@ -36,7 +35,7 @@ import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
-
+import AdminUsersPage from "../pages/admin/users/UsersPage";
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 

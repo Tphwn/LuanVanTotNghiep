@@ -119,6 +119,8 @@ model doi_tac {
   dia_chi                                      String?             @db.Text
   trang_thai                                   doi_tac_trang_thai  @default(hoat_dong)
   ngay_cap_tai_khoan                           DateTime            @default(now()) @db.DateTime(0)
+  phan_tram_hoa_hong                           Decimal?            @db.Decimal(5, 2)
+  doi_soat                                     doi_soat[]
   nguoi_dung_doi_tac_nguoi_cap_idTonguoi_dung  nguoi_dung          @relation("doi_tac_nguoi_cap_idTonguoi_dung", fields: [nguoi_cap_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoicap")
   nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung nguoi_dung          @relation("doi_tac_ma_nguoi_dungTonguoi_dung", fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoidung")
   hoa_hong                                     hoa_hong[]
@@ -214,6 +216,7 @@ model khach_san {
   ly_do_tu_choi       String?               @db.Text
   ngay_tao            DateTime              @default(now()) @db.DateTime(0)
   ngay_duyet          DateTime?             @db.DateTime(0)
+  phan_tram_hoa_hong  Decimal?              @db.Decimal(5, 2)
   chinh_sach_huy      chinh_sach_huy[]
   nguoi_dung          nguoi_dung?           @relation(fields: [duyet_boi_admin_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ks_admin")
   dia_diem            dia_diem              @relation(fields: [ma_dia_diem], references: [ma_dia_diem], onUpdate: Restrict, map: "fk_ks_diadiem")
@@ -379,6 +382,31 @@ model yeu_cau_tien_nghi {
   @@index([tien_nghi_tao_id], map: "fk_yctn_tiennghi")
 }
 
+model cau_hinh_he_thong {
+  ma_cau_hinh Int     @id @default(autoincrement())
+  tu_khoa     String  @unique(map: "tu_khoa") @db.VarChar(100)
+  gia_tri     String  @db.VarChar(255)
+  mo_ta       String? @db.Text
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model doi_soat {
+  ma_doi_soat        Int                 @id @default(autoincrement())
+  ma_doi_tac         Int
+  thang_nam          String              @db.VarChar(10)
+  tong_doanh_thu     Decimal             @default(0) @db.Decimal(12, 0)
+  tong_hoa_hong      Decimal             @default(0) @db.Decimal(12, 0)
+  tong_hoan_tien     Decimal             @default(0) @db.Decimal(12, 0)
+  thanh_toan_doi_tac Decimal             @default(0) @db.Decimal(12, 0)
+  trang_thai         doi_soat_trang_thai @default(chua_doi_soat)
+  ghi_chu            String?             @db.Text
+  ngay_tinh_toan     DateTime            @default(now()) @db.DateTime(0)
+  ngay_thanh_toan    DateTime?           @db.DateTime(0)
+  doi_tac            doi_tac             @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_ds_dt")
+
+  @@unique([ma_doi_tac, thang_nam], map: "uq_doi_soat")
+}
+
 enum loai_enum {
   khach_san
   phong
@@ -522,4 +550,10 @@ enum khuyen_mai_trang_thai {
   hoat_dong
   het_han
   an
+}
+
+enum doi_soat_trang_thai {
+  chua_doi_soat
+  da_doi_soat
+  da_thanh_toan
 }
