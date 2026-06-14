@@ -1,90 +1,151 @@
 const prisma = require('../../config/prisma');
 
-const roomTypeService = {
- getByHotel: async () => {
-  return await prisma.loai_phong.findMany({
-    where: {
-      trang_thai: 'hoat_dong'
-    },
-    include: {
-      khach_san: true,
-      loai_phong_tien_nghi: {
-        include: {
-          tien_nghi: true
-        }
-      }
-    }
-  });
-},
-    getAll: async () => {
-        return await prisma.loai_phong.findMany({
-        where: { NOT: { trang_thai: 'ngung_kinh_doanh' } },
-        include: { 
-            khach_san: true, 
-            loai_phong_tien_nghi: { include: { tien_nghi: true } } 
-        }
+const roomService = {
+
+  // Lấy ds loại phòng của 1 KS (thuộc đối tác)
+  getByHotel: async (maKhachSan, doiTacId) => {
+    // Kiểm tra KS thuộc đối tác
+    const ks = await prisma.khach_san.findFirst({
+      where: { ma_khach_san: Number(maKhachSan), ma_doi_tac: doiTacId },
+    });
+    if (!ks) throw new Error('Không có quyền truy cập khách sạn này');
+
+    return await prisma.loai_phong.findMany({
+      where: { ma_khach_san: Number(maKhachSan) },
+      include: {
+        loai_phong_tien_nghi: { include: { tien_nghi: true } },
+        hinh_anh: { orderBy: { thu_tu: 'asc' } },
+      },
+      orderBy: { ngay_tao: 'desc' },
     });
   },
-  // Thêm loại phòng
-  create: async (data) => {
-    const { tien_nghi_ids = [], ...rest } = data;
-    const gia = parseFloat(String(rest.gia_co_ban).replace(/\./g, '').replace(/,/g, '')) || 0;
-    
-    const dienTich = parseFloat(String(rest.dien_tich || 0).replace(',', '.'));
 
-    let arrTienNghi = Array.isArray(tien_nghi_ids) ? tien_nghi_ids : [tien_nghi_ids];
-    arrTienNghi = arrTienNghi.filter(Boolean).map(id => Number(id));
+  // Lấy chi tiết 1 loại phòng
+  getById: async (id) => {
+    return await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: Number(id) },
+      include: {
+        khach_san: { select: { ten: true, ma_doi_tac: true } },
+        loai_phong_tien_nghi: { include: { tien_nghi: true } },
+        hinh_anh: { orderBy: { thu_tu: 'asc' } },
+      },
+    });
+  },
+
+  // Tạo loại phòng mới
+  create: async (data, maKhachSan, doiTacId) => {
+    // Kiểm tra KS thuộc đối tác
+    const ks = await prisma.khach_san.findFirst({
+      where: { ma_khach_san: Number(maKhachSan), ma_doi_tac: doiTacId },
+    });
+    if (!ks) throw new Error('Không có quyền truy cập khách sạn này');
+
+    const {
+      ten_loai, dien_tich, suc_chua, so_luong_phong,
+      gia_co_ban, mo_ta, so_giuong = 1, tien_nghi_ids = [],
+    } = data;
 
     return await prisma.loai_phong.create({
       data: {
-        ma_khach_san: Number(rest.ma_khach_san),
-        ten_loai: rest.ten_loai,
-        dien_tich: dienTich,
-        gia_co_ban: gia,
-        so_giuong: Number(rest.so_giuong) || 0,
-        suc_chua: Number(rest.suc_chua) || 1,
-        so_luong_phong: Number(rest.so_luong_phong) || 1,
-        mo_ta: rest.mo_ta || "",
+        ma_khach_san: Number(maKhachSan),
+        ten_loai,
+        dien_tich: dien_tich ? Number(dien_tich) : null,
+        suc_chua: Number(suc_chua),
+        so_luong_phong: Number(so_luong_phong),
+        gia_co_ban: Number(gia_co_ban),
+        mo_ta,
+        so_giuong: Number(so_giuong),
         trang_thai: 'hoat_dong',
-        loai_phong_tien_nghi: { 
-          create: arrTienNghi.map(id => ({ ma_tien_nghi: id })) 
-        }
-      }
+        loai_phong_tien_nghi: {
+          create: tien_nghi_ids.map(id => ({
+            ma_tien_nghi: Number(id),
+          })),
+        },
+      },
+      include: {
+        loai_phong_tien_nghi: { include: { tien_nghi: true } },
+        hinh_anh: true,
+      },
     });
   },
 
-  // Cập nhật
-  update: async (id, data) => {
-    const { tien_nghi_ids = [], file, ...rest } = data;
-    
-    const updateData = { ...rest };
-    if (updateData.ma_khach_san) updateData.ma_khach_san = Number(updateData.ma_khach_san);
-    if (updateData.dien_tich) updateData.dien_tich = Number(updateData.dien_tich);
-    if (updateData.gia_co_ban) updateData.gia_co_ban = Number(updateData.gia_co_ban);
-    if (updateData.so_giuong) updateData.so_giuong = Number(updateData.so_giuong);
-    if (updateData.suc_chua) updateData.suc_chua = Number(updateData.suc_chua);
-    if (updateData.so_luong_phong) updateData.so_luong_phong = Number(updateData.so_luong_phong);
+  // Cập nhật loại phòng
+  update: async (id, data, doiTacId) => {
+    // Kiểm tra quyền
+    const room = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: Number(id) },
+      include: { khach_san: { select: { ma_doi_tac: true } } },
+    });
+    if (!room) throw new Error('Không tìm thấy loại phòng');
+    if (room.khach_san.ma_doi_tac !== doiTacId) throw new Error('Không có quyền');
 
-    let arrTienNghi = Array.isArray(tien_nghi_ids) ? tien_nghi_ids : [tien_nghi_ids];
-    arrTienNghi = arrTienNghi.filter(Boolean).map(id => Number(id));
+    const {
+      ten_loai, dien_tich, suc_chua, so_luong_phong,
+      gia_co_ban, mo_ta, so_giuong, tien_nghi_ids = [],
+    } = data;
 
-    await prisma.loai_phong_tien_nghi.deleteMany({ where: { ma_loai_phong: Number(id) } });
+    // Xóa tiện nghi cũ rồi tạo lại
+    await prisma.loai_phong_tien_nghi.deleteMany({
+      where: { ma_loai_phong: Number(id) },
+    });
+
     return await prisma.loai_phong.update({
       where: { ma_loai_phong: Number(id) },
-      data: { 
-        ...updateData, 
-        loai_phong_tien_nghi: { create: arrTienNghi.map(id => ({ ma_tien_nghi: id })) } 
-      }
+      data: {
+        ten_loai,
+        dien_tich: dien_tich ? Number(dien_tich) : null,
+        suc_chua: Number(suc_chua),
+        so_luong_phong: Number(so_luong_phong),
+        gia_co_ban: Number(gia_co_ban),
+        mo_ta,
+        so_giuong: Number(so_giuong),
+        loai_phong_tien_nghi: {
+          create: tien_nghi_ids.map(id => ({
+            ma_tien_nghi: Number(id),
+          })),
+        },
+      },
+      include: {
+        loai_phong_tien_nghi: { include: { tien_nghi: true } },
+        hinh_anh: true,
+      },
     });
   },
 
-  // Ẩn (Soft delete)
-  softDelete: async (id) => {
-    const hasBooking = await prisma.phieu_dat_phong.findFirst({ where: { ma_loai_phong: Number(id) } });
-    if (hasBooking) throw new Error("Không thể ẩn: Loại phòng đã có lịch đặt.");
-    return await prisma.loai_phong.update({ where: { ma_loai_phong: Number(id) }, data: {
-  trang_thai: 'an'
-} });
-  }
+  // Khóa / mở loại phòng
+  toggleStatus: async (id, doiTacId) => {
+    const room = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: Number(id) },
+      include: { khach_san: { select: { ma_doi_tac: true } } },
+    });
+    if (!room) throw new Error('Không tìm thấy loại phòng');
+    if (room.khach_san.ma_doi_tac !== doiTacId) throw new Error('Không có quyền');
+
+    return await prisma.loai_phong.update({
+      where: { ma_loai_phong: Number(id) },
+      data: { trang_thai: room.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong' },
+    });
+  },
+
+  // Lấy tiện nghi loại phòng (loai = phong hoặc ca_hai)
+  getAmenitiesForRoom: async () => {
+    return await prisma.tien_nghi.findMany({
+      where: {
+        loai: { in: ['phong', 'ca_hai'] },
+        trang_thai: 'hoat_dong',
+      },
+      orderBy: { ten: 'asc' },
+    });
+  },
+
+  // Lấy KS của đối tác (để filter)
+  getMyHotels: async (doiTacId) => {
+    return await prisma.khach_san.findMany({
+      where: { ma_doi_tac: doiTacId },
+      select: { ma_khach_san: true, ten: true, trang_thai: true },
+      orderBy: { ngay_tao: 'desc' },
+    });
+  },
 };
-module.exports = roomTypeService;
+
+module.exports = roomService;

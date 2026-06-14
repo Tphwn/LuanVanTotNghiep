@@ -1,46 +1,36 @@
 const prisma = require('../../../config/prisma');
 
+const attachImagesToHotel = async (hotel) => {
+  const images = await prisma.hinh_anh.findMany({
+    where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotel.ma_khach_san },
+    orderBy: { thu_tu: 'asc' }
+  });
+  return { ...hotel, hinh_anh: images };
+};
+
 const hotelService = {
   getHotels: async () => {
     return prisma.khach_san.findMany({
-      include: {
-        dia_diem: true,
-        doi_tac: {
-          select: {
-            ma_doi_tac: true,
-            ten_cong_ty: true,
-            trang_thai: true,
-          },
-        },
-        khach_san_tien_nghi: {
-          include: { tien_nghi: true },
-        },
-      },
-      orderBy: { ngay_tao: 'desc' },
+      include: { dia_diem: true, doi_tac: true },
+      orderBy: { ngay_tao: 'desc' }
     });
   },
 
   getById: async (id) => {
-    return prisma.khach_san.findUnique({
-      where: { ma_khach_san: Number(id) },
-      include: {
-        dia_diem: true,
-        doi_tac: {
-          select: {
-            ma_doi_tac: true,
-            ten_cong_ty: true,
-            ma_nguoi_dung: true,
-          },
-        },
-        khach_san_tien_nghi: {
-          include: { tien_nghi: true },
-        },
-        chinh_sach_huy: true,
-        loai_phong: true,
-      },
-    });
-  },
-
+  const hotel = await prisma.khach_san.findUnique({
+    where: { ma_khach_san: Number(id) },
+    include: {
+      dia_diem: true,
+      doi_tac: true, // Lấy toàn bộ thông tin đối tác
+      khach_san_tien_nghi: { include: { tien_nghi: true } },
+    },
+  });
+  if (!hotel) return null;
+  const images = await prisma.hinh_anh.findMany({
+    where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotel.ma_khach_san }
+  });
+  return { ...hotel, hinh_anh: images };
+},
   approveHotel: async (id, adminId) => {
     return prisma.khach_san.update({
       where: { ma_khach_san: Number(id) },

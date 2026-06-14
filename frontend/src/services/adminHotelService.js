@@ -10,8 +10,11 @@ const getAuthHeader = () => {
 };
 
 const adminHotelService = {
-  getHotelById: (id) => {
+ getById: (id) => {
     return axios.get(`${API_URL}/${id}`, getAuthHeader());
+  },
+  getHotels: () => {
+    return axios.get(API_URL, getAuthHeader());
   },
 };
 

@@ -11,15 +11,10 @@ const getHotels = async (req, res, next) => {
 
 const getById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ success: false, message: 'Missing hotel id parameter' });
-    }
-    const hotel = await hotelService.getById(Number(id));
+    const hotel = await hotelService.getById(Number(req.params.id));
+    if (!hotel) return res.status(404).json({ success: false, message: 'Khách sạn không tồn tại' });
     res.json({ success: true, data: hotel });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
 const approveHotel = async (req, res, next) => {

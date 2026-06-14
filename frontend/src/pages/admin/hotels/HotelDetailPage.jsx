@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-// Import các hàm API từ adminHotelService
 import adminHotelService from "../../../services/adminHotelService";
 import { approveHotel, rejectHotel, requestInfoHotel, lockHotel, unlockHotel } from "../../../redux/slices/adminHotelSlice";
+import { resolveUploadUrl } from "../../../utils/media";
+
+// ===== COMPONENT HỖ TRỢ (GIỐNG USER DETAIL) =====
+const InfoRow = ({ label, value }) => (
+  <div style={{ display: "flex", padding: "10px 0", borderBottom: "0.5px solid #f0f0f0", fontSize: 14, gap: 12 }}>
+    <span style={{ width: 180, color: "#5a7a72", flexShrink: 0, fontSize: 13 }}>{label}</span>
+    <span style={{ color: "#1a2e28", fontWeight: 500, flex: 1 }}>{value || "—"}</span>
+  </div>
+);
 
 const HotelDetailPage = () => {
   const { id } = useParams();
@@ -14,179 +22,117 @@ const HotelDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("info");
 
-  const loadHotel = async () => {
+  const loadHotel = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
-      const res = await adminHotelService.getHotelById(id); // Nhớ viết hàm này ở Service nhen
-      setHotel(res.data.data);
+      const res = await adminHotelService.getById(id);
+      setHotel(res.data.data || res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi tải khách sạn:", err);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadHotel();
   }, [id]);
 
-  // ===== HÀM THAO TÁC (Tương tự List nhưng gọi API xong reload lại trang) =====
+useEffect(() => {
+    // 1. Tạo một hàm async riêng bên trong để gọi loadHotel
+    const fetchData = async () => {
+      await loadHotel();
+    };
+
+    // 2. Gọi hàm đó
+    fetchData();
+    
+    // 3. Mảng dependency [loadHotel] là chính xác rồi
+  }, [loadHotel]);
+
   const handleAction = async (actionType) => {
-    if (actionType === 'approve') {
-      if (window.confirm("Duyệt khách sạn này?")) await dispatch(approveHotel(id));
-    } else if (actionType === 'reject') {
+    let actionPromise;
+    if (actionType === 'approve' && window.confirm("Duyệt khách sạn này?")) actionPromise = dispatch(approveHotel(id));
+    else if (actionType === 'reject') {
       const reason = window.prompt("Lý do từ chối:");
-      if (reason) await dispatch(rejectHotel({ id, lyDo: reason }));
+      if (reason) actionPromise = dispatch(rejectHotel({ id, lyDo: reason }));
     } else if (actionType === 'request_info') {
-      const note = window.prompt("Yêu cầu đối tác bổ sung gì?");
-      if (note) await dispatch(requestInfoHotel({ id, ghiChu: note }));
-    } else if (actionType === 'lock') {
-      if (window.confirm("Khóa khách sạn vi phạm?")) await dispatch(lockHotel(id));
-    } else if (actionType === 'unlock') {
-      if (window.confirm("Mở khóa lại khách sạn?")) await dispatch(unlockHotel(id));
+      const note = window.prompt("Yêu cầu bổ sung gì?");
+      if (note) actionPromise = dispatch(requestInfoHotel({ id, ghiChu: note }));
+    } else if (actionType === 'lock' && window.confirm("Khóa khách sạn?")) actionPromise = dispatch(lockHotel(id));
+    else if (actionType === 'unlock' && window.confirm("Mở khóa lại?")) actionPromise = dispatch(unlockHotel(id));
+    
+    if (actionPromise) {
+        await actionPromise;
+        loadHotel();
     }
-    loadHotel(); // Reload lại dữ liệu mới nhất
   };
 
-  if (loading) return <div className="main-panel">⏳ Đang tải thông tin khách sạn...</div>;
+  if (loading) return <div className="main-panel">⏳ Đang tải...</div>;
   if (!hotel) return <div className="main-panel">Không tìm thấy khách sạn!</div>;
 
   return (
     <div className="main-panel">
-      {/* ===== HEADER & ACTIONS ===== */}
+      {/* HEADER */}
       <div className="page-header">
         <div className="page-header-left">
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Quay lại</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate("/admin/hotels")} style={{ marginBottom: 8 }}>← Quay lại danh sách</button>
           <h1 className="page-title">{hotel.ten}</h1>
-          <p className="page-subtitle">Quản lý chi tiết hồ sơ khách sạn</p>
+          <p className="page-subtitle">#{hotel.ma_khach_san} · {hotel.dia_chi}</p>
         </div>
-        
-        {/* Thanh nút bấm chức năng theo trạng thái */}
-        <div className="header-actions">
-          {hotel.trang_thai === "cho_duyet" && (
-            <>
-              <button className="btn btn-primary" onClick={() => handleAction('approve')}>✅ Duyệt hoạt động</button>
-              <button className="btn btn-outline" onClick={() => handleAction('request_info')}>✍️ Yêu cầu sửa</button>
-              <button className="btn btn-danger" onClick={() => handleAction('reject')}>❌ Từ chối</button>
-            </>
-          )}
-          {hotel.trang_thai === "hoat_dong" && (
-            <button className="btn btn-danger" onClick={() => handleAction('lock')}>🔒 Khóa vi phạm</button>
-          )}
-          {hotel.trang_thai === "bi_khoa" && (
-            <button className="btn btn-success" style={{ background: '#1a7a4a', color: 'white'}} onClick={() => handleAction('unlock')}>🔓 Mở khóa</button>
-          )}
+        <div style={{ display: 'flex', gap: 8 }}>
+            {hotel.trang_thai === "cho_duyet" && (
+                <>
+                    <button className="btn btn-primary" onClick={() => handleAction('approve')}>✅ Duyệt</button>
+                    <button className="btn btn-danger" onClick={() => handleAction('reject')}>❌ Từ chối</button>
+                    <button className="btn btn-info" onClick={() => handleAction('request_info')}>📝 Yêu cầu sửa</button>
+                </>
+            )}
+            {hotel.trang_thai === "hoat_dong" && <button className="btn btn-danger" onClick={() => handleAction('lock')}>🔒 Khóa</button>}
+            {hotel.trang_thai === "bi_khoa" && <button className="btn btn-success" onClick={() => handleAction('unlock')}>🔓 Mở khóa</button>}
         </div>
       </div>
 
-      {/* ===== TAB ĐIỀU HƯỚNG ===== */}
-      <div style={{ display: "flex", gap: 20, borderBottom: "1px solid #d4ede6", marginBottom: 24 }}>
-        {[
-          { id: "info", label: "Thông tin & Tiện nghi" },
-          { id: "rooms", label: "Danh sách Loại phòng" },
-          { id: "images", label: "Hình ảnh" },
-          { id: "stats", label: "Thống kê & Đánh giá" }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: "12px 0", background: "none", border: "none", cursor: "pointer",
-              borderBottom: activeTab === tab.id ? "2px solid #3C7363" : "2px solid transparent",
-              color: activeTab === tab.id ? "#3C7363" : "#5a7a72", fontWeight: activeTab === tab.id ? 600 : 400
-            }}
-          >
-            {tab.label}
+      {/* TABS */}
+      <div style={{ display: "flex", borderBottom: "0.5px solid #d4ede6", marginBottom: 16 }}>
+        {["info", "images"].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              padding: "10px 20px", background: "none", border: "none", cursor: "pointer",
+              borderBottom: activeTab === tab ? "2px solid #3C7363" : "2px solid transparent",
+              color: activeTab === tab ? "#3C7363" : "#5a7a72", fontWeight: activeTab === tab ? 600 : 400
+          }}>
+            {tab === "info" ? "👤 Thông tin chi tiết" : "🖼 Hình ảnh"}
           </button>
         ))}
       </div>
 
-      {/* ===== NỘI DUNG TABS ===== */}
-      
-      {/* 1. THÔNG TIN & TIỆN NGHI */}
+      {/* NỘI DUNG CHI TIẾT */}
       {activeTab === "info" && (
         <div className="form-grid">
           <div className="content-card">
-            <h3 className="content-card-title mb-4">Thông tin cơ bản</h3>
-            <p><strong>Tên KS:</strong> {hotel.ten}</p>
-            <p><strong>Địa chỉ:</strong> {hotel.dia_chi}, {hotel.thanh_pho}</p>
-            <p><strong>Hạng sao:</strong> {"⭐".repeat(hotel.so_sao || 0)}</p>
-            <p><strong>Giờ Check-in:</strong> {hotel.gio_nhan_phong} | <strong>Check-out:</strong> {hotel.gio_tra_phong}</p>
-            <p><strong>Mô tả:</strong> {hotel.mo_ta}</p>
+            <h3 className="content-card-title">🔑 Thông tin khách sạn</h3>
+            <InfoRow label="Tên khách sạn" value={hotel.ten} />
+            <InfoRow label="Địa chỉ" value={hotel.dia_chi} />
+            <InfoRow label="Số sao" value={`${hotel.so_sao || 0} ⭐`} />
+            <InfoRow label="Mô tả" value={hotel.mo_ta} />
           </div>
-          
           <div className="content-card">
-            <h3 className="content-card-title mb-4">Tiện nghi khách sạn</h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {/* Giả định hotel.tien_nghi là mảng */}
-              {hotel.tien_nghi?.map((tn, idx) => (
-                <span key={idx} className="badge badge-info">{tn.ten_tien_nghi}</span>
-              ))}
-              {(!hotel.tien_nghi || hotel.tien_nghi.length === 0) && <p>Chưa cập nhật tiện nghi.</p>}
-            </div>
+            <h3 className="content-card-title">🏢 Hồ sơ đối tác</h3>
+            <InfoRow label="Tên công ty" value={hotel.doi_tac?.ten_cong_ty} />
+            <InfoRow label="Email liên hệ" value={hotel.doi_tac?.email} />
+            <InfoRow label="Số điện thoại" value={hotel.doi_tac?.so_dien_thoai} />
+            <InfoRow label="Trạng thái ĐT" value={hotel.doi_tac?.trang_thai} />
           </div>
         </div>
       )}
 
-      {/* 2. LOẠI PHÒNG */}
-      {activeTab === "rooms" && (
-        <div className="content-card">
-           <table className="data-table">
-             <thead>
-               <tr>
-                 <th>Loại phòng</th>
-                 <th>Diện tích</th>
-                 <th>Sức chứa</th>
-                 <th>Giá mặc định</th>
-               </tr>
-             </thead>
-             <tbody>
-               {hotel.loai_phong?.map(room => (
-                 <tr key={room.ma_loai_phong}>
-                   <td style={{ fontWeight: 500 }}>{room.ten_loai}</td>
-                   <td>{room.dien_tich} m²</td>
-                   <td>{room.suc_chua} người</td>
-                   <td style={{ color: "#c0392b", fontWeight: 600 }}>{room.gia_mac_dinh?.toLocaleString('vi-VN')} đ</td>
-                 </tr>
-               ))}
-             </tbody>
-           </table>
-        </div>
-      )}
-
-      {/* 3. HÌNH ẢNH */}
       {activeTab === "images" && (
         <div className="content-card">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
             {hotel.hinh_anh?.map((img, idx) => (
-               <img key={idx} src={img.url} alt="Hình ảnh KS" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: 8, border: '1px solid #d4ede6' }} />
+               <img key={idx} src={resolveUploadUrl(img.url)} alt="Hotel" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: 8 }} />
             ))}
-            {(!hotel.hinh_anh || hotel.hinh_anh.length === 0) && <p>Đối tác chưa tải ảnh lên.</p>}
           </div>
         </div>
       )}
-
-      {/* 4. THỐNG KÊ & ĐÁNH GIÁ */}
-      {activeTab === "stats" && (
-        <div className="form-grid">
-          <div className="content-card">
-            <h3 className="content-card-title mb-4">Thống kê đặt phòng</h3>
-            <p><strong>Tổng số đơn đã đặt:</strong> {hotel.thong_ke?.tong_don || 0} đơn</p>
-            <p><strong>Đơn thành công:</strong> <span style={{ color: '#1a7a4a', fontWeight: 'bold'}}>{hotel.thong_ke?.don_thanh_cong || 0}</span> đơn</p>
-            <p><strong>Đơn đã hủy:</strong> <span style={{ color: '#c0392b', fontWeight: 'bold'}}>{hotel.thong_ke?.don_huy || 0}</span> đơn</p>
-          </div>
-          <div className="content-card">
-             <h3 className="content-card-title mb-4">Điểm đánh giá</h3>
-             <div style={{ fontSize: 32, fontWeight: 'bold', color: '#b36b00' }}>
-               {hotel.diem_danh_gia_trung_binh || "0.0"} / 5.0
-             </div>
-             <p style={{ color: '#5a7a72' }}>Dựa trên {hotel.tong_luot_danh_gia || 0} lượt đánh giá từ khách hàng.</p>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
-
 export default HotelDetailPage;

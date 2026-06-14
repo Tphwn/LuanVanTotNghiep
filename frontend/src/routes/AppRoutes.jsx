@@ -39,7 +39,7 @@ import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
 import AdminUsersPage from "../pages/admin/users/UsersPage";
-
+import HotelDetailPage from '../pages/admin/hotels/HotelDetailPage';
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -102,6 +102,7 @@ const AppRoutes = () => {
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="partners" element={<PartnersPage />} />
           <Route path="users/:id" element={<UserDetailPage />} />
+          <Route path="hotels/:id" element={<HotelDetailPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
