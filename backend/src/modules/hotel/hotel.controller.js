@@ -1,102 +1,393 @@
-const hotelService = require('./hotel.service');
-const prisma = require('../../config/prisma');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Helper để lấy ID đối tác từ request.
-// Hàm này cũng tự động gửi phản hồi lỗi nếu người dùng không hợp lệ.
-const getPartnerIdFromRequest = async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) {
-    res.status(401).json({ success: false, message: 'Yêu cầu xác thực không hợp lệ.' });
-    return null;
+const SYSTEM_DEFAULT_CANCEL_POLICIES = [
+  { so_ngay_truoc: 7, phan_tram_hoan: 100 },
+  { so_ngay_truoc: 3, phan_tram_hoan: 50 },
+  { so_ngay_truoc: 1, phan_tram_hoan: 0 },
+];
+
+const getUserId = (user) => parseInt(user.id || user.ma_nguoi_dung);
+
+const parseJsonField = (value, fallback) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
   }
+};
 
-  const partner = await prisma.doi_tac.findUnique({
-    where: { ma_nguoi_dung: userId },
-    select: { ma_doi_tac: true },
+const getPartnerDefaultCancelPolicies = (hotels) => {
+  const source = hotels.find((h) => h.chinh_sach_huy?.length > 0);
+  if (!source) return SYSTEM_DEFAULT_CANCEL_POLICIES;
+
+  return source.chinh_sach_huy
+    .filter((p) => p.trang_thai === 'hoat_dong')
+    .map((p) => ({
+      so_ngay_truoc: p.so_ngay_truoc,
+      phan_tram_hoan: Number(p.phan_tram_hoan),
+    }))
+    .sort((a, b) => b.so_ngay_truoc - a.so_ngay_truoc);
+};
+
+const attachImagesToHotels = async (hotels) => {
+  const hotelIds = hotels.map((h) => h.ma_khach_san);
+  const allImages = await prisma.hinh_anh.findMany({
+    where: {
+      loai_doi_tuong: 'khach_san',
+      ma_doi_tuong: { in: hotelIds.length > 0 ? hotelIds : [-1] },
+    },
+    orderBy: { thu_tu: 'asc' },
   });
 
-  if (!partner) {
-    res.status(403).json({ success: false, message: 'Tài khoản không phải là đối tác.' });
-    return null;
+  return hotels.map((hotel) => ({
+    ...hotel,
+    hinh_anh: allImages.filter((img) => img.ma_doi_tuong === hotel.ma_khach_san),
+  }));
+};
+
+const fetchHotelFull = async (hotelId) => {
+  const hotel = await prisma.khach_san.findUnique({
+    where: { ma_khach_san: hotelId },
+    include: {
+      dia_diem: true,
+      khach_san_tien_nghi: { include: { tien_nghi: true } },
+      chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+    },
+  });
+
+  if (!hotel) return null;
+
+  const hinh_anh = await prisma.hinh_anh.findMany({
+    where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+    orderBy: { thu_tu: 'asc' },
+  });
+
+  return { ...hotel, hinh_anh };
+};
+
+const saveCancelPolicies = async (tx, hotelId, policies) => {
+  await tx.chinh_sach_huy.deleteMany({ where: { ma_khach_san: hotelId } });
+  if (policies.length > 0) {
+    await tx.chinh_sach_huy.createMany({
+      data: policies.map((cs) => ({
+        ma_khach_san: hotelId,
+        so_ngay_truoc: parseInt(cs.so_ngay_truoc),
+        phan_tram_hoan: parseFloat(cs.phan_tram_hoan),
+        trang_thai: 'hoat_dong',
+      })),
+    });
+  }
+};
+
+const applyMainImage = async (tx, hotelId, { mainImageId, mainNewIndex, mainImageIndex, files = [] }) => {
+  await tx.hinh_anh.updateMany({
+    where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+    data: { la_anh_chinh: false },
+  });
+
+  if (mainImageId) {
+    await tx.hinh_anh.updateMany({
+      where: {
+        ma_hinh_anh: parseInt(mainImageId),
+        loai_doi_tuong: 'khach_san',
+        ma_doi_tuong: hotelId,
+      },
+      data: { la_anh_chinh: true },
+    });
+    return;
   }
 
-  return partner.ma_doi_tac;
+  const idx = mainNewIndex !== undefined && mainNewIndex !== null && mainNewIndex !== ''
+    ? parseInt(mainNewIndex)
+    : parseInt(mainImageIndex || 0);
+
+  if (files.length > 0) {
+    const allImages = await tx.hinh_anh.findMany({
+      where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+      orderBy: { thu_tu: 'asc' },
+    });
+    const newlyAdded = allImages.slice(-files.length);
+    const target = newlyAdded[Math.min(idx, Math.max(newlyAdded.length - 1, 0))];
+    if (target) {
+      await tx.hinh_anh.update({
+        where: { ma_hinh_anh: target.ma_hinh_anh },
+        data: { la_anh_chinh: true },
+      });
+    }
+    return;
+  }
+
+  const first = await tx.hinh_anh.findFirst({
+    where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+    orderBy: { thu_tu: 'asc' },
+  });
+  if (first) {
+    await tx.hinh_anh.update({
+      where: { ma_hinh_anh: first.ma_hinh_anh },
+      data: { la_anh_chinh: true },
+    });
+  }
+};
+
+exports.createHotel = async (req, res) => {
+  try {
+    const { ten, dia_chi, mo_ta, so_sao, gio_nhan_phong, gio_tra_phong, ma_dia_diem } = req.body;
+    const tien_nghi_ids = parseJsonField(req.body.tien_nghi_ids, []);
+    const chinh_sach_huy = parseJsonField(req.body.chinh_sach_huy, []);
+    const userId = getUserId(req.user);
+
+    if (!req.files?.length) {
+      return res.status(400).json({ success: false, message: 'Vui lòng tải lên ít nhất 1 hình ảnh' });
+    }
+
+    const doiTac = await prisma.doi_tac.findUnique({
+      where: { ma_nguoi_dung: userId },
+    });
+
+    if (!doiTac) {
+      return res.status(403).json({ success: false, message: 'Tài khoản của bạn không có hồ sơ đối tác!' });
+    }
+
+    const hotelId = await prisma.$transaction(async (tx) => {
+      const newHotel = await tx.khach_san.create({
+        data: {
+          ma_doi_tac: doiTac.ma_doi_tac,
+          ma_dia_diem: parseInt(ma_dia_diem),
+          ten,
+          dia_chi,
+          mo_ta,
+          so_sao: parseInt(so_sao),
+          gio_nhan_phong: new Date(`1970-01-01T${gio_nhan_phong}:00.000Z`),
+          gio_tra_phong: new Date(`1970-01-01T${gio_tra_phong}:00.000Z`),
+          trang_thai: 'cho_duyet',
+        },
+      });
+
+      if (tien_nghi_ids.length > 0) {
+        await tx.khach_san_tien_nghi.createMany({
+          data: tien_nghi_ids.map((id) => ({
+            ma_khach_san: newHotel.ma_khach_san,
+            ma_tien_nghi: parseInt(id),
+          })),
+        });
+      }
+
+      await saveCancelPolicies(tx, newHotel.ma_khach_san, chinh_sach_huy);
+
+      const imgData = req.files.map((file, idx) => ({
+        loai_doi_tuong: 'khach_san',
+        ma_doi_tuong: newHotel.ma_khach_san,
+        url: `/uploads/${file.filename}`,
+        la_anh_chinh: false,
+        thu_tu: idx,
+      }));
+      await tx.hinh_anh.createMany({ data: imgData });
+
+      await applyMainImage(tx, newHotel.ma_khach_san, {
+        mainImageIndex: req.body.mainImageIndex,
+        files: req.files,
+      });
+
+      return newHotel.ma_khach_san;
+    });
+
+    const result = await fetchHotelFull(hotelId);
+    res.status(201).json({ success: true, message: 'Tạo khách sạn thành công!', data: result });
+  } catch (error) {
+    console.error('Lỗi khi thêm khách sạn:', error);
+    res.status(500).json({ success: false, message: 'Lỗi hệ thống khi khởi tạo khách sạn.' });
+  }
 };
 
 exports.getMyHotels = async (req, res) => {
   try {
-    const doiTacId = await getPartnerIdFromRequest(req, res);
-    if (!doiTacId) return; // Phản hồi lỗi đã được gửi bởi helper
+    const userId = getUserId(req.user);
 
-    const data = await hotelService.getMyHotels(doiTacId);
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.getById = async (req, res) => {
-  try {
-    const doiTacId = await getPartnerIdFromRequest(req, res);
-    if (!doiTacId) return;
-
-    const hotelId = Number(req.params.id);
-    const data = await hotelService.getById(hotelId);
-
-    if (!data) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn.' });
+    if (isNaN(userId)) {
+      return res.status(401).json({ success: false, message: 'Token không hợp lệ hoặc không có ID người dùng' });
     }
 
-    // Lỗ hổng bảo mật: Kiểm tra khách sạn có thuộc về đối tác không
-    if (data.ma_doi_tac !== doiTacId) {
-      return res.status(403).json({ success: false, message: 'Không có quyền truy cập khách sạn này.' });
+    const doiTac = await prisma.doi_tac.findUnique({
+      where: { ma_nguoi_dung: userId },
+    });
+
+    if (!doiTac) {
+      return res.status(403).json({ success: false, message: 'Không tìm thấy hồ sơ đối tác của bạn!' });
     }
 
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+    const hotels = await prisma.khach_san.findMany({
+      where: { ma_doi_tac: doiTac.ma_doi_tac },
+      include: {
+        dia_diem: true,
+        khach_san_tien_nghi: { include: { tien_nghi: true } },
+        chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+      },
+      orderBy: { ngay_tao: 'desc' },
+    });
 
-exports.create = async (req, res) => {
-  try {
-    const doiTacId = await getPartnerIdFromRequest(req, res);
-    if (!doiTacId) return;
+    const defaultCancelPolicies = getPartnerDefaultCancelPolicies(hotels);
+    const hotelsWithImages = await attachImagesToHotels(hotels);
 
-    const data = await hotelService.create(req.body, doiTacId);
-    res.status(201).json({ success: true, data, message: 'Tạo khách sạn thành công, chờ admin duyệt' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.update = async (req, res) => {
-  try {
-    const doiTacId = await getPartnerIdFromRequest(req, res);
-    if (!doiTacId) return;
-
-    const hotelId = Number(req.params.id);
-    const data = await hotelService.update(hotelId, req.body, doiTacId);
-    res.json({ success: true, data, message: 'Cập nhật thành công' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(200).json({
+      success: true,
+      data: hotelsWithImages,
+      defaultCancelPolicies,
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách khách sạn:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi lấy dữ liệu khách sạn' });
   }
 };
 
 exports.getDiaDiem = async (req, res) => {
   try {
-    const data = await hotelService.getDiaDiem();
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const diaDiem = await prisma.dia_diem.findMany({
+      orderBy: { ten_dia_diem: 'asc' },
+    });
+    res.status(200).json({ success: true, data: diaDiem });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi server khi lấy địa điểm' });
   }
 };
 
-exports.getAmenitiesForHotel = async (req, res) => {
+exports.getAmenities = async (req, res) => {
   try {
-    const data = await hotelService.getAmenitiesForHotel();
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const amenities = await prisma.tien_nghi.findMany({
+      where: {
+        loai: { in: ['khach_san', 'ca_hai'] },
+        trang_thai: 'hoat_dong',
+      },
+      orderBy: { ten: 'asc' },
+    });
+    res.status(200).json({ success: true, data: amenities });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi server khi lấy tiện nghi' });
+  }
+};
+
+exports.updateHotel = async (req, res) => {
+  try {
+    const userId = getUserId(req.user);
+    const hotelId = parseInt(req.params.id);
+
+    if (isNaN(userId) || isNaN(hotelId)) {
+      return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
+    }
+
+    const doiTac = await prisma.doi_tac.findUnique({
+      where: { ma_nguoi_dung: userId },
+    });
+
+    if (!doiTac) {
+      return res.status(403).json({ success: false, message: 'Không tìm thấy hồ sơ đối tác của bạn!' });
+    }
+
+    const existing = await prisma.khach_san.findFirst({
+      where: { ma_khach_san: hotelId, ma_doi_tac: doiTac.ma_doi_tac },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn' });
+    }
+
+    const {
+      ten, dia_chi, mo_ta, so_sao,
+      gio_nhan_phong, gio_tra_phong,
+      ma_dia_diem, trang_thai,
+    } = req.body;
+
+    const tien_nghi_ids = req.body.tien_nghi_ids !== undefined
+      ? parseJsonField(req.body.tien_nghi_ids, [])
+      : undefined;
+    const chinh_sach_huy = req.body.chinh_sach_huy !== undefined
+      ? parseJsonField(req.body.chinh_sach_huy, [])
+      : undefined;
+    const removedImageIds = parseJsonField(req.body.removedImageIds, []);
+
+    const updateData = {};
+    if (ten !== undefined) updateData.ten = ten;
+    if (dia_chi !== undefined) updateData.dia_chi = dia_chi;
+    if (mo_ta !== undefined) updateData.mo_ta = mo_ta;
+    if (so_sao !== undefined) updateData.so_sao = parseInt(so_sao);
+    if (gio_nhan_phong !== undefined) {
+      updateData.gio_nhan_phong = new Date(`1970-01-01T${gio_nhan_phong}:00.000Z`);
+    }
+    if (gio_tra_phong !== undefined) {
+      updateData.gio_tra_phong = new Date(`1970-01-01T${gio_tra_phong}:00.000Z`);
+    }
+    if (ma_dia_diem !== undefined) updateData.ma_dia_diem = parseInt(ma_dia_diem);
+    if (trang_thai !== undefined) updateData.trang_thai = trang_thai;
+
+    await prisma.$transaction(async (tx) => {
+      if (Object.keys(updateData).length > 0) {
+        await tx.khach_san.update({
+          where: { ma_khach_san: hotelId },
+          data: updateData,
+        });
+      }
+
+      if (tien_nghi_ids !== undefined) {
+        await tx.khach_san_tien_nghi.deleteMany({ where: { ma_khach_san: hotelId } });
+        if (tien_nghi_ids.length > 0) {
+          await tx.khach_san_tien_nghi.createMany({
+            data: tien_nghi_ids.map((id) => ({
+              ma_khach_san: hotelId,
+              ma_tien_nghi: parseInt(id),
+            })),
+          });
+        }
+      }
+
+      if (chinh_sach_huy !== undefined) {
+        await saveCancelPolicies(tx, hotelId, chinh_sach_huy);
+      }
+
+      if (removedImageIds.length > 0) {
+        await tx.hinh_anh.deleteMany({
+          where: {
+            ma_hinh_anh: { in: removedImageIds.map((id) => parseInt(id)) },
+            loai_doi_tuong: 'khach_san',
+            ma_doi_tuong: hotelId,
+          },
+        });
+      }
+
+      if (req.files?.length > 0) {
+        const currentCount = await tx.hinh_anh.count({
+          where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+        });
+
+        await tx.hinh_anh.createMany({
+          data: req.files.map((file, idx) => ({
+            loai_doi_tuong: 'khach_san',
+            ma_doi_tuong: hotelId,
+            url: `/uploads/${file.filename}`,
+            la_anh_chinh: false,
+            thu_tu: currentCount + idx,
+          })),
+        });
+      }
+
+      if (
+        req.body.mainImageId !== undefined
+        || req.body.mainNewIndex !== undefined
+        || req.files?.length > 0
+      ) {
+        await applyMainImage(tx, hotelId, {
+          mainImageId: req.body.mainImageId,
+          mainNewIndex: req.body.mainNewIndex,
+          files: req.files || [],
+        });
+      }
+    });
+
+    const updated = await fetchHotelFull(hotelId);
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Lỗi cập nhật khách sạn:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi cập nhật khách sạn' });
   }
 };

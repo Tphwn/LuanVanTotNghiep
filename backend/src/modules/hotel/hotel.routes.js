@@ -1,14 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('./hotel.controller');
+const multer = require('multer');
+const path = require('path');
+const hotelController = require('./hotel.controller');
 const authMiddleware = require('../../middlewares/auth.middleware');
 
-router.get('/dia-diem',  ctrl.getDiaDiem);
-router.get('/amenities', ctrl.getAmenitiesForHotel);
+// Cấu hình Multer để lưu file ảnh
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../../../uploads/')); 
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 
-router.get('/',     authMiddleware, ctrl.getMyHotels);
-router.get('/:id',  authMiddleware, ctrl.getById);
-router.post('/',    authMiddleware, ctrl.create);
-router.put('/:id',  authMiddleware, ctrl.update);
+
+// ==========================================
+// CÁC ĐƯỜNG DẪN API DÀNH CHO ĐỐI TÁC
+// ==========================================
+
+// Lấy danh sách Địa điểm & Tiện nghi (Không cần authMiddleware nếu ai cũng xem được)
+router.get('/dia-diem', hotelController.getDiaDiem);
+router.get('/amenities', hotelController.getAmenities);
+
+// Lấy danh sách Khách sạn của mình (Bắt buộc phải có authMiddleware để biết user là ai)
+router.get('/', authMiddleware, hotelController.getMyHotels);
+
+// Tạo mới Khách sạn (Kèm upload ảnh)
+router.post('/', authMiddleware, upload.array('images', 10), hotelController.createHotel);
+
+// Cập nhật Khách sạn (hỗ trợ upload ảnh)
+router.put('/:id', authMiddleware, upload.array('images', 10), hotelController.updateHotel);
 
 module.exports = router;

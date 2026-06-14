@@ -15,12 +15,17 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import HomePage from '../pages/customer/HomePage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
+// Kéo 3 trang của quy trình Quản lý Khách sạn vào
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
+
 import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
+import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
+import PricingPage from '../pages/partner/pricing/PricingPage';
+
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
@@ -33,9 +38,8 @@ import AdminRoomDetailPage from '../pages/admin/rooms/RoomDetailPage';
 import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
-import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
-import PricingPage from '../pages/partner/pricing/PricingPage';
 import AdminUsersPage from "../pages/admin/users/UsersPage";
+
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -63,7 +67,11 @@ const AppRoutes = () => {
         }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<PartnerDashboardPage />} />
+          
+          {/* ======================= QUẢN LÝ KHÁCH SẠN ======================= */}
           <Route path="hotels" element={<PartnerHotelsPage />} />
+          {/* ================================================================= */}
+
           <Route path="rooms" element={<PartnerRoomsPage />} />
           <Route path="hotels/:hotelId/rooms" element={<PartnerRoomsPage />} />
           <Route path="bookings" element={<PartnerBookingsPage />} />
