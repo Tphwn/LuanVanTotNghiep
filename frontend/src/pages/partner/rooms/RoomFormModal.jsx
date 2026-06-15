@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import api from '../../../services/api';
+import { getAmenityIcon } from '../../../utils/amenityIcons';
+import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 
 const BASE_URL = 'http://localhost:5000';
 
@@ -23,6 +25,7 @@ const RoomFormModal = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   const [images, setImages] = useState(isEdit ? (room.hinh_anh || []) : []);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [requestRefresh, setRequestRefresh] = useState(0);
   const [toast, setToast] = useState(null);
   const fileRef = useRef();
 
@@ -175,15 +178,40 @@ const RoomFormModal = ({ room, hotelId, amenities, onClose, onSuccess }) => {
             <label style={labelSt}>Mô tả</label>
             <textarea rows={3} style={{ ...inputSt, resize: 'vertical' }} placeholder="Mô tả về loại phòng này..." value={form.mo_ta} onChange={e => setForm({ ...form, mo_ta: e.target.value })} />
           </div>
+         <AmenityRequestStatus loaiFilter="phong" refreshKey={requestRefresh} />
 
-          <h4 style={{ fontSize: 13, fontWeight: 600, color: '#3C7363', marginBottom: 10, textTransform: 'uppercase' }}>🛎️ Tiện nghi loại phòng</h4>
+         <h4 style={{ fontSize: 13, fontWeight: 600, color: '#3C7363', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
+            🛎️ Tiện nghi loại phòng
+            <button 
+              type="button" 
+              onClick={async () => {
+                const name = prompt('Nhập tên tiện nghi bạn muốn yêu cầu:');
+                if (!name?.trim()) return;
+                try {
+                  await api.post('/amenities/requests', {
+                    ten_de_xuat: name.trim(),
+                    loai_de_xuat: 'phong',
+                    mo_ta: `Đối tác yêu cầu cho loại phòng ${room?.ten_loai || form.ten_loai || 'mới'}`,
+                  });
+                  showToast('Đã gửi yêu cầu! Bạn sẽ nhận thông báo khi admin xử lý.');
+                  setRequestRefresh((k) => k + 1);
+                } catch (err) {
+                  showToast(err.response?.data?.message || 'Gửi yêu cầu thất bại', 'error');
+                }
+              }}
+              style={{ fontSize: 11, cursor: 'pointer', border: 'none', background: '#e8f5f1', color: '#3C7363', borderRadius: 4, padding: '4px 8px' }}
+            >
+              + Yêu cầu tiện nghi mới
+            </button>
+          </h4>
+          
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: 12, background: '#f8fdfb', borderRadius: 8, border: '1px solid #d4ede6', minHeight: 56, marginBottom: 16 }}>
             {amenities.length === 0 ? <span style={{ fontSize: 13, color: '#5a7a72' }}>Chưa có tiện nghi nào</span> : amenities.map(a => {
               const checked = form.tien_nghi_ids.includes(a.ma_tien_nghi);
               return (
                 <button key={a.ma_tien_nghi} type="button" onClick={() => toggleAmenity(a.ma_tien_nghi)} style={{ padding: '5px 12px', borderRadius: 20, border: checked ? 'none' : '1px solid #d4ede6', background: checked ? '#3C7363' : '#fff', color: checked ? '#fff' : '#334155', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {a.bieu_tuong} {a.ten} {checked && <span style={{ fontSize: 11 }}>✓</span>}
+                  {getAmenityIcon(a.bieu_tuong, a.ten)} {a.ten} {checked && <span style={{ fontSize: 11 }}>✓</span>}
                 </button>
               );
             })}

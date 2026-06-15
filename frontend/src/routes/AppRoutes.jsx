@@ -25,13 +25,14 @@ import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
+import InventoryPage from '../pages/partner/inventory/InventoryPage';
 
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
 import AdminPaymentsPage from '../pages/admin/payment/PaymentsPage';
 import AdminFinancePage from "../pages/admin/finance/AdminFinancePage";
-import AdminReportsPage from '../pages/admin/reports/RevenueReportPage';
+import AdminReportsPage from '../pages/admin/reports/ReportsPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AdminRoomTypesPage from '../pages/admin/rooms/RoomTypesPage';
 import AdminRoomDetailPage from '../pages/admin/rooms/RoomDetailPage';
@@ -80,6 +81,7 @@ const AppRoutes = () => {
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
           <Route path="pricing" element={<PricingPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
         </Route>
 
         {/* Admin */}

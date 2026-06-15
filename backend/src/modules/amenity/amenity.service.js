@@ -1,5 +1,42 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const { notifyAmenityApproved, notifyAmenityRejected } = require('../../utils/partnerNotify');
+
+const mapRequestRow = (row) => {
+  if (!row) return null;
+  return {
+    ...row,
+    doi_tac: row.doi_tac
+      ? {
+          ten_cong_ty: row.doi_tac.ten_cong_ty,
+          email: row.doi_tac.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.email,
+          so_dien_thoai: row.doi_tac.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.so_dien_thoai,
+        }
+      : null,
+  };
+};
+
+const requestInclude = {
+  doi_tac: {
+    select: {
+      ten_cong_ty: true,
+      nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
+        select: { email: true, so_dien_thoai: true },
+      },
+    },
+  },
+  tien_nghi: {
+    select: { ten: true, loai: true, bieu_tuong: true },
+  },
+};
+
+const findRequestById = async (id) => {
+  const row = await prisma.yeu_cau_tien_nghi.findUnique({
+    where: { ma_yeu_cau: Number(id) },
+    include: requestInclude,
+  });
+  return mapRequestRow(row);
+};
 
 const amenityService = {
   findAll: async () => {
@@ -33,66 +70,69 @@ const amenityService = {
       where: { ma_tien_nghi: Number(id) },
     });
   },
+
   getRequests: async () => {
-  return await prisma.yeu_cau_tien_nghi.findMany({
-    orderBy: { ngay_yeu_cau: 'desc' },
-    include: {
-      doi_tac: {
-        select: {
-          ten_cong_ty: true,
-          nguoi_dung: {
-            select: { email: true }
-          },
-        },
+    const rows = await prisma.yeu_cau_tien_nghi.findMany({
+      orderBy: { ngay_yeu_cau: 'desc' },
+      include: requestInclude,
+    });
+    return rows.map(mapRequestRow);
+  },
+
+  approveRequest: async (id, adminId, options = {}) => {
+    const req = await prisma.yeu_cau_tien_nghi.findUnique({
+      where: { ma_yeu_cau: Number(id) },
+    });
+    if (!req) throw new Error('Không tìm thấy yêu cầu');
+    if (req.trang_thai !== 'cho_xu_ly') throw new Error('Yêu cầu đã được xử lý');
+
+    const loai = options.loai || req.loai_de_xuat || 'ca_hai';
+    const bieu_tuong = options.bieu_tuong || 'wifi';
+
+    const newAmenity = await prisma.tien_nghi.create({
+      data: {
+        ten: req.ten_de_xuat,
+        bieu_tuong,
+        loai,
+        trang_thai: 'hoat_dong',
       },
-      tien_nghi: {
-        select: { ten: true, loai: true }
+    });
+
+    await prisma.yeu_cau_tien_nghi.update({
+      where: { ma_yeu_cau: Number(id) },
+      data: {
+        trang_thai: 'da_tao',
+        tien_nghi_tao_id: newAmenity.ma_tien_nghi,
+        admin_xu_ly_id: Number(adminId),
+        ngay_phan_hoi: new Date(),
       },
-    },
-  });
-},
+    });
 
-// Duyệt yêu cầu → tạo tiện nghi mới luôn
-approveRequest: async (id, adminId) => {
-  const req = await prisma.yeu_cau_tien_nghi.findUnique({
-    where: { ma_yeu_cau: Number(id) },
-  });
-  if (!req) throw new Error('Không tìm thấy yêu cầu');
+    await notifyAmenityApproved(req, loai);
 
-  // Tạo tiện nghi mới từ đề xuất
-  const newAmenity = await prisma.tien_nghi.create({
-    data: {
-      ten: req.ten_de_xuat,
-      bieu_tuong: req.ten_de_xuat,
-      loai: 'ca_hai',
-      trang_thai: 'hoat_dong',
-    },
-  });
+    return findRequestById(id);
+  },
 
-  // Cập nhật yêu cầu → đã tạo
-  return await prisma.yeu_cau_tien_nghi.update({
-    where: { ma_yeu_cau: Number(id) },
-    data: {
-      trang_thai: 'da_tao',
-      tien_nghi_tao_id: newAmenity.ma_tien_nghi,
-      admin_xu_ly_id: Number(adminId),
-      ngay_phan_hoi: new Date(),
-    },
-  });
-},
+  rejectRequest: async (id, adminId, phan_hoi) => {
+    const req = await prisma.yeu_cau_tien_nghi.findUnique({
+      where: { ma_yeu_cau: Number(id) },
+    });
+    if (!req) throw new Error('Không tìm thấy yêu cầu');
 
-// Từ chối yêu cầu kèm lý do
-rejectRequest: async (id, adminId, phan_hoi) => {
-  return await prisma.yeu_cau_tien_nghi.update({
-    where: { ma_yeu_cau: Number(id) },
-    data: {
-      trang_thai: 'tu_choi',
-      phan_hoi,
-      admin_xu_ly_id: Number(adminId),
-      ngay_phan_hoi: new Date(),
-    },
-  });
-},
+    await prisma.yeu_cau_tien_nghi.update({
+      where: { ma_yeu_cau: Number(id) },
+      data: {
+        trang_thai: 'tu_choi',
+        phan_hoi,
+        admin_xu_ly_id: Number(adminId),
+        ngay_phan_hoi: new Date(),
+      },
+    });
+
+    await notifyAmenityRejected(req, phan_hoi);
+
+    return findRequestById(id);
+  },
 };
 
 module.exports = amenityService;

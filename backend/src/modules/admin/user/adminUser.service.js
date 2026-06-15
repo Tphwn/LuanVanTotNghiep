@@ -12,9 +12,11 @@ const getUsers = async () => {
       ngay_tao: true,
       dang_nhap_cuoi: true,
 
-      khach_hang: true,
+      khach_hang: { select: { ho_ten: true, anh_dai_dien: true } },
 
-      doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: true,
+      doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: {
+        select: { ten_cong_ty: true, anh_dai_dien: true },
+      },
     },
 
     orderBy: {
@@ -73,8 +75,11 @@ const getUserById = async (id) => {
           ten_cong_ty: true,
           ma_so_thue: true,
           so_dien_thoai: true,
+          email_lien_he: true,
+          anh_dai_dien: true,
           dia_chi: true,
           trang_thai: true,
+          phan_tram_hoa_hong: true,
           ngay_cap_tai_khoan: true,
           khach_san: {
             select: {

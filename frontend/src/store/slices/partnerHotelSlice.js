@@ -9,8 +9,9 @@ export const DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 1, phan_tram_hoan: 0 },
 ];
 
-const buildHotelFormData = (data, { includeImages = true } = {}) => {
+const buildHotelFormData = (data) => {
   const formData = new FormData();
+
   ['ten', 'dia_chi', 'mo_ta', 'so_sao', 'gio_nhan_phong', 'gio_tra_phong', 'ma_dia_diem'].forEach((key) => {
     if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
       formData.append(key, data[key]);
@@ -27,27 +28,27 @@ const buildHotelFormData = (data, { includeImages = true } = {}) => {
     formData.append('removedImageIds', JSON.stringify(data.removedImageIds));
   }
 
-  if (includeImages && data.hinh_anh?.length) {
-    const newImages = data.hinh_anh.filter((img) => img.file instanceof File);
-    let mainNewIndex = -1;
+  const newImages = (data.hinh_anh || []).filter((img) => img.file instanceof File);
+  let mainNewIndex = -1;
 
-    newImages.forEach((img, idx) => {
-      formData.append('images', img.file);
-      if (img.la_anh_chinh === 1 || img.la_anh_chinh === true) mainNewIndex = idx;
-    });
+  newImages.forEach((img, idx) => {
+    formData.append('images', img.file);
+    if (img.la_anh_chinh === 1 || img.la_anh_chinh === true) {
+      mainNewIndex = idx;
+    }
+  });
 
-    const mainExisting = data.hinh_anh.find(
-      (img) => !img.file && (img.la_anh_chinh === 1 || img.la_anh_chinh === true)
-    );
-    if (mainExisting?.ma_hinh_anh) {
-      formData.append('mainImageId', mainExisting.ma_hinh_anh);
-    }
-    if (mainNewIndex >= 0) {
-      formData.append('mainNewIndex', mainNewIndex);
-    }
+  const mainExisting = (data.hinh_anh || []).find(
+    (img) => !img.file && (img.la_anh_chinh === 1 || img.la_anh_chinh === true)
+  );
+  if (mainExisting?.ma_hinh_anh) {
+    formData.append('mainImageId', mainExisting.ma_hinh_anh);
+  }
+  if (mainNewIndex >= 0) {
+    formData.append('mainNewIndex', mainNewIndex);
   }
 
-  return formData;
+  return { formData, newImages, mainNewIndex };
 };
 
 export const fetchMyHotels = createAsyncThunk('partnerHotel/fetchAll', async (_, { rejectWithValue }) => {
@@ -81,17 +82,11 @@ export const createHotel = createAsyncThunk(
   'partnerHotel/create',
   async (data, { rejectWithValue }) => {
     try {
-      const newImages = (data.hinh_anh || []).filter((img) => img.file instanceof File);
+      const { formData, newImages, mainNewIndex } = buildHotelFormData(data);
       if (newImages.length === 0) {
         return rejectWithValue('Vui lòng tải lên ít nhất 1 hình ảnh');
       }
-
-      const formData = buildHotelFormData(data);
-      let mainIndex = 0;
-      newImages.forEach((img, index) => {
-        if (img.la_anh_chinh === 1 || img.la_anh_chinh === true) mainIndex = index;
-      });
-      formData.append('mainImageIndex', mainIndex);
+      formData.append('mainImageIndex', mainNewIndex >= 0 ? mainNewIndex : 0);
 
       const response = await api.post(BASE, formData);
       if (response.data?.success && response.data?.data) {
@@ -114,7 +109,7 @@ export const updateHotel = createAsyncThunk('partnerHotel/update', async ({ id, 
       return rejectWithValue(res.data?.message || 'Cập nhật thất bại');
     }
 
-    const formData = buildHotelFormData(data);
+    const { formData } = buildHotelFormData(data);
     const res = await api.put(`${BASE}/${id}`, formData);
     if (res.data?.success && res.data?.data) {
       return res.data.data;

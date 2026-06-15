@@ -1,0 +1,853 @@
+# Cursor Rules - Hotel Booking System
+
+## Project Overview
+
+**Project Name:** Hotel Booking System  
+**Domain:** E-commerce / Booking Platform (B2C & B2B)  
+**Purpose:** A comprehensive hotel management and booking platform with role-based access control
+
+### Core Roles
+- **Admin:** Overall system management, monitoring, reporting
+- **Partner:** Hotel owners managing rooms, amenities, pricing, reviews
+- **Customer:** Searching hotels and making bookings
+
+---
+
+## Technology Stack
+
+### Frontend
+- **Framework:** React.js 18+
+- **Build Tool:** Vite
+- **HTTP Client:** Axios
+- **State Management:** Redux/Context API
+- **Styling:** CSS Modules / CSS-in-JS
+- **Authentication:** JWT stored in localStorage/sessionStorage
+
+### Backend
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MySQL
+- **ORM:** Prisma
+- **Authentication:** JWT (JSON Web Tokens)
+- **Password Hashing:** bcryptjs or similar
+
+### Database
+- **Type:** MySQL
+- **ORM:** Prisma with migrations
+
+---
+
+## Directory Structure - STRICT ENFORCEMENT
+
+### Backend Structure (`/backend/src/`)
+
+```
+backend/
+├── src/
+│   ├── app.js (Express app initialization)
+│   ├── config/
+│   │   ├── prisma.js (Prisma client export)
+│   │   └── jwt.js (JWT configuration)
+│   ├── constants/
+│   │   ├── httpStatus.js (HTTP status codes)
+│   │   ├── messages.js (Error/success messages)
+│   │   └── roles.js (Role definitions)
+│   ├── middlewares/
+│   │   ├── auth.middleware.js (JWT validation)
+│   │   ├── role.middleware.js (Role-based authorization)
+│   │   ├── errorHandler.js (Global error handling)
+│   │   ├── notFound.js (404 handler)
+│   │   └── adminMiddleware.js (Admin-specific middleware)
+│   ├── modules/ (FEATURE MODULES - MANDATORY STRUCTURE)
+│   │   ├── [moduleName]/
+│   │   │   ├── [moduleName].routes.js (Express routes)
+│   │   │   ├── [moduleName].controller.js (Request/response handling)
+│   │   │   ├── [moduleName].service.js (Business logic & Prisma queries)
+│   │   │   └── [moduleName].validation.js (Input validation - optional)
+│   │   ├── admin/ (Admin-specific features)
+│   │   │   ├── booking/
+│   │   │   ├── finance/
+│   │   │   ├── hotel/
+│   │   │   ├── payment/
+│   │   │   └── user/
+│   │   ├── auth/
+│   │   ├── amenity/
+│   │   ├── booking/
+│   │   ├── hotel/
+│   │   ├── payment/
+│   │   ├── pricing/
+│   │   ├── review/
+│   │   ├── room/
+│   │   ├── roomType/
+│   │   └── user/
+│   ├── utils/
+│   │   ├── asyncHandler.js (Async error wrapper)
+│   │   ├── response.js (Response formatting)
+│   │   ├── handleError.js (Error handling utilities)
+│   │   ├── jwt.js (JWT utilities)
+│   │   ├── hashPassword.js (Password hashing)
+│   │   └── [other utilities]
+│   └── uploads/ (User-uploaded files)
+├── prisma/
+│   ├── schema.prisma (Database schema)
+│   └── migrations/
+├── server.js (Entry point)
+└── package.json
+```
+
+### Frontend Structure (`/frontend/src/`)
+
+```
+frontend/
+├── src/
+│   ├── App.jsx (Main app component)
+│   ├── main.jsx (React entry point)
+│   ├── api/
+│   │   └── axiosInstance.js (Axios configuration)
+│   ├── components/
+│   │   ├── common/ (Reusable UI components)
+│   │   ├── layout/ (Layout components)
+│   │   ├── form/ (Form components)
+│   │   ├── admin/ (Admin-specific components)
+│   │   ├── partner/ (Partner-specific components)
+│   │   └── customer/ (Customer-specific components)
+│   ├── pages/
+│   │   ├── admin/
+│   │   │   ├── [featureName]/
+│   │   │   │   └── [FeatureName]Page.jsx
+│   │   ├── partner/
+│   │   │   ├── reviews/
+│   │   │   │   └── ReviewsPage.jsx
+│   │   │   ├── hotels/
+│   │   │   ├── rooms/
+│   │   │   └── pricing/
+│   │   ├── customer/
+│   │   │   ├── search/
+│   │   │   ├── booking/
+│   │   │   └── profile/
+│   │   ├── auth/
+│   │   │   ├── LoginPage.jsx
+│   │   │   └── RegisterPage.jsx
+│   │   └── [other pages]
+│   ├── services/ (API communication)
+│   │   ├── api.js (Base API config)
+│   │   ├── authService.js
+│   │   ├── bookingService.js
+│   │   ├── hotelService.js
+│   │   ├── adminHotelService.js
+│   │   ├── adminUserService.js
+│   │   ├── paymentService.js
+│   │   └── [other services]
+│   ├── hooks/ (Custom React hooks)
+│   │   ├── useAuth.js
+│   │   ├── useBooking.js
+│   │   ├── useHotel.js
+│   │   └── [other hooks]
+│   ├── layouts/
+│   │   ├── MainLayout.jsx
+│   │   ├── AdminLayout.jsx
+│   │   └── PartnerLayout.jsx
+│   ├── redux/
+│   │   ├── store.js
+│   │   └── slices/
+│   ├── routes/
+│   │   ├── AppRoutes.jsx (Route definitions)
+│   │   ├── ProtectedRoute.jsx (Authentication wrapper)
+│   │   └── RoleRoute.jsx (Role-based access wrapper)
+│   ├── constants/
+│   │   ├── roles.js
+│   │   ├── routes.js
+│   │   └── Header.jsx
+│   ├── utils/
+│   │   ├── formatCurrency.js
+│   │   ├── formatDate.js
+│   │   ├── handleError.js
+│   │   ├── storage.js (localStorage utilities)
+│   │   ├── redirect.js
+│   │   └── media.js
+│   ├── validations/
+│   │   ├── auth.validation.js
+│   │   ├── booking.validation.js
+│   │   └── hotel.validation.js
+│   ├── assets/
+│   │   ├── images/
+│   │   ├── icons/
+│   │   └── styles/
+│   └── App.css / index.css
+├── public/ (Static assets)
+├── vite.config.js
+├── package.json
+└── index.html
+```
+
+---
+
+## Naming Conventions - MANDATORY
+
+### Database Columns & Schema Variables
+**Convention:** `snake_case` (all lowercase with underscores)
+
+**Examples:**
+- `ma_khach_san` (Hotel ID)
+- `so_giuong` (Number of beds)
+- `phan_hoi_doi_tac` (Partner feedback)
+- `ngay_tao` (Created date)
+- `ngay_cap_nhat` (Updated date)
+- `trang_thai_phong` (Room status)
+
+**Rule:** All database column names MUST use `snake_case`. This applies to Prisma schema definitions and all database queries.
+
+### JavaScript Variables, Functions & Methods
+**Convention:** `camelCase`
+
+**Examples:**
+```javascript
+const getAllReviews = async () => { }
+const userEmail = 'example@gmail.com'
+const calculateTotalPrice = (price, quantity) => { }
+const updateBookingStatus = async (bookingId) => { }
+```
+
+**Rule:** All JavaScript variables, function names, and object methods MUST use `camelCase`.
+
+### React Components & Files
+**Convention:** `PascalCase`
+
+**Examples:**
+- `ReviewsPage.jsx`
+- `HotelCard.jsx`
+- `BookingForm.jsx`
+- `AdminDashboard.jsx`
+- `UserProfile.jsx`
+
+**Rule:** React component files and component function names MUST use `PascalCase`. File extensions MUST be `.jsx`.
+
+### Backend Files & Controllers
+**Convention:** `camelCase` with dot notation
+
+**Examples:**
+- `review.routes.js`
+- `review.controller.js`
+- `review.service.js`
+- `booking.middleware.js`
+- `auth.validation.js`
+- `hotel.routes.js`
+
+**Rule:** All backend JavaScript files (routes, controllers, services, middlewares) MUST use `camelCase` with dot notation pattern.
+
+### Routes & Endpoints
+**Convention:** kebab-case (lowercase with hyphens)
+
+**Examples:**
+```
+GET /api/reviews
+POST /api/reviews/create
+GET /api/hotels/:hotelId/reviews
+PUT /api/admin/users/:userId/approve
+DELETE /api/bookings/:bookingId/cancel
+```
+
+**Rule:** URL paths and API endpoints MUST use kebab-case for multi-word segments.
+
+---
+
+## Architecture & Code Flow
+
+### Backend Architecture (MANDATORY THREE-LAYER PATTERN)
+
+#### Layer 1: Routes (`*.routes.js`)
+- **Responsibility:** Define Express routes, HTTP method mapping, middleware chain
+- **Must Have:** All route handlers MUST be imported from the controller
+- **Example:**
+  ```javascript
+  const express = require('express');
+  const reviewController = require('./review.controller');
+  const authMiddleware = require('../../middlewares/auth.middleware');
+  
+  const router = express.Router();
+  
+  router.get('/', reviewController.getAll);
+  router.post('/', authMiddleware, reviewController.create);
+  router.put('/:id', authMiddleware, reviewController.update);
+  router.delete('/:id', authMiddleware, reviewController.delete);
+  
+  module.exports = router;
+  ```
+
+#### Layer 2: Controller (`*.controller.js`)
+- **Responsibility:** Handle HTTP requests and responses, validate input, parse parameters
+- **Must NOT:** Directly query the database (use Service layer)
+- **Must Have:** All functions exported explicitly
+- **Error Handling:** Wrap operations in try-catch or asyncHandler
+- **Example:**
+  ```javascript
+  const reviewService = require('./review.service');
+  const asyncHandler = require('../../utils/asyncHandler');
+  
+  exports.getAll = asyncHandler(async (req, res) => {
+    const reviews = await reviewService.getAll();
+    res.status(200).json({ data: reviews });
+  });
+  
+  exports.create = asyncHandler(async (req, res) => {
+    const { title, content, rating } = req.body;
+    const userId = parseInt(req.user.id);
+    const newReview = await reviewService.create({
+      title,
+      content,
+      rating,
+      userId,
+    });
+    res.status(201).json({ data: newReview });
+  });
+  ```
+
+#### Layer 3: Service (`*.service.js`)
+- **Responsibility:** Business logic, Prisma database queries, data transformation
+- **Must Have:** All database operations here
+- **Example:**
+  ```javascript
+  const { prisma } = require('../../config/prisma');
+  
+  const getAll = async () => {
+    return await prisma.reviews.findMany({
+      include: {
+        user: { select: { id: true, name: true } },
+      },
+    });
+  };
+  
+  const create = async (reviewData) => {
+    const { title, content, rating, userId } = reviewData;
+    return await prisma.reviews.create({
+      data: {
+        title,
+        content,
+        rating,
+        user_id: userId, // Map camelCase to snake_case
+      },
+    });
+  };
+  
+  module.exports = { getAll, create };
+  ```
+
+### Frontend Component Flow
+1. **Pages** → Load data from services
+2. **Services** → Make API calls via axios
+3. **Components** → Render UI based on state
+4. **Hooks** → Manage component state and side effects
+
+---
+
+## CRITICAL BACKEND RULES
+
+### CRITICAL RULE #1: Export Convention
+**Every controller and middleware MUST use explicit exports.**
+
+✅ **CORRECT:**
+```javascript
+// review.controller.js
+exports.getAll = async (req, res) => { /* ... */ };
+exports.create = async (req, res) => { /* ... */ };
+exports.update = async (req, res) => { /* ... */ };
+
+// OR
+
+module.exports = {
+  getAll: async (req, res) => { /* ... */ },
+  create: async (req, res) => { /* ... */ },
+  update: async (req, res) => { /* ... */ },
+};
+```
+
+❌ **INCORRECT:**
+```javascript
+// NEVER use default export in controllers
+export default { getAll, create, update };
+
+// NEVER mix default and named exports
+module.exports = someFunction;
+exports.anotherFunction = () => { };
+```
+
+**Consequence of Violation:** Will cause `[object Undefined]` errors in Express routes, breaking the entire module.
+
+### CRITICAL RULE #2: Import & Usage in Routes
+**Route files MUST import controllers as objects and call methods via the object.**
+
+✅ **CORRECT:**
+```javascript
+const reviewController = require('./review.controller');
+const hotelController = require('../hotel/hotel.controller');
+
+router.get('/', reviewController.getAll);
+router.post('/', reviewController.create);
+router.put('/:id', reviewController.update);
+router.delete('/:id', reviewController.delete);
+```
+
+❌ **INCORRECT:**
+```javascript
+// DO NOT destructure imports
+const { getAll, create } = require('./review.controller');
+router.get('/', getAll); // This will break
+
+// DO NOT import default
+const reviewController = require('./review.controller').default;
+```
+
+**Consequence of Violation:** Express will receive `undefined` as the callback, causing crashes with error: `TypeError: router.get() requires a callback function`
+
+### CRITICAL RULE #3: ID Parameter Parsing
+**All ID parameters from URL/query MUST be parsed to integers before database queries.**
+
+✅ **CORRECT:**
+```javascript
+exports.getById = asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+  const review = await reviewService.getById(id);
+  res.status(200).json({ data: review });
+});
+```
+
+❌ **INCORRECT:**
+```javascript
+// DO NOT pass string IDs directly to Prisma
+const review = await prisma.reviews.findUnique({
+  where: { id: req.params.id } // String, not number
+});
+```
+
+---
+
+## Backend Best Practices
+
+### Prisma Query Best Practices
+- Always use `include` or `select` to specify related data
+- Use `findUnique` for single record queries (indexed fields)
+- Use `findMany` for multiple records
+- Handle `null` responses gracefully
+- Use transactions for multi-step operations
+
+**Example:**
+```javascript
+const getHotelWithReviews = async (hotelId) => {
+  const hotel = await prisma.hotels.findUnique({
+    where: { id: parseInt(hotelId) },
+    include: {
+      reviews: {
+        where: { status: 'approved' },
+        select: { id: true, rating: true, content: true },
+      },
+    },
+  });
+  return hotel;
+};
+```
+
+### Error Handling
+- Use centralized error middleware
+- Throw custom error objects with status codes
+- Log errors for debugging
+- Never expose sensitive information in error messages
+
+**Example:**
+```javascript
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+const errorHandler = (err, req, res, next) => {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  res.status(status).json({ error: message });
+};
+```
+
+### Input Validation
+- Validate all incoming data (body, params, query)
+- Use validation middleware or services
+- Return meaningful validation error messages
+
+**Example:**
+```javascript
+const validateReviewInput = (data) => {
+  const errors = {};
+  if (!data.title || data.title.trim().length === 0) {
+    errors.title = 'Title is required';
+  }
+  if (!data.rating || data.rating < 1 || data.rating > 5) {
+    errors.rating = 'Rating must be between 1 and 5';
+  }
+  return errors;
+};
+```
+
+### Security Best Practices
+- Validate and sanitize all user inputs
+- Use JWT for authentication with secure tokens
+- Implement role-based access control (RBAC)
+- Hash passwords using bcryptjs
+- Use CORS appropriately
+- Environment variables for sensitive data (.env file)
+
+---
+
+## React Frontend Rules
+
+### Component Structure
+- **Functional Components ONLY** (No class components)
+- Use React Hooks: `useState`, `useEffect`, `useContext`, `useReducer`
+- Keep components focused and small (single responsibility)
+- Extract reusable logic into custom hooks
+
+**Example:**
+```jsx
+export default function ReviewsList() {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const response = await reviewService.getAll();
+      setReviews(response.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      {reviews.map((review) => (
+        <ReviewCard key={review.id} review={review} />
+      ))}
+    </div>
+  );
+}
+```
+
+### Async Operations
+- Always handle loading, success, and error states
+- Use async/await with try-catch
+- Show loading indicators and error messages
+- Implement proper cleanup in useEffect
+
+**Example:**
+```jsx
+useEffect(() => {
+  let isMounted = true;
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const response = await bookingService.getBookings();
+      if (isMounted) {
+        setBookings(response.data);
+      }
+    } catch (error) {
+      if (isMounted) {
+        setError(error.message);
+      }
+    } finally {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  loadData();
+
+  return () => {
+    isMounted = false;
+  };
+}, []);
+```
+
+### Services Layer
+- Centralize all API calls in services
+- Use Axios with configured instance (timeout, base URL, interceptors)
+- Handle response transformation
+- Catch and format errors
+
+**Example:**
+```javascript
+// services/reviewService.js
+import axiosInstance from '../api/axiosInstance';
+
+const getAllReviews = async () => {
+  const response = await axiosInstance.get('/api/reviews');
+  return response.data;
+};
+
+const createReview = async (reviewData) => {
+  const response = await axiosInstance.post('/api/reviews', reviewData);
+  return response.data;
+};
+
+export default { getAllReviews, createReview };
+```
+
+### State Management
+- Use `useState` for component-level state
+- Use `useContext` for shared state (theme, auth)
+- Use Redux for complex global state (optional)
+- Keep state as close to usage as possible
+
+### Hooks - Custom & Built-in
+- Create custom hooks for reusable logic
+- Custom hooks names MUST start with `use`
+- Examples: `useAuth`, `useBooking`, `useHotel`
+
+**Example:**
+```javascript
+// hooks/useAuth.js
+import { useState, useEffect } from 'react';
+import authService from '../services/authService';
+
+export default function useAuth() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await authService.getProfile();
+        setUser(userData);
+      } catch (error) {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  return { user, loading };
+}
+```
+
+### Protection & Access Control
+- Use `ProtectedRoute` wrapper for authenticated-only pages
+- Use `RoleRoute` wrapper for role-specific pages
+- Check user role before rendering sensitive content
+- Redirect unauthorized users appropriately
+
+**Example:**
+```jsx
+// routes/RoleRoute.jsx
+export default function RoleRoute({ element, allowedRoles }) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/" />;
+  }
+
+  return element;
+}
+
+// Usage in AppRoutes
+<Route
+  path="/admin/dashboard"
+  element={
+    <RoleRoute
+      element={<AdminDashboard />}
+      allowedRoles={['admin']}
+    />
+  }
+/>
+```
+
+---
+
+## Restrictions & Prohibitions
+
+### ⛔ Prohibited Actions
+- **DO NOT** introduce or install new npm packages without explicit permission
+- **DO NOT** modify `.env` files or commit sensitive data
+- **DO NOT** use inline CSS (use CSS Modules or external stylesheets)
+- **DO NOT** create default exports for controllers, services, or middlewares
+- **DO NOT** directly query the database from controllers
+- **DO NOT** hardcode configuration values (use environment variables)
+- **DO NOT** make breaking changes to the API without documenting
+- **DO NOT** use `var` keyword (use `const` or `let`)
+- **DO NOT** suppress errors or warnings silently
+- **DO NOT** commit commented-out code
+
+### ✅ Approved Technologies
+- React 18+
+- Axios for HTTP requests
+- Prisma for database ORM
+- JWT for authentication
+- Express.js for backend routing
+- MySQL as database
+- Redux/Context API for state management (if needed)
+- CSS Modules for styling
+
+---
+
+## Code Style Guide
+
+### JavaScript Formatting
+- Use `const` by default, `let` when reassignment is needed
+- Semicolons required
+- 2-space indentation
+- Prefer arrow functions for callbacks
+- Use template literals for string interpolation
+
+**Example:**
+```javascript
+const calculateTotal = (items) => {
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  return total;
+};
+
+const message = `User ${user.name} created successfully`;
+```
+
+### React JSX
+- Components return JSX wrapped in fragments or divs
+- Props destructuring in function parameters
+- Use semantic HTML elements
+- Always include `key` prop in lists
+
+**Example:**
+```jsx
+export default function HotelList({ hotels, onSelect }) {
+  return (
+    <div className="hotel-list">
+      {hotels.map((hotel) => (
+        <HotelCard
+          key={hotel.id}
+          hotel={hotel}
+          onClick={() => onSelect(hotel.id)}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+### Comments
+- Use comments to explain WHY, not WHAT
+- Keep comments concise and up-to-date
+- Remove commented-out code before committing
+
+**Example:**
+```javascript
+// Fetch reviews excluding deleted ones (soft delete)
+const activeReviews = reviews.filter((r) => !r.deleted_at);
+
+// BAD:
+// const x = 5; // Don't commit commented code
+```
+
+---
+
+## Testing Requirements
+
+### Backend Testing
+- Unit tests for services
+- Integration tests for API endpoints
+- Test error handling scenarios
+- Use Jest or Mocha + Chai
+
+### Frontend Testing
+- Component rendering tests
+- User interaction tests
+- API integration tests
+- Use Jest + React Testing Library
+
+---
+
+## Deployment & Environment
+
+### Environment Variables
+- Create `.env` file (never commit)
+- Use `.env.example` for template
+- Example variables:
+  ```
+  DATABASE_URL=mysql://user:password@localhost:3306/hotel_booking
+  JWT_SECRET=your-secret-key
+  NODE_ENV=development
+  VITE_API_BASE_URL=http://localhost:5000
+  VITE_API_TIMEOUT=5000
+  ```
+
+### Git Workflow
+- Branch naming: `feature/feature-name`, `fix/bug-name`, `hotfix/issue-name`
+- Commit messages: descriptive and concise
+- Keep commits atomic (one logical change per commit)
+- Never commit sensitive data
+
+---
+
+## Documentation Standards
+
+### API Documentation
+- Document all endpoints with method, path, parameters, response format
+- Include error responses and status codes
+- Example request/response payloads
+
+### Code Comments
+- Document complex algorithms
+- Explain business logic that isn't obvious
+- Mark TODO, FIXME, NOTE comments clearly
+
+### README Files
+- Project description
+- Setup instructions
+- Available npm scripts
+- Tech stack overview
+- Contribution guidelines
+
+---
+
+## Quick Reference Checklist
+
+Before submitting code:
+- [ ] Naming conventions followed (snake_case for DB, camelCase for JS, PascalCase for components)
+- [ ] Backend: Routes → Controller → Service pattern used
+- [ ] Backend: Controllers use explicit exports
+- [ ] Backend: Routes import controllers as objects
+- [ ] Backend: IDs parsed to integers before DB queries
+- [ ] React: Functional components with hooks only
+- [ ] React: Async operations have loading/error states
+- [ ] No new npm packages installed without permission
+- [ ] No hardcoded configuration values
+- [ ] No console.log left in production code
+- [ ] Proper error handling implemented
+- [ ] Code is DRY (Don't Repeat Yourself)
+- [ ] Security best practices followed
+- [ ] Tests written (if applicable)
+
+---
+
+## Support & Questions
+
+If unclear about any rule:
+1. Refer to existing code in the project
+2. Follow the architectural patterns established
+3. Ask for clarification before implementing
+4. Enforce strict adherence to these rules in all future code
+
+**Last Updated:** 2026-06-15  
+**Version:** 1.0

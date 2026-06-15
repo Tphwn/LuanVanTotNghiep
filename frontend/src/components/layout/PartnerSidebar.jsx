@@ -6,6 +6,7 @@ const partnerMenus = [
   { icon: '🛏️', name: 'Loại phòng', path: '/partner/rooms' },
   { icon: '📅', name: 'Đặt phòng', path: '/partner/bookings' },
   { icon: '💰', name: 'Quản lý giá', path: '/partner/pricing' },
+  { icon: '📦', name: 'Kho phòng', path: '/partner/inventory' },
   { icon: '💼', name: 'Tài chính',  path: '/partner/finance' },
   { icon: '⭐', name: 'Đánh giá',   path: '/partner/reviews' },
   { icon: '👤', name: 'Tài khoản', path: '/partner/account' },

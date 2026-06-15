@@ -2,20 +2,27 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const hotelController = require('./hotel.controller');
 const authMiddleware = require('../../middlewares/auth.middleware');
+
+const uploadDir = path.join(__dirname, '../../../uploads/');
+
+// TỰ ĐỘNG TẠO THƯ MỤC: Nếu thư mục uploads chưa tồn tại, Node.js sẽ tự động tạo ra nó!
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Cấu hình Multer để lưu file ảnh
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../../uploads/')); 
+    cb(null, uploadDir); 
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
   }
 });
 const upload = multer({ storage: storage });
-
 
 // ==========================================
 // CÁC ĐƯỜNG DẪN API DÀNH CHO ĐỐI TÁC

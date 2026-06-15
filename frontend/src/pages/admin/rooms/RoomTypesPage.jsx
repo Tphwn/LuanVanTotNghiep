@@ -1,119 +1,257 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../../services/api";
+import { resolveUploadUrl } from "../../../utils/media";
 
-const MOCK_ROOMS = [
-  { ma_loai_phong: 101, ten_loai: "Standard Double Room", khach_san: "Mường Thanh Luxury", suc_chua: 2, gia_mac_dinh: 850000, trang_thai: "hoat_dong" },
-  { ma_loai_phong: 102, ten_loai: "Family Suite", khach_san: "Mường Thanh Luxury", suc_chua: 4, gia_mac_dinh: 1500000, trang_thai: "hoat_dong" },
-  { ma_loai_phong: 103, ten_loai: "Ocean View Villa", khach_san: "Vinpearl Resort", suc_chua: 4, gia_mac_dinh: 3200000, trang_thai: "hoat_dong" },
-  { ma_loai_phong: 104, ten_loai: "Dormitory 6 Beds", khach_san: "Sài Gòn Backpackers", suc_chua: 6, gia_mac_dinh: 150000, trang_thai: "tam_ngung" },
-];
+const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
 
 const ROOM_STATUS = {
-  hoat_dong: { label: "Đang mở bán", cls: "badge-success" },
-  tam_ngung: { label: "Tạm ngưng", cls: "badge-warning" },
-  bi_khoa: { label: "Bị khóa", cls: "badge-danger" },
+  hoat_dong: { label: "Đang bán", cls: "badge-success" },
+  an:        { label: "Đã ẩn", cls: "badge-warning" },
+};
+
+const getMainImage = (room) => {
+  const imgs = room?.hinh_anh || [];
+  return imgs.find((i) => i.la_anh_chinh) || imgs[0];
 };
 
 const RoomTypesPage = () => {
   const navigate = useNavigate();
+  const [rooms, setRooms] = useState([]);
+  const [hotels, setHotels] = useState([]);
+  const [partners, setPartners] = useState([]);
+  const [stats, setStats] = useState({ total: 0, active: 0, hidden: 0 });
+  const [loading, setLoading] = useState(true);
 
-  // Các state cho bộ lọc
   const [keyword, setKeyword] = useState("");
+  const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [hotelFilter, setHotelFilter] = useState("all");
+  const [partnerFilter, setPartnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Lấy danh sách Khách sạn duy nhất để đưa vào Dropdown
-  const uniqueHotels = [...new Set(MOCK_ROOMS.map(r => r.khach_san))];
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
+    return () => clearTimeout(timer);
+  }, [keyword]);
 
-  // Logic lọc dữ liệu
-  const filteredRooms = MOCK_ROOMS.filter((room) => {
-    const matchHotel = hotelFilter === "all" || room.khach_san === hotelFilter;
-    const matchStatus = statusFilter === "all" || room.trang_thai === statusFilter;
-    const searchText = keyword.toLowerCase();
-    const matchKeyword = 
-      room.ten_loai.toLowerCase().includes(searchText) || 
-      room.khach_san.toLowerCase().includes(searchText);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (hotelFilter !== "all") params.ma_khach_san = hotelFilter;
+      if (partnerFilter !== "all") params.ma_doi_tac = partnerFilter;
+      if (statusFilter !== "all") params.trang_thai = statusFilter;
+      if (debouncedKeyword.trim()) params.keyword = debouncedKeyword.trim();
 
-    return matchHotel && matchStatus && matchKeyword;
-  });
+      const res = await api.get("/admin/room-types", { params });
+      setRooms(res.data.data || []);
+      setStats(res.data.stats || { total: 0, active: 0, hidden: 0 });
+      setHotels(res.data.hotels || []);
+      setPartners(res.data.partners || []);
+    } catch {
+      setRooms([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [hotelFilter, partnerFilter, statusFilter, debouncedKeyword]);
+
+  const filteredHotels = useMemo(() => {
+    if (partnerFilter === "all") return hotels;
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(partnerFilter));
+  }, [hotels, partnerFilter]);
+
+  useEffect(() => {
+    if (hotelFilter !== "all" && !filteredHotels.some((h) => String(h.ma_khach_san) === String(hotelFilter))) {
+      setHotelFilter("all");
+    }
+  }, [filteredHotels, hotelFilter]);
+
+  const handleToggleStatus = async (room) => {
+    const isHidden = room.trang_thai === "an";
+    const msg = isHidden
+      ? `Mở lại loại phòng "${room.ten_loai}"?`
+      : `Ẩn loại phòng "${room.ten_loai}" khỏi hệ thống?`;
+    if (!window.confirm(msg)) return;
+
+    try {
+      const endpoint = isHidden ? "show" : "hide";
+      await api.patch(`/admin/room-types/${room.ma_loai_phong}/${endpoint}`);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || "Thao tác thất bại");
+    }
+  };
 
   return (
-    <div className="main-panel">
-      {/* ===== HEADER ===== */}
+    <div>
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Quản lý Loại phòng</h1>
-          <p className="page-subtitle">Kiểm soát danh sách và tình trạng phòng của tất cả khách sạn</p>
+          <h1 className="page-title">Quản lý loại phòng</h1>
+          <p className="page-subtitle">Giám sát và kiểm soát loại phòng của tất cả khách sạn trên hệ thống</p>
         </div>
       </div>
 
-      {/* ===== THANH TÌM KIẾM & BỘ LỌC ===== */}
-      <div className="search-bar" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="🔍 Tìm tên phòng, tên khách sạn..."
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={{ flex: '2 1 300px' }}
-        />
-        
-        <select className="search-input" value={hotelFilter} onChange={(e) => setHotelFilter(e.target.value)} style={{ flex: 1 }}>
-          <option value="all">🏢 Tất cả khách sạn</option>
-          {uniqueHotels.map(hotel => <option key={hotel} value={hotel}>{hotel}</option>)}
-        </select>
-
-        <select className="search-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ flex: 1 }}>
-          <option value="all">Tất cả trạng thái</option>
-          <option value="hoat_dong">Đang mở bán</option>
-          <option value="tam_ngung">Tạm ngưng</option>
-          <option value="bi_khoa">Bị khóa</option>
-        </select>
+      <div className="stats-grid" style={{ marginBottom: 16 }}>
+        {[
+          { label: "Tổng loại phòng", value: stats.total, color: "#3C7363", icon: "🛏️" },
+          { label: "Đang bán", value: stats.active, color: "#52c41a", icon: "✅" },
+          { label: "Đã ẩn", value: stats.hidden, color: "#b36b00", icon: "🔒" },
+        ].map((s) => (
+          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div className="stat-card-label">{s.label}</div>
+              <span style={{ fontSize: 18 }}>{s.icon}</span>
+            </div>
+            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ===== BẢNG DỮ LIỆU ===== */}
+      <div className="content-card" style={{ marginBottom: 16, padding: "16px 20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
+          <div>
+            <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Khách sạn</label>
+            <select className="search-input" style={{ width: "100%" }} value={hotelFilter} onChange={(e) => setHotelFilter(e.target.value)}>
+              <option value="all">Tất cả khách sạn</option>
+              {filteredHotels.map((h) => (
+                <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Đối tác</label>
+            <select className="search-input" style={{ width: "100%" }} value={partnerFilter} onChange={(e) => setPartnerFilter(e.target.value)}>
+              <option value="all">Tất cả đối tác</option>
+              {partners.map((p) => (
+                <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
+            <select className="search-input" style={{ width: "100%" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="all">Tất cả trạng thái</option>
+              <option value="hoat_dong">Đang bán</option>
+              <option value="an">Đã ẩn</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Tìm kiếm</label>
+            <input
+              type="text"
+              className="search-input"
+              style={{ width: "100%" }}
+              placeholder="Tên phòng, khách sạn..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          </div>
+          {(hotelFilter !== "all" || partnerFilter !== "all" || statusFilter !== "all" || keyword) && (
+            <div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ width: "100%" }}
+                onClick={() => {
+                  setKeyword("");
+                  setHotelFilter("all");
+                  setPartnerFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="content-card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Mã loại</th>
-              <th>Thuộc khách sạn</th>
-              <th>Tên loại phòng</th>
-              <th>Sức chứa</th>
-              <th>Giá mặc định</th>
-              <th>Trạng thái</th>
-              <th style={{ textAlign: "center" }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRooms.map((room) => {
-              const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "badge-default" };
-              return (
-                <tr key={room.ma_loai_phong}>
-                  <td style={{ color: "#5a7a72" }}>#{room.ma_loai_phong}</td>
-                  <td style={{ fontWeight: 600, color: "#3C7363" }}>{room.khach_san}</td>
-                  <td style={{ fontWeight: 500, color: "#1a2e28" }}>{room.ten_loai}</td>
-                  <td>👤 {room.suc_chua} người</td>
-                  <td style={{ fontWeight: 600, color: "#c0392b" }}>{room.gia_mac_dinh.toLocaleString('vi-VN')} đ</td>
-                  <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                  <td style={{ textAlign: "center" }}>
-                    <button 
-                      className="btn btn-outline btn-sm" 
-                      onClick={() => navigate(`/admin/rooms/${room.ma_loai_phong}`)}
-                    >
-                      👁️ Xem chi tiết
-                    </button>
-                  </td>
+        <div className="content-card-header">
+          <h3 className="content-card-title">Danh sách loại phòng ({rooms.length})</h3>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>⏳ Đang tải dữ liệu...</div>
+        ) : rooms.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">🛏️</div>
+            <p className="empty-state-text">Không có loại phòng nào phù hợp bộ lọc</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 72 }}>Ảnh</th>
+                  <th>Loại phòng</th>
+                  <th>Khách sạn</th>
+                  <th>Giá cơ bản</th>
+                  <th>Sức chứa</th>
+                  <th>Trạng thái</th>
+                  <th style={{ textAlign: "right", minWidth: 160 }}>Thao tác</th>
                 </tr>
-              );
-            })}
-            {filteredRooms.length === 0 && (
-              <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>Không tìm thấy loại phòng nào.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {rooms.map((room) => {
+                  const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "badge-default" };
+                  const thumb = getMainImage(room);
+                  const isHidden = room.trang_thai === "an";
+                  return (
+                    <tr key={room.ma_loai_phong}>
+                      <td>
+                        <div style={{
+                          width: 56, height: 44, borderRadius: 8, overflow: "hidden",
+                          background: "#e8f5f1", border: "1px solid #d4ede6",
+                        }}>
+                          {thumb ? (
+                            <img src={resolveUploadUrl(thumb.url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛏️</div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: "#1a2e28" }}>{room.ten_loai}</div>
+                        <div style={{ fontSize: 12, color: "#888" }}>#{room.ma_loai_phong}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{room.khach_san?.ten}</div>
+                        <div style={{ fontSize: 12, color: "#5a7a72" }}>{room.khach_san?.doi_tac?.ten_cong_ty}</div>
+                      </td>
+                      <td style={{ fontWeight: 600, color: "#b36b00", whiteSpace: "nowrap" }}>{fmt(room.gia_co_ban)} ₫</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{room.suc_chua} khách</td>
+                      <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
+                          >
+                            👁️ Chi tiết
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${isHidden ? "btn-success" : "btn-ghost"}`}
+                            onClick={() => handleToggleStatus(room)}
+                            title={isHidden ? "Mở loại phòng" : "Ẩn loại phòng"}
+                          >
+                            {isHidden ? "🔓 Mở" : "🔒 Ẩn"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

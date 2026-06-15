@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import api from '../../../services/api';
+import { getAmenityIcon } from '../../../utils/amenityIcons';
+import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
 
 const INIT_FORM = {
@@ -60,6 +62,7 @@ const HotelFormModal = ({
 
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '', mo_ta: '' });
+  const [requestRefresh, setRequestRefresh] = useState(0);
 
   const toggleAmenity = (id) => {
     setForm((prev) => ({
@@ -73,10 +76,14 @@ const HotelFormModal = ({
   const handlePropose = async () => {
     if (!proposeForm.ten_de_xuat.trim()) return alert('Nhập tên tiện nghi đề xuất');
     try {
-      await api.post('/amenities/requests', proposeForm);
-      alert('✅ Đã gửi đề xuất thành công!');
+      await api.post('/amenities/requests', {
+        ...proposeForm,
+        loai_de_xuat: 'khach_san',
+      });
+      alert('✅ Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
       setProposeForm({ ten_de_xuat: '', mo_ta: '' });
       setShowPropose(false);
+      setRequestRefresh((k) => k + 1);
     } catch {
       alert('Gửi đề xuất thất bại');
     }
@@ -232,6 +239,8 @@ const HotelFormModal = ({
                 <textarea className="search-input" rows={3} style={{ resize: 'vertical', width: '100%', boxSizing: 'border-box' }} value={form.mo_ta} onChange={(e) => setForm({ ...form, mo_ta: e.target.value })} placeholder="Giới thiệu về khách sạn..." />
               </div>
 
+              <AmenityRequestStatus loaiFilter="khach_san" refreshKey={requestRefresh} />
+
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>Tiện nghi khách sạn</label>
                 <div style={{
@@ -247,7 +256,7 @@ const HotelFormModal = ({
                         className={`btn btn-sm ${checked ? 'btn-primary' : 'btn-outline'}`}
                         onClick={() => toggleAmenity(a.ma_tien_nghi)}
                       >
-                        {a.bieu_tuong} {a.ten}
+                        {getAmenityIcon(a.bieu_tuong, a.ten)} {a.ten}
                       </button>
                     );
                   })}

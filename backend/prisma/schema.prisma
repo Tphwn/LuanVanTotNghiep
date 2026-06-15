@@ -86,6 +86,7 @@ model dat_phong {
   ngay_dat           DateTime                 @default(now()) @db.DateTime(0)
   chi_tiet_dat_phong chi_tiet_dat_phong[]
   danh_gia           danh_gia?
+  bao_cao            bao_cao[]
   khach_hang         khach_hang               @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_dp_kh")
   khuyen_mai         khuyen_mai?              @relation(fields: [ma_khuyen_mai], references: [ma_khuyen_mai], onDelete: Restrict, onUpdate: Restrict, map: "fk_dp_km")
   loai_phong         loai_phong               @relation(fields: [ma_loai_phong], references: [ma_loai_phong], onUpdate: Restrict, map: "fk_dp_lp")
@@ -114,6 +115,8 @@ model doi_tac {
   ma_nguoi_dung                                Int                 @unique(map: "ma_nguoi_dung")
   nguoi_cap_id                                 Int
   ten_cong_ty                                  String              @db.VarChar(150)
+  email_lien_he                                String?             @db.VarChar(100)
+  anh_dai_dien                                 String?             @db.VarChar(255)
   ma_so_thue                                   String?             @db.VarChar(20)
   so_dien_thoai                                String?             @db.VarChar(15)
   dia_chi                                      String?             @db.Text
@@ -182,6 +185,7 @@ model khach_hang {
   tong_tien_da_chi      Decimal                 @default(0) @db.Decimal(12, 0)
   tong_lan_dat          Int                     @default(0)
   danh_gia              danh_gia[]
+  bao_cao               bao_cao[]
   dat_phong             dat_phong[]
   nguoi_dung            nguoi_dung              @relation(fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_kh_nguoidung")
   khach_hang_khuyen_mai khach_hang_khuyen_mai[]
@@ -224,6 +228,7 @@ model khach_san {
   khach_san_tien_nghi khach_san_tien_nghi[]
   khuyen_mai          khuyen_mai[]
   loai_phong          loai_phong[]
+  bao_cao             bao_cao[]
 
   @@index([duyet_boi_admin_id], map: "fk_ks_admin")
   @@index([ma_dia_diem], map: "fk_ks_diadiem")
@@ -274,6 +279,7 @@ model loai_phong {
   dien_tich            Decimal?               @db.Decimal(5, 1)
   suc_chua             Int
   so_luong_phong       Int
+  so_luong_mo_ban      Int                    @default(0)
   gia_co_ban           Decimal                @db.Decimal(12, 0)
   mo_ta                String?                @db.Text
   trang_thai           loai_phong_trang_thai  @default(hoat_dong)
@@ -320,6 +326,7 @@ model nguoi_dung {
   khuyen_mai                                khuyen_mai[]
   thong_bao                                 thong_bao[]
   yeu_cau_tien_nghi                         yeu_cau_tien_nghi[]
+  bao_cao_xu_ly                             bao_cao[]             @relation("bao_cao_admin")
 }
 
 model thanh_toan {
@@ -368,6 +375,7 @@ model yeu_cau_tien_nghi {
   admin_xu_ly_id   Int?
   tien_nghi_tao_id Int?
   ten_de_xuat      String                       @db.VarChar(100)
+  loai_de_xuat     loai_enum?
   mo_ta            String?                      @db.Text
   trang_thai       yeu_cau_tien_nghi_trang_thai @default(cho_xu_ly)
   phan_hoi         String?                      @db.Text
@@ -380,6 +388,32 @@ model yeu_cau_tien_nghi {
   @@index([admin_xu_ly_id], map: "fk_yctn_admin")
   @@index([ma_doi_tac], map: "fk_yctn_doitac")
   @@index([tien_nghi_tao_id], map: "fk_yctn_tiennghi")
+}
+
+model bao_cao {
+  ma_bao_cao     Int                @id @default(autoincrement())
+  ma_khach_hang  Int?
+  ma_dat_phong   Int?
+  ma_khach_san   Int?
+  loai_bao_cao   bao_cao_loai       @default(khac)
+  tieu_de        String             @db.VarChar(200)
+  noi_dung       String             @db.Text
+  minh_chung     String?            @db.VarChar(255)
+  trang_thai     bao_cao_trang_thai @default(cho_xu_ly)
+  admin_xu_ly_id Int?
+  phan_hoi_admin String?            @db.Text
+  ngay_bao_cao   DateTime           @default(now()) @db.DateTime(0)
+  ngay_xu_ly     DateTime?          @db.DateTime(0)
+  khach_hang     khach_hang?        @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onDelete: Restrict, onUpdate: Restrict, map: "fk_bc_kh")
+  dat_phong      dat_phong?         @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onDelete: Restrict, onUpdate: Restrict, map: "fk_bc_dp")
+  khach_san      khach_san?         @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Restrict, onUpdate: Restrict, map: "fk_bc_ks")
+  nguoi_dung     nguoi_dung?        @relation("bao_cao_admin", fields: [admin_xu_ly_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_bc_admin")
+
+  @@index([ma_khach_hang], map: "fk_bc_kh")
+  @@index([ma_dat_phong], map: "fk_bc_dp")
+  @@index([ma_khach_san], map: "fk_bc_ks")
+  @@index([admin_xu_ly_id], map: "fk_bc_admin")
+  @@index([trang_thai], map: "idx_bc_trang_thai")
 }
 
 model cau_hinh_he_thong {
@@ -531,6 +565,20 @@ enum danh_gia_trang_thai {
   cho_duyet
   hien_thi
   an
+}
+
+enum bao_cao_loai {
+  khach_san
+  dat_phong
+  dich_vu
+  lua_dao
+  khac
+}
+
+enum bao_cao_trang_thai {
+  cho_xu_ly
+  da_chap_nhan
+  tu_choi
 }
 
 enum dat_phong_phuong_thuc_tt {

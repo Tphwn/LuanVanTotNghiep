@@ -37,6 +37,9 @@ app.use("/api/auth", require("./modules/auth/auth.routes"));
 ========================= */
 app.use("/api/admin/users", authMiddleware, adminMiddleware, require("./modules/admin/user/adminUser.routes"));
 app.use("/api/admin/hotels", authMiddleware, adminMiddleware, require("./modules/admin/hotel/hotel.routes"));
+app.use("/api/admin/room-types", authMiddleware, adminMiddleware, require("./modules/admin/roomType/adminRoomType.routes"));
+app.use("/api/admin/reviews", authMiddleware, adminMiddleware, require("./modules/admin/review/adminReview.routes"));
+app.use("/api/admin/reports", authMiddleware, adminMiddleware, require("./modules/admin/report/adminReport.routes"));
 app.use("/api/admin/bookings", authMiddleware, adminMiddleware, require("./modules/admin/booking/adminBooking.routes"));
 app.use("/api/admin/payments", authMiddleware, adminMiddleware, require("./modules/admin/payment/adminPayment.routes"));
 app.use("/api/admin/finance", authMiddleware, adminMiddleware, require("./modules/admin/finance/finance.routes"));
@@ -48,7 +51,11 @@ app.use("/api/partner/rooms", authMiddleware, require("./modules/roomType/roomTy
 app.use("/api/partner/hotels", require("./modules/hotel/hotel.routes")); // Thêm authMiddleware nếu cần
 app.use("/api/partner/bookings", require("./modules/booking/booking.routes")); // Thêm authMiddleware nếu cần
 app.use("/api/partner/pricing", require("./modules/pricing/pricing.routes")); // Thêm authMiddleware nếu cần
+app.use("/api/partner/inventory", require("./modules/inventory/inventory.routes"));
+app.use("/api/partner/reviews", require("./modules/review/partnerReview.routes"));
+app.use("/api/partner/account", require("./modules/account/partnerAccount.routes"));
 app.use("/api/partner/finance", require("./modules/finance/finance.routes")); // Thêm authMiddleware nếu cần
+app.use("/api/partner/notifications", require("./modules/notification/partnerNotification.routes"));
 
 /* =========================
    AMENITY ROUTES

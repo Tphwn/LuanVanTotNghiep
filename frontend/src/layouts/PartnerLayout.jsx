@@ -2,6 +2,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
 import PartnerSidebar from '../components/layout/PartnerSidebar';
+import PartnerNotificationBell from '../components/partner/PartnerNotificationBell';
 
 const PartnerLayout = () => {
   const dispatch = useDispatch();
@@ -25,6 +26,7 @@ const PartnerLayout = () => {
           </div>
         </div>
         <div className="header-actions">
+          <PartnerNotificationBell />
           <div className="header-user-text">
             <div className="header-smoke">Xin chào,</div>
             <div className="header-username">{user?.ho_ten || user?.email || 'Đối tác'}</div>

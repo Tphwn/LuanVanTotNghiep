@@ -30,8 +30,8 @@ export const fetchRequests = createAsyncThunk("amenities/fetchRequests", async (
   return res.data.data;
 });
 
-export const approveRequest = createAsyncThunk("amenities/approveRequest", async (id) => {
-  const res = await api.patch(`${ENDPOINT}/requests/${id}/approve`);
+export const approveRequest = createAsyncThunk("amenities/approveRequest", async ({ id, loai, bieu_tuong }) => {
+  const res = await api.patch(`${ENDPOINT}/requests/${id}/approve`, { loai, bieu_tuong });
   return res.data.data;
 });
 
@@ -69,15 +69,18 @@ const amenitySlice = createSlice({
 
       // Yêu cầu
       .addCase(fetchRequests.fulfilled, (state, action) => {
-        state.requests = action.payload;
+        state.requests = action.payload || [];
+      })
+      .addCase(fetchRequests.rejected, (state) => {
+        state.requests = [];
       })
       .addCase(approveRequest.fulfilled, (state, action) => {
-        const i = state.requests.findIndex(x => x.ma_yeu_cau === action.payload.ma_yeu_cau);
-        if (i !== -1) state.requests[i] = action.payload;
+        const i = state.requests.findIndex((x) => x.ma_yeu_cau === action.payload?.ma_yeu_cau);
+        if (i !== -1 && action.payload) state.requests[i] = action.payload;
       })
       .addCase(rejectRequest.fulfilled, (state, action) => {
-        const i = state.requests.findIndex(x => x.ma_yeu_cau === action.payload.ma_yeu_cau);
-        if (i !== -1) state.requests[i] = action.payload;
+        const i = state.requests.findIndex((x) => x.ma_yeu_cau === action.payload?.ma_yeu_cau);
+        if (i !== -1 && action.payload) state.requests[i] = action.payload;
       });
   },
 });
