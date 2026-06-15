@@ -7,5 +7,6 @@ router.get('/hotels',   authMiddleware, ctrl.getMyHotels);
 router.get('/calendar', authMiddleware, ctrl.getCalendar);
 router.post('/save',    authMiddleware, ctrl.savePrices);
 router.delete('/delete', authMiddleware, ctrl.deletePrice);
+router.post('/delete-bulk', authMiddleware, ctrl.deletePricesBulk);
 
 module.exports = router;

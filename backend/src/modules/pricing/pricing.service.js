@@ -46,10 +46,13 @@ const pricingService = {
 
     for (const entry of entries) {
       const { ma_loai_phong, ngay, don_gia, loai_gia } = entry;
+      if (!ma_loai_phong || !ngay) {
+        throw new Error('Mỗi bản ghi giá cần có ma_loai_phong và ngay');
+      }
 
       const result = await prisma.bang_gia_phong.upsert({
         where: {
-          uq_bgp: {
+          ma_loai_phong_ngay: {
             ma_loai_phong: Number(ma_loai_phong),
             ngay: new Date(ngay),
           },
@@ -68,10 +71,38 @@ const pricingService = {
   },
 
   deletePrice: async (maLoaiPhong, ngay) => {
-    return await prisma.bang_gia_phong.deleteMany({
+    const roomId = Number(maLoaiPhong);
+    if (!roomId || Number.isNaN(roomId)) {
+      throw new Error('ma_loai_phong không hợp lệ');
+    }
+    if (!ngay) {
+      throw new Error('ngay không hợp lệ');
+    }
+
+    return prisma.bang_gia_phong.deleteMany({
       where: {
-        ma_loai_phong: Number(maLoaiPhong),
+        ma_loai_phong: roomId,
         ngay: new Date(ngay),
+      },
+    });
+  },
+
+  deletePricesBulk: async (items = []) => {
+    const conditions = items
+      .map((item) => ({
+        ma_loai_phong: Number(item.maLoaiPhong ?? item.ma_loai_phong),
+        ngay: item.ngay,
+      }))
+      .filter((item) => item.ma_loai_phong && !Number.isNaN(item.ma_loai_phong) && item.ngay);
+
+    if (!conditions.length) return { count: 0 };
+
+    return prisma.bang_gia_phong.deleteMany({
+      where: {
+        OR: conditions.map((item) => ({
+          ma_loai_phong: item.ma_loai_phong,
+          ngay: new Date(item.ngay),
+        })),
       },
     });
   },

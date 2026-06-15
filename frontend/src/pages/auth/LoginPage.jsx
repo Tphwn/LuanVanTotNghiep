@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login, clearError } from '../../store/slices/authSlice';
 import ROUTES from '../../constants/routes';
 import getRedirectRoute from '../../utils/redirect';
@@ -11,6 +11,8 @@ import Card from '../../components/common/Card';
 const LoginPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from;
   const { loading, error, user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: '', mat_khau: '' });
@@ -25,8 +27,7 @@ const LoginPage = () => {
     try {
       const result = await dispatch(login(formData)).unwrap();
       if (result?.user) {
-        const redirectPath = getRedirectRoute(result.user);
-        navigate(redirectPath, { replace: true });
+        navigate(from || getRedirectRoute(result.user), { replace: true });
       }
     } catch (err) {
       console.error('Login failed:', err);
@@ -35,10 +36,9 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (user) {
-      const redirectPath = getRedirectRoute(user);
-      navigate(redirectPath, { replace: true });
+      navigate(from || getRedirectRoute(user), { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   return (
     <div style={{

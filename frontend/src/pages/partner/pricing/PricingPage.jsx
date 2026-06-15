@@ -159,8 +159,8 @@ const PricingPage = () => {
       if (entries.length > 0) {
         await api.post('/partner/pricing/save', { entries });
       }
-      for (const item of toDelete) {
-        await api.delete('/partner/pricing/delete', { data: item });
+      if (toDelete.length > 0) {
+        await api.post('/partner/pricing/delete-bulk', { items: toDelete });
       }
 
       const changedCount = entries.length;

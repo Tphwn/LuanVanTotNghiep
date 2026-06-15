@@ -28,6 +28,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  color: inherit;
+  flex-shrink: 0;
 }
 
 .brand-icon {
@@ -59,7 +61,61 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.header-nav-link {
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.header-nav-link:hover,
+.header-nav-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.header-nav-text-short {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .header-nav-text-full {
+    display: none;
+  }
+
+  .header-nav-text-short {
+    display: inline;
+  }
+
+  .header-nav-link {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
+
+.main-panel-full {
+  flex: 1;
+  padding: 0;
+  overflow-y: auto;
+  min-width: 0;
 }
 
 .header-user-text { text-align: right; }
@@ -475,6 +531,7 @@
   /* Header */
   .layout-header { padding: 0 16px; }
   .brand-subtitle { display: none; }
+  .header-nav { justify-content: flex-start; margin-left: 8px; }
   .hamburger { display: flex; } /* hiện nút hamburger */
 
   /* Sidebar — ẩn mặc định, hiện khi open */

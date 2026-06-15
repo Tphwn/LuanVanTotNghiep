@@ -76,6 +76,12 @@ app.use("/api/amenities/requests", require("./modules/amenity/amenityRequest.rou
 app.use("/api/amenities", require("./modules/amenity/amenity.routes"));
 
 /* =========================
+   PUBLIC / CUSTOMER ROUTES
+========================= */
+app.use("/api/public", require("./modules/public/publicHotel.routes"));
+app.use("/api/customer/bookings", require("./modules/customer/customerBooking.routes"));
+
+/* =========================
    404 + ERROR HANDLER
 ========================= */
 app.use(notFound);

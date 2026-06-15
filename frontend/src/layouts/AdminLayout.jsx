@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
+import ROUTES from '../constants/routes';
 
 const adminMenus = [
   { icon: '📊', title: 'Dashboard',   path: '/admin/dashboard' },
@@ -26,7 +27,7 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login', { replace: true });
+    navigate(ROUTES.HOME, { replace: true });
   };
 
   const closeSidebar = () => setSidebarOpen(false);

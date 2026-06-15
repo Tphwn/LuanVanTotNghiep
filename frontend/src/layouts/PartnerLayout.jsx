@@ -1,6 +1,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
+import ROUTES from '../constants/routes';
 import PartnerSidebar from '../components/layout/PartnerSidebar';
 import PartnerNotificationBell from '../components/partner/PartnerNotificationBell';
 
@@ -11,7 +12,7 @@ const PartnerLayout = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login', { replace: true });
+    navigate(ROUTES.HOME, { replace: true });
   };
 
   return (

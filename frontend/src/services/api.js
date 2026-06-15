@@ -29,7 +29,11 @@ api.interceptors.response.use(
     const isAuthRequest = url.includes("/auth/login") || url.includes("/auth/register");
     if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      localStorage.removeItem("user");
+      const path = window.location.pathname;
+      if (path !== "/" && !path.startsWith("/login") && !path.startsWith("/register")) {
+        window.location.href = "/";
+      }
     }
     return Promise.reject(error);
   }

@@ -13,6 +13,12 @@ import RoleRoute from './RoleRoute';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import HomePage from '../pages/customer/HomePage';
+import HotelSearchPage from '../pages/customer/HotelSearchPage';
+import CustomerRoomDetailPage from '../pages/customer/CustomerRoomDetailPage';
+import CustomerBookingPage from '../pages/customer/CustomerBookingPage';
+import MyBookingsPage from '../pages/customer/MyBookingsPage';
+import PromotionsPage from '../pages/customer/PromotionsPage';
+import ContactPage from '../pages/customer/ContactPage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 // Kéo 3 trang của quy trình Quản lý Khách sạn vào
@@ -57,7 +63,28 @@ const AppRoutes = () => {
 
         {/* Customer */}
         <Route path={ROUTES.HOME} element={
-          <MainLayout><HomePage /></MainLayout>
+          <MainLayout fullBleed><HomePage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.HOTELS} element={
+          <MainLayout><HotelSearchPage /></MainLayout>
+        } />
+        <Route path="/hotels/:hotelId/rooms/:roomId" element={
+          <MainLayout><CustomerRoomDetailPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.BOOKING} element={
+          <MainLayout><CustomerBookingPage /></MainLayout>
+        } />
+        <Route path="/hotels/:id" element={
+          <Navigate to={ROUTES.CUSTOMER.HOTELS} replace />
+        } />
+        <Route path={ROUTES.CUSTOMER.MY_BOOKINGS} element={
+          <MainLayout><MyBookingsPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.PROMOTIONS} element={
+          <MainLayout><PromotionsPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.CONTACT} element={
+          <MainLayout><ContactPage /></MainLayout>
         } />
 
         {/* Partner */}

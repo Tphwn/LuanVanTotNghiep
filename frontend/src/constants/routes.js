@@ -5,8 +5,11 @@ const ROUTES = {
   CUSTOMER: {
     HOTELS: '/hotels',
     HOTEL_DETAIL: '/hotels/:id',
+    ROOM_DETAIL: '/hotels/:hotelId/rooms/:roomId',
     BOOKING: '/booking',
     MY_BOOKINGS: '/my-bookings',
+    PROMOTIONS: '/promotions',
+    CONTACT: '/contact',
     PROFILE: '/profile',
   },
   PARTNER: {
