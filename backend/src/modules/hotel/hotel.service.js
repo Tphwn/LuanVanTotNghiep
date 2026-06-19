@@ -1,37 +1,30 @@
 const prisma = require('../../config/prisma');
+const { attachHotelImages } = require('../../utils/images');
 
 const hotelService = {
-
-  // Lấy danh sách KS của đối tác đang đăng nhập
+  // ── Partner ──────────────────────────────────────────────
   getMyHotels: async (doiTacId) => {
-    return await prisma.khach_san.findMany({
+    return prisma.khach_san.findMany({
       where: { ma_doi_tac: doiTacId },
       include: {
         dia_diem: true,
-        khach_san_tien_nghi: {
-          include: { tien_nghi: true },
-        },
+        khach_san_tien_nghi: { include: { tien_nghi: true } },
       },
       orderBy: { ngay_tao: 'desc' },
     });
   },
 
-  // Lấy chi tiết 1 khách sạn
   getById: async (id) => {
-    return await prisma.khach_san.findUnique({
+    return prisma.khach_san.findUnique({
       where: { ma_khach_san: Number(id) },
       include: {
         dia_diem: true,
-        khach_san_tien_nghi: {
-          include: { tien_nghi: true },
-        },
+        khach_san_tien_nghi: { include: { tien_nghi: true } },
         chinh_sach_huy: true,
         loai_phong: {
           where: { trang_thai: 'hoat_dong' },
           include: {
-            loai_phong_tien_nghi: {
-              include: { tien_nghi: true },
-            },
+            loai_phong_tien_nghi: { include: { tien_nghi: true } },
           },
         },
       },
@@ -45,21 +38,19 @@ const hotelService = {
       ma_dia_diem, tien_nghi_ids = [],
     } = data;
 
-    return await prisma.khach_san.create({
+    return prisma.khach_san.create({
       data: {
         ten,
         dia_chi,
         mo_ta,
         so_sao: Number(so_sao),
         gio_nhan_phong: gio_nhan_phong ? new Date(`1970-01-01T${gio_nhan_phong}`) : null,
-        gio_tra_phong:  gio_tra_phong  ? new Date(`1970-01-01T${gio_tra_phong}`)  : null,
+        gio_tra_phong: gio_tra_phong ? new Date(`1970-01-01T${gio_tra_phong}`) : null,
         ma_doi_tac: doiTacId,
         ma_dia_diem: Number(ma_dia_diem),
         trang_thai: 'cho_duyet',
         khach_san_tien_nghi: {
-          create: tien_nghi_ids.map(id => ({
-            ma_tien_nghi: Number(id),
-          })),
+          create: tien_nghi_ids.map((id) => ({ ma_tien_nghi: Number(id) })),
         },
       },
       include: {
@@ -68,6 +59,7 @@ const hotelService = {
       },
     });
   },
+
   update: async (id, data, doiTacId) => {
     const {
       ten, dia_chi, mo_ta, so_sao,
@@ -79,22 +71,17 @@ const hotelService = {
       where: { ma_khach_san: Number(id) },
     });
 
-    return await prisma.khach_san.update({
-      where: {
-        ma_khach_san: Number(id),
-        ma_doi_tac: doiTacId, 
-      },
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id), ma_doi_tac: doiTacId },
       data: {
         ten,
         dia_chi,
         mo_ta,
         so_sao: Number(so_sao),
         gio_nhan_phong: gio_nhan_phong ? new Date(`1970-01-01T${gio_nhan_phong}`) : null,
-        gio_tra_phong:  gio_tra_phong  ? new Date(`1970-01-01T${gio_tra_phong}`)  : null,
+        gio_tra_phong: gio_tra_phong ? new Date(`1970-01-01T${gio_tra_phong}`) : null,
         khach_san_tien_nghi: {
-          create: tien_nghi_ids.map(id => ({
-            ma_tien_nghi: Number(id),
-          })),
+          create: tien_nghi_ids.map((tid) => ({ ma_tien_nghi: Number(tid) })),
         },
       },
       include: {
@@ -105,18 +92,112 @@ const hotelService = {
   },
 
   getDiaDiem: async () => {
-    return await prisma.dia_diem.findMany({
-      orderBy: { ten_dia_diem: 'asc' },
-    });
+    return prisma.dia_diem.findMany({ orderBy: { ten_dia_diem: 'asc' } });
   },
 
   getAmenitiesForHotel: async () => {
-    return await prisma.tien_nghi.findMany({
-      where: {
-        loai: { in: ['khach_san', 'ca_hai'] },
-        trang_thai: 'hoat_dong',
-      },
+    return prisma.tien_nghi.findMany({
+      where: { loai: { in: ['khach_san', 'ca_hai'] }, trang_thai: 'hoat_dong' },
       orderBy: { ten: 'asc' },
+    });
+  },
+
+  // ── Admin ────────────────────────────────────────────────
+  getAllForAdmin: async () => {
+    const hotels = await prisma.khach_san.findMany({
+      include: {
+        dia_diem: true,
+        doi_tac: { select: { ten_cong_ty: true, ma_doi_tac: true } },
+        _count: { select: { loai_phong: true } },
+      },
+      orderBy: { ngay_tao: 'desc' },
+    });
+    return attachHotelImages(hotels);
+  },
+
+  getDetailForAdmin: async (id) => {
+    const hotel = await prisma.khach_san.findUnique({
+      where: { ma_khach_san: Number(id) },
+      include: {
+        dia_diem: true,
+        doi_tac: {
+          include: {
+            nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
+              select: { email: true, so_dien_thoai: true },
+            },
+          },
+        },
+        khach_san_tien_nghi: { include: { tien_nghi: true } },
+        loai_phong: {
+          select: {
+            ma_loai_phong: true,
+            ten_loai: true,
+            gia_co_ban: true,
+            suc_chua: true,
+            so_luong_phong: true,
+            trang_thai: true,
+          },
+          orderBy: { ten_loai: 'asc' },
+        },
+        _count: { select: { loai_phong: true } },
+      },
+    });
+    if (!hotel) return null;
+
+    const hinh_anh = await prisma.hinh_anh.findMany({
+      where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotel.ma_khach_san },
+      orderBy: { thu_tu: 'asc' },
+    });
+
+    return { ...hotel, hinh_anh };
+  },
+
+  approveHotel: async (id, adminId) => {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id) },
+      data: {
+        trang_thai: 'hoat_dong',
+        duyet_boi_admin_id: Number(adminId),
+        ngay_duyet: new Date(),
+      },
+    });
+  },
+
+  rejectHotel: async (id, adminId, lyDo) => {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id) },
+      data: {
+        trang_thai: 'tu_choi',
+        ly_do_tu_choi: lyDo,
+        duyet_boi_admin_id: Number(adminId),
+        ngay_duyet: new Date(),
+      },
+    });
+  },
+
+  requestInfoHotel: async (id, adminId, ghiChu) => {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id) },
+      data: {
+        trang_thai: 'yeu_cau_sua',
+        ly_do_tu_choi: ghiChu,
+        duyet_boi_admin_id: Number(adminId),
+        ngay_duyet: new Date(),
+      },
+    });
+  },
+
+  lockHotel: async (id) => {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id) },
+      data: { trang_thai: 'bi_khoa' },
+    });
+  },
+
+  unlockHotel: async (id) => {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: Number(id) },
+      data: { trang_thai: 'hoat_dong' },
     });
   },
 };

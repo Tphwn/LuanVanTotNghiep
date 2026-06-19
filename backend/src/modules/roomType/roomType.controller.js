@@ -71,24 +71,37 @@ exports.createRoomType = async (req, res) => {
   try {
     const data = req.body;
     const tienNghi = parseJsonField(data.tien_nghi_ids, []);
-    const files = req.files || []; // Đảm bảo luôn là mảng
+    const files = req.files || [];
+    const hotelId = safeInt(data.ma_khach_san);
+
+    const hotel = await prisma.khach_san.findUnique({
+      where: { ma_khach_san: hotelId },
+      select: { trang_thai: true },
+    });
+    if (!hotel) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn' });
+    }
+
+    const hotelActive = hotel.trang_thai === 'hoat_dong';
+    const soPhong = safeInt(data.so_luong_phong);
 
     const result = await prisma.$transaction(async (tx) => {
       const newRoom = await tx.loai_phong.create({
         data: {
-          ma_khach_san: safeInt(data.ma_khach_san),
+          ma_khach_san: hotelId,
           ten_loai: data.ten_loai,
           gia_co_ban: safeFloat(data.gia_co_ban),
           dien_tich: safeInt(data.dien_tich),
           suc_chua: safeInt(data.suc_chua),
-          so_luong_phong: safeInt(data.so_luong_phong),
+          so_luong_phong: soPhong,
+          so_luong_mo_ban: hotelActive ? soPhong : 0,
           so_giuong: safeInt(data.so_giuong),
-          mo_ta: data.mo_ta || "",
-          trang_thai: 'hoat_dong',
+          mo_ta: data.mo_ta || '',
+          trang_thai: hotelActive ? 'hoat_dong' : 'an',
           loai_phong_tien_nghi: {
-            create: tienNghi.map(id => ({ ma_tien_nghi: safeInt(id) }))
-          }
-        }
+            create: tienNghi.map((id) => ({ ma_tien_nghi: safeInt(id) })),
+          },
+        },
       });
 
       if (files.length > 0) {
@@ -153,6 +166,44 @@ exports.updateRoomType = async (req, res) => {
     });
 
     res.status(200).json({ success: true, message: 'Cập nhật thành công' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ===== BẬT / TẮT HIỂN THỊ LOẠI PHÒNG =====
+exports.toggleRoomStatus = async (req, res) => {
+  try {
+    const roomId = parseInt(req.params.id, 10);
+    const room = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: roomId },
+      include: { khach_san: { select: { trang_thai: true } } },
+    });
+
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy loại phòng' });
+    }
+
+    const newStatus = room.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong';
+
+    if (newStatus === 'hoat_dong' && room.khach_san.trang_thai !== 'hoat_dong') {
+      return res.status(400).json({
+        success: false,
+        message: 'Khách sạn chưa hoạt động. Chỉ loại phòng của khách sạn đã duyệt mới hiển thị trên trang khách hàng.',
+      });
+    }
+
+    const updated = await prisma.loai_phong.update({
+      where: { ma_loai_phong: roomId },
+      data: {
+        trang_thai: newStatus,
+        so_luong_mo_ban: newStatus === 'hoat_dong'
+          ? (Number(room.so_luong_mo_ban) > 0 ? room.so_luong_mo_ban : room.so_luong_phong)
+          : 0,
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

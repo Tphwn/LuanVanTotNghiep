@@ -1,7 +1,7 @@
 const RevenueReportPage = () => {
   return (
     <div>
-      <h1>📈 Báo cáo thống kê</h1>
+      <h1> Báo cáo thống kê</h1>
 
       <div
         style={{

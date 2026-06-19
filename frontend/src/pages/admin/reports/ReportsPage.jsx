@@ -1,30 +1,32 @@
 import { useEffect, useState } from "react";
 import api from "../../../services/api";
+import { Eye } from "lucide-react";
+import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 
 const REPORT_STATUS = {
-  cho_xu_ly:    { label: "Chờ xử lý", cls: "badge-warning" },
-  da_chap_nhan: { label: "Đã chấp nhận", cls: "badge-success" },
-  tu_choi:      { label: "Từ chối", cls: "badge-danger" },
+  cho_xu_ly:    { label: "Chờ xử lý", cls: "badge-warning"},
+  da_chap_nhan: { label:"Đã chấp nhận", cls: "badge-success"},
+  tu_choi:      { label:"Từ chối", cls: "badge-danger"},
 };
 
 const REPORT_TYPE = {
-  khach_san: { label: "Khách sạn", icon: "🏨", color: "#0958d9" },
-  dat_phong: { label: "Đặt phòng", icon: "📋", color: "#3C7363" },
-  dich_vu:   { label: "Dịch vụ", icon: "🛎️", color: "#7c3aed" },
-  lua_dao:   { label: "Lừa đảo", icon: "⚠️", color: "#e05c5c" },
-  khac:      { label: "Khác", icon: "📌", color: "#888" },
+  khach_san: { label:"Khách sạn", color: "#0958d9"},
+  dat_phong: { label:"Đặt phòng", color: "#3C7363"},
+  dich_vu:   { label:"Dịch vụ", color: "#7c3aed"},
+  lua_dao:   { label:"Lừa đảo", color: "#e05c5c"},
+  khac:      { label:"Khác", color: "#888"},
 };
 
 const TIME_PRESETS = [
-  { value: "all", label: "Tất cả thời gian" },
-  { value: "7", label: "7 ngày qua" },
-  { value: "30", label: "30 ngày qua" },
-  { value: "90", label: "90 ngày qua" },
-  { value: "custom", label: "Tùy chọn" },
+  { value:"all", label: "Tất cả thời gian"},
+  { value:"7", label: "7 ngày qua"},
+  { value:"30", label: "30 ngày qua"},
+  { value:"90", label: "90 ngày qua"},
+  { value:"custom", label: "Tùy chọn"},
 ];
 
 const getDateRange = (preset, customFrom, customTo) => {
-  if (preset === "all") return {};
+  if (preset ==="all") return {};
   if (preset === "custom") {
     const r = {};
     if (customFrom) r.tu_ngay = customFrom;
@@ -69,38 +71,38 @@ const DetailModal = ({ report, onClose, onAccept, onReject, actionLoading }) => 
   const [note, setNote] = useState("");
   if (!report) return null;
 
-  const st = REPORT_STATUS[report.trang_thai] || { label: report.trang_thai, cls: "badge-default" };
-  const isPending = report.trang_thai === "cho_xu_ly";
+  const st = REPORT_STATUS[report.trang_thai] || { label: report.trang_thai, cls: "badge-default"};
+  const isPending = report.trang_thai ==="cho_xu_ly";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" style={{ maxWidth: 620, maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay"onClick={onClose}>
+      <div className="modal-box"style={{ maxWidth: 620, maxHeight:"90vh", overflowY: "auto"}} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">Chi tiết báo cáo #{report.ma_bao_cao}</h3>
-          <button type="button" className="modal-close" onClick={onClose}>×</button>
+          <button type="button"className="modal-close"onClick={onClose}>×</button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display:"flex", gap: 8, marginBottom: 16, flexWrap: "wrap"}}>
           <span className={`badge ${st.cls}`}>{st.label}</span>
           <TypeBadge type={report.loai_bao_cao} />
         </div>
 
-        <div className="content-card" style={{ padding: "14px 16px", marginBottom: 14, background: "#f8fdfb" }}>
-          <h4 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#3C7363" }}>Thông tin báo cáo</h4>
-          <InfoRow label="Tiêu đề" value={report.tieu_de} />
-          <InfoRow label="Người báo cáo" value={report.khach_hang?.ho_ten} />
-          <InfoRow label="Khách sạn" value={report.ten_khach_san} />
-          <InfoRow label="Loại phòng" value={report.ten_loai_phong} />
-          <InfoRow label="Mã đơn hàng" value={report.ma_don_hang} />
-          <InfoRow label="Ngày gửi" value={formatDateTime(report.ngay_bao_cao)} />
-          {report.ngay_xu_ly && <InfoRow label="Ngày xử lý" value={formatDateTime(report.ngay_xu_ly)} />}
-          {report.admin_xu_ly && <InfoRow label="Admin xử lý" value={report.admin_xu_ly} />}
+        <div className="content-card"style={{ padding:"14px 16px", marginBottom: 14, background: "#f8fdfb"}}>
+          <h4 style={{ margin:"0 0 10px", fontSize: 13, fontWeight: 600, color: "#3C7363"}}>Thông tin báo cáo</h4>
+          <InfoRow label="Tiêu đề"value={report.tieu_de} />
+          <InfoRow label="Người báo cáo"value={report.khach_hang?.ho_ten} />
+          <InfoRow label="Khách sạn"value={report.ten_khach_san} />
+          <InfoRow label="Loại phòng"value={report.ten_loai_phong} />
+          <InfoRow label="Mã đơn hàng"value={report.ma_don_hang} />
+          <InfoRow label="Ngày gửi"value={formatDateTime(report.ngay_bao_cao)} />
+          {report.ngay_xu_ly && <InfoRow label="Ngày xử lý"value={formatDateTime(report.ngay_xu_ly)} />}
+          {report.admin_xu_ly && <InfoRow label="Admin xử lý"value={report.admin_xu_ly} />}
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363" }}>Nội dung báo cáo</h4>
+          <h4 style={{ margin:"0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363"}}>Nội dung báo cáo</h4>
           <div style={{
-            padding: "14px 16px", borderRadius: 10, border: "1px solid #e8f5f1",
+            padding:"14px 16px", borderRadius: 10, border: "1px solid #e8f5f1",
             fontSize: 14, color: "#444", lineHeight: 1.7, background: "#fff",
           }}>
             {report.noi_dung}
@@ -109,18 +111,18 @@ const DetailModal = ({ report, onClose, onAccept, onReject, actionLoading }) => 
 
         {report.minh_chung && (
           <div style={{ marginBottom: 14 }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363" }}>Minh chứng</h4>
-            <a href={report.minh_chung} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">
-              📎 Xem minh chứng
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363"}}>Minh chứng</h4>
+            <a href={report.minh_chung} target="_blank"rel="noreferrer"className="btn btn-outline btn-sm">
+               Xem minh chứng
             </a>
           </div>
         )}
 
         {report.phan_hoi_admin && (
           <div style={{ marginBottom: 16 }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363" }}>Phản hồi admin</h4>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#3C7363"}}>Phản hồi admin</h4>
             <div style={{
-              padding: "12px 14px", background: "#f0f7f5", borderRadius: 8,
+              padding:"12px 14px", background: "#f0f7f5", borderRadius: 8,
               borderLeft: "3px solid #3C7363", fontSize: 14, color: "#444",
             }}>
               {report.phan_hoi_admin}
@@ -130,41 +132,28 @@ const DetailModal = ({ report, onClose, onAccept, onReject, actionLoading }) => 
 
         {isPending && (
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6, color: "#1a2e28" }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6, color: "#1a2e28"}}>
               Ghi chú xử lý (bắt buộc khi từ chối)
             </label>
             <textarea
-              className="search-input"
-              rows={3}
-              style={{ width: "100%", resize: "vertical" }}
-              placeholder="Nhập phản hồi gửi đến người báo cáo..."
-              value={note}
+              className="search-input"rows={3}
+              style={{ width:"100%", resize: "vertical"}}
+              placeholder="Nhập phản hồi gửi đến người báo cáo..."value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
+        <div style={{ display:"flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap"}}>
+          <button type="button"className="btn btn-ghost"onClick={onClose}>Đóng</button>
           {isPending && (
             <>
-              <button
-                type="button"
-                className="btn btn-success btn-sm"
-                disabled={actionLoading}
-                onClick={() => onAccept(report, note)}
-              >
-                {actionLoading ? "⏳..." : "✅ Chấp nhận"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={{ background: "#e05c5c", color: "#fff", border: "none" }}
-                disabled={actionLoading}
-                onClick={() => onReject(report, note)}
-              >
-                {actionLoading ? "⏳..." : "❌ Từ chối"}
-              </button>
+              <ActionButton variant="approve" disabled={actionLoading} onClick={() => onAccept(report, note)}>
+                {actionLoading ? "..." : "Chấp nhận"}
+              </ActionButton>
+              <ActionButton variant="reject" disabled={actionLoading} onClick={() => onReject(report, note)}>
+                {actionLoading ? "..." : "Từ chối"}
+              </ActionButton>
             </>
           )}
         </div>
@@ -267,7 +256,7 @@ const ReportsPage = () => {
     }
   };
 
-  const hasActiveFilter = statusFilter !== "all" || typeFilter !== "all" || timePreset !== "all";
+  const hasActiveFilter = statusFilter !== "all"|| typeFilter !=="all"|| timePreset !=="all";
   const dash = dashboard || {};
 
   return (
@@ -281,32 +270,31 @@ const ReportsPage = () => {
 
       {toast && (
         <div style={{
-          background: toast.type === "success" ? "#e8f5f1" : "#fff0f0",
-          border: `1px solid ${toast.type === "success" ? "#8FD9C4" : "#ffb3b3"}`,
-          color: toast.type === "success" ? "#3C7363" : "#e05c5c",
+          background: toast.type === "success"?"#e8f5f1":"#fff0f0",
+          border: `1px solid ${toast.type === "success"?"#8FD9C4":"#ffb3b3"}`,
+          color: toast.type === "success"?"#3C7363":"#e05c5c",
           padding: "10px 16px", borderRadius: 8, marginBottom: 16, fontSize: 14,
         }}>
-          {toast.type === "success" ? "✅" : "❌"} {toast.msg}
+          {toast.type === "success"?"":""} {toast.msg}
         </div>
       )}
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[
-          { id: "dashboard", label: "📊 Tổng quan" },
-          { id: "manage", label: "📋 Quản lý báo cáo" },
+          { id: "dashboard", label: "Tổng quan" },
+          { id: "manage", label: "Quản lý báo cáo" },
         ].map((tab) => (
           <button
             key={tab.id}
-            type="button"
-            className={`btn btn-sm ${activeTab === tab.id ? "btn-primary" : "btn-ghost"}`}
+            type="button"className={`btn btn-sm ${activeTab === tab.id ?"btn-primary":"btn-ghost"}`}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
-            {tab.id === "manage" && dash.cho_xu_ly > 0 && (
+            {tab.id === "manage"&& dash.cho_xu_ly > 0 && (
               <span style={{
-                marginLeft: 6, background: activeTab === tab.id ? "rgba(255,255,255,0.3)" : "#fff3e0",
-                color: activeTab === tab.id ? "#fff" : "#b36b00",
+                marginLeft: 6, background: activeTab === tab.id ?"rgba(255,255,255,0.3)":"#fff3e0",
+                color: activeTab === tab.id ? "#fff":"#b36b00",
                 borderRadius: 10, padding: "1px 7px", fontSize: 11,
               }}>
                 {dash.cho_xu_ly}
@@ -317,31 +305,30 @@ const ReportsPage = () => {
       </div>
 
       {/* Dashboard */}
-      {activeTab === "dashboard" && (
+      {activeTab === "dashboard"&& (
         <>
-          <div className="stats-grid" style={{ marginBottom: 16 }}>
+          <div className="stats-grid"style={{ marginBottom: 16 }}>
             {[
-              { label: "Tổng báo cáo", value: dash.tong_bao_cao ?? 0, color: "#3C7363", icon: "📋" },
-              { label: "Chờ xử lý", value: dash.cho_xu_ly ?? 0, color: "#b36b00", icon: "⏳" },
-              { label: "Đã chấp nhận", value: dash.da_chap_nhan ?? 0, color: "#52c41a", icon: "✅" },
-              { label: "Từ chối", value: dash.tu_choi ?? 0, color: "#e05c5c", icon: "❌" },
-              { label: "30 ngày qua", value: dash.moi_30_ngay ?? 0, color: "#0958d9", icon: "📅" },
+              { label:"Tổng báo cáo", value: dash.tong_bao_cao ?? 0, color: "#3C7363"},
+              { label:"Chờ xử lý", value: dash.cho_xu_ly ?? 0, color: "#b36b00"},
+              { label:"Đã chấp nhận", value: dash.da_chap_nhan ?? 0, color: "#52c41a"},
+              { label:"Từ chối", value: dash.tu_choi ?? 0, color: "#e05c5c"},
+              { label:"30 ngày qua", value: dash.moi_30_ngay ?? 0, color: "#0958d9"},
             ].map((s) => (
-              <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div key={s.label} className="stat-card"style={{ borderTop: `3px solid ${s.color}` }}>
+                <div style={{ display:"flex", justifyContent: "space-between"}}>
                   <div className="stat-card-label">{s.label}</div>
-                  <span>{s.icon}</span>
-                </div>
-                <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+                  </div>
+                <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div className="content-card">
-              <h3 className="content-card-title" style={{ marginBottom: 14 }}>Phân loại báo cáo</h3>
+              <h3 className="content-card-title"style={{ marginBottom: 14 }}>Phân loại báo cáo</h3>
               {(dash.theo_loai || []).length === 0 ? (
-                <p style={{ color: "#888", fontSize: 13, textAlign: "center", padding: 24 }}>Chưa có dữ liệu</p>
+                <p style={{ color:"#888", fontSize: 13, textAlign: "center", padding: 24 }}>Chưa có dữ liệu</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {(dash.theo_loai || []).map((item) => {
@@ -354,8 +341,8 @@ const ReportsPage = () => {
                           <span>{t.icon} {t.label}</span>
                           <strong style={{ color: t.color }}>{item.so_luong} ({pct}%)</strong>
                         </div>
-                        <div style={{ height: 8, background: "#e8f5f1", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: t.color, borderRadius: 4 }} />
+                        <div style={{ height: 8, background: "#e8f5f1", borderRadius: 4, overflow: "hidden"}}>
+                          <div style={{ width: `${pct}%`, height:"100%", background: t.color, borderRadius: 4 }} />
                         </div>
                       </div>
                     );
@@ -367,7 +354,7 @@ const ReportsPage = () => {
             <div className="content-card">
               <div className="content-card-header">
                 <h3 className="content-card-title">Báo cáo gần đây</h3>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActiveTab("manage")}>
+                <button type="button"className="btn btn-ghost btn-sm"onClick={() => setActiveTab("manage")}>
                   Xem tất cả →
                 </button>
               </div>
@@ -376,16 +363,15 @@ const ReportsPage = () => {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {(dash.gan_day || []).map((r) => {
-                    const st = REPORT_STATUS[r.trang_thai] || { label: r.trang_thai, cls: "badge-default" };
+                    const st = REPORT_STATUS[r.trang_thai] || { label: r.trang_thai, cls: "badge-default"};
                     return (
                       <div
                         key={r.ma_bao_cao}
-                        role="button"
-                        tabIndex={0}
+                        role="button"tabIndex={0}
                         onClick={() => { setActiveTab("manage"); setDetailReport(r); }}
-                        onKeyDown={(e) => e.key === "Enter" && setDetailReport(r)}
+                        onKeyDown={(e) => e.key === "Enter"&& setDetailReport(r)}
                         style={{
-                          padding: "12px 14px", borderRadius: 10, border: "1px solid #e8f5f1",
+                          padding:"12px 14px", borderRadius: 10, border: "1px solid #e8f5f1",
                           cursor: "pointer", transition: "background 0.15s",
                         }}
                       >
@@ -393,7 +379,7 @@ const ReportsPage = () => {
                           <span style={{ fontWeight: 600, fontSize: 13 }}>#{r.ma_bao_cao} · {r.tieu_de}</span>
                           <span className={`badge ${st.cls}`} style={{ fontSize: 10 }}>{st.label}</span>
                         </div>
-                        <div style={{ fontSize: 12, color: "#888" }}>
+                        <div style={{ fontSize: 12, color: "#888"}}>
                           {r.khach_hang?.ho_ten} · {formatDate(r.ngay_bao_cao)}
                         </div>
                       </div>
@@ -407,13 +393,13 @@ const ReportsPage = () => {
       )}
 
       {/* Manage */}
-      {activeTab === "manage" && (
+      {activeTab ==="manage"&& (
         <>
-          <div className="content-card" style={{ marginBottom: 16, padding: "16px 20px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end" }}>
+          <div className="content-card"style={{ marginBottom: 16, padding:"16px 20px"}}>
+            <div style={{ display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end"}}>
               <div>
-                <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
-                <select className="search-input" style={{ width: "100%" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <label style={{ fontSize: 12, color:"#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
+                <select className="search-input"style={{ width:"100%"}} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                   <option value="all">Tất cả</option>
                   <option value="cho_xu_ly">Chờ xử lý</option>
                   <option value="da_chap_nhan">Đã chấp nhận</option>
@@ -422,37 +408,35 @@ const ReportsPage = () => {
               </div>
               <div>
                 <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Loại báo cáo</label>
-                <select className="search-input" style={{ width: "100%" }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <select className="search-input"style={{ width:"100%"}} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                   <option value="all">Tất cả loại</option>
                   {Object.entries(REPORT_TYPE).map(([k, v]) => (
-                    <option key={k} value={k}>{v.icon} {v.label}</option>
+                    <option key={k} value={k}>{v.label}</option>
                   ))}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Thời gian</label>
-                <select className="search-input" style={{ width: "100%" }} value={timePreset} onChange={(e) => setTimePreset(e.target.value)}>
+                <select className="search-input"style={{ width:"100%"}} value={timePreset} onChange={(e) => setTimePreset(e.target.value)}>
                   {TIME_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
-              {timePreset === "custom" && (
+              {timePreset ==="custom"&& (
                 <>
                   <div>
-                    <label style={{ fontSize: 12, color: "#5a7a72", display: "block", marginBottom: 6 }}>Từ ngày</label>
-                    <input type="date" className="search-input" style={{ width: "100%" }} value={tuNgay} onChange={(e) => setTuNgay(e.target.value)} />
+                    <label style={{ fontSize: 12, color:"#5a7a72", display: "block", marginBottom: 6 }}>Từ ngày</label>
+                    <input type="date"className="search-input"style={{ width:"100%"}} value={tuNgay} onChange={(e) => setTuNgay(e.target.value)} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, color: "#5a7a72", display: "block", marginBottom: 6 }}>Đến ngày</label>
-                    <input type="date" className="search-input" style={{ width: "100%" }} value={denNgay} min={tuNgay} onChange={(e) => setDenNgay(e.target.value)} />
+                    <label style={{ fontSize: 12, color:"#5a7a72", display: "block", marginBottom: 6 }}>Đến ngày</label>
+                    <input type="date"className="search-input"style={{ width:"100%"}} value={denNgay} min={tuNgay} onChange={(e) => setDenNgay(e.target.value)} />
                   </div>
                 </>
               )}
               {hasActiveFilter && (
                 <div>
                   <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ width: "100%" }}
+                    type="button"className="btn btn-ghost btn-sm"style={{ width:"100%"}}
                     onClick={() => {
                       setStatusFilter("all");
                       setTypeFilter("all");
@@ -474,14 +458,13 @@ const ReportsPage = () => {
             </div>
 
             {loading ? (
-              <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>⏳ Đang tải...</div>
+              <div style={{ textAlign: "center", padding: 48, color: "#5a7a72"}}> Đang tải...</div>
             ) : reports.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
                 <p className="empty-state-text">Không có báo cáo phù hợp bộ lọc</p>
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ overflowX: "auto"}}>
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -492,29 +475,34 @@ const ReportsPage = () => {
                       <th>Khách sạn</th>
                       <th>Trạng thái</th>
                       <th>Ngày gửi</th>
-                      <th style={{ textAlign: "right" }}>Thao tác</th>
+                      <th>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reports.map((r) => {
-                      const st = REPORT_STATUS[r.trang_thai] || { label: r.trang_thai, cls: "badge-default" };
+                      const st = REPORT_STATUS[r.trang_thai] || { label: r.trang_thai, cls:"badge-default"};
                       return (
                         <tr key={r.ma_bao_cao}>
-                          <td style={{ fontWeight: 600, color: "#3C7363" }}>#{r.ma_bao_cao}</td>
+                          <td style={{ fontWeight: 600, color:"#3C7363"}}>#{r.ma_bao_cao}</td>
                           <td>
                             <div style={{ fontWeight: 500, maxWidth: 180 }}>{truncate(r.tieu_de, 40)}</div>
-                            <div style={{ fontSize: 12, color: "#888" }}>{truncate(r.noi_dung, 35)}</div>
+                            <div style={{ fontSize: 12, color:"#888"}}>{truncate(r.noi_dung, 35)}</div>
                           </td>
-                          <td style={{ fontSize: 13 }}>{r.khach_hang?.ho_ten || "—"}</td>
+                          <td style={{ fontSize: 13 }}>{r.khach_hang?.ho_ten ||"—"}</td>
                           <td><TypeBadge type={r.loai_bao_cao} /></td>
                           <td style={{ fontSize: 13 }}>{r.ten_khach_san || "—"}</td>
                           <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                          <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(r.ngay_bao_cao)}</td>
-                          <td style={{ textAlign: "right" }}>
-                            <button type="button" className="btn btn-outline btn-sm" onClick={() => setDetailReport(r)}>
-                              👁️ Chi tiết
-                            </button>
-                          </td>
+                          <td style={{ fontSize: 12, whiteSpace: "nowrap"}}>{formatDate(r.ngay_bao_cao)}</td>
+                          <ActionCell>
+                            <ActionButton
+                              variant="view"
+                              icon={Eye}
+                              title="Chi tiết"
+                              onClick={() => setDetailReport(r)}
+                            >
+                              Chi tiết
+                            </ActionButton>
+                          </ActionCell>
                         </tr>
                       );
                     })}

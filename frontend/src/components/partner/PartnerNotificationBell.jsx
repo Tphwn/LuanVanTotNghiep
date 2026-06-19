@@ -12,7 +12,7 @@ const PartnerNotificationBell = () => {
 
   const load = async () => {
     try {
-      const res = await api.get('/partner/notifications', { params: { loai: 'tien_nghi' } });
+      const res = await api.get('/partner/notifications', { params: { loai: 'tien_nghi'} });
       setItems(res.data.data?.items || []);
       setUnreadCount(res.data.data?.unreadCount || 0);
     } catch {
@@ -47,7 +47,7 @@ const PartnerNotificationBell = () => {
   const markAllRead = async () => {
     setLoading(true);
     try {
-      await api.patch('/partner/notifications/read-all', null, { params: { loai: 'tien_nghi' } });
+      await api.patch('/partner/notifications/read-all', null, { params: { loai: 'tien_nghi'} });
       await load();
     } finally {
       setLoading(false);
@@ -55,17 +55,16 @@ const PartnerNotificationBell = () => {
   };
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} style={{ position:'relative'}}>
       <button
-        type="button"
-        onClick={handleOpen}
+        type="button"onClick={handleOpen}
         style={{
-          position: 'relative', background: '#f0f7f5', border: '1px solid #d4ede6',
+          position:'relative', background: '#f0f7f5', border: '1px solid #d4ede6',
           borderRadius: 10, padding: '8px 12px', cursor: 'pointer', fontSize: 18,
         }}
         title="Thông báo tiện nghi"
       >
-        🔔
+        Thông báo
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute', top: -4, right: -4,
@@ -74,14 +73,14 @@ const PartnerNotificationBell = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 4px',
           }}>
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 9 ? '9+': unreadCount}
           </span>
         )}
       </button>
 
       {open && (
         <div style={{
-          position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 360,
+          position:'absolute', right: 0, top: 'calc(100% + 8px)', width: 360,
           background: '#fff', border: '1px solid #d4ede6', borderRadius: 12,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, overflow: 'hidden',
         }}>
@@ -89,12 +88,10 @@ const PartnerNotificationBell = () => {
             padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
-            <strong style={{ fontSize: 14, color: '#1a2e28' }}>Thông báo tiện nghi</strong>
+            <strong style={{ fontSize: 14, color: '#1a2e28'}}>Thông báo tiện nghi</strong>
             {unreadCount > 0 && (
               <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={loading}
+                type="button"className="btn btn-ghost btn-sm"disabled={loading}
                 onClick={markAllRead}
               >
                 Đánh dấu đã đọc
@@ -102,9 +99,9 @@ const PartnerNotificationBell = () => {
             )}
           </div>
 
-          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 360, overflowY:'auto'}}>
             {items.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: '#5a7a72', fontSize: 13 }}>
+              <div style={{ padding: 24, textAlign:'center', color: '#5a7a72', fontSize: 13 }}>
                 Chưa có thông báo
               </div>
             ) : items.map((n) => (
@@ -115,7 +112,7 @@ const PartnerNotificationBell = () => {
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
                   padding: '12px 16px', border: 'none', borderBottom: '1px solid #f5f5f5',
-                  background: n.da_doc ? '#fff' : '#f8fdfb', cursor: 'pointer',
+                  background: n.da_doc ? '#fff':'#f8fdfb', cursor: 'pointer',
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 13, color: '#1a2e28', marginBottom: 4 }}>

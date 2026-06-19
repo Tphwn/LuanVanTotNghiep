@@ -1,8 +1,8 @@
-const hotelService = require('./hotel.service');
+const hotelService = require('../../hotel/hotel.service');
 
 const getHotels = async (req, res, next) => {
   try {
-    const hotels = await hotelService.getHotels();
+    const hotels = await hotelService.getAllForAdmin();
     res.json({ success: true, data: hotels });
   } catch (error) {
     next(error);
@@ -11,7 +11,7 @@ const getHotels = async (req, res, next) => {
 
 const getById = async (req, res, next) => {
   try {
-    const hotel = await hotelService.getById(Number(req.params.id));
+    const hotel = await hotelService.getDetailForAdmin(Number(req.params.id));
     if (!hotel) return res.status(404).json({ success: false, message: 'Khách sạn không tồn tại' });
     res.json({ success: true, data: hotel });
   } catch (error) { next(error); }

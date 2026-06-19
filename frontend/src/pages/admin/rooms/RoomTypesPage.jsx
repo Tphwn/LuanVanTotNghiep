@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { resolveUploadUrl } from "../../../utils/media";
+import { Eye, Lock, Unlock } from "lucide-react";
+import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
 
 const ROOM_STATUS = {
-  hoat_dong: { label: "Đang bán", cls: "badge-success" },
-  an:        { label: "Đã ẩn", cls: "badge-warning" },
+  hoat_dong: { label: "Đang bán", cls: "badge-success"},
+  an:        { label:"Đã ẩn", cls: "badge-warning"},
 };
 
 const getMainImage = (room) => {
@@ -65,7 +67,7 @@ const RoomTypesPage = () => {
   }, [hotels, partnerFilter]);
 
   useEffect(() => {
-    if (hotelFilter !== "all" && !filteredHotels.some((h) => String(h.ma_khach_san) === String(hotelFilter))) {
+    if (hotelFilter !== "all"&& !filteredHotels.some((h) => String(h.ma_khach_san) === String(hotelFilter))) {
       setHotelFilter("all");
     }
   }, [filteredHotels, hotelFilter]);
@@ -74,11 +76,11 @@ const RoomTypesPage = () => {
     const isHidden = room.trang_thai === "an";
     const msg = isHidden
       ? `Mở lại loại phòng "${room.ten_loai}"?`
-      : `Ẩn loại phòng "${room.ten_loai}" khỏi hệ thống?`;
+      : `Ẩn loại phòng "${room.ten_loai}"khỏi hệ thống?`;
     if (!window.confirm(msg)) return;
 
     try {
-      const endpoint = isHidden ? "show" : "hide";
+      const endpoint = isHidden ?"show":"hide";
       await api.patch(`/admin/room-types/${room.ma_loai_phong}/${endpoint}`);
       loadData();
     } catch (err) {
@@ -95,27 +97,27 @@ const RoomTypesPage = () => {
         </div>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 16 }}>
+      <div className="stats-grid"style={{ marginBottom: 16 }}>
         {[
-          { label: "Tổng loại phòng", value: stats.total, color: "#3C7363", icon: "🛏️" },
-          { label: "Đang bán", value: stats.active, color: "#52c41a", icon: "✅" },
-          { label: "Đã ẩn", value: stats.hidden, color: "#b36b00", icon: "🔒" },
+          { label:"Tổng loại phòng", value: stats.total, color: "#3C7363"},
+          { label:"Đang bán", value: stats.active, color: "#52c41a"},
+          { label:"Đã ẩn", value: stats.hidden, color: "#b36b00"},
         ].map((s) => (
-          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div key={s.label} className="stat-card"style={{ borderTop: `3px solid ${s.color}` }}>
+            <div style={{ display:"flex", justifyContent: "space-between", alignItems: "flex-start"}}>
               <div className="stat-card-label">{s.label}</div>
               <span style={{ fontSize: 18 }}>{s.icon}</span>
             </div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="content-card" style={{ marginBottom: 16, padding: "16px 20px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end" }}>
+      <div className="content-card"style={{ marginBottom: 16, padding:"16px 20px"}}>
+        <div style={{ display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, alignItems: "end"}}>
           <div>
-            <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Khách sạn</label>
-            <select className="search-input" style={{ width: "100%" }} value={hotelFilter} onChange={(e) => setHotelFilter(e.target.value)}>
+            <label style={{ fontSize: 12, color:"#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Khách sạn</label>
+            <select className="search-input"style={{ width:"100%"}} value={hotelFilter} onChange={(e) => setHotelFilter(e.target.value)}>
               <option value="all">Tất cả khách sạn</option>
               {filteredHotels.map((h) => (
                 <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
@@ -124,7 +126,7 @@ const RoomTypesPage = () => {
           </div>
           <div>
             <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Đối tác</label>
-            <select className="search-input" style={{ width: "100%" }} value={partnerFilter} onChange={(e) => setPartnerFilter(e.target.value)}>
+            <select className="search-input"style={{ width:"100%"}} value={partnerFilter} onChange={(e) => setPartnerFilter(e.target.value)}>
               <option value="all">Tất cả đối tác</option>
               {partners.map((p) => (
                 <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
@@ -133,7 +135,7 @@ const RoomTypesPage = () => {
           </div>
           <div>
             <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
-            <select className="search-input" style={{ width: "100%" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select className="search-input"style={{ width:"100%"}} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">Tất cả trạng thái</option>
               <option value="hoat_dong">Đang bán</option>
               <option value="an">Đã ẩn</option>
@@ -142,20 +144,15 @@ const RoomTypesPage = () => {
           <div>
             <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Tìm kiếm</label>
             <input
-              type="text"
-              className="search-input"
-              style={{ width: "100%" }}
-              placeholder="Tên phòng, khách sạn..."
-              value={keyword}
+              type="text"className="search-input"style={{ width:"100%"}}
+              placeholder="Tên phòng, khách sạn..."value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
           </div>
-          {(hotelFilter !== "all" || partnerFilter !== "all" || statusFilter !== "all" || keyword) && (
+          {(hotelFilter !=="all"|| partnerFilter !=="all"|| statusFilter !=="all"|| keyword) && (
             <div>
               <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ width: "100%" }}
+                type="button"className="btn btn-ghost btn-sm"style={{ width:"100%"}}
                 onClick={() => {
                   setKeyword("");
                   setHotelFilter("all");
@@ -176,14 +173,13 @@ const RoomTypesPage = () => {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>⏳ Đang tải dữ liệu...</div>
+          <div style={{ textAlign: "center", padding: 48, color: "#5a7a72"}}> Đang tải dữ liệu...</div>
         ) : rooms.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🛏️</div>
             <p className="empty-state-text">Không có loại phòng nào phù hợp bộ lọc</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto"}}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -193,14 +189,14 @@ const RoomTypesPage = () => {
                   <th>Giá cơ bản</th>
                   <th>Sức chứa</th>
                   <th>Trạng thái</th>
-                  <th style={{ textAlign: "right", minWidth: 160 }}>Thao tác</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {rooms.map((room) => {
-                  const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "badge-default" };
+                  const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "badge-default"};
                   const thumb = getMainImage(room);
-                  const isHidden = room.trang_thai === "an";
+                  const isHidden = room.trang_thai ==="an";
                   return (
                     <tr key={room.ma_loai_phong}>
                       <td>
@@ -209,42 +205,39 @@ const RoomTypesPage = () => {
                           background: "#e8f5f1", border: "1px solid #d4ede6",
                         }}>
                           {thumb ? (
-                            <img src={resolveUploadUrl(thumb.url)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={resolveUploadUrl(thumb.url)} alt=""style={{ width:"100%", height: "100%", objectFit: "cover"}} />
                           ) : (
-                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛏️</div>
+                            <div style={{ width:"100%", height: "100%", background: "#e8f5f1"}} />
                           )}
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: "#1a2e28" }}>{room.ten_loai}</div>
-                        <div style={{ fontSize: 12, color: "#888" }}>#{room.ma_loai_phong}</div>
+                        <div style={{ fontWeight: 600, color:"#1a2e28"}}>{room.ten_loai}</div>
+                        <div style={{ fontSize: 12, color:"#888"}}>#{room.ma_loai_phong}</div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 500 }}>{room.khach_san?.ten}</div>
-                        <div style={{ fontSize: 12, color: "#5a7a72" }}>{room.khach_san?.doi_tac?.ten_cong_ty}</div>
+                        <div style={{ fontSize: 12, color:"#5a7a72"}}>{room.khach_san?.doi_tac?.ten_cong_ty}</div>
                       </td>
-                      <td style={{ fontWeight: 600, color: "#b36b00", whiteSpace: "nowrap" }}>{fmt(room.gia_co_ban)} ₫</td>
-                      <td style={{ whiteSpace: "nowrap" }}>{room.suc_chua} khách</td>
+                      <td style={{ fontWeight: 600, color:"#b36b00", whiteSpace: "nowrap"}}>{fmt(room.gia_co_ban)} ₫</td>
+                      <td style={{ whiteSpace:"nowrap"}}>{room.suc_chua} khách</td>
                       <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm"
-                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
-                          >
-                            👁️ Chi tiết
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm ${isHidden ? "btn-success" : "btn-ghost"}`}
-                            onClick={() => handleToggleStatus(room)}
-                            title={isHidden ? "Mở loại phòng" : "Ẩn loại phòng"}
-                          >
-                            {isHidden ? "🔓 Mở" : "🔒 Ẩn"}
-                          </button>
-                        </div>
-                      </td>
+                      <ActionCell>
+                        <ActionButton
+                          variant="view"
+                          iconOnly
+                          icon={Eye}
+                          title="Chi tiết"
+                          onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
+                        />
+                        <ActionButton
+                          variant={isHidden ? "unlock" : "lock"}
+                          iconOnly
+                          icon={isHidden ? Unlock : Lock}
+                          title={isHidden ? "Mở bán" : "Ẩn phòng"}
+                          onClick={() => handleToggleStatus(room)}
+                        />
+                      </ActionCell>
                     </tr>
                   );
                 })}

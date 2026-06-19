@@ -5,7 +5,7 @@ import {
 } from 'recharts'; // Thư viện biểu đồ
 
 const formatCurrency = (amount) => 
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(amount || 0);
 
 const FinancePage = () => {
   const [timeFilter, setTimeFilter] = useState('month'); // 'day', 'week', 'month'
@@ -19,7 +19,7 @@ const FinancePage = () => {
   const getDateRange = (filter) => {
     const end = new Date();
     const start = new Date();
-    if (filter === 'day') {
+    if (filter ==='day') {
       start.setHours(0, 0, 0, 0); // Đầu ngày hôm nay
     } else if (filter === 'week') {
       start.setDate(end.getDate() - 7); // 7 ngày qua
@@ -64,15 +64,15 @@ const FinancePage = () => {
   );
 
   return (
-    <div className="main-panel" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a2e28' }}>Quản lý Tài chính</h1>
+    <div className="main-panel"style={{ padding: '20px'}}>
+      <div style={{ display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+        <h1 style={{ fontSize:'28px', fontWeight: 'bold', color: '#1a2e28'}}>Quản lý Tài chính</h1>
         
         {/* Bộ lọc thời gian */}
         <select 
           value={timeFilter} 
           onChange={(e) => setTimeFilter(e.target.value)}
-          style={{ padding: '10px 15px', borderRadius: '8px', border: '1px solid #8FD9C4', outline: 'none', background: '#e8f5f1', color: '#3C7363', fontWeight: '600' }}
+          style={{ padding:'10px 15px', borderRadius: '8px', border: '1px solid #8FD9C4', outline: 'none', background: '#e8f5f1', color: '#3C7363', fontWeight: '600'}}
         >
           <option value="day">Hôm nay</option>
           <option value="week">7 ngày qua</option>
@@ -81,32 +81,32 @@ const FinancePage = () => {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#5a7a72' }}>⏳ Đang tải dữ liệu tài chính...</div>
+        <div style={{ textAlign:'center', padding: '50px', color: '#5a7a72'}}> Đang tải dữ liệu tài chính...</div>
       ) : (
         <>
           {/* KHỐI 1: CÁC THẺ TỔNG QUAN */}
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
-            <StatCard title="Tổng doanh thu" value={summary.gross} color="#0984e3" />
-            <StatCard title="Hoa hồng OTA" value={summary.commission} color="#d63031" />
-            <StatCard title="Đã hoàn tiền" value={summary.refund} color="#e17055" />
-            <StatCard title="Thực nhận (Net)" value={summary.net} color="#00b894" />
+          <div style={{ display:'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap'}}>
+            <StatCard title="Tổng doanh thu"value={summary.gross} color="#0984e3"/>
+            <StatCard title="Hoa hồng OTA"value={summary.commission} color="#d63031"/>
+            <StatCard title="Đã hoàn tiền"value={summary.refund} color="#e17055"/>
+            <StatCard title="Thực nhận (Net)"value={summary.net} color="#00b894"/>
           </div>
 
           {/* KHỐI 2: BIỂU ĐỒ */}
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <h4 style={{ color: '#3C7363', marginBottom: '20px' }}>Biểu đồ doanh thu theo thời gian</h4>
+          <div style={{ background:'#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
+            <h4 style={{ color:'#3C7363', marginBottom: '20px'}}>Biểu đồ doanh thu theo thời gian</h4>
             
             {chartData.length > 0 ? (
-              <div style={{ width: '100%', height: 400 }}>
+              <div style={{ width:'100%', height: 400 }}>
                 <ResponsiveContainer>
                   <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                    <XAxis dataKey="date" tick={{fontSize: 12}} />
+                    <CartesianGrid strokeDasharray="3 3"vertical={false} stroke="#eee"/>
+                    <XAxis dataKey="date"tick={{fontSize: 12}} />
                     <YAxis tickFormatter={(val) => `${val / 1000000}M`} tick={{fontSize: 12}} />
                     <Tooltip formatter={(value) => formatCurrency(value)} />
                     <Legend />
-                    <Bar dataKey="doanh_thu" name="Tổng doanh thu" fill="#0984e3" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="thuc_nhan" name="Thực nhận" fill="#00b894" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="doanh_thu"name="Tổng doanh thu"fill="#0984e3"radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="thuc_nhan"name="Thực nhận"fill="#00b894" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

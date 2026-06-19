@@ -20,7 +20,6 @@ const PartnerLayout = () => {
       {/* Header */}
       <header className="layout-header">
         <div className="header-brand">
-          <div className="brand-icon">🏨</div>
           <div>
             <div className="brand-subtitle">Quản trị viên đối tác</div>
             <h2 className="brand-title">Hotel Booking</h2>

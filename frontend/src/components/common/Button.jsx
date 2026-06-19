@@ -28,14 +28,14 @@ const variants = {
 };
 
 const sizes = {
-  sm: { padding: '5px 12px',  fontSize: 'var(--font-size-sm)' },
-  md: { padding: '9px 20px',  fontSize: 'var(--font-size-md)' },
-  lg: { padding: '12px 28px', fontSize: 'var(--font-size-lg)' },
+  sm: { padding: '5px 12px',  fontSize: 'var(--font-size-sm)'},
+  md: { padding:'9px 20px',  fontSize: 'var(--font-size-md)'},
+  lg: { padding:'12px 28px', fontSize: 'var(--font-size-lg)'},
 };
 
 const Button = ({
   children,
-  variant = 'primary',
+  variant ='primary',
   size = 'md',
   onClick,
   disabled = false,
@@ -54,9 +54,9 @@ const Button = ({
         ...sizes[size],
         borderRadius: 'var(--radius-md)',
         fontWeight: 500,
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        cursor: disabled || loading ? 'not-allowed':'pointer',
         opacity: disabled ? 0.6 : 1,
-        width: fullWidth ? '100%' : 'auto',
+        width: fullWidth ? '100%':'auto',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',

@@ -92,16 +92,14 @@ const HomePage = () => {
         <div className="home-search-wrap">
         <div className="home-search-card">
           <div className="home-search-tabs">
-            <button type="button" className="home-search-tab">🏨 Khách sạn</button>
+            <button type="button"className="home-search-tab"> Khách sạn</button>
           </div>
 
           <div className="home-search-form">
             <div className="home-search-field">
-              <label className="home-search-label" htmlFor="home-location">Địa điểm</label>
+              <label className="home-search-label"htmlFor="home-location">Địa điểm</label>
               <select
-                id="home-location"
-                className="home-search-select"
-                value={form.ma_dia_diem}
+                id="home-location"className="home-search-select"value={form.ma_dia_diem}
                 onChange={(e) => setForm((p) => ({ ...p, ma_dia_diem: e.target.value }))}
               >
                 <option value="">Tất cả địa điểm</option>
@@ -114,24 +112,18 @@ const HomePage = () => {
             </div>
 
             <div className="home-search-field">
-              <label className="home-search-label" htmlFor="home-checkin">Ngày nhận phòng</label>
+              <label className="home-search-label"htmlFor="home-checkin">Ngày nhận phòng</label>
               <input
-                id="home-checkin"
-                type="date"
-                className="home-search-input"
-                value={form.ngay_nhan}
+                id="home-checkin"type="date"className="home-search-input"value={form.ngay_nhan}
                 min={todayStr()}
                 onChange={(e) => setForm((p) => ({ ...p, ngay_nhan: e.target.value }))}
               />
             </div>
 
             <div className="home-search-field">
-              <label className="home-search-label" htmlFor="home-checkout">Ngày trả phòng</label>
+              <label className="home-search-label"htmlFor="home-checkout">Ngày trả phòng</label>
               <input
-                id="home-checkout"
-                type="date"
-                className="home-search-input"
-                value={form.ngay_tra}
+                id="home-checkout"type="date"className="home-search-input"value={form.ngay_tra}
                 min={form.ngay_nhan || todayStr()}
                 onChange={(e) => setForm((p) => ({ ...p, ngay_tra: e.target.value }))}
               />
@@ -141,18 +133,14 @@ const HomePage = () => {
               <span className="home-search-label">Số khách</span>
               <div className="home-guest-control">
                 <button
-                  type="button"
-                  className="home-guest-btn"
-                  disabled={form.so_khach <= 0}
+                  type="button"className="home-guest-btn"disabled={form.so_khach <= 0}
                   onClick={() => setForm((p) => ({ ...p, so_khach: Math.max(0, p.so_khach - 1) }))}
                 >
                   −
                 </button>
                 <span className="home-guest-value">{form.so_khach} khách</span>
                 <button
-                  type="button"
-                  className="home-guest-btn"
-                  disabled={form.so_khach >= 10}
+                  type="button"className="home-guest-btn"disabled={form.so_khach >= 10}
                   onClick={() => setForm((p) => ({ ...p, so_khach: Math.min(10, p.so_khach + 1) }))}
                 >
                   +
@@ -161,13 +149,13 @@ const HomePage = () => {
             </div>
 
             <div className="home-search-btn-wrap">
-              <button type="button" className="home-search-btn" onClick={() => handleSearch()}>
-                🔍 Tìm kiếm
+              <button type="button"className="home-search-btn"onClick={() => handleSearch()}>
+                 Tìm kiếm
               </button>
             </div>
           </div>
 
-          {error && <div className="home-search-error">⚠️ {error}</div>}
+          {error && <div className="home-search-error"> {error}</div>}
         </div>
         </div>
       </div>
@@ -182,9 +170,7 @@ const HomePage = () => {
             {popular.map((dest, i) => (
               <button
                 key={dest.ma_dia_diem}
-                type="button"
-                className="home-dest-card"
-                onClick={() => handleDestClick(dest.ma_dia_diem)}
+                type="button"className="home-dest-card"onClick={() => handleDestClick(dest.ma_dia_diem)}
               >
                 <img src={DEST_IMAGES[i % DEST_IMAGES.length]} alt={dest.ten_dia_diem} />
                 <div className="home-dest-overlay">
@@ -204,41 +190,40 @@ const HomePage = () => {
         </div>
         <div className="home-features">
           <div className="home-feature-card">
-            <div className="home-feature-icon">💰</div>
+            <div className="home-feature-icon"></div>
             <h3 className="home-feature-title">Giá tốt mỗi ngày</h3>
             <p className="home-feature-desc">So sánh giá phòng từ nhiều khách sạn, luôn có ưu đãi hấp dẫn.</p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">✅</div>
+            <div className="home-feature-icon"></div>
             <h3 className="home-feature-title">Xác nhận nhanh</h3>
             <p className="home-feature-desc">Đặt phòng dễ dàng, theo dõi trạng thái đặt chỗ mọi lúc mọi nơi.</p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🛡️</div>
+            <div className="home-feature-icon"></div>
             <h3 className="home-feature-title">An tâm đặt phòng</h3>
             <p className="home-feature-desc">Khách sạn được kiểm duyệt, thông tin minh bạch và hỗ trợ tận tình.</p>
           </div>
         </div>
       </section>
 
-      <section className="home-section" style={{ paddingTop: 0 }}>
+      <section className="home-section"style={{ paddingTop: 0 }}>
         <div className="home-promo">
           <div>
             <h3 className="home-promo-title">Sẵn sàng cho chuyến đi tiếp theo?</h3>
             <p className="home-promo-desc">
-              {locationLabel !== 'Tất cả địa điểm'
-                ? `Tìm khách sạn tại ${locationLabel} với giá tốt nhất.`
-                : 'Chọn địa điểm, ngày ở và số khách — chúng tôi sẽ gợi ý phòng phù hợp.'}
+              {locationLabel !== 'Tất cả địa điểm'? `Tìm khách sạn tại ${locationLabel} với giá tốt nhất.`
+                :'Chọn địa điểm, ngày ở và số khách — chúng tôi sẽ gợi ý phòng phù hợp.'}
             </p>
           </div>
-          <button type="button" className="home-promo-btn" onClick={() => handleSearch()}>
+          <button type="button"className="home-promo-btn"onClick={() => handleSearch()}>
             Tìm khách sạn ngay →
           </button>
         </div>
       </section>
 
       <footer className="home-footer">
-        © {new Date().getFullYear()} Hotel Booking — Nền tảng đặt phòng khách sạn
+         {new Date().getFullYear()} Hotel Booking — Nền tảng đặt phòng khách sạn
       </footer>
     </div>
   );

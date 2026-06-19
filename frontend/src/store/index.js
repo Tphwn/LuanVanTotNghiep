@@ -1,13 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
-import adminUserReducer from '../redux/slices/adminUserSlice';
-import adminHotelReducer from '../redux/slices/adminHotelSlice';
+import adminUserReducer from './slices/adminUserSlice';
+import adminHotelReducer from './slices/adminHotelSlice';
 import amenityReducer from './slices/amenitySlice';
 import partnerHotelReducer from './slices/partnerHotelSlice';
-import partnerRoomReducer from './slices/partnerRoomSlice'; 
+import partnerRoomReducer from './slices/partnerRoomSlice';
 import partnerBookingReducer from './slices/partnerBookingSlice';
 import adminBookingReducer from './slices/adminBookingSlice';
 import adminPaymentReducer from './slices/adminPaymentSlice';
+
 const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -15,7 +16,7 @@ const store = configureStore({
     adminHotels: adminHotelReducer,
     amenities: amenityReducer,
     partnerHotel: partnerHotelReducer,
-    partnerRooms: partnerRoomReducer, 
+    partnerRooms: partnerRoomReducer,
     partnerBooking: partnerBookingReducer,
     adminBooking: adminBookingReducer,
     adminPayment: adminPaymentReducer,

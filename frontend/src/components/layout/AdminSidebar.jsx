@@ -1,34 +1,34 @@
 const menus = [
   {
-    title: '📊 Dashboard',
+    title: 'Dashboard',
     path: '/admin/dashboard',
   },
   {
-    title: '👥 Người dùng',
+    title: 'Người dùng',
     path: '/admin/users',
   },
   {
-    title: '🏨 Khách sạn',
+    title: 'Khách sạn',
     path: '/admin/hotels',
   },
   {
-    title: '📅 Đặt phòng',
+    title: 'Đặt phòng',
     path: '/admin/bookings',
   },
   {
-    title: '💳 Thanh toán',
+    title: 'Thanh toán',
     path: '/admin/payments',
   },
   {
-    title: '💰 Hoa hồng',
+    title: 'Hoa hồng',
     path: '/admin/commissions',
   },
   {
-    title: '↩️ Hoàn tiền',
+    title: 'Hoàn tiền',
     path: '/admin/refunds',
   },
   {
-    title: '📈 Báo cáo',
+    title: 'Báo cáo',
     path: '/admin/reports',
   },
 ];

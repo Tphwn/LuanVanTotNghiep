@@ -1,7 +1,7 @@
 const RefundsPage = () => {
   return (
     <div>
-      <h1>↩️ Quản lý hoàn tiền</h1>
+      <h1> Quản lý hoàn tiền</h1>
 
       <table style={{ width: '100%' }}>
         <thead>

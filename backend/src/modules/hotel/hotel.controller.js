@@ -1,23 +1,13 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../../config/prisma');
+const { attachHotelImages } = require('../../utils/images');
+const { getUserId } = require('../../utils/user');
+const { parseJsonField } = require('../../utils/parseJson');
 
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
   { so_ngay_truoc: 3, phan_tram_hoan: 50 },
   { so_ngay_truoc: 1, phan_tram_hoan: 0 },
 ];
-
-const getUserId = (user) => parseInt(user.id || user.ma_nguoi_dung);
-
-const parseJsonField = (value, fallback) => {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value === 'object') return value;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-};
 
 const getPartnerDefaultCancelPolicies = (hotels) => {
   const source = hotels.find((h) => h.chinh_sach_huy?.length > 0);
@@ -30,22 +20,6 @@ const getPartnerDefaultCancelPolicies = (hotels) => {
       phan_tram_hoan: Number(p.phan_tram_hoan),
     }))
     .sort((a, b) => b.so_ngay_truoc - a.so_ngay_truoc);
-};
-
-const attachImagesToHotels = async (hotels) => {
-  const hotelIds = hotels.map((h) => h.ma_khach_san);
-  const allImages = await prisma.hinh_anh.findMany({
-    where: {
-      loai_doi_tuong: 'khach_san',
-      ma_doi_tuong: { in: hotelIds.length > 0 ? hotelIds : [-1] },
-    },
-    orderBy: { thu_tu: 'asc' },
-  });
-
-  return hotels.map((hotel) => ({
-    ...hotel,
-    hinh_anh: allImages.filter((img) => img.ma_doi_tuong === hotel.ma_khach_san),
-  }));
 };
 
 const fetchHotelFull = async (hotelId) => {
@@ -229,7 +203,7 @@ exports.getMyHotels = async (req, res) => {
     });
 
     const defaultCancelPolicies = getPartnerDefaultCancelPolicies(hotels);
-    const hotelsWithImages = await attachImagesToHotels(hotels);
+    const hotelsWithImages = await attachHotelImages(hotels);
 
     res.status(200).json({
       success: true,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchPartnerBookings,
@@ -8,22 +8,28 @@ import {
   clearMsg,
   clearDetail
 } from '../../../store/slices/partnerBookingSlice';
+import { Eye, Check } from 'lucide-react';
+import ActionButton, { ActionCell, TableActions } from '../../../components/common/ActionButton';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import SummaryStats from '../../../components/common/management/SummaryStats';
+import SearchBar from '../../../components/common/management/SearchBar';
+import FilterTabs from '../../../components/common/management/FilterTabs';
 // ===== CONSTANTS =====
 const TRANG_THAI = {
-  cho_xac_nhan: { label: 'Chờ xác nhận', cls: 'badge-warning' },
-  da_xac_nhan:  { label: 'Đã xác nhận',  cls: 'badge-info' },
-  hoan_thanh:   { label: 'Hoàn thành',   cls: 'badge-success' },
-  da_huy:       { label: 'Đã hủy',       cls: 'badge-danger' },
-  tu_choi:      { label: 'Từ chối',      cls: 'badge-danger' },
+  cho_xac_nhan: { label: 'Chờ xác nhận', cls: 'badge-warning'},
+  da_xac_nhan:  { label:'Đã xác nhận',  cls: 'badge-info'},
+  hoan_thanh:   { label:'Hoàn thành',   cls: 'badge-success'},
+  da_huy:       { label:'Đã hủy',       cls: 'badge-danger'},
+  tu_choi:      { label:'Từ chối',      cls: 'badge-danger'},
 };
 
 const PHUONG_THUC = {
-  truc_tuyen:       '💳 Trực tuyến',
-  tai_khach_san:    '💵 Tại khách sạn',
+  truc_tuyen:' Trực tuyến',
+  tai_khach_san:    'Tại khách sạn',
 };
 
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(amount || 0);
 
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString('vi-VN') : '—';
@@ -36,14 +42,20 @@ const diffDays = (from, to) => {
   return Math.ceil(d / (1000 * 60 * 60 * 24));
 };
 
-// ===== INFO ROW =====
-const InfoRow = ({ label, value }) => (
-  <div style={{
-    display: 'flex', padding: '9px 0',
-    borderBottom: '0.5px solid #f0f0f0', fontSize: 14, gap: 12,
-  }}>
-    <span style={{ width: 170, color: '#5a7a72', flexShrink: 0, fontSize: 13 }}>{label}</span>
-    <span style={{ color: '#1a2e28', fontWeight: 500, flex: 1 }}>{value || '—'}</span>
+// ===== DETAIL TABLE =====
+const DetailTable = ({ title, rows }) => (
+  <div className="booking-detail-section">
+    {title && <h4 className="booking-detail-section-title">{title}</h4>}
+    <table className="booking-detail-table">
+      <tbody>
+        {rows.map(({ label, value }) => (
+          <tr key={label}>
+            <th>{label}</th>
+            <td>{value ?? '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </div>
 );
 
@@ -57,67 +69,52 @@ const BookingDetailModal = ({ booking, onClose, onConfirm, onReject, loading }) 
   const isPending = booking.trang_thai === 'cho_xac_nhan';
   const st = TRANG_THAI[booking.trang_thai] || { label: booking.trang_thai, cls: 'badge-default' };
   const nights = diffDays(booking.ngay_nhan_phong, booking.ngay_tra_phong);
+  const payStatus = booking.thanh_toan?.trang_thai === 'thanh_cong' ? 'Đã thanh toán' : 'Chờ thanh toán';
+  const payBadge = booking.thanh_toan?.trang_thai === 'thanh_cong' ? 'badge-success' : 'badge-warning';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-box"
-        style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}
-        onClick={e => e.stopPropagation()}
+        className="modal-box booking-detail-modal"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h3 className="modal-title">📋 Chi tiết đặt phòng</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <div>
+            <h3 className="modal-title">Chi tiết đặt phòng</h3>
+            <p className="booking-detail-code">#{booking.ma_don_hang}</p>
+          </div>
+          <button type="button" className="modal-close" onClick={onClose}>×</button>
         </div>
 
-        {/* Trạng thái + hành động */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', marginBottom: 16,
-          padding: '10px 14px', background: '#f8fdfb',
-          borderRadius: 8, border: '1px solid #d4ede6',
-        }}>
-          <div>
-            <span style={{ fontSize: 13, color: '#5a7a72' }}>Trạng thái: </span>
+        <div className="booking-detail-status-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span className={`badge ${st.cls}`}>{st.label}</span>
+            <span className="booking-detail-meta">Đặt lúc {formatDateTime(booking.ngay_dat)}</span>
           </div>
           {isPending && !rejectMode && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={onConfirm} disabled={loading}>
-                ✓ Xác nhận
-              </button>
-              <button className="btn btn-danger btn-sm" onClick={() => setRejectMode(true)}>
-                ✕ Từ chối
-              </button>
-            </div>
+            <TableActions style={{ justifyContent: 'flex-end' }}>
+              <ActionButton variant="confirm" onClick={onConfirm} disabled={loading}>Xác nhận</ActionButton>
+              <ActionButton variant="reject" onClick={() => setRejectMode(true)}>Từ chối</ActionButton>
+            </TableActions>
           )}
         </div>
 
-        {/* Form từ chối */}
         {rejectMode && (
-          <div style={{
-            marginBottom: 16, padding: 14,
-            background: '#fff0f0', borderRadius: 8,
-            border: '1px solid #ffb3b3',
-          }}>
-            <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6 }}>
+          <div className="booking-reject-box">
+            <label className="booking-reject-label">
               Lý do từ chối <span style={{ color: '#e05c5c' }}>*</span>
             </label>
             <textarea
               rows={3}
+              className="booking-reject-textarea"
               placeholder="Nhập lý do từ chối để khách hàng biết..."
               value={ly_do}
-              onChange={e => setLyDo(e.target.value)}
-              style={{
-                width: '100%', padding: '9px 12px',
-                border: '1px solid #ffb3b3', borderRadius: 8,
-                fontSize: 14, resize: 'vertical',
-                fontFamily: 'inherit', boxSizing: 'border-box',
-              }}
+              onChange={(e) => setLyDo(e.target.value)}
             />
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setRejectMode(false)}>Hủy</button>
+            <div className="booking-reject-actions">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRejectMode(false)}>Hủy</button>
               <button
+                type="button"
                 className="btn btn-danger btn-sm"
                 disabled={loading}
                 onClick={() => {
@@ -131,84 +128,45 @@ const BookingDetailModal = ({ booking, onClose, onConfirm, onReject, loading }) 
           </div>
         )}
 
-        <div className="form-grid">
-          {/* Thông tin đặt phòng */}
-          <div>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>
-              🏨 Thông tin phòng
-            </h4>
-            <InfoRow label="Mã đơn" value={`#${booking.ma_don_hang}`} />
-            <InfoRow label="Khách sạn" value={booking.loai_phong?.khach_san?.ten} />
-            <InfoRow label="Loại phòng" value={booking.loai_phong?.ten_loai} />
-            <InfoRow label="Nhận phòng" value={formatDate(booking.ngay_nhan_phong)} />
-            <InfoRow label="Trả phòng" value={formatDate(booking.ngay_tra_phong)} />
-            <InfoRow label="Số đêm" value={`${nights} đêm`} />
-            <InfoRow label="Số khách" value={`${booking.so_khach} khách`} />
-            <InfoRow label="Ngày đặt" value={formatDateTime(booking.ngay_dat)} />
-          </div>
+        <DetailTable
+          title="Thông tin phòng"
+          rows={[
+            { label: 'Khách sạn', value: booking.loai_phong?.khach_san?.ten },
+            { label: 'Loại phòng', value: booking.loai_phong?.ten_loai },
+            { label: 'Nhận phòng', value: formatDate(booking.ngay_nhan_phong) },
+            { label: 'Trả phòng', value: formatDate(booking.ngay_tra_phong) },
+            { label: 'Số đêm', value: `${nights} đêm` },
+            { label: 'Số khách', value: `${booking.so_khach} khách` },
+          ]}
+        />
 
-          {/* Thông tin khách */}
-          <div>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>
-              👤 Thông tin khách
-            </h4>
-            <InfoRow label="Họ tên" value={booking.khach_hang?.ho_ten} />
-            <InfoRow label="Email" value={booking.khach_hang?.nguoi_dung?.email} />
-            <InfoRow label="SĐT" value={booking.khach_hang?.nguoi_dung?.so_dien_thoai} />
-            <InfoRow label="Người nhận phòng" value={booking.ten_nguoi_nhan} />
-            <InfoRow label="SĐT người nhận" value={booking.sdt_nguoi_nhan} />
-            {booking.ghi_chu && (
-              <InfoRow label="Ghi chú" value={booking.ghi_chu} />
-            )}
-          </div>
-        </div>
+        <DetailTable
+          title="Thông tin khách"
+          rows={[
+            { label: 'Họ tên', value: booking.khach_hang?.ho_ten },
+            { label: 'Email', value: booking.khach_hang?.nguoi_dung?.email },
+            { label: 'SĐT', value: booking.khach_hang?.nguoi_dung?.so_dien_thoai },
+            { label: 'Người nhận phòng', value: booking.ten_nguoi_nhan },
+            { label: 'SĐT người nhận', value: booking.sdt_nguoi_nhan },
+            ...(booking.ghi_chu ? [{ label: 'Ghi chú', value: booking.ghi_chu }] : []),
+          ]}
+        />
 
-        {/* Thanh toán */}
-        <div style={{ marginTop: 16 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>
-            💳 Thanh toán
-          </h4>
-          <div style={{
-            background: '#f8fdfb', borderRadius: 8,
-            border: '1px solid #d4ede6', padding: '12px 16px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14 }}>
-              <span style={{ color: '#5a7a72' }}>Tổng tiền gốc</span>
-              <span>{formatCurrency(booking.tong_tien_goc)}</span>
-            </div>
-            {booking.tien_giam > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14 }}>
-                <span style={{ color: '#5a7a72' }}>Giảm giá</span>
-                <span style={{ color: '#e05c5c' }}>- {formatCurrency(booking.tien_giam)}</span>
-              </div>
-            )}
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              paddingTop: 8, borderTop: '0.5px solid #d4ede6',
-              fontWeight: 700, fontSize: 16,
-            }}>
-              <span>Thành tiền</span>
-              <span style={{ color: '#3C7363' }}>{formatCurrency(booking.thanh_toan_cuoi)}</span>
-            </div>
-            <div style={{ marginTop: 8, fontSize: 13, color: '#5a7a72' }}>
-              Phương thức: {PHUONG_THUC[booking.phuong_thuc_tt] || booking.phuong_thuc_tt}
-              {booking.thanh_toan && (
-                <span style={{ marginLeft: 12 }}>
-                  · TT: <span className={`badge ${booking.thanh_toan.trang_thai === 'thanh_cong' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: 11 }}>
-                    {booking.thanh_toan.trang_thai === 'thanh_cong' ? 'Đã thanh toán' : 'Chờ thanh toán'}
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Khuyến mãi */}
-        {booking.khuyen_mai && (
-          <div style={{ marginTop: 12, fontSize: 13, color: '#854F0B' }}>
-            🎟️ Mã KM: <strong>{booking.khuyen_mai.ma_code}</strong> — {booking.khuyen_mai.ten}
-          </div>
-        )}
+        <DetailTable
+          title="Thanh toán"
+          rows={[
+            { label: 'Tổng tiền gốc', value: formatCurrency(booking.tong_tien_goc) },
+            ...(Number(booking.tien_giam) > 0
+              ? [{ label: 'Giảm giá', value: `- ${formatCurrency(booking.tien_giam)}` }]
+              : []),
+            { label: 'Thành tiền', value: <strong style={{ color: '#3C7363' }}>{formatCurrency(booking.thanh_toan_cuoi)}</strong> },
+            { label: 'Phương thức', value: PHUONG_THUC[booking.phuong_thuc_tt] || booking.phuong_thuc_tt },
+            { label: 'Trạng thái TT', value: <span className={`badge ${payBadge}`}>{payStatus}</span> },
+            ...(booking.khuyen_mai
+              ? [{ label: 'Khuyến mãi', value: `${booking.khuyen_mai.ma_code} — ${booking.khuyen_mai.ten}` }]
+              : []),
+          ]}
+        />
       </div>
     </div>
   );
@@ -264,8 +222,11 @@ const BookingManagePage = () => {
   };
 
   // Lọc
-  const filtered = list.filter(b => {
-    const matchStatus = statusFilter === 'all' || b.trang_thai === statusFilter;
+  const filtered = list.filter((b) => {
+    let matchStatus = statusFilter === 'all' || b.trang_thai === statusFilter;
+    if (statusFilter === 'da_huy') {
+      matchStatus = ['da_huy', 'tu_choi'].includes(b.trang_thai);
+    }
     const text = keyword.toLowerCase();
     const matchKeyword = !keyword ||
       b.ma_don_hang?.toLowerCase().includes(text) ||
@@ -275,162 +236,136 @@ const BookingManagePage = () => {
     return matchStatus && matchKeyword;
   });
 
-  // Stats
-  const countByStatus = (s) => list.filter(b => b.trang_thai === s).length;
+  const countByStatus = (s) => list.filter((b) => b.trang_thai === s).length;
+
+  const filterTabs = useMemo(() => [
+    { id: 'all', label: 'Tất cả', count: list.length },
+    { id: 'cho_xac_nhan', label: 'Chờ xác nhận', count: countByStatus('cho_xac_nhan') },
+    { id: 'da_xac_nhan', label: 'Đã xác nhận', count: countByStatus('da_xac_nhan') },
+    { id: 'hoan_thanh', label: 'Hoàn thành', count: countByStatus('hoan_thanh') },
+    { id: 'da_huy', label: 'Đã hủy', count: countByStatus('da_huy') + countByStatus('tu_choi') },
+  ], [list]);
 
   return (
-    <div>
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 className="page-title">Quản lý Đặt phòng</h1>
-          <p className="page-subtitle">Xem và xử lý các đơn đặt phòng của khách sạn bạn</p>
-        </div>
-      </div>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý Đặt phòng"
+        subtitle="Xem và xử lý các đơn đặt phòng của khách sạn bạn"
+      />
 
-      {/* Toast */}
-      {successMsg && (
-        <div style={{
-          background: '#e8f5f1', border: '1px solid #8FD9C4',
-          color: '#3C7363', padding: '10px 16px',
-          borderRadius: 8, marginBottom: 16, fontSize: 14,
-        }}>✅ {successMsg}</div>
-      )}
-      {error && (
-        <div style={{
-          background: '#fff0f0', border: '1px solid #ffb3b3',
-          color: '#e05c5c', padding: '10px 16px',
-          borderRadius: 8, marginBottom: 16, fontSize: 14,
-        }}>❌ {error}</div>
-      )}
+      {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
+      {error && <div className="mgmt-toast error">{error}</div>}
 
-      {/* Stats */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: 16 }}>
-        {[
-          { label: 'Tổng đơn',      value: list.length,                        color: '#3C7363' },
-          { label: 'Chờ xác nhận',  value: countByStatus('cho_xac_nhan'),      color: '#b36b00' },
-          { label: 'Đã xác nhận',   value: countByStatus('da_xac_nhan'),       color: '#0958d9' },
-          { label: 'Hoàn thành',    value: countByStatus('hoan_thanh'),        color: '#52c41a' },
-          { label: 'Đã hủy/Từ chối', value: countByStatus('da_huy') + countByStatus('tu_choi'), color: '#e05c5c' },
-        ].map(s => (
-          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
-            <div className="stat-card-label">{s.label}</div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+      <SummaryStats
+        items={[
+          { label: 'Tổng đơn', value: list.length, color: '#1a2e28' },
+          { label: 'Chờ xác nhận', value: countByStatus('cho_xac_nhan'), color: '#b36b00' },
+          { label: 'Đã xác nhận', value: countByStatus('da_xac_nhan'), color: '#0958d9' },
+          { label: 'Hoàn thành', value: countByStatus('hoan_thanh'), color: '#1a7a4a' },
+        ]}
+      />
 
-      {/* Filter */}
-      <div className="search-bar" style={{ marginBottom: 12 }}>
-        <input
-          className="search-input"
-          placeholder="🔍 Tìm mã đơn, tên khách, SĐT..."
+      <div className="mgmt-toolbar">
+        <SearchBar
           value={keyword}
-          onChange={e => setKeyword(e.target.value)}
-          style={{ flex: 2 }}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="Tìm mã đơn, tên khách, SĐT..."
         />
-        <select
-          className="search-input"
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          style={{ flex: 1 }}
-        >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="cho_xac_nhan">Chờ xác nhận</option>
-          <option value="da_xac_nhan">Đã xác nhận</option>
-          <option value="hoan_thanh">Hoàn thành</option>
-          <option value="da_huy">Đã hủy</option>
-          <option value="tu_choi">Từ chối</option>
-        </select>
       </div>
 
-      {/* Table */}
-      <div className="content-card">
-        <div className="content-card-header">
-          <h3 className="content-card-title">Danh sách đơn ({filtered.length})</h3>
-        </div>
+      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={setStatusFilter} />
 
+      <div className="mgmt-table-card">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>⏳ Đang tải...</div>
+          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Mã đơn</th>
-                <th>Khách hàng</th>
-                <th>Khách sạn / Phòng</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
-                <th>Tổng tiền</th>
-                <th>Thanh toán</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(b => {
-                const st = TRANG_THAI[b.trang_thai] || { label: b.trang_thai, cls: 'badge-default' };
-                const isPending = b.trang_thai === 'cho_xac_nhan';
-                return (
-                  <tr key={b.ma_dat_phong}>
-                    <td style={{ fontWeight: 500, color: '#3C7363' }}>#{b.ma_don_hang}</td>
-                    <td>
-                      <div style={{ fontWeight: 500 }}>{b.ten_nguoi_nhan}</div>
-                      <div style={{ fontSize: 12, color: '#5a7a72' }}>{b.sdt_nguoi_nhan}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 500 }}>{b.loai_phong?.khach_san?.ten}</div>
-                      <div style={{ fontSize: 12, color: '#5a7a72' }}>{b.loai_phong?.ten_loai}</div>
-                    </td>
-                    <td style={{ fontSize: 13 }}>{formatDate(b.ngay_nhan_phong)}</td>
-                    <td style={{ fontSize: 13 }}>{formatDate(b.ngay_tra_phong)}</td>
-                    <td style={{ fontWeight: 500 }}>{formatCurrency(b.thanh_toan_cuoi)}</td>
-                    <td>
-                      <span className={`badge ${b.thanh_toan?.trang_thai === 'thanh_cong' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: 11 }}>
-                        {b.thanh_toan?.trang_thai === 'thanh_cong' ? 'Đã TT' : 'Chờ TT'}
-                      </span>
-                    </td>
-                    <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className="btn btn-primary btn-sm"
+          <div className="mgmt-table-scroll">
+            <table className="data-table">
+              <colgroup>
+                <col style={{ width: 100 }} />
+                <col />
+                <col />
+                <col style={{ width: 96 }} />
+                <col style={{ width: 96 }} />
+                <col style={{ width: 110 }} />
+                <col className="mgmt-col-status" />
+                <col className="mgmt-col-status" />
+                <col style={{ width: 96 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Mã đơn</th>
+                  <th>Khách hàng</th>
+                  <th>Khách sạn / Phòng</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Tổng tiền</th>
+                  <th>Thanh toán</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((b) => {
+                  const st = TRANG_THAI[b.trang_thai] || { label: b.trang_thai, cls: 'badge-default' };
+                  const isPending = b.trang_thai === 'cho_xac_nhan';
+                  return (
+                    <tr key={b.ma_dat_phong}>
+                      <td style={{ fontWeight: 500, color: '#3C7363' }}>#{b.ma_don_hang}</td>
+                      <td>
+                        <div className="mgmt-cell-name">{b.ten_nguoi_nhan}</div>
+                        <div className="mgmt-cell-sub">{b.sdt_nguoi_nhan}</div>
+                      </td>
+                      <td>
+                        <div className="mgmt-cell-name">{b.loai_phong?.khach_san?.ten}</div>
+                        <div className="mgmt-cell-sub">{b.loai_phong?.ten_loai}</div>
+                      </td>
+                      <td style={{ fontSize: 13 }}>{formatDate(b.ngay_nhan_phong)}</td>
+                      <td style={{ fontSize: 13 }}>{formatDate(b.ngay_tra_phong)}</td>
+                      <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{formatCurrency(b.thanh_toan_cuoi)}</td>
+                      <td>
+                        <span className={`badge ${b.thanh_toan?.trang_thai === 'thanh_cong' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: 11 }}>
+                          {b.thanh_toan?.trang_thai === 'thanh_cong' ? 'Đã TT' : 'Chờ TT'}
+                        </span>
+                      </td>
+                      <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                      <ActionCell>
+                        <ActionButton
+                          variant="view"
+                          iconOnly
+                          icon={Eye}
+                          title="Chi tiết"
                           onClick={() => handleViewDetail(b.ma_dat_phong)}
-                        >
-                          Chi tiết
-                        </button>
-                        {isPending && (
-                          <button
-                            className="btn btn-outline btn-sm"
-                            onClick={async () => {
-                              await dispatch(fetchBookingDetail(b.ma_dat_phong));
-                              await dispatch(confirmBooking(b.ma_dat_phong));
-                            }}
-                          >
-                            ✓
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        />
+                        <ActionButton
+                          variant="confirm"
+                          iconOnly
+                          icon={Check}
+                          title="Xác nhận"
+                          disabled={!isPending}
+                          onClick={async () => {
+                            await dispatch(fetchBookingDetail(b.ma_dat_phong));
+                            await dispatch(confirmBooking(b.ma_dat_phong));
+                          }}
+                        />
+                      </ActionCell>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-
-      {/* Modal chi tiết */}
       {showDetail && (
         detailLoading ? (
           <div className="modal-overlay">
             <div className="modal-box" style={{ textAlign: 'center', padding: 40 }}>
-              ⏳ Đang tải chi tiết...
+               Đang tải chi tiết...
             </div>
           </div>
         ) : (

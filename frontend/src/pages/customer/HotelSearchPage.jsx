@@ -9,9 +9,9 @@ const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
 const SORT_OPTIONS = [
-  { value: 'price_asc', label: 'Giá thấp → cao' },
-  { value: 'price_desc', label: 'Giá cao → thấp' },
-  { value: 'stars_desc', label: 'Hạng sao cao nhất' },
+  { value: 'price_asc', label: 'Giá thấp → cao'},
+  { value:'price_desc', label: 'Giá cao → thấp'},
+  { value:'stars_desc', label: 'Hạng sao cao nhất'},
 ];
 
 const STAR_OPTIONS = [5, 4, 3, 2, 1];
@@ -164,15 +164,15 @@ const HotelSearchPage = () => {
     setSelectedAmenities([]);
   };
 
-  const hasActiveFilters = priceMin !== '' || priceMax !== '' || selectedStars.length > 0 || selectedAmenities.length > 0;
+  const hasActiveFilters = priceMin !== ''|| priceMax !==''|| selectedStars.length > 0 || selectedAmenities.length > 0;
 
   return (
     <div className="search-page">
       <div className="search-summary">
         <h1 className="search-summary-title">
-          {filteredRooms.length} loại phòng{locationName !== 'Tất cả địa điểm' ? ` tại ${locationName}` : ''}
+          {filteredRooms.length} loại phòng{locationName !=='Tất cả địa điểm'? ` tại ${locationName}` :''}
           {hasActiveFilters && rooms.length !== filteredRooms.length && (
-            <span style={{ fontSize: 14, fontWeight: 400, color: '#5a7a72' }}>
+            <span style={{ fontSize: 14, fontWeight: 400, color: '#5a7a72'}}>
               {' '}(lọc từ {rooms.length})
             </span>
           )}
@@ -181,7 +181,7 @@ const HotelSearchPage = () => {
           {filters.ngay_nhan && filters.ngay_tra
             ? `${fmtDate(filters.ngay_nhan)} → ${fmtDate(filters.ngay_tra)} · ${nights} đêm · ${filters.so_khach} khách`
             : `${filters.so_khach} khách`}
-          {' · '}
+          {'·'}
           <Link to={ROUTES.HOME} style={{ color: '#3C7363', fontWeight: 500 }}>← Tìm kiếm lại</Link>
         </p>
       </div>
@@ -190,9 +190,9 @@ const HotelSearchPage = () => {
         <aside className="search-filter-sidebar">
           <div className="search-filter-card">
             <div className="search-filter-header">
-              <h3 className="search-filter-title">🔍 Bộ lọc</h3>
+              <h3 className="search-filter-title"> Bộ lọc</h3>
               {hasActiveFilters && (
-                <button type="button" className="search-filter-reset" onClick={resetFilters}>
+                <button type="button"className="search-filter-reset"onClick={resetFilters}>
                   Xóa lọc
                 </button>
               )}
@@ -201,8 +201,7 @@ const HotelSearchPage = () => {
             <div className="search-filter-section">
               <label className="search-filter-label">Sắp xếp</label>
               <select
-                className="search-filter-select"
-                value={sortBy}
+                className="search-filter-select"value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
                 {SORT_OPTIONS.map((o) => (
@@ -220,20 +219,14 @@ const HotelSearchPage = () => {
               )}
               <div className="search-filter-price-row">
                 <input
-                  type="number"
-                  min={0}
-                  className="search-filter-input"
-                  placeholder="Tối thiểu"
-                  value={priceMin}
+                  type="number"min={0}
+                  className="search-filter-input"placeholder="Tối thiểu"value={priceMin}
                   onChange={(e) => setPriceMin(clampMinZero(e.target.value))}
                 />
                 <span>—</span>
                 <input
-                  type="number"
-                  min={0}
-                  className="search-filter-input"
-                  placeholder="Tối đa"
-                  value={priceMax}
+                  type="number"min={0}
+                  className="search-filter-input"placeholder="Tối đa"value={priceMax}
                   onChange={(e) => setPriceMax(clampMinZero(e.target.value))}
                 />
               </div>
@@ -245,11 +238,10 @@ const HotelSearchPage = () => {
                 {STAR_OPTIONS.map((star) => (
                   <label key={star} className="search-filter-check">
                     <input
-                      type="checkbox"
-                      checked={selectedStars.includes(star)}
+                      type="checkbox"checked={selectedStars.includes(star)}
                       onChange={() => toggleStar(star)}
                     />
-                    {'⭐'.repeat(star)}
+                    {''.repeat(star)}
                   </label>
                 ))}
               </div>
@@ -262,8 +254,7 @@ const HotelSearchPage = () => {
                   {allAmenities.map((amenity) => (
                     <label key={amenity} className="search-filter-check">
                       <input
-                        type="checkbox"
-                        checked={selectedAmenities.includes(amenity)}
+                        type="checkbox"checked={selectedAmenities.includes(amenity)}
                         onChange={() => toggleAmenity(amenity)}
                       />
                       {amenity}
@@ -277,22 +268,21 @@ const HotelSearchPage = () => {
 
         <div className="search-results-col">
           {loading && (
-            <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>
-              ⏳ Đang tìm loại phòng phù hợp...
+            <div className="content-card"style={{ textAlign: 'center', padding: 48, color: '#5a7a72'}}>
+               Đang tìm loại phòng phù hợp...
             </div>
           )}
 
           {!loading && error && (
-            <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#e05c5c' }}>
-              ⚠️ {error}
+            <div className="content-card"style={{ textAlign:'center', padding: 48, color: '#e05c5c'}}>
+               {error}
             </div>
           )}
 
           {!loading && !error && rooms.length === 0 && (
             <div className="empty-state content-card">
-              <div className="empty-state-icon">🛏️</div>
               <p className="empty-state-text">Không tìm thấy loại phòng phù hợp. Hãy thử đổi địa điểm hoặc ngày ở.</p>
-              <Link to={ROUTES.HOME} className="btn btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>
+              <Link to={ROUTES.HOME} className="btn btn-primary"style={{ marginTop: 16, display:'inline-flex'}}>
                 Quay về trang chủ
               </Link>
             </div>
@@ -300,9 +290,8 @@ const HotelSearchPage = () => {
 
           {!loading && !error && rooms.length > 0 && filteredRooms.length === 0 && (
             <div className="empty-state content-card">
-              <div className="empty-state-icon">🔍</div>
               <p className="empty-state-text">Không có loại phòng phù hợp bộ lọc</p>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={resetFilters}>
+              <button type="button"className="btn btn-ghost btn-sm"style={{ marginTop: 12 }} onClick={resetFilters}>
                 Xóa bộ lọc
               </button>
             </div>
@@ -316,23 +305,23 @@ const HotelSearchPage = () => {
                 return (
                   <article key={room.ma_loai_phong} className="hotel-result-card">
                     {img ? (
-                      <img src={resolveUploadUrl(img.url)} alt={room.ten_loai} className="hotel-result-img" />
+                      <img src={resolveUploadUrl(img.url)} alt={room.ten_loai} className="hotel-result-img"/>
                     ) : (
-                      <div className="hotel-result-img-placeholder">🛏️</div>
+                      <div className="hotel-result-img-placeholder"></div>
                     )}
 
                     <div className="hotel-result-body">
                       <h2 className="hotel-result-name">{room.ten_loai}</h2>
-                      <p className="room-result-hotel">🏨 {hotel?.ten}</p>
+                      <p className="room-result-hotel"> {hotel?.ten}</p>
                       <p className="hotel-result-location">
-                        📍 {hotel?.dia_diem?.ten_dia_diem} · {hotel?.dia_chi}
+                         {hotel?.dia_diem?.ten_dia_diem} · {hotel?.dia_chi}
                       </p>
                       {hotel?.so_sao > 0 && (
-                        <div className="hotel-result-stars">{'⭐'.repeat(hotel.so_sao)}</div>
+                        <div className="hotel-result-stars">{''.repeat(hotel.so_sao)}</div>
                       )}
                       <div className="hotel-result-room-meta">
-                        <span>👥 Tối đa {room.suc_chua} khách</span>
-                        {room.dien_tich && <span>📐 {room.dien_tich} m²</span>}
+                        <span> Tối đa {room.suc_chua} khách</span>
+                        {room.dien_tich && <span> {room.dien_tich} m²</span>}
                         {room.phong_con_lai != null && (
                           <span className="badge badge-success">Còn {room.phong_con_lai} phòng</span>
                         )}
@@ -356,8 +345,7 @@ const HotelSearchPage = () => {
                         / đêm{nights > 1 && room.tong_gia ? ` · Tổng ${nights} đêm: ${fmt(room.tong_gia)} ₫` : ''}
                       </span>
                       <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
+                        type="button"className="btn btn-primary btn-sm"
                         onClick={() => navigate(buildRoomDetailUrl(hotel.ma_khach_san, room.ma_loai_phong, filters))}
                       >
                         Xem chi tiết

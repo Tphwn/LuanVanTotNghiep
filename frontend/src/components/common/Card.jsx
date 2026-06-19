@@ -1,8 +1,8 @@
 
-const Card = ({ children, style = {}, padding = 'var(--spacing-xl)' }) => {
+const Card = ({ children, style = {}, padding = 'var(--spacing-xl)'}) => {
   return (
     <div style={{
-      background: 'var(--color-white)',
+      background:'var(--color-white)',
       borderRadius: 'var(--radius-xl)',
       boxShadow: 'var(--shadow-card)',
       padding,

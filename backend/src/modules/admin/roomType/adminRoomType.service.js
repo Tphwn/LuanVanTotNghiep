@@ -1,22 +1,5 @@
 const prisma = require('../../../config/prisma');
-
-const attachImages = async (rooms) => {
-  const ids = rooms.map((r) => r.ma_loai_phong);
-  if (!ids.length) return rooms.map((r) => ({ ...r, hinh_anh: [] }));
-
-  const images = await prisma.hinh_anh.findMany({
-    where: { loai_doi_tuong: 'loai_phong', ma_doi_tuong: { in: ids } },
-    orderBy: { thu_tu: 'asc' },
-  });
-
-  const byRoom = images.reduce((acc, img) => {
-    if (!acc[img.ma_doi_tuong]) acc[img.ma_doi_tuong] = [];
-    acc[img.ma_doi_tuong].push(img);
-    return acc;
-  }, {});
-
-  return rooms.map((r) => ({ ...r, hinh_anh: byRoom[r.ma_loai_phong] || [] }));
-};
+const { attachRoomImages } = require('../../../utils/images');
 
 const getLoaiGiuongLabel = (soGiuong, sucChua) => {
   const n = Number(soGiuong) || 1;
@@ -102,7 +85,7 @@ const getRoomTypes = async (filters = {}) => {
     orderBy: { ma_loai_phong: 'desc' },
   });
 
-  return attachImages(rooms);
+  return attachRoomImages(rooms);
 };
 
 const getRoomTypeById = async (id) => {

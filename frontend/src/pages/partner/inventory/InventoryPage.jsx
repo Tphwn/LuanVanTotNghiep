@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
+import { Pencil, Lock, Unlock } from 'lucide-react';
+import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 
 const TRANG_THAI = {
-  dang_ban:  { label: 'Đang bán',   cls: 'badge-success' },
-  dong_ban:  { label: 'Đóng bán',   cls: 'badge-warning' },
-  da_khoa:   { label: 'Đã khóa',    cls: 'badge-danger' },
+  dang_ban:  { label: 'Đang bán',   cls: 'badge-success'},
+  dong_ban:  { label:'Đóng bán',   cls: 'badge-warning'},
+  da_khoa:   { label:'Đã khóa',    cls: 'badge-danger'},
 };
 
 const EditOpenSaleModal = ({ item, onClose, onSave, saving }) => {
@@ -16,14 +18,14 @@ const EditOpenSaleModal = ({ item, onClose, onSave, saving }) => {
   const min = item.da_dat;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay"onClick={onClose}>
+      <div className="modal-box"style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">Điều chỉnh mở bán</h3>
-          <button type="button" className="modal-close" onClick={onClose}>×</button>
+          <button type="button"className="modal-close"onClick={onClose}>×</button>
         </div>
 
-        <p style={{ fontSize: 14, color: '#5a7a72', marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color:'#5a7a72', marginBottom: 16 }}>
           <strong>{item.ten_loai}</strong> — {item.ten_khach_san}
         </p>
 
@@ -31,27 +33,25 @@ const EditOpenSaleModal = ({ item, onClose, onSave, saving }) => {
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10,
           marginBottom: 16, fontSize: 13,
         }}>
-          <div style={{ padding: 10, background: '#f8fdfb', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ color: '#888' }}>Tổng phòng</div>
-            <div style={{ fontWeight: 700, color: '#3C7363' }}>{item.tong_phong}</div>
+          <div style={{ padding: 10, background: '#f8fdfb', borderRadius: 8, textAlign: 'center'}}>
+            <div style={{ color:'#888'}}>Tổng phòng</div>
+            <div style={{ fontWeight: 700, color:'#3C7363'}}>{item.tong_phong}</div>
           </div>
-          <div style={{ padding: 10, background: '#fff8e6', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ color: '#888' }}>Đã đặt</div>
-            <div style={{ fontWeight: 700, color: '#b36b00' }}>{item.da_dat}</div>
+          <div style={{ padding: 10, background:'#fff8e6', borderRadius: 8, textAlign: 'center'}}>
+            <div style={{ color:'#888'}}>Đã đặt</div>
+            <div style={{ fontWeight: 700, color:'#b36b00'}}>{item.da_dat}</div>
           </div>
-          <div style={{ padding: 10, background: '#e8f5f1', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ color: '#888' }}>Còn lại</div>
-            <div style={{ fontWeight: 700, color: '#1a7a4a' }}>{item.con_lai}</div>
+          <div style={{ padding: 10, background:'#e8f5f1', borderRadius: 8, textAlign: 'center'}}>
+            <div style={{ color:'#888'}}>Còn lại</div>
+            <div style={{ fontWeight: 700, color:'#1a7a4a'}}>{item.con_lai}</div>
           </div>
         </div>
 
-        <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+        <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
           Số lượng mở bán
         </label>
         <input
-          type="number"
-          className="search-input"
-          style={{ width: '100%', marginBottom: 8 }}
+          type="number"className="search-input"style={{ width: '100%', marginBottom: 8 }}
           min={min}
           max={max}
           value={qty}
@@ -61,15 +61,13 @@ const EditOpenSaleModal = ({ item, onClose, onSave, saving }) => {
           Tối thiểu {min} (đã đặt), tối đa {max} (tổng phòng)
         </p>
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Hủy</button>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end'}}>
+          <button type="button"className="btn btn-ghost"onClick={onClose}>Hủy</button>
           <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving}
+            type="button"className="btn btn-primary"disabled={saving}
             onClick={() => onSave(Number(qty))}
           >
-            {saving ? 'Đang lưu...' : 'Lưu'}
+            {saving ?'Đang lưu...':'Lưu'}
           </button>
         </div>
       </div>
@@ -147,7 +145,7 @@ const InventoryPage = () => {
   };
 
   const handleCloseSale = async (item) => {
-    if (!window.confirm(`Đóng bán loại phòng "${item.ten_loai}"? Khách sẽ không đặt được phòng mới.`)) return;
+    if (!window.confirm(`Đóng bán loại phòng"${item.ten_loai}"? Khách sẽ không đặt được phòng mới.`)) return;
     try {
       await api.put(`/partner/inventory/${item.ma_loai_phong}/close-sale`);
       showToast('Đã đóng bán');
@@ -178,33 +176,32 @@ const InventoryPage = () => {
 
       {toast && (
         <div style={{
-          background: toast.type === 'success' ? '#e8f5f1' : '#fff0f0',
-          border: `1px solid ${toast.type === 'success' ? '#8FD9C4' : '#ffb3b3'}`,
-          color: toast.type === 'success' ? '#3C7363' : '#e05c5c',
+          background: toast.type === 'success'?'#e8f5f1':'#fff0f0',
+          border: `1px solid ${toast.type === 'success'?'#8FD9C4':'#ffb3b3'}`,
+          color: toast.type === 'success'?'#3C7363':'#e05c5c',
           padding: '10px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14,
         }}>
-          {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+          {toast.type === 'success'?'':''} {toast.msg}
         </div>
       )}
 
-      <div className="stats-grid" style={{ marginBottom: 16 }}>
+      <div className="stats-grid"style={{ marginBottom: 16 }}>
         {[
-          { label: 'Tổng số phòng', value: stats.tong_so_phong, color: '#3C7363' },
-          { label: 'Số loại phòng', value: stats.so_loai_phong, color: '#0958d9' },
-          { label: 'Đang mở bán', value: stats.dang_mo_ban, color: '#52c41a' },
-          { label: 'Đã khóa', value: stats.da_khoa, color: '#e05c5c' },
+          { label: 'Tổng số phòng', value: stats.tong_so_phong, color: '#3C7363'},
+          { label:'Số loại phòng', value: stats.so_loai_phong, color: '#0958d9'},
+          { label:'Đang mở bán', value: stats.dang_mo_ban, color: '#52c41a'},
+          { label:'Đã khóa', value: stats.da_khoa, color: '#e05c5c'},
         ].map((s) => (
-          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
+          <div key={s.label} className="stat-card"style={{ borderTop: `3px solid ${s.color}` }}>
             <div className="stat-card-label">{s.label}</div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="search-bar" style={{ marginBottom: 16 }}>
+      <div className="search-bar"style={{ marginBottom: 16 }}>
         <select
-          className="search-input"
-          style={{ flex: 1 }}
+          className="search-input"style={{ flex: 1 }}
           value={hotelFilter}
           onChange={(e) => setHotelFilter(e.target.value)}
         >
@@ -214,8 +211,7 @@ const InventoryPage = () => {
           ))}
         </select>
         <select
-          className="search-input"
-          style={{ flex: 1 }}
+          className="search-input"style={{ flex: 1 }}
           value={roomFilter}
           onChange={(e) => setRoomFilter(e.target.value)}
           disabled={!hotelFilter}
@@ -233,10 +229,9 @@ const InventoryPage = () => {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>⏳ Đang tải...</div>
+          <div style={{ textAlign:'center', padding: 40, color: '#5a7a72'}}> Đang tải...</div>
         ) : items.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📦</div>
             <p className="empty-state-text">Không có dữ liệu kho phòng phù hợp bộ lọc</p>
           </div>
         ) : (
@@ -250,55 +245,50 @@ const InventoryPage = () => {
                 <th>Còn lại</th>
                 <th>Mở bán</th>
                 <th>Trạng thái</th>
-                <th style={{ textAlign: 'right' }}>Thao tác</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => {
-                const st = TRANG_THAI[item.trang_thai_hien_thi] || { label: item.trang_thai_hien_thi, cls: 'badge-default' };
-                const canEdit = item.trang_thai_hien_thi !== 'da_khoa';
+                const st = TRANG_THAI[item.trang_thai_hien_thi] || { label: item.trang_thai_hien_thi, cls:'badge-default'};
+                const canEdit = item.trang_thai_hien_thi !=='da_khoa';
                 return (
                   <tr key={item.ma_loai_phong}>
                     <td style={{ fontWeight: 600 }}>{item.ten_loai}</td>
                     {!hotelFilter && <td>{item.ten_khach_san}</td>}
                     <td>{item.tong_phong}</td>
                     <td style={{ color: '#b36b00', fontWeight: 600 }}>{item.da_dat}</td>
-                    <td style={{ color: item.con_lai > 0 ? '#1a7a4a' : '#e05c5c', fontWeight: 600 }}>
+                    <td style={{ color: item.con_lai > 0 ? '#1a7a4a':'#e05c5c', fontWeight: 600 }}>
                       {item.con_lai}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#3C7363' }}>{item.mo_ban}</td>
+                    <td style={{ fontWeight: 600, color: '#3C7363'}}>{item.mo_ban}</td>
                     <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm"
-                            onClick={() => setEditItem(item)}
-                          >
-                            Sửa
-                          </button>
-                        )}
-                        {item.trang_thai_hien_thi === 'dang_ban' && (
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleCloseSale(item)}
-                          >
-                            Đóng bán
-                          </button>
-                        )}
-                        {item.trang_thai_hien_thi === 'dong_ban' && (
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => handleReopenSale(item)}
-                          >
-                            Mở bán
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    <ActionCell>
+                      <ActionButton
+                        variant="edit"
+                        iconOnly
+                        icon={Pencil}
+                        title="Sửa"
+                        disabled={!canEdit}
+                        onClick={() => setEditItem(item)}
+                      />
+                      <ActionButton
+                        variant="lock"
+                        iconOnly
+                        icon={Lock}
+                        title="Đóng bán"
+                        disabled={item.trang_thai_hien_thi !== 'dang_ban'}
+                        onClick={() => handleCloseSale(item)}
+                      />
+                      <ActionButton
+                        variant="unlock"
+                        iconOnly
+                        icon={Unlock}
+                        title="Mở bán"
+                        disabled={item.trang_thai_hien_thi !== 'dong_ban'}
+                        onClick={() => handleReopenSale(item)}
+                      />
+                    </ActionCell>
                   </tr>
                 );
               })}

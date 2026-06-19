@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchUsers } from '../../../redux/slices/adminUserSlice';
+import { fetchUsers } from '../../../store/slices/adminUserSlice';
 
 const PartnersPage = () => {
   const dispatch = useDispatch();
@@ -33,7 +33,7 @@ const PartnersPage = () => {
               <td>{p.doi_tac?.ten_cong_ty || p.email}</td>
               <td>{p.email}</td>
               <td>{p.so_dien_thoai}</td>
-              <td>{p.trang_thai === 'hoat_dong' ? 'Hoạt động' : 'Bị khóa'}</td>
+              <td>{p.trang_thai === 'hoat_dong'?'Hoạt động':'Bị khóa'}</td>
             </tr>
           ))}
         </tbody>

@@ -36,7 +36,7 @@ const PROMOS = [
 const PromotionsPage = () => (
   <div className="static-page">
     <div className="static-page-hero">
-      <h1 className="static-page-title">🎁 Ưu đãi & Khuyến mãi</h1>
+      <h1 className="static-page-title"> Ưu đãi & Khuyến mãi</h1>
       <p className="static-page-sub">
         Các chương trình giảm giá mới nhất — nhập mã khi đặt phòng để nhận ưu đãi.
       </p>

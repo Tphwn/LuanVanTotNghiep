@@ -1,10 +1,10 @@
 // Trang tổng quan đối tác — hiển thị số liệu khách sạn, phòng, booking của riêng đối tác
 const PartnerDashboardPage = () => {
   const stats = [
-    { label: 'Khách sạn',    value: '0', sub: 'Đang hoạt động',  color: '#3C7363' },
-    { label: 'Loại phòng',   value: '0', sub: 'Tổng loại phòng', color: '#0958d9' },
-    { label: 'Đặt phòng',    value: '0', sub: 'Tháng này',       color: '#b36b00' },
-    { label: 'Doanh thu',    value: '0 ₫', sub: 'Tháng này',     color: '#1a7a4a' },
+    { label: 'Khách sạn',    value: '0', sub: 'Đang hoạt động',  color: '#3C7363'},
+    { label:'Loại phòng',   value: '0', sub: 'Tổng loại phòng', color: '#0958d9'},
+    { label:'Đặt phòng',    value: '0', sub: 'Tháng này',       color: '#b36b00'},
+    { label:'Doanh thu',    value: '0 ₫', sub: 'Tháng này',     color: '#1a7a4a'},
   ];
 
   return (
@@ -17,10 +17,10 @@ const PartnerDashboardPage = () => {
       {/* Stats */}
       <div className="stats-grid">
         {stats.map((s) => (
-          <div className="stat-card" key={s.label}
+          <div className="stat-card"key={s.label}
             style={{ borderTop: `3px solid ${s.color}` }}>
             <div className="stat-card-label">{s.label}</div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
             <div className="stat-card-sub">{s.sub}</div>
           </div>
         ))}
@@ -29,7 +29,7 @@ const PartnerDashboardPage = () => {
       {/* Đặt phòng mới */}
       <div className="content-card">
         <div className="content-card-header">
-          <h3 className="content-card-title">📅 Đặt phòng mới nhất</h3>
+          <h3 className="content-card-title"> Đặt phòng mới nhất</h3>
           <span className="badge badge-info">0 đơn mới</span>
         </div>
         <table className="data-table">
@@ -46,7 +46,7 @@ const PartnerDashboardPage = () => {
           </thead>
           <tbody>
             <tr>
-              <td colSpan={7} style={{ textAlign: 'center', color: '#5a7a72', padding: '32px' }}>
+              <td colSpan={7} style={{ textAlign:'center', color: '#5a7a72', padding: '32px'}}>
                 Chưa có đặt phòng nào
               </td>
             </tr>
@@ -57,9 +57,9 @@ const PartnerDashboardPage = () => {
       {/* Khách sạn của tôi */}
       <div className="content-card">
         <div className="content-card-header">
-          <h3 className="content-card-title">🏨 Khách sạn của tôi</h3>
+          <h3 className="content-card-title"> Khách sạn của tôi</h3>
           <button style={{
-            padding: '8px 16px',
+            padding:'8px 16px',
             background: '#3C7363',
             color: '#fff',
             border: 'none',

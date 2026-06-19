@@ -4,7 +4,7 @@ const {
   calcStayPrice,
   getDatesInRange,
   countOverlappingBookings,
-} = require('../public/publicHotel.service');
+} = require('../../utils/bookingHelpers');
 
 const BOOKING_STATUS = {
   cho_xac_nhan: 'Chờ xác nhận',

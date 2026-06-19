@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import api from '../../services/api';
 
 const STATUS = {
-  cho_xu_ly: { label: 'Chờ duyệt', color: '#b36b00', bg: '#fff8e6' },
-  da_tao:    { label: 'Đã duyệt', color: '#1a7a4a', bg: '#e8f5f1' },
-  tu_choi:   { label: 'Từ chối', color: '#c0392b', bg: '#fff0f0' },
+  cho_xu_ly: { label: 'Chờ duyệt', color: '#b36b00', bg: '#fff8e6'},
+  da_tao:    { label:'Đã duyệt', color: '#1a7a4a', bg: '#e8f5f1'},
+  tu_choi:   { label:'Từ chối', color: '#c0392b', bg: '#fff0f0'},
 };
 
 const LOAI = {
-  khach_san: '🏨 Khách sạn',
-  phong: '🛏️ Loại phòng',
-  ca_hai: '🔗 Cả hai',
+  khach_san:' Khách sạn',
+  phong: 'Loại phòng',
+  ca_hai: 'Cả hai',
 };
 
 /** Hiển thị yêu cầu tiện nghi của đối tác trong form KS / loại phòng */
@@ -53,18 +53,18 @@ const AmenityRequestStatus = ({ loaiFilter, refreshKey = 0 }) => {
           cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#3C7363',
         }}
       >
-        <span>📬 Yêu cầu tiện nghi của bạn ({filtered.length})</span>
-        <span style={{ fontSize: 12, color: '#888' }}>{expanded ? '▲' : '▼'}</span>
+        <span> Yêu cầu tiện nghi của bạn ({filtered.length})</span>
+        <span style={{ fontSize: 12, color: '#888'}}>{expanded ? 'Thu gọn' : 'Mở rộng'}</span>
       </button>
 
       {pending > 0 && (
-        <div style={{ padding: '0 14px 8px', fontSize: 12, color: '#b36b00' }}>
+        <div style={{ padding: '0 14px 8px', fontSize: 12, color: '#b36b00'}}>
           {pending} yêu cầu đang chờ admin xử lý
         </div>
       )}
 
       {expanded && (
-        <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ padding:'0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map((r) => {
             const st = STATUS[r.trang_thai] || STATUS.cho_xu_ly;
             return (
@@ -76,25 +76,25 @@ const AmenityRequestStatus = ({ loaiFilter, refreshKey = 0 }) => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                  <strong style={{ color: '#1a2e28' }}>{r.ten_de_xuat}</strong>
+                  <strong style={{ color: '#1a2e28'}}>{r.ten_de_xuat}</strong>
                   <span style={{
-                    padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                    padding:'2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
                     color: st.color, background: st.bg, whiteSpace: 'nowrap',
                   }}>
                     {st.label}
                   </span>
                 </div>
-                <div style={{ color: '#5a7a72' }}>
-                  {r.loai_de_xuat ? LOAI[r.loai_de_xuat] : '—'}
-                  {' · '}
+                <div style={{ color: '#5a7a72'}}>
+                  {r.loai_de_xuat ? LOAI[r.loai_de_xuat] :'—'}
+                  {'·'}
                   {new Date(r.ngay_yeu_cau).toLocaleDateString('vi-VN')}
                 </div>
-                {r.trang_thai === 'tu_choi' && r.phan_hoi && (
-                  <div style={{ marginTop: 6, color: '#c0392b' }}>Lý do: {r.phan_hoi}</div>
+                {r.trang_thai === 'tu_choi'&& r.phan_hoi && (
+                  <div style={{ marginTop: 6, color:'#c0392b'}}>Lý do: {r.phan_hoi}</div>
                 )}
-                {r.trang_thai === 'da_tao' && (
-                  <div style={{ marginTop: 6, color: '#1a7a4a' }}>
-                    ✅ Đã thêm vào danh mục — bạn có thể chọn ngay
+                {r.trang_thai ==='da_tao'&& (
+                  <div style={{ marginTop: 6, color:'#1a7a4a' }}>
+                     Đã thêm vào danh mục — bạn có thể chọn ngay
                   </div>
                 )}
               </div>

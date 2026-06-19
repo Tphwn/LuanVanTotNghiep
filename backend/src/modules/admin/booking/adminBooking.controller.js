@@ -1,8 +1,8 @@
-const adminBookingService = require('./adminBooking.service');
+const bookingService = require('../../booking/booking.service');
 
 exports.getAll = async (req, res) => {
   try {
-    const data = await adminBookingService.getAll(req.query);
+    const data = await bookingService.getAllForAdmin(req.query);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -11,7 +11,7 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
-    const data = await adminBookingService.getById(req.params.id);
+    const data = await bookingService.getDetailForAdmin(req.params.id);
     if (!data) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn' });
     res.json({ success: true, data });
   } catch (err) {
@@ -22,14 +22,7 @@ exports.getById = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     const { ly_do } = req.body;
-    if (!ly_do?.trim()) {
-      return res.status(400).json({ success: false, message: 'Vui lòng nhập lý do hủy' });
-    }
-    const data = await adminBookingService.cancelBooking(
-      req.params.id,
-      req.user.id,
-      ly_do
-    );
+    const data = await bookingService.cancelByAdmin(req.params.id, req.user?.id, ly_do);
     res.json({ success: true, data, message: 'Đã hủy đơn đặt phòng' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -38,7 +31,7 @@ exports.cancelBooking = async (req, res) => {
 
 exports.getAllHotels = async (req, res) => {
   try {
-    const data = await adminBookingService.getAllHotels();
+    const data = await bookingService.getHotelsForAdminFilter();
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -47,7 +40,7 @@ exports.getAllHotels = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
-    const data = await adminBookingService.getStats();
+    const data = await bookingService.getStatsForAdmin();
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

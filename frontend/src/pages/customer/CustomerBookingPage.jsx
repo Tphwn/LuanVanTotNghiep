@@ -132,8 +132,8 @@ const CustomerBookingPage = () => {
   if (loading) {
     return (
       <div className="booking-page">
-        <div className="content-card" style={{ textAlign: 'center', padding: 64, color: '#5a7a72' }}>
-          ⏳ Đang tải thông tin đặt phòng...
+        <div className="content-card"style={{ textAlign: 'center', padding: 64, color: '#5a7a72'}}>
+           Đang tải thông tin đặt phòng...
         </div>
       </div>
     );
@@ -142,8 +142,8 @@ const CustomerBookingPage = () => {
   if (error && !room) {
     return (
       <div className="booking-page">
-        <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
-          <p style={{ color: '#e05c5c', marginBottom: 16 }}>⚠️ {error}</p>
+        <div className="content-card"style={{ textAlign:'center', padding: 48 }}>
+          <p style={{ color: '#e05c5c', marginBottom: 16 }}> {error}</p>
           <Link to={ROUTES.CUSTOMER.HOTELS} className="btn btn-outline">← Quay lại tìm kiếm</Link>
         </div>
       </div>
@@ -155,22 +155,20 @@ const CustomerBookingPage = () => {
 
   return (
     <div className="booking-page">
-      <Link to={backUrl} className="btn btn-ghost btn-sm" style={{ marginBottom: 16 }}>
+      <Link to={backUrl} className="btn btn-ghost btn-sm"style={{ marginBottom: 16 }}>
         ← Quay lại chi tiết phòng
       </Link>
 
       <h1 className="booking-page-title">Xác nhận đặt phòng</h1>
 
       <div className="booking-layout">
-        <form className="booking-form content-card" onSubmit={handleSubmit}>
+        <form className="booking-form content-card"onSubmit={handleSubmit}>
           <h3 className="content-card-title">Thông tin người nhận phòng</h3>
 
           <div className="booking-field">
-            <label className="booking-label" htmlFor="ten_nguoi_nhan">Họ và tên *</label>
+            <label className="booking-label"htmlFor="ten_nguoi_nhan">Họ và tên *</label>
             <input
-              id="ten_nguoi_nhan"
-              className="booking-input"
-              value={form.ten_nguoi_nhan}
+              id="ten_nguoi_nhan"className="booking-input"value={form.ten_nguoi_nhan}
               onChange={(e) => setForm((p) => ({ ...p, ten_nguoi_nhan: e.target.value }))}
               required
               maxLength={100}
@@ -178,11 +176,9 @@ const CustomerBookingPage = () => {
           </div>
 
           <div className="booking-field">
-            <label className="booking-label" htmlFor="sdt_nguoi_nhan">Số điện thoại *</label>
+            <label className="booking-label"htmlFor="sdt_nguoi_nhan">Số điện thoại *</label>
             <input
-              id="sdt_nguoi_nhan"
-              className="booking-input"
-              value={form.sdt_nguoi_nhan}
+              id="sdt_nguoi_nhan"className="booking-input"value={form.sdt_nguoi_nhan}
               onChange={(e) => setForm((p) => ({ ...p, sdt_nguoi_nhan: e.target.value }))}
               required
               maxLength={15}
@@ -194,20 +190,14 @@ const CustomerBookingPage = () => {
             <div className="booking-radio-group">
               <label className="booking-radio">
                 <input
-                  type="radio"
-                  name="phuong_thuc_tt"
-                  value="truc_tuyen"
-                  checked={form.phuong_thuc_tt === 'truc_tuyen'}
+                  type="radio"name="phuong_thuc_tt"value="truc_tuyen"checked={form.phuong_thuc_tt === 'truc_tuyen'}
                   onChange={(e) => setForm((p) => ({ ...p, phuong_thuc_tt: e.target.value }))}
                 />
                 Thanh toán trực tuyến
               </label>
               <label className="booking-radio">
                 <input
-                  type="radio"
-                  name="phuong_thuc_tt"
-                  value="tai_khach_san"
-                  checked={form.phuong_thuc_tt === 'tai_khach_san'}
+                  type="radio"name="phuong_thuc_tt"value="tai_khach_san"checked={form.phuong_thuc_tt === 'tai_khach_san'}
                   onChange={(e) => setForm((p) => ({ ...p, phuong_thuc_tt: e.target.value }))}
                 />
                 Thanh toán tại khách sạn
@@ -216,26 +206,23 @@ const CustomerBookingPage = () => {
           </div>
 
           <div className="booking-field">
-            <label className="booking-label" htmlFor="ghi_chu">Ghi chú (tuỳ chọn)</label>
+            <label className="booking-label"htmlFor="ghi_chu">Ghi chú (tuỳ chọn)</label>
             <textarea
-              id="ghi_chu"
-              className="booking-textarea"
-              rows={3}
+              id="ghi_chu"className="booking-textarea"rows={3}
               value={form.ghi_chu}
               onChange={(e) => setForm((p) => ({ ...p, ghi_chu: e.target.value }))}
-              placeholder="Yêu cầu đặc biệt, giờ đến sớm..."
-            />
+              placeholder="Yêu cầu đặc biệt, giờ đến sớm..."/>
           </div>
 
           {error && room && (
-            <p className="booking-error">⚠️ {error}</p>
+            <p className="booking-error"> {error}</p>
           )}
           {success && (
-            <p className="booking-success">✅ {success}</p>
+            <p className="booking-success"> {success}</p>
           )}
 
-          <button type="submit" className="btn btn-primary" disabled={submitting || !!success} style={{ width: '100%', marginTop: 8 }}>
-            {submitting ? 'Đang xử lý...' : 'Xác nhận đặt phòng'}
+          <button type="submit"className="btn btn-primary"disabled={submitting || !!success} style={{ width: '100%', marginTop: 8 }}>
+            {submitting ? 'Đang xử lý...':'Xác nhận đặt phòng'}
           </button>
         </form>
 
@@ -243,12 +230,12 @@ const CustomerBookingPage = () => {
           <h3 className="content-card-title">Tóm tắt đặt phòng</h3>
 
           {roomImg && (
-            <img src={resolveUploadUrl(roomImg.url)} alt={room?.ten_loai} className="booking-summary-img" />
+            <img src={resolveUploadUrl(roomImg.url)} alt={room?.ten_loai} className="booking-summary-img"/>
           )}
 
           <p className="booking-summary-hotel">{hotel?.ten}</p>
           <p className="booking-summary-room">{room?.ten_loai}</p>
-          <p className="booking-summary-location">📍 {hotel?.dia_diem?.ten_dia_diem}</p>
+          <p className="booking-summary-location"> {hotel?.dia_diem?.ten_dia_diem}</p>
 
           <div className="booking-summary-dates">
             <div>

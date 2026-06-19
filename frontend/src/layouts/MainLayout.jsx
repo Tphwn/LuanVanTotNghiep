@@ -23,8 +23,7 @@ const MainLayout = ({ children, fullBleed = false }) => {
   return (
     <div className="app-shell">
       <header className="layout-header">
-        <Link to={ROUTES.HOME} className="header-brand" style={{ textDecoration: 'none' }}>
-          <div className="brand-icon">🏨</div>
+        <Link to={ROUTES.HOME} className="header-brand"style={{ textDecoration: 'none'}}>
           <div>
             <div className="brand-subtitle">Hotel Booking</div>
             <span className="brand-title">Đặt phòng khách sạn</span>
@@ -34,16 +33,16 @@ const MainLayout = ({ children, fullBleed = false }) => {
         <nav className="header-nav">
           <Link
             to={ROUTES.CUSTOMER.PROMOTIONS}
-            className={`header-nav-link${isPromotions ? ' active' : ''}`}
+            className={`header-nav-link${isPromotions ?' active':''}`}
           >
-            🎁 Ưu đãi
+             Ưu đãi
           </Link>
           <Link
             to={ROUTES.CUSTOMER.CONTACT}
-            className={`header-nav-link${isContact ? ' active' : ''}`}
+            className={`header-nav-link${isContact ? 'active' : ''}`}
           >
-            <span className="header-nav-text-full">📞 Liên hệ với chúng tôi</span>
-            <span className="header-nav-text-short">📞 Liên hệ</span>
+            <span className="header-nav-text-full"> Liên hệ với chúng tôi</span>
+            <span className="header-nav-text-short"> Liên hệ</span>
           </Link>
         </nav>
 
@@ -51,10 +50,10 @@ const MainLayout = ({ children, fullBleed = false }) => {
           {user?.vai_tro === ROLES.KHACH_HANG && (
             <Link
               to={ROUTES.CUSTOMER.MY_BOOKINGS}
-              className={`header-nav-link${isMyBookings ? ' active' : ''}`}
+              className={`header-nav-link${isMyBookings ? 'active' : ''}`}
               style={{ marginRight: 4 }}
             >
-              📋 Đặt chỗ của tôi
+               Đặt chỗ của tôi
             </Link>
           )}
 
@@ -66,21 +65,19 @@ const MainLayout = ({ children, fullBleed = false }) => {
               </div>
               {user.vai_tro !== ROLES.KHACH_HANG && (
                 <button
-                  type="button"
-                  className="logout-button"
-                  onClick={() => navigate(getRedirectRoute(user))}
+                  type="button"className="logout-button"onClick={() => navigate(getRedirectRoute(user))}
                 >
                   Bảng điều khiển
                 </button>
               )}
-              <button type="button" className="logout-button" onClick={handleLogout}>
+              <button type="button"className="logout-button"onClick={handleLogout}>
                 Đăng xuất
               </button>
             </>
           ) : (
             <>
               <Link to={ROUTES.LOGIN}>
-                <button type="button" className="logout-button">Đăng nhập</button>
+                <button type="button"className="logout-button">Đăng nhập</button>
               </Link>
               <Link to={ROUTES.REGISTER}>
                 <button
@@ -104,7 +101,7 @@ const MainLayout = ({ children, fullBleed = false }) => {
         </div>
       </header>
 
-      <main className={fullBleed ? 'main-panel-full' : 'main-panel'}>{children}</main>
+      <main className={fullBleed ? 'main-panel-full':'main-panel'}>{children}</main>
     </div>
   );
 };

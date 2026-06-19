@@ -5,10 +5,72 @@ import {
   fetchRequests, approveRequest, rejectRequest,
 } from "../../../store/slices/amenitySlice";
 import {
-  AMENITY_ICON_PRESETS, getAmenityIcon, AMENITY_ICON_MAP,
   suggestIconSlugFromName, resolveIconSlug,
 } from "../../../utils/amenityIcons";
+import {
+  Pencil, Trash2, Plus, Building2, BedDouble,
+  Wifi, Tv, Bell, Check, X, ConciergeBell, MapPin,
+  Waves, ParkingCircle, UtensilsCrossed, ChefHat, Thermometer, Dumbbell,
+  Sparkles, Wind, Droplets, Coffee, Sunset, Flower2, Lock, GlassWater,
+  Shield, Accessibility, Users, Baby, Bus, Luggage, Phone, KeyRound,
+  Shirt, Monitor, Car, Utensils, Pill, Wine, ArrowUpDown, PawPrint,
+  Bike, Ship, Gamepad2, Trees,
+} from "lucide-react";
+import ManagementHeader from "../../../components/common/management/ManagementHeader";
+import SearchBar from "../../../components/common/management/SearchBar";
 
+/* ── Slug → Lucide icon map ───────────────────────────────────── */
+const SLUG_ICON_MAP = {
+  wifi:        Wifi,
+  pool:        Waves,
+  parking:     ParkingCircle,
+  restaurant:  UtensilsCrossed,
+  kitchen:     ChefHat,
+  fridge:      Thermometer,
+  gym:         Dumbbell,
+  spa:         Sparkles,
+  massage:     Sparkles,
+  ac:          Wind,
+  tv:          Tv,
+  bathtub:     Droplets,
+  breakfast:   Coffee,
+  coffee:      Coffee,
+  balcony:     Sunset,
+  bed:         BedDouble,
+  laundry:     Shirt,
+  elevator:    ArrowUpDown,
+  pet:         PawPrint,
+  bar:         Wine,
+  beach:       Waves,
+  garden:      Flower2,
+  safe:        Lock,
+  minibar:     GlassWater,
+  security:    Shield,
+  accessible:  Accessibility,
+  meeting:     Users,
+  kids:        Baby,
+  shuttle:     Bus,
+  luggage:     Luggage,
+  phone:       Phone,
+  key:         KeyRound,
+  iron:        Shirt,
+  hairdryer:   Wind,
+  desk:        Monitor,
+  car:         Car,
+  food:        Utensils,
+  medicine:    Pill,
+  bike:        Bike,
+  boat:        Ship,
+  game:        Gamepad2,
+  garden2:     Trees,
+};
+
+const getAmenityLucideIcon = (slugOrName) => {
+  const slug = suggestIconSlugFromName(slugOrName) || slugOrName;
+  return SLUG_ICON_MAP[slug] || ConciergeBell;
+};
+
+/* ── Loại tiện nghi / trạng thái ──────────────────────────────── */
 const inferLoaiDeXuat = (req) => {
   if (req.loai_de_xuat) return req.loai_de_xuat;
   const moTa = (req.mo_ta || '').toLowerCase();
@@ -17,31 +79,185 @@ const inferLoaiDeXuat = (req) => {
   return null;
 };
 
-const AmenityIcon = ({ value, name = '', size = 28 }) => (
-  <span
-    title={name || value || "Tiện nghi"}
-    style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      width: size + 12, height: size + 12, borderRadius: 10,
-      background: "#f0f7f5", fontSize: size * 0.75, flexShrink: 0,
-    }}
-  >
-    {getAmenityIcon(value, name)}
-  </span>
-);
-
 const LOAI_LABEL = {
-  khach_san: { label: "Khách sạn", cls: "badge-info", icon: "🏨" },
-  phong:     { label: "Loại phòng", cls: "badge-success", icon: "🛏️" },
-  ca_hai:    { label: "Cả hai", cls: "badge-warning", icon: "🔗" },
+  khach_san: { label: "Khách sạn", cls: "badge-info" },
+  phong:     { label: "Loại phòng", cls: "badge-success" },
+  ca_hai:    { label: "Cả hai", cls: "badge-warning" },
 };
 
 const REQUEST_STATUS = {
-  cho_xu_ly: { label: "Chờ xử lý", cls: "badge-warning" },
-  da_tao:    { label: "Đã tạo", cls: "badge-success" },
+  cho_xu_ly: { label: "Đang chờ", cls: "badge-warning" },
+  da_tao:    { label: "Đã duyệt", cls: "badge-success" },
   tu_choi:   { label: "Từ chối", cls: "badge-danger" },
 };
 
+/* ── Nhóm danh mục ────────────────────────────────────────────── */
+const HOTEL_CATEGORY_GROUPS = [
+  {
+    id: 'dich_vu', label: 'Dịch vụ khách sạn', Icon: ConciergeBell,
+    slugs: ['pool','gym','spa','massage','restaurant','bar','breakfast','laundry','coffee','shuttle','beach','garden','luggage','meeting','kids','pet','security','accessible'],
+  },
+  {
+    id: 'cong_cong', label: 'Tiện nghi công cộng', Icon: Building2,
+    slugs: ['wifi','elevator','parking'],
+  },
+  {
+    id: 'lan_can', label: 'Các tiện ích lân cận', Icon: MapPin,
+    slugs: [],
+  },
+];
+
+const ROOM_CATEGORY_GROUPS = [
+  {
+    id: 'phong', label: 'Tiện nghi phòng', Icon: BedDouble,
+    slugs: ['ac','fridge','bathtub','balcony','bed','safe','minibar','hairdryer','iron','desk','kitchen','coffee','phone','laundry'],
+  },
+  {
+    id: 'ket_noi', label: 'Kết nối mạng', Icon: Wifi,
+    slugs: ['wifi','tv'],
+  },
+  {
+    id: 'giai_tri', label: 'Giải trí', Icon: Tv,
+    slugs: [],
+  },
+];
+
+const groupAmenitiesByCategory = (items, categoryGroups) => {
+  const groups = categoryGroups.map((g) => ({ ...g, items: [] }));
+  const catchAll = groups.find((g) => g.slugs.length === 0);
+  items.forEach((item) => {
+    const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
+    let assigned = false;
+    for (const g of groups) {
+      if (g.slugs.length > 0 && g.slugs.includes(slug)) {
+        g.items.push(item);
+        assigned = true;
+        break;
+      }
+    }
+    if (!assigned && catchAll) catchAll.items.push(item);
+  });
+  return groups.filter((g) => g.items.length > 0 || g.slugs.length === 0);
+};
+
+const formatTimeAgo = (date) => {
+  if (!date) return '';
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} phút trước`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} giờ trước`;
+  return `${Math.floor(hrs / 24)} ngày trước`;
+};
+
+/* ── Sub-components ───────────────────────────────────────────── */
+const AmenityGroupCard = ({ group, onEdit, onDelete, onAdd }) => (
+  <div className="amenity-group-card">
+    <div className="amenity-group-header">
+      <div className="amenity-group-icon-wrap">
+        <group.Icon size={17} strokeWidth={1.5} />
+      </div>
+      <div>
+        <div className="amenity-group-title">{group.label}</div>
+        <div className="amenity-group-sub">{group.items.length} tiện nghi</div>
+      </div>
+    </div>
+    <div className="amenity-group-list">
+      {group.items.length === 0 ? (
+        <div className="amenity-group-empty">Chưa có tiện nghi</div>
+      ) : (
+          group.items.map((item) => {
+            const ItemIcon = getAmenityLucideIcon(item.bieu_tuong || item.ten);
+            return (
+            <div key={item.ma_tien_nghi} className="amenity-group-item">
+              <ItemIcon size={15} strokeWidth={1.6} className="amenity-group-item-icon" />
+              <span className="amenity-group-item-name">{item.ten}</span>
+            {(item._count || item.so_luong) != null && (
+              <span className="amenity-group-item-count">
+                {item._count?.total ?? item._count ?? item.so_luong}
+              </span>
+            )}
+            <div className="amenity-group-item-btns">
+              <button
+                type="button"
+                className="amenity-icon-btn amenity-icon-btn-edit"
+                title="Sửa"
+                onClick={() => onEdit(item)}
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                type="button"
+                className="amenity-icon-btn amenity-icon-btn-delete"
+                title="Xóa"
+                onClick={() => onDelete(item.ma_tien_nghi)}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+            </div>
+          );})
+        )}
+      </div>
+      <button type="button" className="amenity-group-add-btn" onClick={onAdd}>
+      <Plus size={14} />
+      Thêm tiện nghi
+    </button>
+  </div>
+);
+
+const RequestCard = ({ req, onApprove, onReject }) => {
+  const isPending = req.trang_thai === 'cho_xu_ly';
+  const loaiDx = inferLoaiDeXuat(req);
+  const loaiInfo = loaiDx ? LOAI_LABEL[loaiDx] : { label: 'Chưa rõ', cls: 'badge-default' };
+  const st = REQUEST_STATUS[req.trang_thai] || { label: req.trang_thai, cls: 'badge-default' };
+  return (
+    <div className="request-card">
+      <div className="request-card-body">
+        <div className="request-card-info">
+          <div className="request-card-title">{req.ten_de_xuat}</div>
+          <div className="request-card-tags">
+            <span className={`badge ${loaiInfo.cls}`}>{loaiInfo.label}</span>
+            <span className={`badge ${st.cls}`}>{st.label}</span>
+          </div>
+          <div className="request-card-meta">
+            Đề xuất bởi <strong>{req.doi_tac?.ten_cong_ty || '—'}</strong>
+            {req.doi_tac?.ten_khach_san && ` · ${req.doi_tac.ten_khach_san}`}
+            {req.ngay_yeu_cau && ` · ${formatTimeAgo(req.ngay_yeu_cau)}`}
+          </div>
+          {req.mo_ta && (
+            <div className="request-card-quote">"{req.mo_ta}"</div>
+          )}
+          {!isPending && req.phan_hoi && (
+            <div className="request-card-feedback">
+              Phản hồi: {req.phan_hoi}
+            </div>
+          )}
+        </div>
+        <div className="request-card-actions">
+          <button
+            type="button"
+            className="btn-request-reject"
+            disabled={!isPending}
+            onClick={() => isPending && onReject(req.ma_yeu_cau)}
+          >
+            <X size={13} /> Từ chối
+          </button>
+          <button
+            type="button"
+            className="btn-request-approve"
+            disabled={!isPending}
+            onClick={() => isPending && onApprove(req)}
+          >
+            <Check size={13} /> Duyệt & thêm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Main Page ────────────────────────────────────────────────── */
 const AmenitiesPage = () => {
   const dispatch = useDispatch();
   const { list = [], requests = [], loading = false } = useSelector(
@@ -57,8 +273,8 @@ const AmenitiesPage = () => {
   const [approveModal, setApproveModal] = useState(null);
   const [approveForm, setApproveForm] = useState({ loai: "ca_hai", bieu_tuong: "wifi" });
   const [iconManual, setIconManual] = useState(false);
-  const [customEmoji, setCustomEmoji] = useState("");
-  const [requestFilter, setRequestFilter] = useState("all");
+  const [requestFilter, setRequestFilter] = useState("cho_xu_ly");
+  const [addModal, setAddModal] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAmenities());
@@ -66,6 +282,8 @@ const AmenitiesPage = () => {
   }, [dispatch]);
 
   const pendingCount = requests.filter((r) => r.trang_thai === "cho_xu_ly").length;
+  const approvedCount = requests.filter((r) => r.trang_thai === "da_tao").length;
+  const rejectedCount = requests.filter((r) => r.trang_thai === "tu_choi").length;
 
   const hotelAmenities = useMemo(
     () => list.filter((item) => item.loai === "khach_san" || item.loai === "ca_hai"),
@@ -77,11 +295,17 @@ const AmenitiesPage = () => {
   );
 
   const currentLoai = activeTab === "hotel" ? "khach_san" : activeTab === "room" ? "phong" : null;
-  const baseList = activeTab === "hotel" ? hotelAmenities : activeTab === "room" ? roomAmenities : [];
 
-  const filteredList = baseList.filter((item) =>
-    item.ten?.toLowerCase().includes(keyword.toLowerCase())
-  );
+  const hotelGroups = useMemo(() => groupAmenitiesByCategory(hotelAmenities, HOTEL_CATEGORY_GROUPS), [hotelAmenities]);
+  const roomGroups  = useMemo(() => groupAmenitiesByCategory(roomAmenities, ROOM_CATEGORY_GROUPS), [roomAmenities]);
+  const currentGroups = activeTab === "hotel" ? hotelGroups : roomGroups;
+
+  const filteredGroups = useMemo(() => {
+    if (!keyword) return currentGroups;
+    return currentGroups
+      .map((g) => ({ ...g, items: g.items.filter((item) => item.ten?.toLowerCase().includes(keyword.toLowerCase())) }))
+      .filter((g) => g.items.length > 0);
+  }, [currentGroups, keyword]);
 
   const filteredRequests = requests.filter((req) => {
     if (requestFilter === "all") return true;
@@ -92,25 +316,18 @@ const AmenitiesPage = () => {
     setForm({ ten: "", bieu_tuong: "wifi", loai: loai || currentLoai || "khach_san" });
     setEditId(null);
     setIconManual(false);
-    setCustomEmoji("");
   };
 
   const handleNameChange = (ten) => {
     const next = { ...form, ten };
-    if (!iconManual && !editId) {
-      next.bieu_tuong = suggestIconSlugFromName(ten);
-    }
+    if (!iconManual && !editId) next.bieu_tuong = suggestIconSlugFromName(ten);
     setForm(next);
   };
 
   const handleSubmit = () => {
     if (!form.ten.trim()) return alert("Vui lòng nhập tên tiện nghi");
-    const iconSlug = customEmoji.trim() || resolveIconSlug(form.bieu_tuong, form.ten);
-    const payload = {
-      ...form,
-      ten: form.ten.trim(),
-      bieu_tuong: iconSlug,
-    };
+    const iconSlug = resolveIconSlug(form.bieu_tuong, form.ten);
+    const payload = { ...form, ten: form.ten.trim(), bieu_tuong: iconSlug };
     if (editId) {
       dispatch(updateAmenity({ id: editId, data: payload }));
       setEditId(null);
@@ -118,6 +335,7 @@ const AmenitiesPage = () => {
       dispatch(addAmenity(payload));
     }
     resetForm(currentLoai);
+    setAddModal(false);
   };
 
   const handleTabChange = (tab) => {
@@ -131,8 +349,8 @@ const AmenitiesPage = () => {
     setEditId(item.ma_tien_nghi);
     setForm({ ten: item.ten, bieu_tuong: item.bieu_tuong || suggestIconSlugFromName(item.ten), loai: item.loai });
     setIconManual(true);
-    setCustomEmoji(/^\p{Extended_Pictographic}/u.test(item.bieu_tuong || '') ? item.bieu_tuong : '');
     setActiveTab(item.loai === "phong" ? "room" : "hotel");
+    setAddModal(true);
   };
 
   const handleDelete = (id) => {
@@ -144,12 +362,11 @@ const AmenitiesPage = () => {
     const icon = suggestIconSlugFromName(req.ten_de_xuat);
     setApproveModal(req);
     setApproveForm({ loai, bieu_tuong: icon });
-    setCustomEmoji('');
   };
 
   const handleApproveSubmit = () => {
     if (!approveModal) return;
-    const bieu_tuong = customEmoji.trim() || resolveIconSlug(approveForm.bieu_tuong, approveModal.ten_de_xuat);
+    const bieu_tuong = resolveIconSlug(approveForm.bieu_tuong, approveModal.ten_de_xuat);
     dispatch(approveRequest({
       id: approveModal.ma_yeu_cau,
       loai: approveForm.loai,
@@ -158,7 +375,6 @@ const AmenitiesPage = () => {
       dispatch(fetchAmenities());
       dispatch(fetchRequests());
       setApproveModal(null);
-      setCustomEmoji('');
     });
   };
 
@@ -171,469 +387,297 @@ const AmenitiesPage = () => {
     });
   };
 
-  const renderAmenityTable = (items, emptyIcon, emptyText) => (
-    <div className="content-card">
-      <div className="content-card-header">
-        <h3 className="content-card-title">Danh sách ({items.length})</h3>
-      </div>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 32, color: "#5a7a72" }}>⏳ Đang tải...</div>
-      ) : items.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">{emptyIcon}</div>
-          <p className="empty-state-text">{emptyText}</p>
-        </div>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th style={{ width: 60 }}>Icon</th>
-              <th>Tên tiện nghi</th>
-              <th>Mã slug</th>
-              <th>Phạm vi</th>
-              <th style={{ textAlign: "right" }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const loai = LOAI_LABEL[item.loai] || { label: item.loai, cls: "badge-default", icon: "🛎️" };
-              return (
-                <tr key={item.ma_tien_nghi}>
-                  <td><AmenityIcon value={item.bieu_tuong} name={item.ten} /></td>
-                  <td>
-                    <div style={{ fontWeight: 600, color: "#1a2e28" }}>{item.ten}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>#{item.ma_tien_nghi}</div>
-                  </td>
-                  <td style={{ color: "#5a7a72", fontSize: 13, fontFamily: "monospace" }}>
-                    {item.bieu_tuong || "—"}
-                  </td>
-                  <td>
-                    <span className={`badge ${loai.cls}`}>
-                      {loai.icon} {loai.label}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      <button type="button" className="btn btn-outline btn-sm" onClick={() => handleEdit(item)}>
-                        ✏️ Sửa
-                      </button>
-                      <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDelete(item.ma_tien_nghi)}>
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-
-  const renderForm = () => (
-    <div className="content-card" style={{ marginBottom: 16 }}>
-      <h3 className="content-card-title" style={{ marginBottom: 14 }}>
-        {editId ? "✏️ Chỉnh sửa tiện nghi" : "➕ Thêm tiện nghi mới"}
-        <span style={{ fontSize: 13, fontWeight: 400, color: "#5a7a72", marginLeft: 8 }}>
-          — {activeTab === "hotel" ? "Dùng cho khách sạn" : "Dùng cho loại phòng"}
-        </span>
-      </h3>
-
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div style={{ flex: "2 1 200px" }}>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-            Tên tiện nghi <span style={{ color: "#e05c5c" }}>*</span>
-          </label>
-          <input
-            className="search-input"
-            style={{ width: "100%" }}
-            placeholder={activeTab === "hotel" ? "VD: Hồ bơi, Bãi đỗ xe..." : "VD: Tủ lạnh, Ban công..."}
-            value={form.ten}
-            onChange={(e) => handleNameChange(e.target.value)}
-          />
-        </div>
-
-        <div style={{ flex: "1 1 160px" }}>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-            Phạm vi áp dụng
-          </label>
-          <select
-            className="search-input"
-            style={{ width: "100%" }}
-            value={form.loai}
-            onChange={(e) => setForm({ ...form, loai: e.target.value })}
-          >
-            <option value={activeTab === "hotel" ? "khach_san" : "phong"}>
-              Chỉ {activeTab === "hotel" ? "khách sạn" : "loại phòng"}
-            </option>
-            <option value="ca_hai">Cả hai (khách sạn & loại phòng)</option>
-          </select>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <button type="button" className="btn btn-primary" onClick={handleSubmit}>
-            {editId ? "Cập nhật" : "Thêm mới"}
-          </button>
-          {editId && (
-            <button type="button" className="btn btn-ghost" onClick={() => resetForm(currentLoai)}>
-              Hủy
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 500 }}>
-          Chọn icon hiển thị
-        </label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {AMENITY_ICON_PRESETS.map((preset) => {
-            const selected = form.bieu_tuong === preset.key;
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                onClick={() => {
-                  setIconManual(true);
-                  setForm({ ...form, bieu_tuong: preset.key });
-                  setCustomEmoji('');
-                }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 12px", borderRadius: 10, cursor: "pointer",
-                  border: selected ? "2px solid #3C7363" : "1px solid #d4ede6",
-                  background: selected ? "#e8f5f1" : "#fff",
-                  fontSize: 13, color: "#1a2e28",
-                }}
-              >
-                <span style={{ fontSize: 18 }}>{AMENITY_ICON_MAP[preset.key]}</span>
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <AmenityIcon value={customEmoji || form.bieu_tuong} name={form.ten} size={24} />
-          <span style={{ fontSize: 13, color: "#5a7a72" }}>
-            Xem trước: <strong>{form.ten || "Tên tiện nghi"}</strong>
-            {!iconManual && form.ten && (
-              <span style={{ marginLeft: 6, color: "#888" }}>(tự gợi ý từ tên)</span>
-            )}
-          </span>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
-            Hoặc nhập emoji tùy chỉnh
-          </label>
-          <input
-            className="search-input"
-            style={{ width: 120, fontSize: 20, textAlign: "center" }}
-            placeholder="🛎️"
-            maxLength={4}
-            value={customEmoji}
-            onChange={(e) => {
-              setCustomEmoji(e.target.value);
-              setIconManual(true);
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  const openAddModal = () => {
+    resetForm(currentLoai);
+    setAddModal(true);
+  };
 
   return (
     <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 className="page-title">Quản lý Tiện nghi</h1>
-          <p className="page-subtitle">
-            Quản lý tiện nghi khách sạn, loại phòng và xử lý đề xuất từ đối tác
-          </p>
+      {/* Header */}
+      <ManagementHeader
+        title="Quản lý Tiện nghi"
+        subtitle="Quản lý danh mục tiện nghi khách sạn và loại phòng. Khách hàng tìm kiếm khách sạn dựa trên các tiện nghi này."
+        actionLabel={activeTab !== "requests" ? "Thêm tiện nghi" : undefined}
+        onAction={activeTab !== "requests" ? openAddModal : undefined}
+        actionIcon={Plus}
+      />
+
+      {/* Stats */}
+      <div className="amenity-stats-row">
+        <div className="amenity-stat-card">
+          <div className="amenity-stat-icon" style={{ background: "#e8f5f1", color: "#3C7363" }}>
+            <Building2 size={20} strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="amenity-stat-label">Tiện nghi khách sạn</div>
+            <div className="amenity-stat-value">{hotelAmenities.length}</div>
+            <div className="amenity-stat-sub">{hotelGroups.filter(g => g.items.length > 0).length} danh mục</div>
+          </div>
+        </div>
+        <div className="amenity-stat-card">
+          <div className="amenity-stat-icon" style={{ background: "#eef2ff", color: "#0958d9" }}>
+            <BedDouble size={20} strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="amenity-stat-label">Tiện nghi loại phòng</div>
+            <div className="amenity-stat-value">{roomAmenities.length}</div>
+            <div className="amenity-stat-sub">{roomGroups.filter(g => g.items.length > 0).length} danh mục</div>
+          </div>
+        </div>
+        <div className="amenity-stat-card">
+          <div className="amenity-stat-icon" style={{ background: "#fff8e6", color: "#b36b00" }}>
+            <Bell size={20} strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="amenity-stat-label">Yêu cầu đang chờ</div>
+            <div className="amenity-stat-value">{pendingCount}</div>
+            <div className="amenity-stat-sub">Từ đối tác</div>
+          </div>
         </div>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 16 }}>
+      {/* Tabs */}
+      <div className="amenity-tabs-row">
         {[
-          { label: "Tiện nghi KS", value: hotelAmenities.length, color: "#0958d9", icon: "🏨" },
-          { label: "Tiện nghi phòng", value: roomAmenities.length, color: "#3C7363", icon: "🛏️" },
-          { label: "Đề xuất từ ĐT", value: requests.length, color: "#7c3aed", icon: "📬" },
-          { label: "Chờ xử lý", value: pendingCount, color: "#b36b00", icon: "⏳" },
-        ].map((s) => (
-          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
-            <div className="stat-card-label">{s.icon} {s.label}</div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs chính */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {[
-          { id: "hotel", label: "🏨 Tiện nghi Khách sạn", count: hotelAmenities.length },
-          { id: "room", label: "🛏️ Tiện nghi Loại phòng", count: roomAmenities.length },
-          { id: "requests", label: "📬 Đề xuất từ đối tác", count: pendingCount, badge: pendingCount },
-        ].map((tab) => (
+          { id: "hotel",    icon: Building2,     label: "Tiện nghi khách sạn" },
+          { id: "room",     icon: BedDouble,      label: "Tiện nghi loại phòng" },
+          { id: "requests", icon: Bell,           label: "Yêu cầu từ đối tác", badge: pendingCount },
+        ].map(({ id, icon: Icon, label, badge }) => (
           <button
-            key={tab.id}
+            key={id}
             type="button"
-            className={`btn btn-sm ${activeTab === tab.id ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => handleTabChange(tab.id)}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            className={`amenity-tab-btn${activeTab === id ? " active" : ""}`}
+            onClick={() => handleTabChange(id)}
           >
-            {tab.label}
-            {tab.badge > 0 ? (
-              <span style={{
-                background: "#e05c5c", color: "#fff", borderRadius: 12,
-                padding: "1px 7px", fontSize: 11, fontWeight: 700,
-              }}>
-                {tab.badge}
-              </span>
-            ) : (
-              <span style={{ opacity: 0.7, fontSize: 12 }}>({tab.count})</span>
-            )}
+            <Icon size={15} strokeWidth={1.8} />
+            {label}
+            {badge > 0 && <span className="amenity-tab-badge">{badge}</span>}
           </button>
         ))}
       </div>
 
-      {/* Tab Khách sạn / Loại phòng */}
       {(activeTab === "hotel" || activeTab === "room") && (
         <>
-          <div style={{
-            padding: "12px 16px", background: activeTab === "hotel" ? "#e6f4ff" : "#e8f5f1",
-            borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#334155",
-            border: `1px solid ${activeTab === "hotel" ? "#91caff" : "#8FD9C4"}`,
-          }}>
-            {activeTab === "hotel" ? (
-              <>🏨 <strong>Tiện nghi khách sạn</strong> — áp dụng cho toàn bộ cơ sở (hồ bơi, bãi đỗ xe, nhà hàng...). Đối tác chọn khi tạo/sửa khách sạn.</>
-            ) : (
-              <>🛏️ <strong>Tiện nghi loại phòng</strong> — áp dụng riêng từng loại phòng (tủ lạnh, ban công, bồn tắm...). Đối tác chọn khi tạo/sửa loại phòng.</>
-            )}
-          </div>
-
-          {renderForm()}
-
-          <div className="search-bar" style={{ marginBottom: 12 }}>
-            <input
-              className="search-input"
-              placeholder="🔍 Tìm tên tiện nghi..."
+          <div className="amenity-toolbar">
+            <SearchBar
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
+              placeholder="Tìm tiện nghi..."
             />
           </div>
 
-          {renderAmenityTable(
-            filteredList,
-            activeTab === "hotel" ? "🏨" : "🛏️",
-            `Chưa có tiện nghi ${activeTab === "hotel" ? "khách sạn" : "loại phòng"} nào`
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 40, color: "#5a7a72" }}>Đang tải...</div>
+          ) : (
+            <div className="amenity-grid">
+              {filteredGroups.map((group) => (
+                <AmenityGroupCard
+                  key={group.id}
+                  group={group}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onAdd={openAddModal}
+                />
+              ))}
+              {filteredGroups.length === 0 && (
+                <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 40, color: "#5a7a72" }}>
+                  {keyword ? "Không tìm thấy tiện nghi phù hợp" : "Chưa có tiện nghi nào"}
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
 
-      {/* Tab Đề xuất */}
       {activeTab === "requests" && (
         <>
-          <div style={{
-            padding: "12px 16px", background: "#fff8e6", borderRadius: 10,
-            marginBottom: 16, fontSize: 13, color: "#334155",
-            border: "1px solid #ffe58f",
-          }}>
-            📬 Đối tác gửi đề xuất khi không tìm thấy tiện nghi phù hợp. Admin duyệt để tạo tiện nghi mới hoặc từ chối kèm lý do.
-          </div>
-
-          <div className="search-bar" style={{ marginBottom: 12 }}>
-            <select
-              className="search-input"
-              value={requestFilter}
-              onChange={(e) => setRequestFilter(e.target.value)}
-              style={{ flex: "0 0 200px" }}
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="cho_xu_ly">Chờ xử lý</option>
-              <option value="da_tao">Đã tạo</option>
-              <option value="tu_choi">Từ chối</option>
-            </select>
-            {pendingCount > 0 && (
-              <span className="badge badge-warning">{pendingCount} yêu cầu chờ duyệt</span>
-            )}
-          </div>
-
-          <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Danh sách đề xuất ({filteredRequests.length})</h3>
+          <div className="content-card" style={{ marginBottom: 0 }}>
+            <div className="request-section-header">
+              <div>
+                <div className="request-section-title">Yêu cầu thêm tiện nghi từ đối tác</div>
+                <div className="request-section-sub">Xét duyệt để thêm vào danh mục chính.</div>
+              </div>
+              <div className="request-subtabs">
+                {[
+                  { id: "cho_xu_ly", label: "Đang chờ",  count: pendingCount },
+                  { id: "da_tao",    label: "Đã duyệt",  count: approvedCount },
+                  { id: "tu_choi",   label: "Từ chối",   count: rejectedCount },
+                  { id: "all",       label: "Tất cả",    count: requests.length },
+                ].map(({ id, label, count }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`request-subtab-btn${requestFilter === id ? " active" : ""}`}
+                    onClick={() => setRequestFilter(id)}
+                  >
+                    {label}
+                    {count > 0 && <span className="request-subtab-count">{count}</span>}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {filteredRequests.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📭</div>
-                <p className="empty-state-text">Chưa có đề xuất nào từ đối tác</p>
-              </div>
-            ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Đối tác</th>
-                    <th>Loại đề xuất</th>
-                    <th>Tên đề xuất</th>
-                    <th>Mô tả</th>
-                    <th>Ngày gửi</th>
-                    <th>Trạng thái</th>
-                    <th>Phản hồi</th>
-                    <th style={{ textAlign: "right" }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.map((req) => {
-                    const st = REQUEST_STATUS[req.trang_thai] || { label: req.trang_thai, cls: "badge-default" };
-                    const isPending = req.trang_thai === "cho_xu_ly";
-                    const loaiDx = inferLoaiDeXuat(req);
-                    const loaiInfo = loaiDx ? LOAI_LABEL[loaiDx] : { label: "Chưa rõ", cls: "badge-default", icon: "❓" };
-                    const iconSlug = suggestIconSlugFromName(req.ten_de_xuat);
-                    return (
-                      <tr key={req.ma_yeu_cau}>
-                        <td>
-                          <div style={{ fontWeight: 600 }}>{req.doi_tac?.ten_cong_ty || "—"}</div>
-                          <div style={{ fontSize: 12, color: "#5a7a72" }}>{req.doi_tac?.email || "—"}</div>
-                        </td>
-                        <td>
-                          <span className={`badge ${loaiInfo.cls}`}>
-                            {loaiInfo.icon} {loaiInfo.label}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <AmenityIcon value={iconSlug} name={req.ten_de_xuat} size={22} />
-                            <span style={{ fontWeight: 500 }}>{req.ten_de_xuat}</span>
-                          </div>
-                        </td>
-                        <td style={{ color: "#5a7a72", fontSize: 13, maxWidth: 200 }}>
-                          {req.mo_ta || "—"}
-                        </td>
-                        <td style={{ color: "#5a7a72", fontSize: 13 }}>
-                          {new Date(req.ngay_yeu_cau).toLocaleString("vi-VN")}
-                        </td>
-                        <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                        <td style={{ fontSize: 13, color: "#5a7a72", maxWidth: 180 }}>
-                          {req.phan_hoi || (req.tien_nghi ? `→ ${req.tien_nghi.ten}` : "—")}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isPending ? (
-                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                              <button type="button" className="btn btn-primary btn-sm" onClick={() => openApprove(req)}>
-                                ✓ Duyệt
-                              </button>
-                              <button type="button" className="btn btn-danger btn-sm" onClick={() => setRejectModal(req.ma_yeu_cau)}>
-                                ✕ Từ chối
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: 12, color: "#5a7a72" }}>
-                              {req.trang_thai === "da_tao" ? "✅ Đã xử lý" : "❌ Đã từ chối"}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+            <div className="request-list">
+              {filteredRequests.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#5a7a72" }}>
+                  Không có yêu cầu nào
+                </div>
+              ) : (
+                filteredRequests.map((req) => (
+                  <RequestCard
+                    key={req.ma_yeu_cau}
+                    req={req}
+                    onApprove={openApprove}
+                    onReject={(id) => setRejectModal(id)}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </>
       )}
 
-      {/* Modal duyệt */}
-      {approveModal && (
-        <div className="modal-overlay" onClick={() => setApproveModal(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">✓ Duyệt đề xuất tiện nghi</h3>
-              <button type="button" className="modal-close" onClick={() => setApproveModal(null)}>×</button>
-            </div>
+      {addModal && (() => {
+        const PreviewIcon = getAmenityLucideIcon(form.ten || form.bieu_tuong);
+        return (
+          <div className="modal-overlay" onClick={() => { setAddModal(false); resetForm(currentLoai); }}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">
+                  {editId ? "Chỉnh sửa tiện nghi" : "Thêm tiện nghi mới"}
+                </h3>
+                <button type="button" className="modal-close" onClick={() => { setAddModal(false); resetForm(currentLoai); }}>×</button>
+              </div>
 
-            <p style={{ fontSize: 14, color: "#5a7a72", marginBottom: 16 }}>
-              Tạo tiện nghi mới từ đề xuất: <strong>{approveModal.ten_de_xuat}</strong>
-              <br />
-              <span style={{ fontSize: 13 }}>Đối tác: {approveModal.doi_tac?.ten_cong_ty}</span>
-              {inferLoaiDeXuat(approveModal) && (
-                <span style={{ marginLeft: 8 }} className={`badge ${LOAI_LABEL[inferLoaiDeXuat(approveModal)]?.cls}`}>
-                  {LOAI_LABEL[inferLoaiDeXuat(approveModal)]?.icon} Đề xuất cho {LOAI_LABEL[inferLoaiDeXuat(approveModal)]?.label}
-                </span>
-              )}
-            </p>
+              {/* Icon preview + Name input */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 500 }}>
+                  Tên tiện nghi <span style={{ color: "#e05c5c" }}>*</span>
+                </label>
+                <div className="amenity-form-name-row">
+                  <div className="amenity-form-icon-preview">
+                    <PreviewIcon size={24} strokeWidth={1.5} />
+                  </div>
+                  <input
+                    className="search-input"
+                    style={{ flex: 1, boxSizing: "border-box" }}
+                    placeholder={activeTab === "hotel" ? "VD: Hồ bơi, Ô tô, Bãi đỗ xe..." : "VD: Tủ lạnh, Ban công..."}
+                    value={form.ten}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {form.ten && (
+                  <div className="amenity-form-icon-hint">
+                    <PreviewIcon size={12} strokeWidth={2} />
+                    Icon nhận diện tự động từ tên
+                  </div>
+                )}
+              </div>
 
-            <div style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-              <AmenityIcon
-                value={customEmoji || approveForm.bieu_tuong}
-                name={approveModal.ten_de_xuat}
-                size={28}
-              />
-              <span style={{ fontSize: 13, color: "#5a7a72" }}>Icon gợi ý từ tên đề xuất</span>
-            </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 500 }}>
+                  Áp dụng cho
+                </label>
+                <div className="amenity-form-scope-row">
+                  {[
+                    { value: "khach_san", label: "Khách sạn", desc: "Hiển thị khi tạo khách sạn" },
+                    { value: "phong", label: "Loại phòng", desc: "Hiển thị khi tạo loại phòng" },
+                    { value: "ca_hai", label: "Cả hai", desc: "Khách sạn & loại phòng" },
+                  ].map(({ value, label, desc }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`amenity-scope-btn${form.loai === value ? " active" : ""}`}
+                      onClick={() => setForm({ ...form, loai: value })}
+                    >
+                      <span className="amenity-scope-label">{label}</span>
+                      <span className="amenity-scope-desc">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Phạm vi áp dụng</label>
-              <select
-                className="search-input"
-                style={{ width: "100%" }}
-                value={approveForm.loai}
-                onChange={(e) => setApproveForm({ ...approveForm, loai: e.target.value })}
-              >
-                <option value="khach_san">Chỉ khách sạn</option>
-                <option value="phong">Chỉ loại phòng</option>
-                <option value="ca_hai">Cả hai</option>
-              </select>
-            </div>
-
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Chọn icon</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-              {AMENITY_ICON_PRESETS.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  onClick={() => {
-                    setApproveForm({ ...approveForm, bieu_tuong: preset.key });
-                    setCustomEmoji('');
-                  }}
-                  style={{
-                    padding: "6px 10px", borderRadius: 8, cursor: "pointer",
-                    border: approveForm.bieu_tuong === preset.key && !customEmoji ? "2px solid #3C7363" : "1px solid #d4ede6",
-                    background: approveForm.bieu_tuong === preset.key && !customEmoji ? "#e8f5f1" : "#fff",
-                  }}
-                  title={preset.label}
-                >
-                  {AMENITY_ICON_MAP[preset.key]}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-ghost" onClick={() => { setAddModal(false); resetForm(currentLoai); }}>
+                  Hủy
                 </button>
-              ))}
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
-                Hoặc emoji tùy chỉnh
-              </label>
-              <input
-                className="search-input"
-                style={{ width: 120, fontSize: 20, textAlign: "center" }}
-                placeholder="🛎️"
-                maxLength={4}
-                value={customEmoji}
-                onChange={(e) => setCustomEmoji(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setApproveModal(null)}>Hủy</button>
-              <button type="button" className="btn btn-primary" onClick={handleApproveSubmit}>Xác nhận duyệt</button>
+                <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+                  {editId ? "Cập nhật" : "Thêm mới"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Modal từ chối */}
+      {approveModal && (() => {
+        const ApproveIcon = getAmenityLucideIcon(approveModal.ten_de_xuat);
+        return (
+          <div className="modal-overlay" onClick={() => setApproveModal(null)}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Duyệt đề xuất tiện nghi</h3>
+                <button type="button" className="modal-close" onClick={() => setApproveModal(null)}>×</button>
+              </div>
+
+              {/* Preview tiện nghi được duyệt */}
+              <div className="amenity-approve-preview">
+                <div className="amenity-approve-icon">
+                  <ApproveIcon size={28} strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#1a2e28" }}>{approveModal.ten_de_xuat}</div>
+                  <div style={{ fontSize: 13, color: "#5a7a72", marginTop: 3 }}>
+                    Đề xuất bởi {approveModal.doi_tac?.ten_cong_ty}
+                    {inferLoaiDeXuat(approveModal) && (
+                      <span style={{ marginLeft: 8 }} className={`badge ${LOAI_LABEL[inferLoaiDeXuat(approveModal)]?.cls}`}>
+                        {LOAI_LABEL[inferLoaiDeXuat(approveModal)]?.label}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
+                  Áp dụng cho
+                </label>
+                <div className="amenity-form-scope-row">
+                  {[
+                    { value: "khach_san", label: "Khách sạn", desc: "Hiển thị khi tạo khách sạn" },
+                    { value: "phong", label: "Loại phòng", desc: "Hiển thị khi tạo loại phòng" },
+                    { value: "ca_hai", label: "Cả hai", desc: "Khách sạn & loại phòng" },
+                  ].map(({ value, label, desc }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`amenity-scope-btn${approveForm.loai === value ? " active" : ""}`}
+                      onClick={() => setApproveForm({ ...approveForm, loai: value })}
+                    >
+                      <span className="amenity-scope-label">{label}</span>
+                      <span className="amenity-scope-desc">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setApproveModal(null)}>Hủy</button>
+                <button type="button" className="btn btn-primary" onClick={handleApproveSubmit}>Xác nhận duyệt</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Modal từ chối ── */}
       {rejectModal && (
         <div className="modal-overlay" onClick={() => setRejectModal(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">❌ Từ chối đề xuất</h3>
+              <h3 className="modal-title">Từ chối đề xuất</h3>
               <button type="button" className="modal-close" onClick={() => setRejectModal(null)}>×</button>
             </div>
 
