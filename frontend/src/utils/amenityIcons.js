@@ -1,5 +1,12 @@
 /** Slug tiện nghi — lưu DB, không hiển thị icon emoji trên UI */
 
+import {
+  Wifi, Tv, ConciergeBell, Waves, ParkingCircle, UtensilsCrossed, ChefHat, Thermometer,
+  Dumbbell, Sparkles, Wind, Droplets, Coffee, Sunset, BedDouble, Shirt, ArrowUpDown,
+  PawPrint, Wine, Flower2, Lock, GlassWater, Shield, Accessibility, Users, Baby, Bus,
+  Luggage, Phone, KeyRound, Monitor, Car, Utensils, Pill, Bike, Ship, Gamepad2, Trees,
+} from 'lucide-react';
+
 export const AMENITY_ICON_MAP = {};
 
 export const suggestIconSlugFromName = (name) => {
@@ -136,6 +143,56 @@ export const SLUG_TO_LUCIDE = {
 };
 
 export const getAmenityIcon = () => null;
+
+const SLUG_ICON_MAP = {
+  wifi:        Wifi,
+  pool:        Waves,
+  parking:     ParkingCircle,
+  restaurant:  UtensilsCrossed,
+  kitchen:     ChefHat,
+  fridge:      Thermometer,
+  gym:         Dumbbell,
+  spa:         Sparkles,
+  massage:     Sparkles,
+  ac:          Wind,
+  tv:          Tv,
+  bathtub:     Droplets,
+  breakfast:   Coffee,
+  coffee:      Coffee,
+  balcony:     Sunset,
+  bed:         BedDouble,
+  laundry:     Shirt,
+  elevator:    ArrowUpDown,
+  pet:         PawPrint,
+  bar:         Wine,
+  beach:       Waves,
+  garden:      Flower2,
+  safe:        Lock,
+  minibar:     GlassWater,
+  security:    Shield,
+  accessible:  Accessibility,
+  meeting:     Users,
+  kids:        Baby,
+  shuttle:     Bus,
+  luggage:     Luggage,
+  phone:       Phone,
+  key:         KeyRound,
+  iron:        Shirt,
+  hairdryer:   Wind,
+  desk:        Monitor,
+  car:         Car,
+  food:        Utensils,
+  medicine:    Pill,
+  bike:        Bike,
+  boat:        Ship,
+  game:        Gamepad2,
+  garden2:     Trees,
+};
+
+export const getAmenityLucideIcon = (slugOrName) => {
+  const slug = suggestIconSlugFromName(slugOrName) || slugOrName;
+  return SLUG_ICON_MAP[slug] || ConciergeBell;
+};
 
 export const resolveIconSlug = (bieuTuong, ten = '') => {
   if (bieuTuong && /^[a-z0-9_]+$/.test(String(bieuTuong).trim().toLowerCase())) {

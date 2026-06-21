@@ -4,7 +4,7 @@ import AmenityRequestStatus from '../../../components/partner/AmenityRequestStat
 
 const BASE_URL = 'http://localhost:5000';
 
-const RoomFormModal = ({ room, hotelId, amenities, onClose, onSuccess }) => {
+const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   const isEdit = !!room;
   const [form, setForm] = useState(isEdit ? {
     ten_loai:        room.ten_loai,
@@ -122,20 +122,12 @@ const RoomFormModal = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   const labelSt = { display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'};
 
   return (
-    <div className="modal-overlay"onClick={onClose} style={{ position:'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-      <div className="modal-box"style={{ background:'#fff', borderRadius: '12px', width: '100%', maxWidth: 680, maxHeight: '92vh', overflowY: 'auto', padding: '24px'}} onClick={e => e.stopPropagation()}>
+    <div>
         {toast && (
           <div style={{ position:'sticky', top: 0, zIndex: 10, padding: '10px 14px', borderRadius: 8, marginBottom: 12, background: toast.type === 'success'?'#e8f5f1':'#fff0f0', border: `1px solid ${toast.type === 'success'?'#8FD9C4':'#ffb3b3'}`, color: toast.type === 'success'?'#3C7363':'#e05c5c', fontSize: 13, fontWeight: 500 }}>
             {toast.type === 'success'?'':''} {toast.msg}
           </div>
         )}
-
-        <div className="modal-header"style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-          <h3 className="modal-title"style={{ margin: 0, color:'#3C7363', fontSize: '18px'}}>
-            {isEdit ?' Chỉnh sửa loại phòng':' Thêm loại phòng mới'}
-          </h3>
-          <button type="button"className="modal-close"onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#999'}}>×</button>
-        </div>
 
         <form onSubmit={handleSubmit}>
           <h4 style={{ fontSize: 13, fontWeight: 600, color:'#3C7363', marginBottom: 12, textTransform: 'uppercase'}}> Thông tin cơ bản</h4>
@@ -250,9 +242,8 @@ const RoomFormModal = ({ room, hotelId, amenities, onClose, onSuccess }) => {
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 };
 
-export default RoomFormModal;
+export default RoomFormContent;

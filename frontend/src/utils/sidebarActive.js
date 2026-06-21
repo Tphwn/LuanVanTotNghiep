@@ -1,18 +1,39 @@
 /** Xác định menu sidebar đang active (hỗ trợ route lồng nhau) */
 export const isPartnerMenuActive = (pathname, path) => {
-  if (path === '/partner/rooms') {
-    return pathname === '/partner/rooms' || /^\/partner\/hotels\/[^/]+\/rooms\/?$/.test(pathname);
-  }
+  if (pathname === path) return true;
+
   if (path === '/partner/hotels') {
-    return pathname === '/partner/hotels';
+    return pathname === '/partner/hotels/create'
+      || /^\/partner\/hotels\/\d+(\/edit)?$/.test(pathname);
   }
-  return pathname === path || pathname.startsWith(`${path}/`);
+
+  if (path === '/partner/rooms') {
+    return pathname === '/partner/rooms'
+      || /^\/partner\/hotels\/\d+\/rooms(\/|$)/.test(pathname);
+  }
+
+  const nestedPaths = ['/partner/bookings', '/partner/inventory'];
+  if (nestedPaths.includes(path) && pathname.startsWith(`${path}/`)) {
+    return true;
+  }
+
+  return pathname.startsWith(`${path}/`);
 };
 
 export const isAdminMenuActive = (pathname, path) => {
   if (pathname === path) return true;
-  if (path === '/admin/hotels' && pathname.startsWith('/admin/hotels/')) return true;
-  if (path === '/admin/users' && pathname.startsWith('/admin/users/')) return true;
-  if (path === '/admin/room-types' && pathname.startsWith('/admin/room-types/')) return true;
+
+  const nestedMenuPaths = [
+    '/admin/users',
+    '/admin/hotels',
+    '/admin/bookings',
+    '/admin/amenities',
+    '/admin/room-types',
+  ];
+
+  if (nestedMenuPaths.includes(path) && pathname.startsWith(`${path}/`)) {
+    return true;
+  }
+
   return false;
 };

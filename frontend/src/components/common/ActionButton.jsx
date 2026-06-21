@@ -19,7 +19,6 @@ export const TableActions = ({ children, className = '', style }) => (
   </div>
 );
 
-/** Ô thao tác gom nhiều nút trong một cột */
 export const ActionCell = ({ children }) => (
   <td className="table-action-cell">
     <div className="table-actions table-actions-nowrap">{children}</div>

@@ -1,21 +1,18 @@
 const prisma = require('../../../config/prisma');
 
 const adminFinanceService = {
-  // ================= 1. TỔNG QUAN TÀI CHÍNH =================
   getOverview: async () => {
-    // Tổng doanh thu (Các đơn đã hoàn thành/xác nhận)
+    // Tổng doanh thu 
     const dt = await prisma.dat_phong.aggregate({
       _sum: { thanh_toan_cuoi: true },
       where: { trang_thai: { in: ['hoan_thanh', 'da_xac_nhan'] } }
     });
     
-    // Tổng hoa hồng
     const hh = await prisma.hoa_hong.aggregate({
       _sum: { so_tien_hoa_hong: true },
       where: { trang_thai: 'da_thu' }
     });
 
-    // Tổng hoàn tiền
     const ht = await prisma.hoan_tien.aggregate({
       _sum: { so_tien_hoan: true },
       where: { trang_thai: 'da_hoan' }
@@ -28,13 +25,12 @@ const adminFinanceService = {
       tong_doanh_thu: dt._sum.thanh_toan_cuoi || 0,
       tong_hoa_hong: hh._sum.so_tien_hoa_hong || 0,
       tong_hoan_tien: ht._sum.so_tien_hoan || 0,
-      doanh_thu_thuc_nhan: (hh._sum.so_tien_hoa_hong || 0), // Lợi nhuận của OTA chính là Hoa hồng
+      doanh_thu_thuc_nhan: (hh._sum.so_tien_hoa_hong || 0), 
       so_don_thanh_cong: soDonThanhCong,
       so_don_hoan_tien: soDonHoanTien
     };
   },
 
-  // ================= 2. HOA HỒNG =================
   getCommissions: async (filters) => {
     return await prisma.hoa_hong.findMany({
       include: {
@@ -65,7 +61,6 @@ const adminFinanceService = {
     };
   },
 
-  // ================= 3. ĐỐI SOÁT (RECONCILIATION) =================
   getReconciliations: async () => {
     return await prisma.doi_soat.findMany({
       include: { doi_tac: true },
@@ -73,13 +68,11 @@ const adminFinanceService = {
     });
   },
 
-  // Hàm tự động tính toán đối soát cho 1 tháng (VD: "05/2026")
   calculateReconciliation: async (thang_nam, ma_doi_tac) => {
     const [month, year] = thang_nam.split('/');
     const startDate = new Date(`${year}-${month}-01`);
     const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); // Ngày cuối tháng
 
-    // 1. Tính tổng doanh thu tháng đó của đối tác
     const dt = await prisma.dat_phong.aggregate({
       _sum: { thanh_toan_cuoi: true },
       where: { 
@@ -88,14 +81,11 @@ const adminFinanceService = {
         ngay_nhan_phong: { gte: startDate, lte: endDate }
       }
     });
-
-    // 2. Tính tổng hoa hồng
     const hh = await prisma.hoa_hong.aggregate({
       _sum: { so_tien_hoa_hong: true },
       where: { ma_doi_tac: Number(ma_doi_tac), ngay_tinh: { gte: startDate, lte: endDate } }
     });
 
-    // 3. Tính tổng hoàn tiền
     const ht = await prisma.hoan_tien.aggregate({
       _sum: { so_tien_hoan: true },
       where: { 
@@ -110,8 +100,7 @@ const adminFinanceService = {
     const hoanTien = ht._sum.so_tien_hoan || 0;
     const thanhToanDoiTac = doanhThu - hoaHong - hoanTien;
 
-    // 4. Lưu vào bảng doi_soat (Dùng upsert để nếu có rồi thì cập nhật, chưa có thì tạo)
-    return await prisma.doi_soat.upsert({
+     return await prisma.doi_soat.upsert({
       where: { uq_doi_soat: { ma_doi_tac: Number(ma_doi_tac), thang_nam: thang_nam } },
       update: {
         tong_doanh_thu: doanhThu, tong_hoa_hong: hoaHong, tong_hoan_tien: hoanTien, thanh_toan_doi_tac: thanhToanDoiTac

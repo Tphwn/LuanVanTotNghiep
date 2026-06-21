@@ -80,6 +80,10 @@ const adminBookingSlice = createSlice({
         state.detailLoading = false;
         state.detail = action.payload;
       })
+      .addCase(fetchAdminBookingDetail.rejected, (state) => {
+        state.detailLoading = false;
+        state.detail = null;
+      })
 
       .addCase(fetchBookingStats.fulfilled, (state, action) => {
         state.stats = action.payload;

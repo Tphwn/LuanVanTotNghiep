@@ -57,6 +57,21 @@ export const unlockUser = createAsyncThunk(
   }
 );
 
+export const createPartner = createAsyncThunk(
+  'adminUsers/createPartner',
+  async (data, { rejectWithValue, dispatch }) => {
+    try {
+      const res = await adminUserService.createPartner(data);
+      await dispatch(fetchUsers());
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Tạo tài khoản đối tác thất bại'
+      );
+    }
+  }
+);
+
 export const selectCustomers = (state) =>
   state.adminUsers.users.filter(
     (u) => u.vai_tro ==='khach_hang'
@@ -74,12 +89,18 @@ const adminUserSlice = createSlice({
     users: [],
     selectedUser: null,
     loading: false,
+    creating: false,
     error: null,
+    successMsg: null,
   },
 
   reducers: {
     clearSelectedUser: (state) => {
       state.selectedUser = null;
+    },
+    clearUserMsg: (state) => {
+      state.error = null;
+      state.successMsg = null;
     },
   },
 
@@ -138,10 +159,23 @@ const adminUserSlice = createSlice({
         ) {
           state.selectedUser.trang_thai ='hoat_dong';
         }
+      })
+      .addCase(createPartner.pending, (state) => {
+        state.creating = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(createPartner.fulfilled, (state, action) => {
+        state.creating = false;
+        state.successMsg = action.payload?.message || 'Tạo tài khoản đối tác thành công';
+      })
+      .addCase(createPartner.rejected, (state, action) => {
+        state.creating = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearSelectedUser } = adminUserSlice.actions;
+export const { clearSelectedUser, clearUserMsg } = adminUserSlice.actions;
 
 export default adminUserSlice.reducer;

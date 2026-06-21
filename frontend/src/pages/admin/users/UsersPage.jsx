@@ -6,11 +6,11 @@ import {
   fetchUsers,
   lockUser,
   unlockUser,
+  clearUserMsg,
 } from "../../../store/slices/adminUserSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import { resolveUploadUrl } from "../../../utils/media";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import SummaryStats from "../../../components/common/management/SummaryStats";
 import SearchBar from "../../../components/common/management/SearchBar";
 import FilterTabs from "../../../components/common/management/FilterTabs";
 import ToggleSwitch from "../../../components/common/management/ToggleSwitch";
@@ -59,7 +59,7 @@ const TAB_FILTER = {
 const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { users, loading } = useSelector((state) => state.adminUsers);
+  const { users, loading, error, successMsg } = useSelector((state) => state.adminUsers);
 
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
@@ -73,6 +73,13 @@ const UsersPage = () => {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (successMsg || error) {
+      const t = setTimeout(() => dispatch(clearUserMsg()), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [successMsg, error, dispatch]);
 
   const nonAdminUsers = useMemo(
     () => users.filter((u) => u.vai_tro !== "admin"),
@@ -121,24 +128,25 @@ const UsersPage = () => {
   return (
     <div className="mgmt-page">
       <ManagementHeader
-        title="Quản lý người dùng"
+        title="Quản Lý Người Dùng"
         subtitle="Quản lý tài khoản khách hàng và đối tác trên hệ thống"
+        actionLabel="Tạo tài khoản đối tác"
+        onAction={() => {
+          dispatch(clearUserMsg());
+          navigate("/admin/users/create-partner");
+        }}
       />
 
-      <SummaryStats
-        items={[
-          { label: "Tổng", value: stats.total, color: "#1a2e28" },
-          { label: "Khách hàng", value: stats.khachHang, color: "#0958d9" },
-          { label: "Đối tác", value: stats.doiTac, color: "#3C7363" },
-          { label: "Bị khóa", value: stats.biKhoa, color: "#c0392b" },
-        ]}
-      />
-
+      {(successMsg || error) && (
+        <div className={`mgmt-toast ${successMsg ? "success" : "error"}`}>
+          {successMsg || error}
+        </div>
+      )}
       <div className="mgmt-toolbar">
         <SearchBar
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tìm theo tên, email hoặc số điện thoại..."
+          placeholder="Nhập tên, email hoặc số điện thoại để tìm kiếm..."
         />
       </div>
 
@@ -167,7 +175,7 @@ const UsersPage = () => {
               <thead>
                 <tr>
                   <th />
-                  <th>Họ tên / Công ty</th>
+                  <th>Họ tên & Công ty</th>
                   <th>Email</th>
                   <th>SĐT</th>
                   <th>Vai trò</th>
@@ -194,7 +202,6 @@ const UsersPage = () => {
                       </td>
                       <td>
                         <div className="mgmt-cell-name">{name}</div>
-                        <div className="mgmt-cell-sub">#{user.ma_nguoi_dung}</div>
                       </td>
                       <td style={{ color: "#5a7a72", fontSize: 13 }}>{user.email}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{user.so_dien_thoai}</td>

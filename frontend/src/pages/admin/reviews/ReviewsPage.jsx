@@ -9,26 +9,6 @@ const StarDisplay = ({ value }) => (
   </span>
 );
 
-const StarBar = ({ phanBoSao, total }) => {
-  if (!total) return <span style={{ fontSize: 12, color: "#888"}}>Chưa có dữ liệu</span>;
-  return (
-    <div style={{ marginTop: 6 }}>
-      {phanBoSao.map(({ so_sao, so_luong }) => {
-        const pct = Math.round((so_luong / total) * 100);
-        return (
-          <div key={so_sao} style={{ display:"flex", alignItems: "center", gap: 8, marginBottom: 5, fontSize: 12 }}>
-            <span style={{ width: 28, color: "#5a7a72"}}>{so_sao} sao</span>
-            <div style={{ flex: 1, height: 7, background:"#e8f5f1", borderRadius: 4, overflow: "hidden"}}>
-              <div style={{ width: `${pct}%`, height:"100%", background: "#3C7363", borderRadius: 4 }} />
-            </div>
-            <span style={{ width: 28, textAlign: "right", color: "#888"}}>{so_luong}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 const REVIEW_STATUS = {
   cho_duyet: { label:"Chờ duyệt", cls: "badge-warning"},
   hien_thi:  { label:"Hiển thị", cls: "badge-success"},
@@ -39,7 +19,6 @@ const TIME_PRESETS = [
   { value:"all", label: "Tất cả thời gian"},
   { value:"7", label: "7 ngày qua"},
   { value:"30", label: "30 ngày qua"},
-  { value:"90", label: "90 ngày qua"},
   { value:"custom", label: "Tùy chọn"},
 ];
 
@@ -230,7 +209,7 @@ const ReviewsPage = () => {
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Quản lý đánh giá</h1>
-          <p className="page-subtitle">Kiểm duyệt, ẩn/hiện đánh giá và theo dõi chất lượng dịch vụ</p>
+          <p className="page-subtitle">Kiểm duyệt, ẩn & hiện đánh giá, theo dõi chất lượng dịch vụ</p>
         </div>
       </div>
 
@@ -244,39 +223,6 @@ const ReviewsPage = () => {
           {toast.type === "success"?"":""} {toast.msg}
         </div>
       )}
-
-      {/* Stats */}
-      <div className="stats-grid"style={{ marginBottom: 16 }}>
-        <div className="stat-card"style={{ borderTop:"3px solid #3C7363"}}>
-          <div className="stat-card-label">Điểm trung bình</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span className="stat-card-value"style={{ color:"#3C7363"}}>
-              {stats.diem_trung_binh ||"—"}
-            </span>
-            {stats.diem_trung_binh > 0 && <StarDisplay value={stats.diem_trung_binh} size={14} />}
-          </div>
-        </div>
-        <div className="stat-card"style={{ borderTop:"3px solid #0958d9"}}>
-          <div className="stat-card-label">Tổng đánh giá</div>
-          <div className="stat-card-value"style={{ color:"#0958d9"}}>{stats.tong_danh_gia}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:"3px solid #b36b00"}}>
-          <div className="stat-card-label">Chờ duyệt</div>
-          <div className="stat-card-value"style={{ color:"#b36b00"}}>{stats.cho_duyet}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:"3px solid #52c41a"}}>
-          <div className="stat-card-label">Đang hiển thị</div>
-          <div className="stat-card-value"style={{ color:"#52c41a"}}>{stats.hien_thi}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:"3px solid #888"}}>
-          <div className="stat-card-label">Đã ẩn</div>
-          <div className="stat-card-value"style={{ color:"#888"}}>{stats.an}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:"3px solid #f1c40f"}}>
-          <div className="stat-card-label">Phân bố sao</div>
-          <StarBar phanBoSao={stats.phan_bo_sao || []} total={stats.tong_danh_gia} />
-        </div>
-      </div>
 
       {/* Filters */}
       <div className="content-card"style={{ marginBottom: 16, padding:"16px 20px"}}>

@@ -109,7 +109,7 @@ const UserDetailPage = () => {
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>Không tìm thấy người dùng</p>
         <button type="button"className="btn btn-outline"onClick={() => navigate("/admin/users")}>
-          ← Quay lại danh sách
+          ← Quay lại
         </button>
       </div>
     );
@@ -143,7 +143,7 @@ const UserDetailPage = () => {
   return (
     <div>
       <button type="button"className="btn btn-ghost btn-sm"style={{ marginBottom: 12 }} onClick={() => navigate("/admin/users")}>
-        ← Quay lại danh sách
+        ← Quay lại
       </button>
 
       {/* Hero */}
@@ -170,7 +170,7 @@ const UserDetailPage = () => {
               <span className={`badge ${accountSt.cls}`}>{accountSt.label}</span>
             </div>
             <p style={{ margin: 0, fontSize: 14, color: "#5a7a72"}}>
-              #{user.ma_nguoi_dung} · {user.email} · {user.so_dien_thoai}
+             Email:{user.email} <> </><br></br>Số điện thoại: {user.so_dien_thoai}
             </p>
           </div>
 
@@ -183,15 +183,6 @@ const UserDetailPage = () => {
           </ActionButton>
         </div>
       </div>
-
-      {/* Quick stats */}
-      {isCustomer && customer && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-          <StatMini label="Lượt đặt phòng"value={customer.tong_lan_dat || 0} color="#0958d9"icon=""/>
-          <StatMini label="Tổng chi tiêu"value={formatCurrency(customer.tong_tien_da_chi)} color="#b36b00"icon=""/>
-          <StatMini label="Đơn gần đây"value={bookings.length} color="#3C7363"icon=""/>
-        </div>
-      )}
 
       {isPartner && partner && (
         <div style={{ display:"grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
@@ -226,13 +217,11 @@ const UserDetailPage = () => {
           </button>
         ))}
       </div>
-
-      {/* Tab: Info */}
       {activeTab === "info"&& (
         <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div className="content-card">
             <h3 className="content-card-title"style={{ marginBottom: 12 }}> Tài khoản đăng nhập</h3>
-            <InfoRow label="Mã người dùng"value={`#${user.ma_nguoi_dung}`} />
+            <InfoRow label="Mã người dùng"value={`${user.ma_nguoi_dung}`} />
             <InfoRow label="Email đăng nhập"value={user.email} />
             <InfoRow label="Số điện thoại"value={user.so_dien_thoai} />
             <InfoRow label="Vai trò hệ thống"value={isCustomer ?"Khách hàng": isPartner ?"Đối tác":"Admin"} />
@@ -257,10 +246,10 @@ const UserDetailPage = () => {
               <h3 className="content-card-title"style={{ marginBottom: 12 }}> Hồ sơ đối tác</h3>
               <InfoRow label="Tên công ty"value={partner.ten_cong_ty} />
               <InfoRow label="Mã đối tác"value={`#${partner.ma_doi_tac}`} />
-              <InfoRow label="Mã số thuế"value={partner.ma_so_thue} />
               <InfoRow label="Email liên hệ"value={partner.email_lien_he || user.email} />
               <InfoRow label="SĐT công ty"value={partner.so_dien_thoai || user.so_dien_thoai} />
               <InfoRow label="Địa chỉ"value={partner.dia_chi} />
+              <InfoRow label="Mã số thuế"value={partner.ma_so_thue} />
               <InfoRow label="Tỷ lệ hoa hồng"value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` :"Mặc định hệ thống"} />
               <InfoRow label="Trạng thái hợp tác"value={PARTNER_STATUS[partner.trang_thai]?.label || partner.trang_thai} />
               <InfoRow label="Ngày cấp tài khoản"value={formatDateTime(partner.ngay_cap_tai_khoan)} />
@@ -269,7 +258,6 @@ const UserDetailPage = () => {
         </div>
       )}
 
-      {/* Tab: Bookings */}
       {activeTab ==="booking"&& isCustomer && (
         <div className="content-card">
           <div className="content-card-header">
@@ -317,8 +305,6 @@ const UserDetailPage = () => {
           )}
         </div>
       )}
-
-      {/* Tab: Hotels */}
       {activeTab ==="hotel"&& isPartner && (
         <div className="content-card">
           <div className="content-card-header">

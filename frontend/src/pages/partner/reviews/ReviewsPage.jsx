@@ -103,9 +103,6 @@ const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const ReviewsPage = () => {
   const [hotels, setHotels] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
-  const [stats, setStats] = useState({
-    diem_trung_binh: 0, tong_danh_gia: 0, chua_phan_hoi: 0, phan_bo_sao: [],
-  });
   const [theoLoaiPhong, setTheoLoaiPhong] = useState([]);
   const [danhSach, setDanhSach] = useState([]);
 
@@ -157,7 +154,6 @@ const ReviewsPage = () => {
 
       const res = await api.get('/partner/reviews', { params });
       const data = res.data.data || {};
-      setStats(data.stats || {});
       setTheoLoaiPhong(data.theo_loai_phong || []);
       setDanhSach(data.danh_sach || []);
     } catch (err) {
@@ -226,31 +222,6 @@ const ReviewsPage = () => {
           {toast.type === 'success'?'':''} {toast.msg}
         </div>
       )}
-
-      {/* Dashboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
-        <div className="stat-card"style={{ borderTop: '3px solid #3C7363'}}>
-          <div className="stat-card-label">Điểm trung bình</div>
-          <div style={{ display:'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="stat-card-value"style={{ color: '#3C7363'}}>
-              {stats.diem_trung_binh ||'—'}
-            </span>
-            {stats.diem_trung_binh > 0 && <StarDisplay value={Math.round(stats.diem_trung_binh)} size={16} />}
-          </div>
-        </div>
-        <div className="stat-card"style={{ borderTop: '3px solid #0958d9'}}>
-          <div className="stat-card-label">Tổng đánh giá</div>
-          <div className="stat-card-value"style={{ color:'#0958d9'}}>{stats.tong_danh_gia}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:'3px solid #b36b00'}}>
-          <div className="stat-card-label">Chưa phản hồi</div>
-          <div className="stat-card-value"style={{ color:'#b36b00'}}>{stats.chua_phan_hoi}</div>
-        </div>
-        <div className="stat-card"style={{ borderTop:'3px solid #f1c40f', gridColumn: 'span 1'}}>
-          <div className="stat-card-label">Phân bố sao</div>
-          <StarBar phanBoSao={stats.phan_bo_sao || []} total={stats.tong_danh_gia} />
-        </div>
-      </div>
 
       {/* Filters */}
       <div className="search-bar"style={{ marginBottom: 16, flexWrap:'wrap'}}>

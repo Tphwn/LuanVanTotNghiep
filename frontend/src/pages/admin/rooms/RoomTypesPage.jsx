@@ -8,7 +8,7 @@ import ActionButton, { ActionCell } from "../../../components/common/ActionButto
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
 
 const ROOM_STATUS = {
-  hoat_dong: { label: "Đang bán", cls: "badge-success"},
+  hoat_dong: { label: "Đang mở", cls: "badge-success"},
   an:        { label:"Đã ẩn", cls: "badge-warning"},
 };
 
@@ -22,7 +22,6 @@ const RoomTypesPage = () => {
   const [rooms, setRooms] = useState([]);
   const [hotels, setHotels] = useState([]);
   const [partners, setPartners] = useState([]);
-  const [stats, setStats] = useState({ total: 0, active: 0, hidden: 0 });
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
@@ -47,7 +46,6 @@ const RoomTypesPage = () => {
 
       const res = await api.get("/admin/room-types", { params });
       setRooms(res.data.data || []);
-      setStats(res.data.stats || { total: 0, active: 0, hidden: 0 });
       setHotels(res.data.hotels || []);
       setPartners(res.data.partners || []);
     } catch {
@@ -93,24 +91,8 @@ const RoomTypesPage = () => {
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Quản lý loại phòng</h1>
-          <p className="page-subtitle">Giám sát và kiểm soát loại phòng của tất cả khách sạn trên hệ thống</p>
+          <p className="page-subtitle">Giám sát và kiểm soát loại phòng của tất cả khách sạn</p>
         </div>
-      </div>
-
-      <div className="stats-grid"style={{ marginBottom: 16 }}>
-        {[
-          { label:"Tổng loại phòng", value: stats.total, color: "#3C7363"},
-          { label:"Đang bán", value: stats.active, color: "#52c41a"},
-          { label:"Đã ẩn", value: stats.hidden, color: "#b36b00"},
-        ].map((s) => (
-          <div key={s.label} className="stat-card"style={{ borderTop: `3px solid ${s.color}` }}>
-            <div style={{ display:"flex", justifyContent: "space-between", alignItems: "flex-start"}}>
-              <div className="stat-card-label">{s.label}</div>
-              <span style={{ fontSize: 18 }}>{s.icon}</span>
-            </div>
-            <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
-          </div>
-        ))}
       </div>
 
       <div className="content-card"style={{ marginBottom: 16, padding:"16px 20px"}}>
@@ -137,7 +119,7 @@ const RoomTypesPage = () => {
             <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
             <select className="search-input"style={{ width:"100%"}} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">Tất cả trạng thái</option>
-              <option value="hoat_dong">Đang bán</option>
+              <option value="hoat_dong">Đang mở</option>
               <option value="an">Đã ẩn</option>
             </select>
           </div>
@@ -213,7 +195,7 @@ const RoomTypesPage = () => {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, color:"#1a2e28"}}>{room.ten_loai}</div>
-                        <div style={{ fontSize: 12, color:"#888"}}>#{room.ma_loai_phong}</div>
+                        <div style={{ fontSize: 12, color:"#888"}}>{room.ma_loai_phong}</div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 500 }}>{room.khach_san?.ten}</div>

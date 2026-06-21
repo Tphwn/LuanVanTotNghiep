@@ -23,29 +23,37 @@ import ContactPage from '../pages/customer/ContactPage';
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 // Kéo 3 trang của quy trình Quản lý Khách sạn vào
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
+import PartnerHotelDetailPage from '../pages/partner/hotels/HotelDetailPage';
+import PartnerHotelFormPage from '../pages/partner/hotels/HotelFormPage';
 
 import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
+import PartnerRoomFormPage from '../pages/partner/rooms/RoomFormPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
+import PartnerBookingDetailPage from '../pages/partner/bookings/PartnerBookingDetailPage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
 import InventoryPage from '../pages/partner/inventory/InventoryPage';
+import InventoryEditPage from '../pages/partner/inventory/InventoryEditPage';
 
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
+import BookingDetailPage from '../pages/admin/bookings/BookingDetailPage';
 import AdminPaymentsPage from '../pages/admin/payment/PaymentsPage';
 import AdminFinancePage from "../pages/admin/finance/AdminFinancePage";
 import AdminReportsPage from '../pages/admin/reports/ReportsPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
+import AmenityFormPage from '../pages/admin/amenities/AmenityFormPage';
 import AdminRoomTypesPage from '../pages/admin/rooms/RoomTypesPage';
 import AdminRoomDetailPage from '../pages/admin/rooms/RoomDetailPage';
 import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
 import AdminUsersPage from "../pages/admin/users/UsersPage";
+import CreatePartnerPage from "../pages/admin/users/CreatePartnerPage";
 import HotelDetailPage from '../pages/admin/hotels/HotelDetailPage';
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
@@ -98,17 +106,23 @@ const AppRoutes = () => {
           
           {/* ======================= QUẢN LÝ KHÁCH SẠN ======================= */}
           <Route path="hotels" element={<PartnerHotelsPage />} />
-          {/* ================================================================= */}
+          <Route path="hotels/create" element={<PartnerHotelFormPage />} />
+          <Route path="hotels/:id" element={<PartnerHotelDetailPage />} />
+          <Route path="hotels/:id/edit" element={<PartnerHotelFormPage />} />
 
           <Route path="rooms" element={<PartnerRoomsPage />} />
           <Route path="hotels/:hotelId/rooms" element={<PartnerRoomsPage />} />
+          <Route path="hotels/:hotelId/rooms/create" element={<PartnerRoomFormPage />} />
+          <Route path="hotels/:hotelId/rooms/:roomId/edit" element={<PartnerRoomFormPage />} />
           <Route path="bookings" element={<PartnerBookingsPage />} />
+          <Route path="bookings/:id" element={<PartnerBookingDetailPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="inventory/:id/edit" element={<InventoryEditPage />} />
         </Route>
 
         {/* Admin */}
@@ -120,10 +134,14 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="users/create-partner" element={<CreatePartnerPage />} />
           <Route path="hotels" element={<AdminHotelsPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
+          <Route path="bookings/:id" element={<BookingDetailPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="amenities" element={<AdminAmenitiesPage />} />
+          <Route path="amenities/create" element={<AmenityFormPage />} />
+          <Route path="amenities/:id/edit" element={<AmenityFormPage />} />
           <Route path="room-types" element={<AdminRoomTypesPage />} />
           <Route path="room-types/:id" element={<AdminRoomDetailPage />} />
           <Route path="reviews" element={<AdminReviewsPage />} />

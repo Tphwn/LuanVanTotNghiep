@@ -101,7 +101,7 @@ const RoomDetailPage = () => {
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>{error || "Không tìm thấy loại phòng"}</p>
         <button type="button"className="btn btn-outline"onClick={() => navigate("/admin/room-types")}>
-          ← Quay lại danh sách
+          ← Quay lại
         </button>
       </div>
     );
@@ -127,7 +127,7 @@ const RoomDetailPage = () => {
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <button type="button"className="btn btn-ghost btn-sm"onClick={() => navigate("/admin/room-types")} style={{ marginBottom: 12 }}>
-          ← Quay lại danh sách
+          ← Quay lại
         </button>
 
         <div className="content-card"style={{ padding: 0, overflow:"hidden"}}>
@@ -147,13 +147,13 @@ const RoomDetailPage = () => {
                   <span className={`badge ${st.cls}`}>{st.label}</span>
                 </div>
                 <p style={{ margin:"0 0 4px", color: "#5a7a72", fontSize: 14 }}>
-                   <strong style={{ color: "#1a2e28"}}>{room.khach_san?.ten}</strong>
+                   <> Khách sạn: </><strong style={{ color: "#1a2e28"}}>{room.khach_san?.ten}</strong>
                   {room.khach_san?.doi_tac?.ten_cong_ty && (
-                    <> · Đối tác: <strong>{room.khach_san.doi_tac.ten_cong_ty}</strong></>
+                    <> <br /> Đối tác: <strong>{room.khach_san.doi_tac.ten_cong_ty}</strong></>
                   )}
                 </p>
                 {room.khach_san?.dia_diem?.ten_dia_diem && (
-                  <p style={{ margin: 0, fontSize: 13, color:"#888"}}> {room.khach_san.dia_diem.ten_dia_diem}</p>
+                  <p style={{ margin: 0, fontSize: 13, color:"#888"}}> <> Địa điểm: </>{room.khach_san.dia_diem.ten_dia_diem}</p>
                 )}
               </div>
               <div style={{ display:"flex", gap: 8, marginTop: 16, flexWrap: "wrap"}}>
@@ -169,12 +169,10 @@ const RoomDetailPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Main info grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
         <div className="content-card">
           <h3 className="content-card-title"style={{ marginBottom: 4 }}> Thông tin loại phòng</h3>
-          <InfoItem label="Tên loại phòng"value={room.ten_loai} highlight />
+          <InfoItem label="Tên loại phòng"value={room.ten_loai} />
           <InfoItem label="Khách sạn"value={room.khach_san?.ten} />
           <InfoItem label="Mô tả"value={room.mo_ta ||"Chưa có mô tả"} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px"}}>
@@ -192,19 +190,16 @@ const RoomDetailPage = () => {
             <PriceCard label="Cuối tuần"value={gia.gia_cuoi_tuan} color="#b36b00"icon=""/>
             <PriceCard label="Lễ / Tết"value={gia.gia_le} color="#e05c5c"icon=""/>
           </div>
-        </div>
-      </div>
-
-      {/* Inventory */}
-      <div className="content-card"style={{ marginBottom: 16 }}>
-        <h3 className="content-card-title"style={{ marginBottom: 14 }}> Tình trạng phòng</h3>
-        <div style={{ display:"grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          <h3 className="content-card-title"style={{ marginBottom: 14 }}> Tình trạng phòng</h3>
+          <div style={{ display:"grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           <InventoryCard label="Tổng số phòng"value={inv.tong_so_phong ?? room.so_luong_phong} color="#3C7363"icon=""/>
           <InventoryCard label="Đang mở bán"value={inv.dang_mo_ban ?? 0} color="#52c41a"icon=""/>
           <InventoryCard label="Đang bảo trì"value={inv.dang_bao_tri ?? 0} color="#b36b00"icon=""/>
           <InventoryCard label="Đang khóa"value={inv.dang_khoa ?? 0} color="#e05c5c"icon=""/>
         </div>
+        </div>
       </div>
+
 
       {/* Tabs */}
       <div style={{ display:"flex", gap: 8, marginBottom: 14, flexWrap: "wrap"}}>
@@ -240,7 +235,7 @@ const RoomDetailPage = () => {
                   key={tn.ma_lp_tien_nghi}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 14px", borderRadius: 10,
+                    padding: "10px 14px", borderRadius: 10,
                     background: "#f8fdfb", border: "1px solid #d4ede6",
                   }}
                 >

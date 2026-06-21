@@ -1,29 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-// ===== DỮ LIỆU ẢO CHI TIẾT (MOCK DATA) =====
-const MOCK_ROOM_DETAIL = {
-  ma_loai_phong: 101,
-  ten_loai: "Standard Double Room",
-  khach_san: "Mường Thanh Luxury",
-  dien_tich: 35,
-  suc_chua: 2,
-  loai_giuong: "1 Giường đôi lớn (King size)",
-  gia_mac_dinh: 850000,
-  mo_ta: "Phòng tiêu chuẩn trang bị đầy đủ nội thất hiện đại, view hướng phố sầm uất. Phù hợp cho các cặp đôi hoặc doanh nhân công tác.",
-  trang_thai: "hoat_dong",
-  tien_nghi: ["Điều hòa nhiệt độ", "TV màn hình phẳng", "Bồn tắm đứng", "Máy sấy tóc", "Wifi tốc độ cao", "Mini bar"],
-  hinh_anh: [
-    "https://via.placeholder.com/400x250?text=Room+Image+1",
-    "https://via.placeholder.com/400x250?text=Room+Image+2",
-    "https://via.placeholder.com/400x250?text=Room+Image+3"],
-  ton_phong: [ // Dữ liệu Tồn phòng và Giá linh hoạt theo ngày
-    { ngay:"2026-06-10", tong_phong: 10, phong_trong: 4, gia_ngay: 850000 },
-    { ngay: "2026-06-11", tong_phong: 10, phong_trong: 0, gia_ngay: 850000 }, // Hết phòng
-    { ngay: "2026-06-12", tong_phong: 10, phong_trong: 2, gia_ngay: 1200000 }, // Giá cuối tuần tăng lên
-    { ngay: "2026-06-13", tong_phong: 10, phong_trong: 5, gia_ngay: 1200000 },
-  ]
-};
 
 const RoomTypeDetailPage = () => {
   const { id } = useParams();
@@ -32,16 +9,10 @@ const RoomTypeDetailPage = () => {
   const [room, setRoom] = useState(null);
   const [activeTab, setActiveTab] = useState("info"); // info, pricing, images
 
-  useEffect(() => {
-    // Giả lập gọi API lấy chi tiết
-    setRoom(MOCK_ROOM_DETAIL);
-  }, [id]);
-
   if (!room) return <div className="main-panel">Đang tải...</div>;
 
   return (
     <div className="main-panel">
-      {/* ===== HEADER ===== */}
       <div className="page-header">
         <div className="page-header-left">
           <button className="btn btn-ghost btn-sm"onClick={() => navigate(-1)} style={{ marginBottom: 8 }}>← Quay lại</button>
@@ -55,7 +26,6 @@ const RoomTypeDetailPage = () => {
         </div>
       </div>
 
-      {/* ===== TABS NAV ===== */}
       <div style={{ display: "flex", gap: 20, borderBottom: "2px solid #d4ede6", marginBottom: 24 }}>
         {[
           { id: "info", label: "Thông tin & Tiện nghi" },
@@ -76,10 +46,8 @@ const RoomTypeDetailPage = () => {
         ))}
       </div>
 
-      {/* ===== TAB 1: THÔNG TIN & TIỆN NGHI ===== */}
       {activeTab === "info"&& (
         <div className="form-grid">
-          {/* Box Cấu hình cơ bản */}
           <div className="content-card">
             <h3 className="content-card-title mb-4">Cấu hình phòng</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -105,8 +73,6 @@ const RoomTypeDetailPage = () => {
           </div>
         </div>
       )}
-
-      {/* ===== TAB 2: BẢNG GIÁ & TỒN PHÒNG ===== */}
       {activeTab ==="pricing"&& (
         <div className="content-card">
           <div className="content-card-header">

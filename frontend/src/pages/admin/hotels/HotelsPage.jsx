@@ -11,7 +11,6 @@ import {
 } from "../../../store/slices/adminHotelSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import SummaryStats from "../../../components/common/management/SummaryStats";
 import SearchBar from "../../../components/common/management/SearchBar";
 import FilterTabs from "../../../components/common/management/FilterTabs";
 import ToggleSwitch from "../../../components/common/management/ToggleSwitch";
@@ -119,15 +118,6 @@ const HotelsPage = () => {
       <ManagementHeader
         title="Quản lý khách sạn"
         subtitle="Duyệt, kiểm tra và quản lý các cơ sở lưu trú trên hệ thống"
-      />
-
-      <SummaryStats
-        items={[
-          { label: "Tổng", value: stats.total, color: "#1a2e28" },
-          { label: "Đã duyệt", value: stats.hoatDong, color: "#1a7a4a" },
-          { label: "Chờ duyệt", value: stats.choDuyet, color: "#b36b00" },
-          { label: "Đang bán", value: stats.dangBan, color: "#3C7363" },
-        ]}
       />
 
       <div className="mgmt-toolbar">

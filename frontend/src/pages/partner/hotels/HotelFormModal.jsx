@@ -23,7 +23,7 @@ const mapPolicies = (policies) =>
     phan_tram_hoan: Number(p.phan_tram_hoan),
   }));
 
-const HotelFormModal = ({
+const HotelFormContent = ({
   hotel, diaDiem, amenities, defaultCancelPolicies,
   onClose, onSubmit, loading,
 }) => {
@@ -158,18 +158,7 @@ const HotelFormModal = ({
   ];
 
   return (
-    <div className="modal-overlay"onClick={onClose}>
-      <div
-        className="modal-box"style={{ maxWidth: 720 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header">
-          <h3 className="modal-title">
-            {isEdit ? `Quản lý: ${hotel.ten}` :'Thêm khách sạn mới'}
-          </h3>
-          <button type="button"className="modal-close"onClick={onClose}>×</button>
-        </div>
-
+    <div>
         <div style={{
           display: 'flex', gap: 8, marginBottom: 20,
           borderBottom: '2px solid #e8f5f1', paddingBottom: 10, flexWrap: 'wrap',
@@ -249,7 +238,7 @@ const HotelFormModal = ({
                   })}
                 </div>
                 <button type="button"className="btn btn-ghost btn-sm"style={{ marginTop: 8 }} onClick={() => setShowPropose(!showPropose)}>
-                  {showPropose ? 'Ẩn phần đề xuất':'Không tìm thấy? Đề xuất tiện nghi mới'}
+                  {showPropose ? 'Ẩn phần đề xuất':'Đề xuất tiện nghi mới'}
                 </button>
                 {showPropose && (
                   <div style={{
@@ -352,15 +341,6 @@ const HotelFormModal = ({
                 </div>
               </div>
 
-              <div style={{
-                background:'#e8f5f1', border: '1px solid #8FD9C4',
-                borderRadius: 8, padding: '10px 14px', fontSize: 13,
-                color: '#3C7363', marginBottom: 16,
-              }}>
-                {isEdit
-                  ? 'Chính sách hủy riêng của khách sạn này. Bạn có thể chỉnh sửa hoặc khôi phục mẫu mặc định của đối tác.':'Hệ thống áp dụng bộ chính sách mặc định của đối tác cho khách sạn mới. Bạn có thể tùy chỉnh trước khi gửi duyệt.'}
-              </div>
-
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h4 style={{ margin: 0, fontSize: 14, color: '#1a2e28'}}>Quy định hoàn tiền khi hủy phòng</h4>
                 <div style={{ display:'flex', gap: 8 }}>
@@ -424,13 +404,12 @@ const HotelFormModal = ({
           }}>
             <button type="button"className="btn btn-ghost"onClick={onClose}>Hủy bỏ</button>
             <button type="submit"className="btn btn-primary" disabled={loading}>
-              {loading ? 'Đang xử lý...': isEdit ?'Lưu thay đổi':'Khởi tạo & Gửi duyệt'}
+              {loading ? 'Đang xử lý...': isEdit ?'Lưu thay đổi':'Gửi duyệt'}
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 };
 
-export default HotelFormModal;
+export default HotelFormContent;

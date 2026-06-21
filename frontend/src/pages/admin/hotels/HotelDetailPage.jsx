@@ -136,7 +136,7 @@ const HotelDetailPage = () => {
   return (
     <div>
       <button type="button"className="btn btn-ghost btn-sm"style={{ marginBottom: 12 }} onClick={() => navigate("/admin/hotels")}>
-        ← Quay lại danh sách
+        ← Quay lại
       </button>
 
       {/* Hero */}
@@ -251,11 +251,10 @@ const HotelDetailPage = () => {
           <div className="content-card">
             <h3 className="content-card-title"style={{ marginBottom: 12 }}> Đối tác quản lý</h3>
             <InfoRow label="Tên công ty"value={partner?.ten_cong_ty} />
-            <InfoRow label="Mã đối tác"value={partner ? `#${partner.ma_doi_tac}` :"—"} />
+            <InfoRow label="Mã đối tác"value={partner ? `${partner.ma_doi_tac}` :"—"} />
             <InfoRow label="Email đăng nhập"value={partnerUser?.email} />
             <InfoRow label="Email liên hệ"value={partner?.email_lien_he || partnerUser?.email} />
             <InfoRow label="SĐT"value={partner?.so_dien_thoai || partnerUser?.so_dien_thoai} />
-            <InfoRow label="Mã số thuế"value={partner?.ma_so_thue} />
             <InfoRow label="Địa chỉ công ty"value={partner?.dia_chi} />
             <InfoRow
               label="Trạng thái hợp tác"value={PARTNER_STATUS[partner?.trang_thai]?.label || partner?.trang_thai}

@@ -137,31 +137,23 @@ const AdminLayout = () => {
 
 
         <aside className={`sidebar-panel ${sidebarOpen ? 'open' : ''}`}>
-
-          <p className="sidebar-label">Quản trị hệ thống</p>
-
           <h3 className="sidebar-title">Admin Panel</h3>
-
-          {adminMenus.map((item) => {
-
-            const Icon = item.icon;
-
-            return (
-
-              <Link
-
-                key={item.path}
-
-                to={item.path}
-
-                className={`sidebar-menu-item ${isAdminMenuActive(location.pathname, item.path) ? 'active' : ''}`}
-                onClick={closeSidebar}
-              >
-                <Icon size={18} className="sidebar-menu-icon" strokeWidth={2} />
-                {item.title}
-              </Link>
-            );
-          })}
+          <nav className="sidebar-nav">
+            {adminMenus.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`sidebar-menu-item ${isAdminMenuActive(location.pathname, item.path) ? 'active' : ''}`}
+                  onClick={closeSidebar}
+                >
+                  <Icon size={18} className="sidebar-menu-icon" strokeWidth={1.8} />
+                  {item.title}
+                </Link>
+              );
+            })}
+          </nav>
         </aside>
 
         <main className="main-panel">

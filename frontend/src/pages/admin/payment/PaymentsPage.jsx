@@ -46,7 +46,6 @@ const inputSt = {
   fontFamily:'inherit', background:'#fff',
 };
 
-// ===== TRANSACTION DETAIL MODAL =====
 const TxDetailModal = ({ tx, onClose }) => {
   if (!tx) return null;
   const st = TX_STATUS[tx.trang_thai] || { label: tx.trang_thai, cls: 'badge-default'};
@@ -171,8 +170,6 @@ const AdminPaymentsPage = () => {
           <p className="page-subtitle">Thanh toán, hoàn tiền, hoa hồng và thanh toán đối tác</p>
         </div>
       </div>
-
-      {/* Toast */}
       {(successMsg || error) && (
         <div style={{
           padding:'10px 16px', borderRadius:8, marginBottom:16, fontSize:14,
@@ -204,25 +201,8 @@ const AdminPaymentsPage = () => {
           </button>
         ))}
       </div>
-
-      {/* ===== DASHBOARD ===== */}
       {tab ==='dashboard'&& stats && (
         <>
-          <div className="stats-grid"style={{ gridTemplateColumns:'repeat(4,1fr)', marginBottom:20 }}>
-            {[
-              { label:'Tổng giao dịch',  value: stats.tong_giao_dich,  unit:'',  color:'#3C7363'},
-              { label:'Tổng doanh thu',  value: fmtCompact(stats.tong_doanh_thu), unit:'', color:'#0958d9'},
-              { label:'Tổng hoa hồng',  value: fmtCompact(stats.tong_hoa_hong),  unit:'', color:'#b36b00'},
-              { label:'Tổng hoàn tiền', value: fmtCompact(stats.tong_hoan_tien), unit:'', color:'#e05c5c'},
-            ].map(s => (
-              <div key={s.label} className="stat-card"style={{ borderTop:`3px solid ${s.color}` }}>
-                <div className="stat-card-label">{s.label}</div>
-                <div className="stat-card-value"style={{ color:s.color }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Biểu đồ doanh thu 6 tháng */}
           <div className="content-card">
             <h3 className="content-card-title"style={{ marginBottom:16 }}> Doanh thu 6 tháng gần nhất</h3>
             <div style={{ display:'flex', alignItems:'flex-end', gap:12, height:160, padding:'0 8px'}}>

@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../../../services/api';
 
-// ===== HELPER FUNCTIONS =====
 const formatCurrency = (amount) => 
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(amount || 0);
 
 const formatDate = (dateString) => 
   dateString ? new Date(dateString).toLocaleDateString('vi-VN') : '—';
 
-// ===== COMPONENTS ĐƯỢC ĐẠI DIỆN BÊN NGOÀI ĐỂ TRÁNH LỖI RENDER =====
 const StatCard = ({ title, value, color, subtitle }) => (
   <div style={{ 
     background: '#fff', padding: '20px', borderRadius: '12px', 
@@ -20,9 +18,8 @@ const StatCard = ({ title, value, color, subtitle }) => (
   </div>
 );
 
-// 1. Modal cấu hình tỷ lệ hoa hồng
 const ConfigModal = ({ onClose, onSave }) => {
-  const [type, setType] = useState('he_thong'); // he_thong, doi_tac, khach_san
+  const [type, setType] = useState('he_thong'); 
   const [targetId, setTargetId] = useState('');
   const [rate, setRate] = useState('');
 
@@ -223,7 +220,7 @@ const AdminFinancePage = () => {
 
   return (
     <div className="main-panel"style={{ padding: '20px'}}>
-      <h1 style={{ fontSize:'26px', fontWeight: 'bold', color: '#1a2e28', marginBottom: '20px'}}>Trung tâm Quản trị Tài chính sàn OTA</h1>
+      <h1 style={{ fontSize:'26px', fontWeight: 'bold', color: '#1a2e28', marginBottom: '20px'}}>Quản Lý Tài Chính</h1>
 
       {/* THANH ĐIỀU HƯỚNG TAB CHỨC NĂNG */}
       <div style={{ display:'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid #e8f5f1', paddingBottom: '10px'}}>

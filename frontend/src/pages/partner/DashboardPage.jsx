@@ -10,7 +10,7 @@ const PartnerDashboardPage = () => {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Tổng quan đối tác</h1>
+        <h1 className="page-title">Tổng Quan</h1>
         <p className="page-subtitle">Quản lý khách sạn và đơn đặt phòng của bạn</p>
       </div>
 
@@ -25,8 +25,6 @@ const PartnerDashboardPage = () => {
           </div>
         ))}
       </div>
-
-      {/* Đặt phòng mới */}
       <div className="content-card">
         <div className="content-card-header">
           <h3 className="content-card-title"> Đặt phòng mới nhất</h3>
@@ -54,7 +52,6 @@ const PartnerDashboardPage = () => {
         </table>
       </div>
 
-      {/* Khách sạn của tôi */}
       <div className="content-card">
         <div className="content-card-header">
           <h3 className="content-card-title"> Khách sạn của tôi</h3>

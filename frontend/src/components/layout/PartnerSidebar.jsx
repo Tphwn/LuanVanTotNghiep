@@ -29,22 +29,23 @@ const PartnerSidebar = ({ isOpen, onClose }) => {
 
   return (
     <aside className={`sidebar-panel ${isOpen ? 'open' : ''}`}>
-      <p className="sidebar-label">Quản lý đối tác</p>
       <h3 className="sidebar-title">Partner Panel</h3>
-      {partnerMenus.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`sidebar-menu-item ${isPartnerMenuActive(location.pathname, item.path) ? 'active' : ''}`}
-            onClick={onClose}
-          >
-            <Icon size={18} className="sidebar-menu-icon" strokeWidth={2} />
-            {item.name}
-          </Link>
-        );
-      })}
+      <nav className="sidebar-nav">
+        {partnerMenus.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-menu-item ${isPartnerMenuActive(location.pathname, item.path) ? 'active' : ''}`}
+              onClick={onClose}
+            >
+              <Icon size={18} className="sidebar-menu-icon" strokeWidth={1.8} />
+              {item.name}
+            </Link>
+          );
+        })}
+      </nav>
     </aside>
   );
 };

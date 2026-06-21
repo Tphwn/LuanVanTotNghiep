@@ -307,23 +307,6 @@ const ReportsPage = () => {
       {/* Dashboard */}
       {activeTab === "dashboard"&& (
         <>
-          <div className="stats-grid"style={{ marginBottom: 16 }}>
-            {[
-              { label:"Tổng báo cáo", value: dash.tong_bao_cao ?? 0, color: "#3C7363"},
-              { label:"Chờ xử lý", value: dash.cho_xu_ly ?? 0, color: "#b36b00"},
-              { label:"Đã chấp nhận", value: dash.da_chap_nhan ?? 0, color: "#52c41a"},
-              { label:"Từ chối", value: dash.tu_choi ?? 0, color: "#e05c5c"},
-              { label:"30 ngày qua", value: dash.moi_30_ngay ?? 0, color: "#0958d9"},
-            ].map((s) => (
-              <div key={s.label} className="stat-card"style={{ borderTop: `3px solid ${s.color}` }}>
-                <div style={{ display:"flex", justifyContent: "space-between"}}>
-                  <div className="stat-card-label">{s.label}</div>
-                  </div>
-                <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-
           <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div className="content-card">
               <h3 className="content-card-title"style={{ marginBottom: 14 }}>Phân loại báo cáo</h3>

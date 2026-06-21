@@ -52,8 +52,6 @@ const DashboardPage = () => {
           </tbody>
         </table>
       </div>
-
-      {/* Bảng đặt phòng gần đây */}
       <div className="content-card">
         <div className="content-card-header">
           <h3 className="content-card-title"> Đặt phòng gần đây</h3>

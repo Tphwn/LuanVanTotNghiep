@@ -110,6 +110,7 @@ const partnerBookingSlice = createSlice({
 
       .addCase(fetchBookingDetail.rejected, (state, action) => {
         state.detailLoading = false;
+        state.detail = null;
         state.error = action.payload;
       })
 

@@ -215,36 +215,6 @@ code {
   color: #fff;
 }
 
-.app-shell {
-  width: 100%;
-}
-
-.layout-body {
-  display: flex;
-  min-height: calc(100vh - 80px);
-  padding: 1.75rem 2rem;
-  gap: 22px;
-}
-
-.sidebar-panel {
-  width: 260px;
-  flex: 0 0 260px;
-  background: #fff;
-  border-radius: 28px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  padding: 20px;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);
-  min-height: calc(100vh - 104px);
-}
-
-.main-panel {
-  flex: 1;
-  border-radius: 28px;
-  padding: 24px;
-  background: #fff;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);
-}
-
 .page-main {
   padding: 2rem;
 }
@@ -271,18 +241,6 @@ code {
 
   .header-user-text {
     text-align: center;
-  }
-
-  .layout-body {
-    flex-direction: column;
-    padding: 1rem;
-    gap: 1rem;
-  }
-
-  .sidebar-panel,
-  .main-panel {
-    width: 100%;
-    min-height: auto;
   }
 
   .action-button {
