@@ -10,8 +10,8 @@ const DashboardPage = () => {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Tổng quan hệ thống</h1>
-        <p className="page-subtitle">Theo dõi toàn bộ hoạt động của hệ thống tại đây</p>
+        <h1 className="page-title">Tổng Quan</h1>
+        <p className="page-subtitle">Theo dõi toàn bộ hoạt động</p>
       </div>
 
       {/* Stats */}

@@ -6,8 +6,7 @@ import {
   clearMsg,
 } from '../../../store/slices/partnerBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import SearchBar from '../../../components/common/management/SearchBar';
-import FilterTabs from '../../../components/common/management/FilterTabs';
+import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import BookingTable from './components/BookingTable';
 
 const BookingManagePage = () => {
@@ -76,48 +75,36 @@ const BookingManagePage = () => {
       {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
       {error && <div className="mgmt-toast error">{error}</div>}
 
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tìm mã đơn, tên khách, SĐT..."
-        />
-      </div>
+      <ManagementToolbar
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchPlaceholder="Tìm mã đơn, tên khách, SĐT..."
+        tabs={filterTabs}
+        activeTab={statusFilter}
+        onTabChange={setStatusFilter}
+      />
 
-      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={setStatusFilter} />
-
-      <div className="mgmt-table-card">
+      <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
+          <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table">
-              <colgroup>
-                <col style={{ width: 100 }} />
-                <col />
-                <col />
-                <col style={{ width: 96 }} />
-                <col style={{ width: 96 }} />
-                <col style={{ width: 110 }} />
-                <col className="mgmt-col-status" />
-                <col className="mgmt-col-status" />
-                <col style={{ width: 96 }} />
-              </colgroup>
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th>Mã đơn</th>
+                  <th style={{ width: 148 }}>Mã đơn</th>
                   <th>Khách hàng</th>
                   <th>Khách sạn / Phòng</th>
-                  <th>Check-in</th>
-                  <th>Check-out</th>
-                  <th>Tổng tiền</th>
-                  <th>Thanh toán</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
+                  <th style={{ width: 100 }}>Check-in</th>
+                  <th style={{ width: 100 }}>Check-out</th>
+                  <th style={{ width: 120 }}>Tổng tiền</th>
+                  <th style={{ width: 100 }}>Thanh toán</th>
+                  <th style={{ width: 120 }}>Trạng thái</th>
+                  <th style={{ width: 100 }}>Thao tác</th>
                 </tr>
               </thead>
               <BookingTable

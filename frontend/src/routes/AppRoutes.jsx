@@ -19,9 +19,14 @@ import CustomerBookingPage from '../pages/customer/CustomerBookingPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import PromotionsPage from '../pages/customer/PromotionsPage';
 import ContactPage from '../pages/customer/ContactPage';
+import BookingGuidePage from '../pages/customer/BookingGuidePage';
+import PartnerContactPage from '../pages/customer/PartnerContactPage';
+import ProfilePage from '../pages/customer/ProfilePage';
+import PointsPage from '../pages/customer/PointsPage';
+import TransactionsPage from '../pages/customer/TransactionsPage';
+import RefundsPage from '../pages/customer/RefundsPage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
-// Kéo 3 trang của quy trình Quản lý Khách sạn vào
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
 import PartnerHotelDetailPage from '../pages/partner/hotels/HotelDetailPage';
 import PartnerHotelFormPage from '../pages/partner/hotels/HotelFormPage';
@@ -61,7 +66,6 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public */}
         <Route path={ROUTES.LOGIN} element={
           token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><LoginPage /></MainLayout>
         } />
@@ -69,7 +73,6 @@ const AppRoutes = () => {
           token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><RegisterPage /></MainLayout>
         } />
 
-        {/* Customer */}
         <Route path={ROUTES.HOME} element={
           <MainLayout fullBleed><HomePage /></MainLayout>
         } />
@@ -94,7 +97,24 @@ const AppRoutes = () => {
         <Route path={ROUTES.CUSTOMER.CONTACT} element={
           <MainLayout><ContactPage /></MainLayout>
         } />
-
+        <Route path={ROUTES.CUSTOMER.BOOKING_GUIDE} element={
+          <MainLayout><BookingGuidePage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.PARTNER_CONTACT} element={
+          <MainLayout><PartnerContactPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.PROFILE} element={
+          <MainLayout><ProfilePage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.POINTS} element={
+          <MainLayout><PointsPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.TRANSACTIONS} element={
+          <MainLayout><TransactionsPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.REFUNDS} element={
+          <MainLayout><RefundsPage /></MainLayout>
+        } />
         {/* Partner */}
         <Route path="/partner" element={
           <RoleRoute allowedRoles={[ROLES.DOI_TAC, ROLES.ADMIN]}>

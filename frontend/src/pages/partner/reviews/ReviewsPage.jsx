@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
+import { MessageSquare } from 'lucide-react';
 import ActionButton from '../../../components/common/ActionButton';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
 const StarDisplay = ({ value }) => (
   <span style={{ fontSize: 13, fontWeight: 600, color: '#b36b00' }}>
@@ -204,13 +206,11 @@ const ReviewsPage = () => {
   );
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 className="page-title">Quản lý Đánh giá</h1>
-          <p className="page-subtitle">Theo dõi phản hồi khách hàng và phản hồi đánh giá</p>
-        </div>
-      </div>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý Đánh giá"
+        subtitle="Theo dõi phản hồi khách hàng và phản hồi đánh giá"
+      />
 
       {toast && (
         <div style={{
@@ -385,9 +385,13 @@ const ReviewsPage = () => {
                   )}
 
                   <div style={{ display:'flex', justifyContent: 'flex-end'}}>
-                    <ActionButton variant="reply" onClick={() => setRespondReview(review)}>
-                      {review.da_phan_hoi ? 'Sửa phản hồi' : 'Phản hồi'}
-                    </ActionButton>
+                    <ActionButton
+                      variant="reply"
+                      iconOnly
+                      icon={MessageSquare}
+                      title={review.da_phan_hoi ? 'Sửa phản hồi' : 'Phản hồi'}
+                      onClick={() => setRespondReview(review)}
+                    />
                   </div>
                 </div>
               ))}

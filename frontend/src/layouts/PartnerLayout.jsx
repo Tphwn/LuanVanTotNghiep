@@ -1,46 +1,124 @@
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Building2,
+  BedDouble,
+  CalendarCheck,
+  Tag,
+  Package,
+  Wallet,
+  Star,
+  UserCircle,
+  LogOut,
+} from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
 import ROUTES from '../constants/routes';
-import PartnerSidebar from '../components/layout/PartnerSidebar';
+import { isPartnerMenuActive } from '../utils/sidebarActive';
 import PartnerNotificationBell from '../components/partner/PartnerNotificationBell';
+import { resolveUploadUrl } from '../utils/media';
+
+const partnerMenus = [
+  { title: 'Tổng quan', path: '/partner/dashboard', icon: LayoutDashboard },
+  { title: 'Khách sạn', path: '/partner/hotels', icon: Building2 },
+  { title: 'Loại phòng', path: '/partner/rooms', icon: BedDouble },
+  { title: 'Đặt phòng', path: '/partner/bookings', icon: CalendarCheck },
+  { title: 'Quản lý giá', path: '/partner/pricing', icon: Tag },
+  { title: 'Kho phòng', path: '/partner/inventory', icon: Package },
+  { title: 'Tài chính', path: '/partner/finance', icon: Wallet },
+  { title: 'Đánh giá', path: '/partner/reviews', icon: Star },
+  { title: 'Tài khoản', path: '/partner/account', icon: UserCircle },
+];
+
+const getInitials = (user) => {
+  const name = user?.ho_ten || user?.email || 'P';
+  return name.charAt(0).toUpperCase();
+};
 
 const PartnerLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate(ROUTES.HOME, { replace: true });
   };
 
-  return (
-    <div className="app-shell">
-      {/* Header */}
-      <header className="layout-header">
-        <div className="header-brand">
-          <div>
-            <div className="brand-subtitle">Quản trị viên đối tác</div>
-            <h2 className="brand-title">Hotel Booking</h2>
-          </div>
-        </div>
-        <div className="header-actions">
-          <PartnerNotificationBell />
-          <div className="header-user-text">
-            <div className="header-smoke">Xin chào,</div>
-            <div className="header-username">{user?.ho_ten || user?.email || 'Đối tác'}</div>
-          </div>
-          <button onClick={handleLogout} className="logout-button">Đăng xuất</button>
-        </div>
-      </header>
+  const closeSidebar = () => setSidebarOpen(false);
 
-      {/* Body */}
-      <div className="layout-body">
-        <PartnerSidebar />
-        <main className="main-panel">
-          <Outlet />
-        </main>
+  return (
+    <div className="app-shell app-shell-admin">
+      <div className="layout-body layout-body-admin">
+        {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
+
+        <aside className={`sidebar-panel sidebar-panel-admin ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-brand">
+            <img
+              src={resolveUploadUrl('/uploads/logo.png')}
+              alt="Hotel Booking"
+              className="sidebar-brand-logo-img"
+            />
+          </div>
+
+          <div className="sidebar-section-label">Menu chính</div>
+
+          <nav className="sidebar-nav sidebar-nav-admin">
+            {partnerMenus.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`sidebar-menu-item ${isPartnerMenuActive(location.pathname, item.path) ? 'active' : ''}`}
+                  onClick={closeSidebar}
+                >
+                  <Icon size={18} className="sidebar-menu-icon" strokeWidth={1.8} />
+                  {item.title}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="sidebar-footer">
+            <button type="button" className="sidebar-logout" onClick={handleLogout}>
+              <LogOut size={18} strokeWidth={1.8} />
+              Đăng xuất
+            </button>
+          </div>
+        </aside>
+
+        <div className="admin-content-wrap">
+          <header className="admin-topbar">
+            <button
+              type="button"
+              className="hamburger hamburger-admin"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Mở menu"
+            >
+              <span /><span /><span />
+            </button>
+
+            <div className="admin-topbar-actions">
+              <PartnerNotificationBell />
+
+              <div className="admin-user-block">
+                <div className="admin-user-text">
+                  <div className="admin-user-name">{user?.ho_ten || user?.email?.split('@')[0] || 'đối tác'}</div>
+                  <div className="admin-user-role">Đối tác</div>
+                </div>
+                <div className="admin-user-avatar">{getInitials(user)}</div>
+              </div>
+            </div>
+          </header>
+
+          <main className="main-panel main-panel-admin">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

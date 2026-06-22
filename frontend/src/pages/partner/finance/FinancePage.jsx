@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../../../services/api';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts'; // Thư viện biểu đồ
+} from 'recharts';
 
 const formatCurrency = (amount) => 
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(amount || 0);
@@ -64,15 +65,17 @@ const FinancePage = () => {
   );
 
   return (
-    <div className="main-panel"style={{ padding: '20px'}}>
-      <div style={{ display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-        <h1 style={{ fontSize:'28px', fontWeight: 'bold', color: '#1a2e28'}}>Quản lý Tài chính</h1>
-        
-        {/* Bộ lọc thời gian */}
-        <select 
-          value={timeFilter} 
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý Tài chính"
+        subtitle="Theo dõi doanh thu và hoa hồng theo thời gian"
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+        <select
+          className="mgmt-select-inline"
+          value={timeFilter}
           onChange={(e) => setTimeFilter(e.target.value)}
-          style={{ padding:'10px 15px', borderRadius: '8px', border: '1px solid #8FD9C4', outline: 'none', background: '#e8f5f1', color: '#3C7363', fontWeight: '600'}}
         >
           <option value="day">Hôm nay</option>
           <option value="week">7 ngày qua</option>

@@ -83,7 +83,7 @@ const AdminBookingsPage = () => {
   return (
     <div className="mgmt-page">
       <ManagementHeader
-        title="Quản lý Đặt phòng"
+        title="Quản Lý Đặt Phòng"
         subtitle="Tất cả đơn đặt phòng đã đặt"
       />
 
@@ -130,38 +130,27 @@ const AdminBookingsPage = () => {
 
       <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />
 
-      <div className="mgmt-table-card">
+      <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
+          <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : list.length === 0 ? (
           <div className="empty-state">
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table">
-              <colgroup>
-                <col style={{ width: 100 }} />
-                <col />
-                <col />
-                <col style={{ width: 96 }} />
-                <col style={{ width: 96 }} />
-                <col style={{ width: 110 }} />
-                <col className="mgmt-col-status" />
-                <col className="mgmt-col-status" />
-                <col style={{ width: 72 }} />
-              </colgroup>
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th>Mã đơn</th>
+                  <th style={{ width: 148 }}>Mã đơn</th>
                   <th>Khách hàng</th>
                   <th>Khách sạn / Phòng</th>
-                  <th>Check-in</th>
-                  <th>Check-out</th>
-                  <th>Tổng tiền</th>
-                  <th>Thanh toán</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
+                  <th style={{ width: 100 }}>Check-in</th>
+                  <th style={{ width: 100 }}>Check-out</th>
+                  <th style={{ width: 120 }}>Tổng tiền</th>
+                  <th style={{ width: 100 }}>Thanh toán</th>
+                  <th style={{ width: 120 }}>Trạng thái</th>
+                  <th style={{ width: 80 }}>Thao tác</th>
                 </tr>
               </thead>
               <BookingTable

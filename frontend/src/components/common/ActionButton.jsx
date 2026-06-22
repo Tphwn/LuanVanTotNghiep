@@ -25,19 +25,22 @@ export const ActionCell = ({ children }) => (
   </td>
 );
 
-const ActionButton = ({ variant = 'view', className = '', children, icon: Icon, iconOnly = false, ...props }) => {
+const ActionButton = ({ variant = 'view', className = '', children, icon: Icon, iconOnly, ...props }) => {
   const variantClass = VARIANT_CLASS[variant] || VARIANT_CLASS.view;
   const title = props.title || (typeof children === 'string' ? children : undefined);
+  const hasLabel = children !== undefined && children !== null && children !== false && children !== '';
+  const showIconOnly = iconOnly ?? (Boolean(Icon) && !hasLabel);
+
   return (
     <button
       type="button"
-      className={`btn btn-action ${iconOnly ? 'btn-action-icon' : 'btn-action-compact'} ${variantClass}${className ? ` ${className}` : ''}`}
+      className={`btn btn-action ${showIconOnly ? 'btn-action-icon' : 'btn-action-compact'} ${variantClass}${className ? ` ${className}` : ''}`}
       title={title}
       aria-label={title}
       {...props}
     >
-      {Icon && <Icon size={iconOnly ? 15 : 14} strokeWidth={2} />}
-      {!iconOnly && children}
+      {Icon && <Icon size={showIconOnly ? 15 : 14} strokeWidth={2} />}
+      {!showIconOnly && children}
     </button>
   );
 };

@@ -123,7 +123,7 @@ const AmenitiesPage = () => {
   return (
     <div>
       <ManagementHeader
-        title="Quản lý Tiện nghi"
+        title="Quản Lý Tiện Nghi"
         subtitle="Quản lý danh mục tiện nghi khách sạn và loại phòng."
         actionLabel={activeTab !== 'requests' ? 'Thêm tiện nghi' : undefined}
         onAction={activeTab !== 'requests' ? openAddPage : undefined}

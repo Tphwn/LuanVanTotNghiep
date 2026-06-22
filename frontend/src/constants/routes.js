@@ -11,6 +11,11 @@ const ROUTES = {
     PROMOTIONS: '/promotions',
     CONTACT: '/contact',
     PROFILE: '/profile',
+    POINTS: '/points',
+    TRANSACTIONS: '/transactions',
+    REFUNDS: '/refunds',
+    BOOKING_GUIDE: '/booking-guide',
+    PARTNER_CONTACT: '/partner-contact',
   },
   PARTNER: {
     DASHBOARD: '/partner/dashboard',

@@ -55,6 +55,8 @@ export const unlockHotel = createAsyncThunk('adminHotels/unlock', async (id, thu
   }
 });
 
+const matchHotelId = (a, b) => Number(a) === Number(b);
+
 const adminHotelSlice = createSlice({
   name:'adminHotels',
   initialState: {
@@ -75,23 +77,23 @@ const adminHotelSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(approveHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => h.ma_khach_san === action.payload);
-        if (hotel) hotel.trang_thai ='hoat_dong';
+        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload));
+        if (hotel) hotel.trang_thai = 'hoat_dong';
       })
       .addCase(rejectHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => h.ma_khach_san === action.payload.id);
+        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
         if (hotel) hotel.trang_thai = action.payload.trang_thai;
       })
       .addCase(requestInfoHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => h.ma_khach_san === action.payload.id);
+        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
         if (hotel) hotel.trang_thai = action.payload.trang_thai;
       })
       .addCase(lockHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => h.ma_khach_san === action.payload.id);
+        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
         if (hotel) hotel.trang_thai = action.payload.trang_thai;
       })
       .addCase(unlockHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => h.ma_khach_san === action.payload.id);
+        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
         if (hotel) hotel.trang_thai = action.payload.trang_thai;
       });
   },

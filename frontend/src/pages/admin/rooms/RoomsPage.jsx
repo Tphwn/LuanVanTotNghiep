@@ -12,7 +12,7 @@ const RoomsPage = () => {
     <div>
       <div style={{ display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
         <div>
-          <h1> Quản lý loại phòng</h1>
+          <h1> Quản Lý Loại Phòng</h1>
           <p style={{ margin: 0, color:'#59616a'}}>Xem, sửa và thêm các loại phòng trong hệ thống.</p>
         </div>
         <button style={{ padding:'0.85rem 1.25rem', borderRadius: 8, background: '#0958d9', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14 }}>Thêm loại phòng</button>

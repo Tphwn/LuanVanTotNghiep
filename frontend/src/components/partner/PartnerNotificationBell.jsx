@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
 import api from '../../services/api';
 
 const formatTime = (d) => new Date(d).toLocaleString('vi-VN');
@@ -55,27 +56,16 @@ const PartnerNotificationBell = () => {
   };
 
   return (
-    <div ref={ref} style={{ position:'relative'}}>
+    <div ref={ref} className="partner-notify-wrap">
       <button
-        type="button"onClick={handleOpen}
-        style={{
-          position:'relative', background: '#f0f7f5', border: '1px solid #d4ede6',
-          borderRadius: 10, padding: '8px 12px', cursor: 'pointer', fontSize: 18,
-        }}
+        type="button"
+        className="admin-notify-btn"
+        onClick={handleOpen}
         title="Thông báo tiện nghi"
+        aria-label="Thông báo"
       >
-        Thông báo
-        {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute', top: -4, right: -4,
-            background: '#e05c5c', color: '#fff', borderRadius: '50%',
-            minWidth: 18, height: 18, fontSize: 11, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '0 4px',
-          }}>
-            {unreadCount > 9 ? '9+': unreadCount}
-          </span>
-        )}
+        <Bell size={20} strokeWidth={1.8} />
+        {unreadCount > 0 && <span className="admin-notify-dot" />}
       </button>
 
       {open && (

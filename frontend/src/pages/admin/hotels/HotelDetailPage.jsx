@@ -82,25 +82,29 @@ const HotelDetailPage = () => {
 
   const handleAction = async (actionType) => {
     let actionPromise;
-    if (actionType === "approve"&& window.confirm("Duyệt khách sạn này hoạt động trên sàn?")) {
+    if (actionType === 'approve' && window.confirm('Duyệt khách sạn này hoạt động trên sàn?')) {
       actionPromise = dispatch(approveHotel(id));
-    } else if (actionType === "reject") {
-      const reason = window.prompt("Nhập lý do từ chối:");
+    } else if (actionType === 'reject') {
+      const reason = window.prompt('Nhập lý do từ chối:');
       if (reason?.trim()) actionPromise = dispatch(rejectHotel({ id, lyDo: reason.trim() }));
-    } else if (actionType === "lock"&& window.confirm("Khóa khách sạn này?")) {
+    } else if (actionType === 'lock' && window.confirm('Khóa khách sạn này?')) {
       actionPromise = dispatch(lockHotel(id));
-    } else if (actionType === "unlock"&& window.confirm("Mở khóa khách sạn này?")) {
+    } else if (actionType === 'unlock' && window.confirm('Mở khóa khách sạn này?')) {
       actionPromise = dispatch(unlockHotel(id));
     }
 
-    if (actionPromise) {
-      setActionLoading(true);
-      try {
-        await actionPromise;
-        await loadHotel();
-      } finally {
-        setActionLoading(false);
+    if (!actionPromise) return;
+
+    setActionLoading(true);
+    try {
+      const result = await actionPromise;
+      if (result.meta?.requestStatus === 'rejected') {
+        alert(result.payload || 'Thao tác thất bại');
+        return;
       }
+      await loadHotel();
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -158,9 +162,9 @@ const HotelDetailPage = () => {
                 )}
               </div>
               <p style={{ margin: "0 0 4px", color: "#5a7a72", fontSize: 14 }}>
-                #{hotel.ma_khach_san} · {hotel.dia_diem?.ten_dia_diem} · {partner?.ten_cong_ty}
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: "#888"}}> {hotel.dia_chi}</p>
+                <>Mã Khách sạn: </>{hotel.ma_khach_san} <br /> <> Địa điểm: </>{hotel.dia_diem?.ten_dia_diem} <br /> <> Đối tác: </>{partner?.ten_cong_ty}
+              </p> 
+              <p style={{ margin: 0, fontSize: 13, color: "#888"}}> <> Địa chỉ: </>{hotel.dia_chi}</p>
               {hotel.ly_do_tu_choi && (hotel.trang_thai ==="tu_choi"|| hotel.trang_thai ==="yeu_cau_sua") && (
                 <div style={{
                   marginTop: 12, padding: "10px 14px", background: "#fff8f0",
@@ -195,16 +199,6 @@ const HotelDetailPage = () => {
             </TableActions>
           </div>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-        <StatMini label="Loại phòng"value={hotel._count?.loai_phong ?? rooms.length} color="#3C7363"icon=""/>
-        <StatMini label="Tiện nghi"value={amenities.length} color="#0958d9"icon=""/>
-        <StatMini label="Hạng sao"value={hotel.so_sao ||"—"} color="#b36b00"icon=""/>
-        <StatMini
-          label="Hoa hồng"value={hotel.phan_tram_hoa_hong != null ? `${hotel.phan_tram_hoa_hong}%` :"Mặc định"}
-          color="#7c3aed"icon=""/>
       </div>
 
       {/* Tabs */}
@@ -259,11 +253,6 @@ const HotelDetailPage = () => {
             <InfoRow
               label="Trạng thái hợp tác"value={PARTNER_STATUS[partner?.trang_thai]?.label || partner?.trang_thai}
             />
-            <div style={{ marginTop: 12 }}>
-              <ActionButton variant="view" onClick={() => partnerUser && navigate(`/admin/users/${partner.ma_nguoi_dung}`)}>
-                Xem tài khoản đối tác
-              </ActionButton>
-            </div>
           </div>
         </div>
       )}
@@ -333,12 +322,11 @@ const HotelDetailPage = () => {
                         <ActionCell>
                           <ActionButton
                             variant="view"
+                            iconOnly
                             icon={Eye}
                             title="Chi tiết"
                             onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
-                          >
-                            Chi tiết
-                          </ActionButton>
+                          />
                         </ActionCell>
                       </tr>
                     );

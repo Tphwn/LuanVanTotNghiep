@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../../services/api";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, Lock, Unlock } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 
 const StarDisplay = ({ value }) => (
@@ -208,7 +208,7 @@ const ReviewsPage = () => {
     <div>
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Quản lý đánh giá</h1>
+          <h1 className="page-title">Quản Lý Đánh Giá</h1>
           <p className="page-subtitle">Kiểm duyệt, ẩn & hiện đánh giá, theo dõi chất lượng dịch vụ</p>
         </div>
       </div>
@@ -384,7 +384,7 @@ const ReviewsPage = () => {
                           <ActionButton
                             variant={rv.trang_thai === "an" ? "unlock" : "lock"}
                             iconOnly
-                            icon={rv.trang_thai === "an" ? Eye : EyeOff}
+                            icon={rv.trang_thai === "an" ? Unlock : Lock}
                             title={rv.trang_thai === "an" ? "Hiện đánh giá" : "Ẩn đánh giá"}
                             onClick={() => handleToggleStatus(rv)}
                           />

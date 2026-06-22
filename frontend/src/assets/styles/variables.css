@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+
 :root {
   /* Màu chủ đạo */
   --color-primary: #117d62;
@@ -31,21 +33,28 @@
   --shadow-card: 0 2px 12px rgba(0,0,0,0.08);
   --shadow-modal: 0 4px 24px rgba(0,0,0,0.12);
 
-  /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
 
-  /* Font */
+  --font-family: 'Roboto', sans-serif;
   --font-size-sm: 13px;
   --font-size-md: 14px;
   --font-size-lg: 16px;
   --font-size-xl: 20px;
   --font-size-title: 24px;
-  /* Breakpoints */
-/* Mobile:  < 768px  */
-/* Tablet:  768px - 1024px */
-/* Desktop: > 1024px */
+}
+
+html {
+  font-family: var(--font-family);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }

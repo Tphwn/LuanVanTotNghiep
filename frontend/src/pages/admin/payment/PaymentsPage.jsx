@@ -324,12 +324,11 @@ const AdminPaymentsPage = () => {
                         <ActionCell>
                           <ActionButton
                             variant="view"
+                            iconOnly
                             icon={Eye}
                             title="Chi tiết"
                             onClick={() => { dispatch(fetchTransactionById(tx.ma_thanh_toan)); setShowTxDetail(true); }}
-                          >
-                            Chi tiết
-                          </ActionButton>
+                          />
                         </ActionCell>
                       </tr>
                     );

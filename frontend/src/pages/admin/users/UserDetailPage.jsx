@@ -341,12 +341,11 @@ const UserDetailPage = () => {
                         <ActionCell>
                           <ActionButton
                             variant="view"
+                            iconOnly
                             icon={Eye}
                             title="Chi tiết"
                             onClick={() => navigate(`/admin/hotels/${ks.ma_khach_san}`)}
-                          >
-                            Chi tiết
-                          </ActionButton>
+                          />
                         </ActionCell>
                       </tr>
                     );

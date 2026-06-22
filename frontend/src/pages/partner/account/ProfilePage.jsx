@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import { resolveUploadUrl } from '../../../utils/media';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
 const formatDate = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
@@ -149,13 +150,11 @@ const ProfilePage = () => {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 className="page-title">Quản lý Tài khoản</h1>
-          <p className="page-subtitle">Cập nhật thông tin cá nhân và cài đặt bảo mật</p>
-        </div>
-      </div>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý Tài khoản"
+        subtitle="Cập nhật thông tin cá nhân và cài đặt bảo mật"
+      />
 
       {toast && (
         <div style={{

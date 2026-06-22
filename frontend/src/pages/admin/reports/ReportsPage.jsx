@@ -263,7 +263,7 @@ const ReportsPage = () => {
     <div>
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Quản lý báo cáo</h1>
+          <h1 className="page-title">Quản Lý Báo Cáo</h1>
           <p className="page-subtitle">Theo dõi và xử lý báo cáo, khiếu nại từ khách hàng</p>
         </div>
       </div>
@@ -479,12 +479,11 @@ const ReportsPage = () => {
                           <ActionCell>
                             <ActionButton
                               variant="view"
+                              iconOnly
                               icon={Eye}
                               title="Chi tiết"
                               onClick={() => setDetailReport(r)}
-                            >
-                              Chi tiết
-                            </ActionButton>
+                            />
                           </ActionCell>
                         </tr>
                       );

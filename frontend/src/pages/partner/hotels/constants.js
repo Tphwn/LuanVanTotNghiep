@@ -1,10 +1,10 @@
 export const TRANG_THAI = {
-  cho_duyet:   { label: 'Chờ duyệt',    cls: 'badge-warning' },
-  da_duyet:    { label: 'Đã duyệt',     cls: 'badge-success' },
-  hoat_dong:   { label: 'Đã duyệt',     cls: 'badge-success' },
-  tu_choi:     { label: 'Từ chối',      cls: 'badge-danger' },
-  yeu_cau_sua: { label: 'Cần sửa',      cls: 'badge-warning' },
-  bi_khoa:     { label: 'Tạm ngừng',    cls: 'badge-default' },
+  cho_duyet: { label: 'Chờ duyệt', cls: 'mgmt-status-text--pending' },
+  da_duyet: { label: 'Đã duyệt', cls: 'mgmt-status-text--active' },
+  hoat_dong: { label: 'Đang hoạt động', cls: 'mgmt-status-text--active' },
+  tu_choi: { label: 'Từ chối', cls: 'mgmt-status-text--locked' },
+  yeu_cau_sua: { label: 'Cần sửa', cls: 'mgmt-status-text--pending' },
+  bi_khoa: { label: 'Tạm ngừng', cls: 'mgmt-status-text--locked' },
 };
 
 export const TAB_FILTER = {

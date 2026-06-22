@@ -1,21 +1,19 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5000/api/admin/hotels";
-
-const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
-  return {
-    headers: { Authorization: `Bearer ${token}` },
-  };
-};
+import api from './api';
 
 const adminHotelService = {
- getById: (id) => {
-    return axios.get(`${API_URL}/${id}`, getAuthHeader());
-  },
-  getHotels: () => {
-    return axios.get(API_URL, getAuthHeader());
-  },
+  getById: (id) => api.get(`/admin/hotels/${id}`),
+
+  getHotels: () => api.get('/admin/hotels'),
+
+  approve: (id) => api.patch(`/admin/hotels/${id}/approve`),
+
+  reject: (id, lyDo) => api.patch(`/admin/hotels/${id}/reject`, { lyDo }),
+
+  requestInfo: (id, ghiChu) => api.patch(`/admin/hotels/${id}/request-info`, { ghiChu }),
+
+  lock: (id) => api.patch(`/admin/hotels/${id}/lock`),
+
+  unlock: (id) => api.patch(`/admin/hotels/${id}/unlock`),
 };
 
 export default adminHotelService;

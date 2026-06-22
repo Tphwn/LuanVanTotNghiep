@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import publicHotelService from '../../services/publicHotelService';
 import ROUTES from '../../constants/routes';
+import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/home.css';
 
 const DEST_IMAGES = [
@@ -79,11 +80,14 @@ const HomePage = () => {
 
   return (
     <div className="home-page">
-      <section className="home-hero">
+      <section
+        className="home-hero"
+        style={{ backgroundImage: `url(${resolveUploadUrl('/uploads/banner.png')})` }}
+      >
         <div className="home-hero-content">
-          <h1 className="home-hero-title">Khám phá khách sạn tuyệt vời, giá tốt mỗi ngày</h1>
+          <h1 className="home-hero-title">Khám phá khách sạn tuyệt vời với giá tốt mỗi ngày</h1>
           <p className="home-hero-subtitle">
-            Tìm và đặt phòng khách sạn tại Việt Nam — nhanh chóng, minh bạch, nhiều lựa chọn phù hợp mọi nhu cầu.
+            Tìm và đặt phòng khách sạn tại Việt Nam nhanh chóng, minh bạch, nhiều lựa chọn phù hợp với mọi nhu cầu.
           </p>
         </div>
       </section>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
 const LOAI_GIA = {
   co_ban:    { label: 'Cơ bản',    color: '#5a7a72'},
@@ -192,13 +193,11 @@ const PricingPage = () => {
   const viewRoomBase = rooms.find((r) => r.ma_loai_phong === Number(viewRoom))?.gia_co_ban;
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1 className="page-title">Quản lý Giá</h1>
-          <p className="page-subtitle">Thiết lập giá theo khoảng thời gian cho từng loại phòng</p>
-        </div>
-      </div>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý Giá"
+        subtitle="Thiết lập giá theo khoảng thời gian cho từng loại phòng"
+      />
 
       {toast && (
         <div style={{

@@ -1,7 +1,7 @@
 const PaymentsPage = () => {
   return (
     <div>
-      <h1> Quản lý thanh toán</h1>
+      <h1> Quản Lý Thanh Toán</h1>
 
       <table style={{ width: '100%' }}>
         <thead>

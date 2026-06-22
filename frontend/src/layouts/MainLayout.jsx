@@ -4,7 +4,8 @@ import { logout } from '../store/slices/authSlice';
 import ROUTES from '../constants/routes';
 import ROLES from '../constants/roles';
 import getRedirectRoute from '../utils/redirect';
-
+import { resolveUploadUrl } from '../utils/media';
+import CustomerUserMenu from '../components/customer/CustomerUserMenu';
 const MainLayout = ({ children, fullBleed = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -15,89 +16,92 @@ const MainLayout = ({ children, fullBleed = false }) => {
     dispatch(logout());
     navigate(ROUTES.HOME, { replace: true });
   };
-
-  const isMyBookings = location.pathname === ROUTES.CUSTOMER.MY_BOOKINGS;
-  const isPromotions = location.pathname === ROUTES.CUSTOMER.PROMOTIONS;
-  const isContact = location.pathname === ROUTES.CUSTOMER.CONTACT;
+  const isActive = (path) => 
+    {
+      if (path === '/'){
+        return location.pathname === '/'
+      }
+      return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    };
 
   return (
     <div className="app-shell">
       <header className="layout-header">
-        <Link to={ROUTES.HOME} className="header-brand"style={{ textDecoration: 'none'}}>
-          <div>
-            <div className="brand-subtitle">Hotel Booking</div>
-            <span className="brand-title">Đặt phòng khách sạn</span>
-          </div>
+      <Link to={ROUTES.HOME} className="header-brand" style={{ textDecoration: 'none' }}>
+          <img
+            src={resolveUploadUrl('/uploads/logo.png')}
+            alt="Hotel Booking"
+            className="header-brand-logo"
+          />
         </Link>
 
         <nav className="header-nav">
+        <Link
+            to={ROUTES.HOME}
+            className={`header-nav-link${isActive(ROUTES.HOME) ? ' active' : ''}`}
+          >
+             Trang chủ
+          </Link>
+          <Link
+            to={ROUTES.CUSTOMER.HOTELS}
+            className={`header-nav-link${isActive(ROUTES.CUSTOMER.HOTELS) ?' active':''}`}
+          >
+             Khách sạn
+          </Link>
           <Link
             to={ROUTES.CUSTOMER.PROMOTIONS}
-            className={`header-nav-link${isPromotions ?' active':''}`}
+            className={`header-nav-link${isActive(ROUTES.CUSTOMER.PROMOTIONS) ?' active':''}`}
           >
              Ưu đãi
           </Link>
           <Link
-            to={ROUTES.CUSTOMER.CONTACT}
-            className={`header-nav-link${isContact ? 'active' : ''}`}
+            to={ROUTES.CUSTOMER.BOOKING_GUIDE}
+            className={`header-nav-link${isActive(ROUTES.CUSTOMER.BOOKING_GUIDE) ? ' active' : ''}`}
           >
-            <span className="header-nav-text-full"> Liên hệ với chúng tôi</span>
-            <span className="header-nav-text-short"> Liên hệ</span>
+            <span className="header-nav-text-full">Hướng dẫn đặt phòng</span>
+            <span className="header-nav-text-short">Hướng dẫn</span>
+          </Link>
+          <Link
+            to={ROUTES.CUSTOMER.CONTACT}
+            className={`header-nav-link${isActive(ROUTES.CUSTOMER.CONTACT) ? ' active' : ''}`}
+          >
+            Liên hệ
+          </Link>
+          <Link
+            to={ROUTES.CUSTOMER.PARTNER_CONTACT}
+            className={`header-nav-link${isActive(ROUTES.CUSTOMER.PARTNER_CONTACT) ? ' active' : ''}`}
+          >
+            <span className="header-nav-text-full">Hợp tác với chúng tôi</span>
+            <span className="header-nav-text-short">Hợp tác</span>
           </Link>
         </nav>
 
         <div className="header-actions">
-          {user?.vai_tro === ROLES.KHACH_HANG && (
-            <Link
-              to={ROUTES.CUSTOMER.MY_BOOKINGS}
-              className={`header-nav-link${isMyBookings ? 'active' : ''}`}
-              style={{ marginRight: 4 }}
-            >
-               Đặt chỗ của tôi
-            </Link>
-          )}
-
-          {user ? (
+          {user?.vai_tro === ROLES.KHACH_HANG ? (
+            <CustomerUserMenu user={user} onLogout={handleLogout} />
+          ) : user ? (
             <>
-              <div className="header-user-text">
-                <div className="header-smoke">Xin chào</div>
-                <div className="header-username">{user.ho_ten || user.email}</div>
+            <div className="header-user-text">
+              <div className="header-smoke">Xin chào</div>
+              <div className="header-username">{user.ho_ten || user.email}</div>
               </div>
-              {user.vai_tro !== ROLES.KHACH_HANG && (
-                <button
-                  type="button"className="logout-button"onClick={() => navigate(getRedirectRoute(user))}
-                >
-                  Bảng điều khiển
-                </button>
-              )}
+              <button type="button"className="logout-button"onClick={() => navigate(getRedirectRoute(user))}>
+                Bảng điều khiển
+              </button>
               <button type="button"className="logout-button"onClick={handleLogout}>
                 Đăng xuất
               </button>
             </>
           ) : (
             <>
-              <Link to={ROUTES.LOGIN}>
-                <button type="button"className="logout-button">Đăng nhập</button>
-              </Link>
-              <Link to={ROUTES.REGISTER}>
-                <button
-                  type="button"
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: '#fff',
-                    color: '#3C7363',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Đăng ký
-                </button>
-              </Link>
+            <Link to={ROUTES.LOGIN}>
+              <button type="button"className="logout-button">Đăng nhập</button>
+            </Link>
+            <Link to={ROUTES.REGISTER}>
+              <button type="button" className="header-register-btn">Đăng ký</button>
+            </Link>
             </>
-          )}
+          ) }
         </div>
       </header>
 

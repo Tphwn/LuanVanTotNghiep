@@ -12,7 +12,15 @@ export const isPartnerMenuActive = (pathname, path) => {
       || /^\/partner\/hotels\/\d+\/rooms(\/|$)/.test(pathname);
   }
 
-  const nestedPaths = ['/partner/bookings', '/partner/inventory'];
+  if (path === '/partner/inventory') {
+    return pathname.startsWith('/partner/inventory/');
+  }
+
+  if (path === '/partner/account') {
+    return pathname.startsWith('/partner/account/');
+  }
+
+  const nestedPaths = ['/partner/bookings'];
   if (nestedPaths.includes(path) && pathname.startsWith(`${path}/`)) {
     return true;
   }

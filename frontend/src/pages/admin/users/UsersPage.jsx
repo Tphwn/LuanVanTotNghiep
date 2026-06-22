@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Eye, Lock, Unlock } from "lucide-react";
 import {
   fetchUsers,
   lockUser,
@@ -11,18 +11,11 @@ import {
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import { resolveUploadUrl } from "../../../utils/media";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import SearchBar from "../../../components/common/management/SearchBar";
-import FilterTabs from "../../../components/common/management/FilterTabs";
-import ToggleSwitch from "../../../components/common/management/ToggleSwitch";
+import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
 
 const ROLE_LABEL = {
   khach_hang: "Khách hàng",
   doi_tac: "Đối tác",
-};
-
-const ROLE_BADGE = {
-  khach_hang: "badge-info",
-  doi_tac: "badge-success",
 };
 
 const getPartner = (user) => user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
@@ -51,8 +44,7 @@ const formatDate = (d) => (d ? new Date(d).toLocaleDateString("vi-VN") : "—");
 
 const TAB_FILTER = {
   all: () => true,
-  khach_hang: (u) => u.vai_tro === "khach_hang",
-  doi_tac: (u) => u.vai_tro === "doi_tac",
+  hoat_dong: (u) => u.trang_thai === "hoat_dong",
   bi_khoa: (u) => u.trang_thai === "bi_khoa",
 };
 
@@ -88,16 +80,14 @@ const UsersPage = () => {
 
   const stats = useMemo(() => ({
     total: nonAdminUsers.length,
-    khachHang: nonAdminUsers.filter((u) => u.vai_tro === "khach_hang").length,
-    doiTac: nonAdminUsers.filter((u) => u.vai_tro === "doi_tac").length,
+    hoatDong: nonAdminUsers.filter((u) => u.trang_thai === "hoat_dong").length,
     biKhoa: nonAdminUsers.filter((u) => u.trang_thai === "bi_khoa").length,
   }), [nonAdminUsers]);
 
   const filterTabs = useMemo(() => [
     { id: "all", label: "Tất cả", count: stats.total },
-    { id: "khach_hang", label: "Khách hàng", count: stats.khachHang },
-    { id: "doi_tac", label: "Đối tác", count: stats.doiTac },
-    { id: "bi_khoa", label: "Bị khóa", count: stats.biKhoa },
+    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong },
+    { id: "bi_khoa", label: "Đã khóa", count: stats.biKhoa },
   ], [stats]);
 
   const filteredUsers = useMemo(() => {
@@ -125,6 +115,12 @@ const UsersPage = () => {
     else dispatch(unlockUser(user.ma_nguoi_dung));
   };
 
+  const getStatusText = (status) => {
+    if (status === "hoat_dong") return { label: "Đang hoạt động", cls: "mgmt-status-text--active" };
+    if (status === "bi_khoa") return { label: "Đã khóa", cls: "mgmt-status-text--locked" };
+    return { label: status, cls: "" };
+  };
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -142,17 +138,17 @@ const UsersPage = () => {
           {successMsg || error}
         </div>
       )}
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Nhập tên, email hoặc số điện thoại để tìm kiếm..."
-        />
-      </div>
 
-      <FilterTabs tabs={filterTabs} active={activeTab} onChange={setActiveTab} />
+      <ManagementToolbar
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchPlaceholder="Tìm theo tên, email, SĐT..."
+        tabs={filterTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-      <div className="mgmt-table-card">
+      <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>
         ) : filteredUsers.length === 0 ? (
@@ -161,27 +157,17 @@ const UsersPage = () => {
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table">
-              <colgroup>
-                <col style={{ width: 52 }} />
-                <col />
-                <col />
-                <col style={{ width: 110 }} />
-                <col className="mgmt-col-type" />
-                <col style={{ width: 100 }} />
-                <col className="mgmt-col-toggle" />
-                <col style={{ width: 96 }} />
-              </colgroup>
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th />
-                  <th>Họ tên & Công ty</th>
+                  <th style={{ width: 72 }}>ID</th>
+                  <th>Họ tên</th>
                   <th>Email</th>
-                  <th>SĐT</th>
-                  <th>Vai trò</th>
-                  <th>Ngày tạo</th>
-                  <th>Hoạt động</th>
-                  <th>Thao tác</th>
+                  <th style={{ width: 120 }}>SĐT</th>
+                  <th style={{ width: 110 }}>Vai trò</th>
+                  <th style={{ width: 130 }}>Trạng thái</th>
+                  <th style={{ width: 110 }}>Ngày tạo</th>
+                  <th style={{ width: 110 }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,46 +175,42 @@ const UsersPage = () => {
                   const name = getDisplayName(user);
                   const avatar = getAvatar(user);
                   const isActive = user.trang_thai === "hoat_dong";
+                  const status = getStatusText(user.trang_thai);
                   return (
                     <tr key={user.ma_nguoi_dung}>
+                      <td style={{ color: "#64748b", fontWeight: 500 }}>{user.ma_nguoi_dung}</td>
                       <td>
-                        <div className="mgmt-avatar">
-                          {avatar ? (
-                            <img src={avatar} alt="" />
-                          ) : (
-                            getInitials(name)
-                          )}
+                        <div className="mgmt-name-cell">
+                          <div className="mgmt-avatar-circle">
+                            {avatar ? <img src={avatar} alt="" /> : getInitials(name)}
+                          </div>
+                          <span className="mgmt-cell-name">{name}</span>
                         </div>
                       </td>
-                      <td>
-                        <div className="mgmt-cell-name">{name}</div>
-                      </td>
-                      <td style={{ color: "#5a7a72", fontSize: 13 }}>{user.email}</td>
+                      <td style={{ color: "#64748b", fontSize: 13 }}>{user.email}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{user.so_dien_thoai}</td>
-                      <td>
-                        <span className={`badge ${ROLE_BADGE[user.vai_tro] || "badge-default"}`}>
-                          {ROLE_LABEL[user.vai_tro] || user.vai_tro}
-                        </span>
+                      <td style={{ fontSize: 13, color: "#475569" }}>
+                        {ROLE_LABEL[user.vai_tro] || user.vai_tro}
                       </td>
-                      <td style={{ fontSize: 13, color: "#5a7a72" }}>{formatDate(user.ngay_tao)}</td>
                       <td>
-                        <ToggleSwitch
-                          compact
-                          checked={isActive}
-                          onChange={() => handleToggleActive(user)}
-                          labelOn="Hoạt động"
-                          labelOff="Bị khóa"
-                        />
+                        <span className={`mgmt-status-text ${status.cls}`}>{status.label}</span>
                       </td>
+                      <td style={{ fontSize: 13, color: "#64748b" }}>{formatDate(user.ngay_tao)}</td>
                       <ActionCell>
                         <ActionButton
                           variant="view"
+                          iconOnly
                           icon={Eye}
                           title="Chi tiết"
                           onClick={() => navigate(`/admin/users/${user.ma_nguoi_dung}`)}
-                        >
-                          Chi tiết
-                        </ActionButton>
+                        />
+                        <ActionButton
+                          variant={isActive ? "lock" : "unlock"}
+                          iconOnly
+                          icon={isActive ? Lock : Unlock}
+                          title={isActive ? "Khóa tài khoản" : "Mở khóa"}
+                          onClick={() => handleToggleActive(user)}
+                        />
                       </ActionCell>
                     </tr>
                   );

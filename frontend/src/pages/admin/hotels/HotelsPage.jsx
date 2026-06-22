@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Eye, Check, X } from "lucide-react";
+import { Eye, Check, X, Lock, Unlock } from "lucide-react";
 import {
   fetchHotels,
   approveHotel,
@@ -11,19 +11,17 @@ import {
 } from "../../../store/slices/adminHotelSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import SearchBar from "../../../components/common/management/SearchBar";
-import FilterTabs from "../../../components/common/management/FilterTabs";
-import ToggleSwitch from "../../../components/common/management/ToggleSwitch";
+import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
 import StarRating from "../../../components/common/management/StarRating";
 import HotelThumb from "../../../components/common/management/HotelThumb";
 
 const HOTEL_STATUS = {
-  cho_duyet: { label: "Chờ duyệt", cls: "badge-warning" },
-  hoat_dong: { label: "Đã duyệt", cls: "badge-success" },
-  tu_choi: { label: "Từ chối", cls: "badge-danger" },
-  bi_khoa: { label: "Bị khóa", cls: "badge-danger" },
-  yeu_cau_sua: { label: "Yêu cầu sửa", cls: "badge-info" },
-  da_duyet: { label: "Đã duyệt", cls: "badge-success" },
+  cho_duyet: { label: "Chờ duyệt", cls: "mgmt-status-text--pending" },
+  hoat_dong: { label: "Đang hoạt động", cls: "mgmt-status-text--active" },
+  tu_choi: { label: "Từ chối", cls: "mgmt-status-text--locked" },
+  bi_khoa: { label: "Đã khóa", cls: "mgmt-status-text--locked" },
+  yeu_cau_sua: { label: "Yêu cầu sửa", cls: "mgmt-status-text--pending" },
+  da_duyet: { label: "Đã duyệt", cls: "mgmt-status-text--active" },
 };
 
 const getLoaiHinh = (hotel) => {
@@ -63,21 +61,28 @@ const HotelsPage = () => {
     total: hotels.length,
     hoatDong: hotels.filter((h) => h.trang_thai === "hoat_dong" || h.trang_thai === "da_duyet").length,
     choDuyet: hotels.filter((h) => h.trang_thai === "cho_duyet").length,
-    dangBan: hotels.filter((h) => h.trang_thai === "hoat_dong").length,
+    biKhoa: hotels.filter((h) => h.trang_thai === "bi_khoa" || h.trang_thai === "tu_choi").length,
   }), [hotels]);
 
   const filterTabs = useMemo(() => [
-    { id: "all", label: "Tất cả", count: hotels.length },
-    { id: "hoat_dong", label: "Đã duyệt", count: stats.hoatDong },
+    { id: "all", label: "Tất cả", count: stats.total },
+    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong },
     { id: "cho_duyet", label: "Chờ duyệt", count: stats.choDuyet },
-    { id: "tu_choi", label: "Từ chối", count: hotels.filter((h) => h.trang_thai === "tu_choi").length },
-  ], [hotels.length, stats]);
+    { id: "tu_choi", label: "Đã khóa", count: stats.biKhoa },
+  ], [stats]);
 
   const filteredHotels = useMemo(() => {
     const statusFilter = TAB_STATUS_MAP[activeTab];
     const text = debouncedKeyword.toLowerCase().trim();
     return (hotels || []).filter((hotel) => {
-      const matchStatus = !statusFilter || hotel.trang_thai === statusFilter;
+      let matchStatus = true;
+      if (activeTab === "tu_choi") {
+        matchStatus = ["tu_choi", "bi_khoa"].includes(hotel.trang_thai);
+      } else if (statusFilter) {
+        matchStatus = hotel.trang_thai === statusFilter;
+      } else if (activeTab === "hoat_dong") {
+        matchStatus = ["hoat_dong", "da_duyet"].includes(hotel.trang_thai);
+      }
       const matchStar = starFilter === "all" || hotel.so_sao === Number(starFilter);
       if (!text) return matchStatus && matchStar;
       const loc = hotel.dia_diem?.ten_dia_diem;
@@ -90,24 +95,38 @@ const HotelsPage = () => {
     });
   }, [hotels, activeTab, starFilter, debouncedKeyword]);
 
-  const handleApprove = (hotel, e) => {
+  const handleApprove = async (hotel, e) => {
     e?.stopPropagation();
-    if (window.confirm(`Duyệt khách sạn "${hotel.ten}" hoạt động trên sàn?`)) {
-      dispatch(approveHotel(hotel.ma_khach_san));
+    if (!window.confirm(`Duyệt khách sạn "${hotel.ten}" hoạt động trên sàn?`)) return;
+    const result = await dispatch(approveHotel(hotel.ma_khach_san));
+    if (approveHotel.rejected.match(result)) {
+      alert(result.payload || 'Duyệt khách sạn thất bại');
     }
   };
 
-  const handleReject = (hotel, e) => {
+  const handleReject = async (hotel, e) => {
     e?.stopPropagation();
     const reason = window.prompt(`Nhập lý do từ chối "${hotel.ten}":`);
-    if (reason?.trim()) dispatch(rejectHotel({ id: hotel.ma_khach_san, lyDo: reason.trim() }));
+    if (!reason?.trim()) return;
+    const result = await dispatch(rejectHotel({ id: hotel.ma_khach_san, lyDo: reason.trim() }));
+    if (rejectHotel.rejected.match(result)) {
+      alert(result.payload || 'Từ chối khách sạn thất bại');
+    }
   };
 
-  const handleToggleActive = (hotel) => {
-    if (hotel.trang_thai === "hoat_dong") {
-      if (window.confirm(`Khóa khách sạn "${hotel.ten}"?`)) dispatch(lockHotel(hotel.ma_khach_san));
-    } else if (hotel.trang_thai === "bi_khoa") {
-      if (window.confirm(`Mở khóa khách sạn "${hotel.ten}"?`)) dispatch(unlockHotel(hotel.ma_khach_san));
+  const handleToggleActive = async (hotel) => {
+    if (hotel.trang_thai === 'hoat_dong') {
+      if (!window.confirm(`Khóa khách sạn "${hotel.ten}"?`)) return;
+      const result = await dispatch(lockHotel(hotel.ma_khach_san));
+      if (lockHotel.rejected.match(result)) {
+        alert(result.payload || 'Khóa khách sạn thất bại');
+      }
+    } else if (hotel.trang_thai === 'bi_khoa') {
+      if (!window.confirm(`Mở khóa khách sạn "${hotel.ten}"?`)) return;
+      const result = await dispatch(unlockHotel(hotel.ma_khach_san));
+      if (unlockHotel.rejected.match(result)) {
+        alert(result.payload || 'Mở khóa khách sạn thất bại');
+      }
     }
   };
 
@@ -116,31 +135,32 @@ const HotelsPage = () => {
   return (
     <div className="mgmt-page">
       <ManagementHeader
-        title="Quản lý khách sạn"
+        title="Quản Lý Khách Sạn"
         subtitle="Duyệt, kiểm tra và quản lý các cơ sở lưu trú trên hệ thống"
       />
 
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tìm theo tên hoặc địa chỉ..."
-        />
+      <ManagementToolbar
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
+        tabs={filterTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
         <select
           className="mgmt-select-inline"
           value={starFilter}
           onChange={(e) => setStarFilter(e.target.value)}
+          style={{ marginLeft: 8 }}
         >
           <option value="all">Tất cả hạng sao</option>
           {[5, 4, 3, 2, 1].map((s) => (
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
-      </div>
+      </ManagementToolbar>
 
-      <FilterTabs tabs={filterTabs} active={activeTab} onChange={setActiveTab} />
-
-      <div className="mgmt-table-card">
+      <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>
         ) : filteredHotels.length === 0 ? (
@@ -149,39 +169,33 @@ const HotelsPage = () => {
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table">
-              <colgroup>
-                <col className="mgmt-col-img" />
-                <col />
-                <col />
-                <col className="mgmt-col-type" />
-                <col className="mgmt-col-star" />
-                <col className="mgmt-col-status" />
-                <col className="mgmt-col-toggle" />
-                <col style={{ width: 118 }} />
-              </colgroup>
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th>Ảnh</th>
+                  <th style={{ width: 72 }}>ID</th>
+                  <th style={{ width: 72 }}>Ảnh</th>
                   <th>Tên khách sạn</th>
+                  <th>Đối tác</th>
                   <th>Địa chỉ</th>
-                  <th>Loại hình</th>
-                  <th>Sao</th>
-                  <th>Trạng thái</th>
-                  <th>Hoạt động</th>
-                  <th>Thao tác</th>
+                  <th style={{ width: 110 }}>Loại hình</th>
+                  <th style={{ width: 90 }}>Sao</th>
+                  <th style={{ width: 130 }}>Trạng thái</th>
+                  <th style={{ width: 140 }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredHotels.map((hotel) => {
-                  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "badge-default" };
+                  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "" };
                   const isActive = hotel.trang_thai === "hoat_dong";
                   return (
                     <tr key={hotel.ma_khach_san}>
+                      <td style={{ color: "#64748b", fontWeight: 500 }}>{hotel.ma_khach_san}</td>
                       <td><HotelThumb hotel={hotel} /></td>
                       <td>
                         <div className="mgmt-cell-name">{hotel.ten}</div>
-                        <div className="mgmt-cell-sub">{hotel.doi_tac?.ten_cong_ty}</div>
+                      </td>
+                      <td style={{ fontSize: 13, color: "#64748b" }}>
+                        {hotel.doi_tac?.ten_cong_ty || "—"}
                       </td>
                       <td>
                         <div className="mgmt-cell-address" title={hotel.dia_chi}>
@@ -190,16 +204,8 @@ const HotelsPage = () => {
                       </td>
                       <td><span className="mgmt-type-tag">{getLoaiHinh(hotel)}</span></td>
                       <td><StarRating value={hotel.so_sao} /></td>
-                      <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                       <td>
-                        <ToggleSwitch
-                          compact
-                          checked={isActive}
-                          onChange={() => handleToggleActive(hotel)}
-                          disabled={!canToggle(hotel.trang_thai)}
-                          labelOn="Đang hoạt động"
-                          labelOff="Tạm ngừng"
-                        />
+                        <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
                       </td>
                       <ActionCell>
                         <ActionButton
@@ -209,22 +215,33 @@ const HotelsPage = () => {
                           title="Chi tiết"
                           onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`)}
                         />
-                        <ActionButton
-                          variant="approve"
-                          iconOnly
-                          icon={Check}
-                          title="Duyệt"
-                          disabled={hotel.trang_thai !== "cho_duyet"}
-                          onClick={(e) => handleApprove(hotel, e)}
-                        />
-                        <ActionButton
-                          variant="reject"
-                          iconOnly
-                          icon={X}
-                          title="Từ chối"
-                          disabled={hotel.trang_thai !== "cho_duyet"}
-                          onClick={(e) => handleReject(hotel, e)}
-                        />
+                        {hotel.trang_thai === "cho_duyet" && (
+                          <>
+                            <ActionButton
+                              variant="approve"
+                              iconOnly
+                              icon={Check}
+                              title="Duyệt"
+                              onClick={(e) => handleApprove(hotel, e)}
+                            />
+                            <ActionButton
+                              variant="reject"
+                              iconOnly
+                              icon={X}
+                              title="Từ chối"
+                              onClick={(e) => handleReject(hotel, e)}
+                            />
+                          </>
+                        )}
+                        {canToggle(hotel.trang_thai) && (
+                          <ActionButton
+                            variant={isActive ? "lock" : "unlock"}
+                            iconOnly
+                            icon={isActive ? Lock : Unlock}
+                            title={isActive ? "Khóa khách sạn" : "Mở khóa"}
+                            onClick={() => handleToggleActive(hotel)}
+                          />
+                        )}
                       </ActionCell>
                     </tr>
                   );

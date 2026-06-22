@@ -8,8 +8,7 @@ import {
 } from '../../../store/slices/partnerHotelSlice';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import SearchBar from '../../../components/common/management/SearchBar';
-import FilterTabs from '../../../components/common/management/FilterTabs';
+import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import StarRating from '../../../components/common/management/StarRating';
 import HotelThumb from '../../../components/common/management/HotelThumb';
@@ -92,27 +91,28 @@ const HotelsPage = () => {
       {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
       {error && <div className="mgmt-toast error">{error}</div>}
 
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tìm theo tên hoặc địa chỉ..."
-        />
+      <ManagementToolbar
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
+        tabs={filterTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
         <select
           className="mgmt-select-inline"
           value={diaDiemFilter}
           onChange={(e) => setDiaDiemFilter(e.target.value)}
+          style={{ marginLeft: 8 }}
         >
           <option value="all">Tất cả địa điểm</option>
           {diaDiem.map((d) => (
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
         </select>
-      </div>
+      </ManagementToolbar>
 
-      <FilterTabs tabs={filterTabs} active={activeTab} onChange={setActiveTab} />
-
-      <div className="mgmt-table-card">
+      <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : filteredList.length === 0 ? (
@@ -123,35 +123,24 @@ const HotelsPage = () => {
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table">
-              <colgroup>
-                <col className="mgmt-col-img" />
-                <col />
-                <col />
-                <col className="mgmt-col-type" />
-                <col className="mgmt-col-star" />
-                <col className="mgmt-col-status" />
-                <col className="mgmt-col-toggle" />
-                <col style={{ width: 96 }} />
-              </colgroup>
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th>Ảnh</th>
+                  <th style={{ width: 72 }}>Ảnh</th>
                   <th>Tên khách sạn</th>
                   <th>Địa chỉ</th>
-                  <th>Loại hình</th>
-                  <th>Sao</th>
-                  <th>Trạng thái</th>
-                  <th>Hoạt động</th>
-                  <th>Thao tác</th>
+                  <th style={{ width: 110 }}>Loại hình</th>
+                  <th style={{ width: 90 }}>Sao</th>
+                  <th style={{ width: 150 }}>Trạng thái</th>
+                  <th style={{ width: 100 }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredList.map((hotel) => {
-                  const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'badge-default' };
+                  const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: '' };
                   const isActive = hotel.trang_thai === 'hoat_dong';
                   return (
-                    <tr key={hotel.ma_khach_san} style={{ opacity: hotel.trang_thai === 'bi_khoa' ? 0.75 : 1 }}>
+                    <tr key={hotel.ma_khach_san} style={{ opacity: hotel.trang_thai === 'bi_khoa' ? 0.85 : 1 }}>
                       <td><HotelThumb hotel={hotel} /></td>
                       <td>
                         <div
@@ -172,16 +161,18 @@ const HotelsPage = () => {
                       </td>
                       <td><span className="mgmt-type-tag">{getLoaiHinh(hotel)}</span></td>
                       <td><StarRating value={hotel.so_sao} /></td>
-                      <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                       <td>
-                        <ToggleSwitch
-                          compact
-                          checked={isActive}
-                          onChange={() => handleToggleStatus(hotel)}
-                          disabled={!canToggle(hotel.trang_thai)}
-                          labelOn="Đang hoạt động"
-                          labelOff="Tạm ngừng"
-                        />
+                        {canToggle(hotel.trang_thai) ? (
+                          <ToggleSwitch
+                            compact
+                            checked={isActive}
+                            onChange={() => handleToggleStatus(hotel)}
+                            labelOn="Đang hoạt động"
+                            labelOff="Tạm ngừng"
+                          />
+                        ) : (
+                          <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                        )}
                       </td>
                       <ActionCell>
                         <ActionButton
