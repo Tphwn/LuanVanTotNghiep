@@ -4,7 +4,8 @@ import publicHotelService from '../../services/publicHotelService';
 import ROUTES from '../../constants/routes';
 import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/home.css';
-
+import DateRangePicker from '../../components/customer/search/DateRangePicker';
+import GuestBedPicker from '../../components/customer/search/GuestBedPicker';
 const DEST_IMAGES = [
   'https://images.unsplash.com/photo-1559592413-7f4b5a8c2f3a?auto=format&fit=crop&w=600&q=80',
   'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=600&q=80',
@@ -23,14 +24,20 @@ const addDays = (date, days) => {
 const todayStr = () => new Date().toISOString().split('T')[0];
 
 const HomePage = () => {
+  
   const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
   const [popular, setPopular] = useState([]);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [guestOpen, setGuestOpen] = useState(false);
   const [form, setForm] = useState({
     ma_dia_diem: '',
     ngay_nhan: addDays(new Date(), 1),
     ngay_tra: addDays(new Date(), 2),
     so_khach: 2,
+    so_giuong: 1,
+    tre_em: 0,
+    so_phong: 1,
   });
   const [error, setError] = useState('');
 
@@ -70,8 +77,9 @@ const HomePage = () => {
     if (data.ma_dia_diem) params.set('ma_dia_diem', data.ma_dia_diem);
     params.set('ngay_nhan', data.ngay_nhan);
     params.set('ngay_tra', data.ngay_tra);
-    params.set('so_khach', String(Math.max(0, Number(data.so_khach) || 0)));
-    navigate(`${ROUTES.CUSTOMER.HOTELS}?${params.toString()}`);
+    params.set('so_khach', String(Math.max(1, Number(data.so_khach) || 1)));
+    params.set('so_giuong', String(Math.max(1, Number(data.so_giuong) || 1)));
+    navigate(`${ROUTES.CUSTOMER.ROOM_SEARCH}?${params.toString()}`); 
   };
 
   const handleDestClick = (maDiaDiem) => {
@@ -95,9 +103,7 @@ const HomePage = () => {
       <div className="home-search-section">
         <div className="home-search-wrap">
         <div className="home-search-card">
-          <div className="home-search-tabs">
-            <button type="button"className="home-search-tab"> Khách sạn</button>
-          </div>
+         
 
           <div className="home-search-form">
             <div className="home-search-field">
@@ -116,41 +122,30 @@ const HomePage = () => {
             </div>
 
             <div className="home-search-field">
-              <label className="home-search-label"htmlFor="home-checkin">Ngày nhận phòng</label>
-              <input
-                id="home-checkin"type="date"className="home-search-input"value={form.ngay_nhan}
-                min={todayStr()}
-                onChange={(e) => setForm((p) => ({ ...p, ngay_nhan: e.target.value }))}
-              />
-            </div>
-
-            <div className="home-search-field">
-              <label className="home-search-label"htmlFor="home-checkout">Ngày trả phòng</label>
-              <input
-                id="home-checkout"type="date"className="home-search-input"value={form.ngay_tra}
-                min={form.ngay_nhan || todayStr()}
-                onChange={(e) => setForm((p) => ({ ...p, ngay_tra: e.target.value }))}
-              />
-            </div>
-
-            <div className="home-search-field">
-              <span className="home-search-label">Số khách</span>
-              <div className="home-guest-control">
-                <button
-                  type="button"className="home-guest-btn"disabled={form.so_khach <= 0}
-                  onClick={() => setForm((p) => ({ ...p, so_khach: Math.max(0, p.so_khach - 1) }))}
-                >
-                  −
-                </button>
-                <span className="home-guest-value">{form.so_khach} khách</span>
-                <button
-                  type="button"className="home-guest-btn"disabled={form.so_khach >= 10}
-                  onClick={() => setForm((p) => ({ ...p, so_khach: Math.min(10, p.so_khach + 1) }))}
-                >
-                  +
-                </button>
-              </div>
-            </div>
+            <span className="home-search-label">Ngày nhận & trả phòng</span>
+            <DateRangePicker
+              ngayNhan={form.ngay_nhan}
+              ngayTra={form.ngay_tra}
+              open={dateOpen}
+              onOpenChange={setDateOpen}
+              onChange={({ ngay_nhan, ngay_tra }) =>
+                setForm((p) => ({ ...p, ngay_nhan, ngay_tra }))
+              }
+              onCloseOther={() => setGuestOpen(false)}
+            />
+          </div>
+          <div className="home-search-field">
+            <span className="home-search-label">Khách & giường</span>
+            <GuestBedPicker
+              soKhach={form.so_khach}
+              treEm={form.tre_em}
+              soGiuong={form.so_giuong}
+              open={guestOpen}
+              onOpenChange={setGuestOpen}
+              onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
+              onCloseOther={() => setDateOpen(false)}
+            />
+          </div>
 
             <div className="home-search-btn-wrap">
               <button type="button"className="home-search-btn"onClick={() => handleSearch()}>
@@ -208,21 +203,6 @@ const HomePage = () => {
             <h3 className="home-feature-title">An tâm đặt phòng</h3>
             <p className="home-feature-desc">Khách sạn được kiểm duyệt, thông tin minh bạch và hỗ trợ tận tình.</p>
           </div>
-        </div>
-      </section>
-
-      <section className="home-section"style={{ paddingTop: 0 }}>
-        <div className="home-promo">
-          <div>
-            <h3 className="home-promo-title">Sẵn sàng cho chuyến đi tiếp theo?</h3>
-            <p className="home-promo-desc">
-              {locationLabel !== 'Tất cả địa điểm'? `Tìm khách sạn tại ${locationLabel} với giá tốt nhất.`
-                :'Chọn địa điểm, ngày ở và số khách — chúng tôi sẽ gợi ý phòng phù hợp.'}
-            </p>
-          </div>
-          <button type="button"className="home-promo-btn"onClick={() => handleSearch()}>
-            Tìm khách sạn ngay →
-          </button>
         </div>
       </section>
 

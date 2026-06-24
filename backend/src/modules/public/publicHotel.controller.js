@@ -20,6 +20,16 @@ const getPopularDestinations = async (req, res, next) => {
   }
 };
 
+const listHotels = async (req, res, next) => {
+  try {
+    const { ma_dia_diem } = req.query;
+    const data = await publicHotelService.listHotels({ ma_dia_diem });
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const searchHotels = async (req, res, next) => {
   try {
     const { ma_dia_diem, ngay_nhan, ngay_tra, so_khach } = req.query;
@@ -82,4 +92,4 @@ const getRoomById = async (req, res, next) => {
   }
 };
 
-module.exports = { getLocations, getPopularDestinations, searchHotels, getHotelById, getRoomById };
+module.exports = { getLocations, getPopularDestinations, listHotels, searchHotels, getHotelById, getRoomById };

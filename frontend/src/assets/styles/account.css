@@ -1,0 +1,363 @@
+/* Layout trang tài khoản khách hàng (sidebar + nội dung) */
+.account-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 0 40px;
+  align-items: start;
+}
+
+.account-sidebar {
+  background: #fff;
+  border: 1px solid #d4ede6;
+  border-radius: 14px;
+  padding: 0;
+  position: sticky;
+  top: 88px;
+  overflow: hidden;
+}
+
+.account-sidebar-profile {
+  padding: 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid #eef5f2;
+  background: linear-gradient(180deg, #f4faf8 0%, #fff 100%);
+}
+
+.customer-avatar-sidebar {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px;
+  font-size: 24px;
+}
+
+.customer-profile-info-sidebar h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e28;
+  line-height: 1.3;
+}
+
+.customer-profile-info-sidebar p {
+  margin: 0;
+  font-size: 12px;
+  color: #5a7a72;
+  word-break: break-word;
+}
+
+.customer-profile-info-sidebar span {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #94a8a2;
+  line-height: 1.4;
+}
+
+.account-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.account-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  color: #334155;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.account-sidebar-item:hover {
+  background: #f4faf8;
+  color: #3C7363;
+}
+
+.account-sidebar-item.active {
+  background: #e8f5f1;
+  color: #3C7363;
+  font-weight: 600;
+  border-right: 3px solid #3C7363;
+}
+
+.account-main {
+  min-width: 0;
+}
+
+/* Nội dung ProfilePage */
+.customer-account-page {
+  width: 100%;
+}
+
+.customer-account-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.customer-account-header h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a2e28;
+}
+
+.customer-account-header p {
+  margin: 0;
+  font-size: 14px;
+  color: #5a7a72;
+}
+
+.customer-toast {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.customer-toast.success {
+  background: #e8f5f1;
+  border: 1px solid #8FD9C4;
+  color: #3C7363;
+}
+
+.customer-toast.error {
+  background: #fff0f0;
+  border: 1px solid #ffb3b3;
+  color: #e05c5c;
+}
+
+.customer-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #fff;
+  border: 1px solid #d4ede6;
+  border-radius: 14px;
+}
+
+.customer-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e8f5f1;
+  border: 3px solid #3C7363;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #3C7363;
+}
+
+.customer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-profile-info h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #1a2e28;
+}
+
+.customer-profile-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #5a7a72;
+}
+
+.customer-profile-info span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a8a2;
+}
+
+.customer-account-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.customer-account-tabs button {
+  padding: 10px 18px;
+  border: 1px solid #d4ede6;
+  border-radius: 8px;
+  background: #fff;
+  color: #5a7a72;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-family);
+}
+
+.customer-account-tabs button.active {
+  background: #3C7363;
+  border-color: #3C7363;
+  color: #fff;
+}
+
+.customer-card {
+  background: #fff;
+  border: 1px solid #d4ede6;
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.customer-card h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e28;
+}
+
+.customer-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.customer-password-card {
+  grid-column: 1 / -1;
+}
+
+.customer-form-group {
+  margin-bottom: 16px;
+}
+
+.customer-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a2e28;
+}
+
+.customer-form-group label span {
+  color: #e05c5c;
+}
+
+.customer-form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d4ede6;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+.customer-form-group input:focus {
+  outline: none;
+  border-color: #3C7363;
+}
+
+.customer-form-group input.readonly {
+  background: #f4faf8;
+  color: #5a7a72;
+}
+
+.customer-form-group p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #94a8a2;
+}
+
+.customer-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.customer-avatar-small {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e8f5f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #3C7363;
+}
+
+.customer-avatar-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-family);
+}
+
+.customer-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.customer-btn-primary {
+  background: #3C7363;
+  color: #fff;
+}
+
+.customer-btn-outline {
+  background: #fff;
+  color: #3C7363;
+  border: 1px solid #3C7363;
+}
+
+.customer-card-desc,
+.customer-card-note {
+  font-size: 13px;
+  color: #5a7a72;
+  margin: 0 0 12px;
+}
+
+.customer-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.customer-alert.error {
+  background: #fff0f0;
+  border: 1px solid #ffb3b3;
+  color: #e05c5c;
+}
+
+.customer-alert.success {
+  background: #e8f5f1;
+  border: 1px solid #8FD9C4;
+  color: #3C7363;
+}
+
+@media (max-width: 900px) {
+  .account-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .account-sidebar {
+    position: static;
+  }
+
+  .customer-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}

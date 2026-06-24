@@ -19,6 +19,7 @@ const registerRoutes = (app) => {
   app.use('/api/partner/inventory', require('../modules/inventory/inventory.routes'));
   app.use('/api/partner/reviews', require('../modules/review/partnerReview.routes'));
   app.use('/api/partner/account', require('../modules/account/partnerAccount.routes'));
+  app.use('/api/customer/account', require('../modules/account/customerAccount.routes'));
   app.use('/api/partner/finance', require('../modules/finance/finance.routes'));
   app.use('/api/partner/notifications', require('../modules/notification/partnerNotification.routes'));
 

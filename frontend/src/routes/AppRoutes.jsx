@@ -15,6 +15,7 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import HomePage from '../pages/customer/HomePage';
 import HotelSearchPage from '../pages/customer/HotelSearchPage';
 import CustomerRoomDetailPage from '../pages/customer/CustomerRoomDetailPage';
+import CustomerHotelDetailPage from '../pages/customer/CustomerHotelDetailPage';
 import CustomerBookingPage from '../pages/customer/CustomerBookingPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import PromotionsPage from '../pages/customer/PromotionsPage';
@@ -60,6 +61,8 @@ import UserDetailPage from '../pages/admin/users/UserDetailPage';
 import AdminUsersPage from "../pages/admin/users/UsersPage";
 import CreatePartnerPage from "../pages/admin/users/CreatePartnerPage";
 import HotelDetailPage from '../pages/admin/hotels/HotelDetailPage';
+import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
+import ProtectedRoute from './ProtectedRoute';
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -76,6 +79,9 @@ const AppRoutes = () => {
         <Route path={ROUTES.HOME} element={
           <MainLayout fullBleed><HomePage /></MainLayout>
         } />
+        <Route path={ROUTES.CUSTOMER.ROOM_SEARCH} element={
+          <MainLayout><HotelSearchPage /></MainLayout>
+        } />
         <Route path={ROUTES.CUSTOMER.HOTELS} element={
           <MainLayout><HotelSearchPage /></MainLayout>
         } />
@@ -86,10 +92,7 @@ const AppRoutes = () => {
           <MainLayout><CustomerBookingPage /></MainLayout>
         } />
         <Route path="/hotels/:id" element={
-          <Navigate to={ROUTES.CUSTOMER.HOTELS} replace />
-        } />
-        <Route path={ROUTES.CUSTOMER.MY_BOOKINGS} element={
-          <MainLayout><MyBookingsPage /></MainLayout>
+          <MainLayout><CustomerHotelDetailPage /></MainLayout>
         } />
         <Route path={ROUTES.CUSTOMER.PROMOTIONS} element={
           <MainLayout><PromotionsPage /></MainLayout>
@@ -103,18 +106,20 @@ const AppRoutes = () => {
         <Route path={ROUTES.CUSTOMER.PARTNER_CONTACT} element={
           <MainLayout><PartnerContactPage /></MainLayout>
         } />
-        <Route path={ROUTES.CUSTOMER.PROFILE} element={
-          <MainLayout><ProfilePage /></MainLayout>
-        } />
-        <Route path={ROUTES.CUSTOMER.POINTS} element={
-          <MainLayout><PointsPage /></MainLayout>
-        } />
-        <Route path={ROUTES.CUSTOMER.TRANSACTIONS} element={
-          <MainLayout><TransactionsPage /></MainLayout>
-        } />
-        <Route path={ROUTES.CUSTOMER.REFUNDS} element={
-          <MainLayout><RefundsPage /></MainLayout>
-        } />
+
+        <Route
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.KHACH_HANG]}>
+              <MainLayout><CustomerAccountLayout /></MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route path={ROUTES.CUSTOMER.PROFILE} element={<ProfilePage />} />
+          <Route path={ROUTES.CUSTOMER.POINTS} element={<PointsPage />} />
+          <Route path={ROUTES.CUSTOMER.MY_BOOKINGS} element={<MyBookingsPage />} />
+          <Route path={ROUTES.CUSTOMER.TRANSACTIONS} element={<TransactionsPage />} />
+          <Route path={ROUTES.CUSTOMER.REFUNDS} element={<RefundsPage />} />
+        </Route>
         {/* Partner */}
         <Route path="/partner" element={
           <RoleRoute allowedRoles={[ROLES.DOI_TAC, ROLES.ADMIN]}>
@@ -124,7 +129,6 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<PartnerDashboardPage />} />
           
-          {/* ======================= QUẢN LÝ KHÁCH SẠN ======================= */}
           <Route path="hotels" element={<PartnerHotelsPage />} />
           <Route path="hotels/create" element={<PartnerHotelFormPage />} />
           <Route path="hotels/:id" element={<PartnerHotelDetailPage />} />

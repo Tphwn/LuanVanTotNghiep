@@ -1,8 +1,8 @@
 import api from './api';
-
 const publicHotelService = {
   getLocations: () => api.get('/public/locations'),
   getPopularDestinations: () => api.get('/public/destinations/popular'),
+  listHotels: (params) => api.get('/public/hotels', { params }),
   searchHotels: (params) => api.get('/public/hotels/search', { params }),
   searchRooms: (params) => api.get('/public/hotels/search', { params }),
   getHotelById: (id, params) => api.get(`/public/hotels/${id}`, { params }),

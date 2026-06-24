@@ -1,5 +1,6 @@
+
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
@@ -7,6 +8,7 @@ import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+const stars = (n) => '★'.repeat(Math.max(0, Number(n) || 0));
 
 const formatTime = (d) => {
   if (!d) return '—';
@@ -15,6 +17,7 @@ const formatTime = (d) => {
 
 const CustomerHotelDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,12 +31,22 @@ const CustomerHotelDetailPage = () => {
     so_khach: searchParams.get('so_khach') || '2',
   }), [searchParams]);
 
+  const isSearchMode = Boolean(query.ngay_nhan && query.ngay_tra);
+
+  const buildRoomUrl = (roomId) => {
+    const params = new URLSearchParams();
+    Object.entries(query).forEach(([k, v]) => { if (v) params.set(k, v); });
+    const qs = params.toString();
+    return `/hotels/${id}/rooms/${roomId}${qs ? `?${qs}` : ''}`;
+  };
+
   const backUrl = useMemo(() => {
     const params = new URLSearchParams();
     Object.entries(query).forEach(([k, v]) => { if (v) params.set(k, v); });
     const qs = params.toString();
-    return `${ROUTES.CUSTOMER.HOTELS}${qs ? `?${qs}` : ''}`;
-  }, [query]);
+    const base = isSearchMode ? ROUTES.CUSTOMER.ROOM_SEARCH : ROUTES.CUSTOMER.HOTELS;
+    return `${base}${qs ? `?${qs}` : ''}`;
+  }, [query, isSearchMode]);
 
   const nights = useMemo(() => {
     if (!query.ngay_nhan || !query.ngay_tra) return 1;
@@ -86,8 +99,8 @@ const CustomerHotelDetailPage = () => {
 
   return (
     <div className="hotel-detail-page">
-      <Link to={backUrl} className="btn btn-ghost btn-sm"style={{ marginBottom: 16 }}>
-        ← Quay lại kết quả tìm kiếm
+      <Link to={backUrl} className="btn btn-ghost btn-sm" style={{ marginBottom: 16 }}>
+        {isSearchMode ? '← Quay lại kết quả tìm phòng' : '← Quay lại danh sách khách sạn'}
       </Link>
 
       <div className="hotel-detail-gallery">
@@ -121,8 +134,8 @@ const CustomerHotelDetailPage = () => {
              {hotel.dia_diem?.ten_dia_diem} · {hotel.dia_chi}
           </p>
           {hotel.so_sao > 0 && (
-            <div className="hotel-result-stars"style={{ marginTop: 8 }}>
-              {''.repeat(hotel.so_sao)} · {hotel.so_sao} sao
+            <div className="hotel-result-stars" style={{ marginTop: 8 }}>
+              {stars(hotel.so_sao)} · {hotel.so_sao} sao
             </div>
           )}
         </div>
@@ -216,8 +229,12 @@ const CustomerHotelDetailPage = () => {
                         Tổng {nights} đêm: <strong>{fmt(room.tong_gia)} ₫</strong>
                       </div>
                     )}
-                    <button type="button"className="btn btn-primary btn-sm"disabled title="Sắp ra mắt">
-                      Đặt phòng
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => navigate(buildRoomUrl(room.ma_loai_phong))}
+                    >
+                      Xem phòng
                     </button>
                   </div>
                 </article>

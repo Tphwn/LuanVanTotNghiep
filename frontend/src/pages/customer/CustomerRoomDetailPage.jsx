@@ -55,7 +55,10 @@ const CustomerRoomDetailPage = () => {
 
   const backUrl = useMemo(() => {
     const qs = buildQueryString(query);
-    return `${ROUTES.CUSTOMER.HOTELS}${qs ? `?${qs}` : ''}`;
+    const base = query.ngay_nhan && query.ngay_tra
+      ? ROUTES.CUSTOMER.ROOM_SEARCH
+      : ROUTES.CUSTOMER.HOTELS;
+    return `${base}${qs ? `?${qs}` : ''}`;
   }, [query]);
 
   const nights = useMemo(() => {

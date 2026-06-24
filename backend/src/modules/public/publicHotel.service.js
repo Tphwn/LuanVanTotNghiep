@@ -55,6 +55,55 @@ const publicHotelService = {
       .slice(0, 6);
   },
 
+  /**
+   * Danh sách khách sạn đang hoạt động trên web (menu Khách sạn).
+   * Chỉ trả về khach_san có trang_thai = hoat_dong (đối tác đăng ký + admin duyệt).
+   * Mỗi item = 1 khách sạn, kèm gia_tu (giá thấp nhất trong các loại phòng đang bán).
+   */
+  listHotels: async ({ ma_dia_diem } = {}) => {
+    const where = { trang_thai: 'hoat_dong' };
+    if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
+
+    const hotels = await prisma.khach_san.findMany({
+      where,
+      include: {
+        dia_diem: true,
+        khach_san_tien_nghi: {
+          include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
+        },
+        loai_phong: {
+          where: { trang_thai: 'hoat_dong', so_luong_mo_ban: { gt: 0 } },
+          select: { gia_co_ban: true },
+        },
+        _count: {
+          select: {
+            loai_phong: { where: { trang_thai: 'hoat_dong' } },
+          },
+        },
+      },
+      orderBy: [{ so_sao: 'desc' }, { ten: 'asc' }],
+    });
+
+    const mapped = hotels
+      .filter((h) => h.loai_phong.length > 0)
+      .map((hotel) => {
+        const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
+        return {
+          ma_khach_san: hotel.ma_khach_san,
+          ten: hotel.ten,
+          dia_chi: hotel.dia_chi,
+          mo_ta: hotel.mo_ta,
+          so_sao: hotel.so_sao,
+          dia_diem: hotel.dia_diem,
+          so_loai_phong: hotel._count.loai_phong,
+          gia_tu: prices.length ? Math.min(...prices) : null,
+          tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+        };
+      });
+
+    return attachHotelImages(mapped);
+  },
+
   searchHotels: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2 }) => {
     return publicHotelService.searchRooms({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach });
   },

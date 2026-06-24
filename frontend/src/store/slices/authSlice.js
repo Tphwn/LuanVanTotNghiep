@@ -83,8 +83,16 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(getMe.fulfilled, (state, action) => {
-        state.user = action.payload;
-        setUser(action.payload);
+        const raw = action.payload;
+        const user = {
+          id: raw.ma_nguoi_dung ?? raw.id,
+          email: raw.email,
+          vai_tro: raw.vai_tro,
+          ho_ten: raw.khach_hang?.ho_ten || raw.ho_ten || null,
+          khach_hang: raw.khach_hang,
+        };
+        state.user = user;
+        setUser(user);
       });
   },
 });

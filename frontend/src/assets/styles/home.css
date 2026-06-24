@@ -101,7 +101,7 @@
 
 .home-search-form {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 0.9fr auto;
+  grid-template-columns: 1.2fr 1.3fr 1.1fr auto;
   gap: 0;
   align-items: stretch;
 }
@@ -517,6 +517,115 @@
   height: 15px;
 }
 
+.search-filter-stars {
+  color: #b36b00;
+  letter-spacing: 1px;
+}
+
+.search-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #d4ede6;
+  border-radius: 12px;
+}
+
+.search-toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a7a72;
+  white-space: nowrap;
+}
+
+.search-toolbar-select {
+  flex: 1;
+  max-width: 360px;
+  padding: 9px 12px;
+  border: 1px solid #d4ede6;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font-family);
+}
+
+.hotel-browse-meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #5a7a72;
+}
+
+.price-range-slider {
+  padding: 4px 0 0;
+}
+
+.price-range-track {
+  position: relative;
+  height: 6px;
+  background: #e8f0ed;
+  border-radius: 999px;
+  margin: 20px 0 12px;
+}
+
+.price-range-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #3C7363;
+  border-radius: 999px;
+}
+
+.price-range-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+}
+
+.price-range-thumb::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #3C7363;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.price-range-thumb::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #3C7363;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.price-range-thumb-min {
+  z-index: 2;
+}
+
+.price-range-thumb-max {
+  z-index: 3;
+}
+
+.price-range-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a2e28;
+}
+
 /* Hotel detail page */
 .hotel-detail-page {
   max-width: 960px;
@@ -721,11 +830,35 @@
 }
 
 .search-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
   background: #fff;
   border-radius: 14px;
   padding: 20px 24px;
   border: 1px solid #d4ede6;
   margin-bottom: 20px;
+}
+
+.search-summary-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-toolbar-inline {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.search-toolbar-inline .search-toolbar-select {
+  width: 220px;
+  max-width: 100%;
+  flex: none;
 }
 
 .search-summary-title {
@@ -748,6 +881,7 @@
 }
 
 .hotel-result-card {
+  position: relative;
   display: grid;
   grid-template-columns: 260px 1fr auto;
   gap: 0;
@@ -1573,4 +1707,234 @@
     align-items: stretch;
     text-align: center;
   }
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  column-gap: 0;
+  row-gap: 8px;
+}
+
+.day {
+  position: relative;
+  height: 38px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Dải nối nằm phía sau ngày */
+.day::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 32px;
+  transform: translateY(-50%);
+  background: transparent;
+  z-index: -2;
+}
+
+/* Hình tròn của ngày nhận / ngày trả */
+.day::after {
+  content: "";
+  position: absolute;
+  width: 38px;
+  height: 32px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border-radius: 999px;
+  z-index: -1;
+}
+
+.day.empty {
+  visibility: hidden;
+}
+.day-in-range {
+  color: #117d62;
+}
+.day-in-range::before {
+  background: #e8f1ff;
+}
+.day-start,
+.day-end {
+  color: #ffffff;
+}
+.day-start::after,
+.day-end::after {
+  background: #117d62;
+}
+.day-start.day-has-range::before {
+  left: 50%;
+  background: #e8f1ff;
+}
+.day-end.day-has-range::before {
+  right: 50%;
+  background: #e8f1ff;
+}
+.day-disabled {
+  color: #ccc;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+.day-disabled::before,
+.day-disabled::after {
+  background: transparent;
+}
+.search-picker {
+  position: relative;
+  width: 100%;
+}
+
+.search-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-family);
+  color: #1a2e28;
+  cursor: pointer;
+  text-align: left;
+}
+.search-picker-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+.search-picker-icon {
+  color: #3C7363;
+  flex-shrink: 0;
+}
+
+.date-range-dropdown,
+.guest-bed-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 300;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  border: 1px solid #e2e8f0;
+}
+
+.date-range-dropdown {
+  width: min(640px, 92vw);
+  padding: 16px;
+}
+
+.guest-bed-dropdown {
+  width: 320px;
+  padding: 12px 0;
+}
+
+.date-range-dropdown-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a2e28;
+  margin-bottom: 12px;
+}
+
+.date-range-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f1;
+}
+
+.date-range-summary-label {
+  display: block;
+  font-size: 12px;
+  color: #5a7a72;
+  margin-bottom: 4px;
+}
+
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.calendar-months {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.calendar-month-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2e28;
+  margin-bottom: 8px;
+  text-transform: capitalize;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.calendar-weekday {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a7a72;
+  text-align: center;
+}
+
+.calendar-weekday-sun {
+  color: #dc2626;
+}
+
+.guest-bed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.guest-bed-row-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a2e28;
+}
+
+.home-search-card {
+  overflow: visible;
+}
+
+.home-search-wrap {
+  overflow: visible;
 }

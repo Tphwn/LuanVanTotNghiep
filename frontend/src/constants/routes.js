@@ -4,6 +4,7 @@ const ROUTES = {
   REGISTER: '/register',
   CUSTOMER: {
     HOTELS: '/hotels',
+    ROOM_SEARCH: '/hotels/search',
     HOTEL_DETAIL: '/hotels/:id',
     ROOM_DETAIL: '/hotels/:hotelId/rooms/:roomId',
     BOOKING: '/booking',

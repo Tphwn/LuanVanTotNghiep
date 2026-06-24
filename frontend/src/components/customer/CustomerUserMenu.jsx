@@ -10,6 +10,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import ROUTES from '../../constants/routes';
+import { getGivenName, resolveHoTen } from '../../utils/userDisplay';
 
 const menuItems = [
   { label: '0 Điểm', path: ROUTES.CUSTOMER.POINTS, icon: Star },
@@ -23,9 +24,11 @@ const CustomerUserMenu = ({ user, onLogout }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  const displayName = user?.ho_ten || user?.email || 'Khách';
-  const shortName = user?.ho_ten?.trim().split(/\s+/)[0] || user?.email?.split('@')[0] || 'Khách';
-  const avatarLetter = (user?.ho_ten?.[0] || user?.email?.[0] || 'K').toUpperCase();
+  const hoTen = resolveHoTen(user);
+  const givenName = getGivenName(hoTen);
+  const displayName = hoTen || user?.email || 'Khách';
+  const shortName = givenName || user?.email?.split('@')[0] || 'Khách';
+  const avatarLetter = (givenName?.[0] || hoTen?.[0] || user?.email?.[0] || 'K').toUpperCase();
 
   useEffect(() => {
     const handleClickOutside = (event) => {

@@ -16,13 +16,15 @@ const MainLayout = ({ children, fullBleed = false }) => {
     dispatch(logout());
     navigate(ROUTES.HOME, { replace: true });
   };
-  const isActive = (path) => 
-    {
-      if (path === '/'){
-        return location.pathname === '/'
-      }
-      return location.pathname === path || location.pathname.startsWith(`${path}/`);
-    };
+  const isActive = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    if (path === ROUTES.CUSTOMER.HOTELS) {
+      return location.pathname === ROUTES.CUSTOMER.HOTELS;
+    }
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
 
   return (
     <div className="app-shell">

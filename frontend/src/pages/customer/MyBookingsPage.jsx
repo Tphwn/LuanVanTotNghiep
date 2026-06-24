@@ -89,19 +89,6 @@ const MyBookingsPage = () => {
 
   return (
     <div className="my-bookings-page">
-      <div className="my-bookings-hero">
-        <div className="my-bookings-hero-content">
-          <span className="my-bookings-hero-badge">Quản lý đặt chỗ</span>
-          <h1 className="my-bookings-hero-title">Đặt chỗ của tôi</h1>
-          <p className="my-bookings-hero-sub">
-            Xin chào, <strong>{user?.ho_ten || user?.email}</strong>
-            {' '}— theo dõi trạng thái và lịch trình các chuyến đi của bạn.
-          </p>
-        </div>
-        <Link to={ROUTES.HOME} className="my-bookings-hero-btn">
-          Đặt phòng mới
-        </Link>
-      </div>
 
       {!loading && !error && bookings.length > 0 && (
         <div className="my-bookings-stats">
