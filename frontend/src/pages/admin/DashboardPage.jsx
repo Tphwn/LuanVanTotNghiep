@@ -1,35 +1,30 @@
-// Trang tổng quan admin — hiển thị số liệu thống kê toàn hệ thống
+import ManagementHeader from '../../components/common/management/ManagementHeader';
+import MetricCard from '../../components/common/management/MetricCard';
+
 const DashboardPage = () => {
   const stats = [
-    { label: 'Người dùng',  value: '0',      sub: 'Tổng tài khoản',    color: '#3C7363'},
-    { label:'Khách sạn',   value: '0',      sub: 'Đã được duyệt',     color: '#0958d9'},
-    { label:'Đặt phòng',   value: '0',      sub: 'Tháng này',         color: '#b36b00'},
-    { label:'Doanh thu',   value: '0 ₫',    sub: 'Tháng này',         color: '#1a7a4a'},
+    { label: 'Người dùng', value: '0', color: '#3C7363' },
+    { label: 'Khách sạn', value: '0', color: '#0958d9' },
+    { label: 'Đặt phòng', value: '0', color: '#b36b00' },
+    { label: 'Doanh thu', value: '0 ₫', color: '#1a7a4a' },
   ];
 
   return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">Tổng Quan</h1>
-        <p className="page-subtitle">Theo dõi toàn bộ hoạt động</p>
-      </div>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Tổng quan"
+        subtitle="Theo dõi toàn bộ hoạt động hệ thống"
+      />
 
-      {/* Stats */}
-      <div className="stats-grid">
+      <div className="mgmt-metric-grid mgmt-metric-grid--4">
         {stats.map((s) => (
-          <div className="stat-card"key={s.label}
-            style={{ borderTop: `3px solid ${s.color}` }}>
-            <div className="stat-card-label">{s.label}</div>
-            <div className="stat-card-value"style={{ color: s.color }}>{s.value}</div>
-            <div className="stat-card-sub">{s.sub}</div>
-          </div>
+          <MetricCard key={s.label} label={s.label} value={s.value} color={s.color} />
         ))}
       </div>
 
-      {/* Bảng khách sạn chờ duyệt */}
       <div className="content-card">
         <div className="content-card-header">
-          <h3 className="content-card-title"> Khách sạn chờ duyệt</h3>
+          <h3 className="content-card-title">Khách sạn chờ duyệt</h3>
           <span className="badge badge-warning">0 chờ xử lý</span>
         </div>
         <table className="data-table">
@@ -45,16 +40,17 @@ const DashboardPage = () => {
           </thead>
           <tbody>
             <tr>
-              <td colSpan={6} style={{ textAlign:'center', color: '#5a7a72', padding: '32px'}}>
+              <td colSpan={6} style={{ textAlign: 'center', color: '#5a7a72', padding: '32px' }}>
                 Không có dữ liệu
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
       <div className="content-card">
         <div className="content-card-header">
-          <h3 className="content-card-title"> Đặt phòng gần đây</h3>
+          <h3 className="content-card-title">Đặt phòng gần đây</h3>
         </div>
         <table className="data-table">
           <thead>
@@ -69,7 +65,7 @@ const DashboardPage = () => {
           </thead>
           <tbody>
             <tr>
-              <td colSpan={6} style={{ textAlign:'center', color: '#5a7a72', padding: '32px' }}>
+              <td colSpan={6} style={{ textAlign: 'center', color: '#5a7a72', padding: '32px' }}>
                 Không có dữ liệu
               </td>
             </tr>

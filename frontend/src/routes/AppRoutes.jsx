@@ -41,8 +41,7 @@ import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
 import PartnerBookingDetailPage from '../pages/partner/bookings/PartnerBookingDetailPage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
-import InventoryPage from '../pages/partner/inventory/InventoryPage';
-import InventoryEditPage from '../pages/partner/inventory/InventoryEditPage';
+import PartnerPromotionsPage from '../pages/partner/promotions/PromotionsPage';
 
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
@@ -145,8 +144,9 @@ const AppRoutes = () => {
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
           <Route path="pricing" element={<PricingPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="inventory/:id/edit" element={<InventoryEditPage />} />
+          <Route path="promotions" element={<PartnerPromotionsPage />} />
+          <Route path="inventory" element={<Navigate to="/partner/pricing" replace />} />
+          <Route path="inventory/:id/edit" element={<Navigate to="/partner/pricing" replace />} />
         </Route>
 
         {/* Admin */}

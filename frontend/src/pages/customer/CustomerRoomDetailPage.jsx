@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
@@ -110,7 +111,7 @@ const CustomerRoomDetailPage = () => {
       <div className="hotel-detail-page">
         <div className="content-card"style={{ textAlign:'center', padding: 48 }}>
           <p style={{ color: '#e05c5c', marginBottom: 16 }}> {error || 'Không tìm thấy loại phòng'}</p>
-          <Link to={backUrl} className="btn btn-outline">← Quay lại kết quả</Link>
+          <BackButton to={backUrl} variant="outline" />
         </div>
       </div>
     );
@@ -123,9 +124,7 @@ const CustomerRoomDetailPage = () => {
 
   return (
     <div className="hotel-detail-page">
-      <Link to={backUrl} className="btn btn-ghost btn-sm"style={{ marginBottom: 16 }}>
-        ← Quay lại kết quả tìm kiếm
-      </Link>
+      <BackButton to={backUrl} className="page-back-btn--standalone" />
 
       <div className="hotel-detail-gallery">
         {mainImg ? (

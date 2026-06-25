@@ -38,6 +38,25 @@ exports.getMyHotels = async (req, res) => {
   }
 };
 
+// Lịch quản lý giá + kho phòng theo ngày
+exports.getManagementCalendar = async (req, res) => {
+  try {
+    const doiTacId = await getDoiTacId(req.user.id);
+    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
+
+    const { maLoaiPhong, tuNgay, denNgay } = req.query;
+    if (!maLoaiPhong || !tuNgay || !denNgay) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số' });
+    }
+
+    await verifyRoomOwnership(doiTacId, [maLoaiPhong]);
+    const data = await pricingService.getManagementCalendar(maLoaiPhong, tuNgay, denNgay);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // Lấy lịch giá của 1 loại phòng
 exports.getCalendar = async (req, res) => {
   try {

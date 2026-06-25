@@ -28,7 +28,7 @@ export default function HotelBanner({ hotel, hotelsCount, onChangeHotel }) {
       </div>
       {hotelsCount > 1 && (
         <button type="button" className="btn btn-ghost btn-sm" onClick={onChangeHotel}>
-          ← Đổi khách sạn
+          ← Quay lại
         </button>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import customerBookingService from '../../services/customerBookingService';
@@ -144,7 +145,7 @@ const CustomerBookingPage = () => {
       <div className="booking-page">
         <div className="content-card"style={{ textAlign:'center', padding: 48 }}>
           <p style={{ color: '#e05c5c', marginBottom: 16 }}> {error}</p>
-          <Link to={ROUTES.CUSTOMER.HOTELS} className="btn btn-outline">← Quay lại tìm kiếm</Link>
+          <BackButton to={ROUTES.CUSTOMER.HOTELS} variant="outline" />
         </div>
       </div>
     );
@@ -155,9 +156,7 @@ const CustomerBookingPage = () => {
 
   return (
     <div className="booking-page">
-      <Link to={backUrl} className="btn btn-ghost btn-sm"style={{ marginBottom: 16 }}>
-        ← Quay lại chi tiết phòng
-      </Link>
+      <BackButton to={backUrl} className="page-back-btn--standalone" />
 
       <h1 className="booking-page-title">Xác nhận đặt phòng</h1>
 

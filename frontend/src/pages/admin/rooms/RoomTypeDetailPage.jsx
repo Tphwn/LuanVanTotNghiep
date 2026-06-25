@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ManagementHeader from "../../../components/common/management/ManagementHeader";
 
 
 const RoomTypeDetailPage = () => {
@@ -12,18 +13,17 @@ const RoomTypeDetailPage = () => {
   if (!room) return <div className="main-panel">Đang tải...</div>;
 
   return (
-    <div className="main-panel">
-      <div className="page-header">
-        <div className="page-header-left">
-          <button className="btn btn-ghost btn-sm"onClick={() => navigate(-1)} style={{ marginBottom: 8 }}>← Quay lại</button>
-          <h1 className="page-title">{room.ten_loai}</h1>
-          <p className="page-subtitle">Thuộc khách sạn: <strong>{room.khach_san}</strong></p>
-        </div>
-        <div>
-          <span className={`badge ${room.trang_thai === 'hoat_dong'?'badge-success':'badge-danger'}`} style={{ fontSize: 14, padding: '8px 16px'}}>
-            {room.trang_thai ==='hoat_dong'?'● Đang mở bán':'● Đã khóa / Tạm ngưng'}
-          </span>
-        </div>
+    <div className="main-panel mgmt-page">
+      <ManagementHeader
+        title={room.ten_loai}
+        subtitle={`Thuộc khách sạn: ${room.khach_san}`}
+        onBack={() => navigate(-1)}
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <span className={`badge ${room.trang_thai === 'hoat_dong' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 14, padding: '8px 16px' }}>
+          {room.trang_thai === 'hoat_dong' ? '● Đang mở bán' : '● Đã khóa / Tạm ngưng'}
+        </span>
       </div>
 
       <div style={{ display: "flex", gap: 20, borderBottom: "2px solid #d4ede6", marginBottom: 24 }}>

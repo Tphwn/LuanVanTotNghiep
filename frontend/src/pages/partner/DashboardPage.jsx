@@ -1,14 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import ManagementHeader from '../../components/common/management/ManagementHeader';
+import MetricCard from '../../components/common/management/MetricCard';
 
 const PartnerDashboardPage = () => {
   const navigate = useNavigate();
 
   const stats = [
-    { label: 'Khách sạn', value: '0', sub: 'Đang hoạt động', color: '#3C7363' },
-    { label: 'Loại phòng', value: '0', sub: 'Tổng loại phòng', color: '#0958d9' },
-    { label: 'Đặt phòng', value: '0', sub: 'Tháng này', color: '#b36b00' },
-    { label: 'Doanh thu', value: '0 ₫', sub: 'Tháng này', color: '#1a7a4a' },
+    { label: 'Khách sạn', value: '0', color: '#3C7363' },
+    { label: 'Loại phòng', value: '0', color: '#0958d9' },
+    { label: 'Đặt phòng', value: '0', color: '#b36b00' },
+    { label: 'Doanh thu', value: '0 ₫', color: '#1a7a4a' },
   ];
 
   return (
@@ -20,17 +21,9 @@ const PartnerDashboardPage = () => {
         onAction={() => navigate('/partner/hotels/create')}
       />
 
-      <div className="stats-grid">
+      <div className="mgmt-metric-grid mgmt-metric-grid--4">
         {stats.map((s) => (
-          <div
-            key={s.label}
-            className="stat-card"
-            style={{ borderTop: `3px solid ${s.color}` }}
-          >
-            <div className="stat-card-label">{s.label}</div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
-            <div className="stat-card-sub">{s.sub}</div>
-          </div>
+          <MetricCard key={s.label} label={s.label} value={s.value} color={s.color} />
         ))}
       </div>
 

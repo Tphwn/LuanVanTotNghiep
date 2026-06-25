@@ -20,6 +20,7 @@ const AdminBookingsPage = () => {
   );
 
   const [keyword, setKeyword] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [hotelFilter, setHotelFilter] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
@@ -28,8 +29,22 @@ const AdminBookingsPage = () => {
   useEffect(() => {
     dispatch(fetchBookingStats());
     dispatch(fetchHotelsForFilter());
-    dispatch(fetchAdminBookings());
   }, [dispatch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
+    return () => clearTimeout(timer);
+  }, [keyword]);
+
+  useEffect(() => {
+    dispatch(fetchAdminBookings({
+      keyword: debouncedKeyword,
+      trang_thai: statusFilter,
+      ks_id: hotelFilter !== 'all' ? hotelFilter : '',
+      tu_ngay: tuNgay,
+      den_ngay: denNgay,
+    }));
+  }, [dispatch, debouncedKeyword, statusFilter, hotelFilter, tuNgay, denNgay]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -37,25 +52,6 @@ const AdminBookingsPage = () => {
       return () => clearTimeout(t);
     }
   }, [successMsg, error, dispatch]);
-
-  const handleSearch = () => {
-    dispatch(fetchAdminBookings({
-      keyword,
-      trang_thai: statusFilter,
-      ks_id: hotelFilter !== 'all' ? hotelFilter : '',
-      tu_ngay: tuNgay,
-      den_ngay: denNgay,
-    }));
-  };
-
-  const handleReset = () => {
-    setKeyword('');
-    setStatusFilter('all');
-    setHotelFilter('all');
-    setTuNgay('');
-    setDenNgay('');
-    dispatch(fetchAdminBookings());
-  };
 
   const handleViewDetail = (id) => {
     navigate(`/admin/bookings/${id}`);
@@ -71,13 +67,6 @@ const AdminBookingsPage = () => {
 
   const handleTabChange = (tab) => {
     setStatusFilter(tab);
-    dispatch(fetchAdminBookings({
-      keyword,
-      trang_thai: tab,
-      ks_id: hotelFilter !== 'all' ? hotelFilter : '',
-      tu_ngay: tuNgay,
-      den_ngay: denNgay,
-    }));
   };
 
   return (
@@ -124,8 +113,6 @@ const AdminBookingsPage = () => {
           onChange={(e) => setDenNgay(e.target.value)}
           title="Đến ngày"
         />
-        <button type="button" className="btn btn-primary btn-sm" onClick={handleSearch}>Tìm kiếm</button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleReset}>Reset</button>
       </div>
 
       <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />

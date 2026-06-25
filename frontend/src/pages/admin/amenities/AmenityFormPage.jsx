@@ -5,6 +5,7 @@ import { addAmenity, updateAmenity, fetchAmenities } from '../../../store/slices
 import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug } from '../../../utils/amenityIcons';
 import EditField from '../users/components/EditField';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import BackButton from '../../../components/common/BackButton';
 
 const LOAI_OPTIONS = [
   { value: 'khach_san', label: 'Khách sạn', desc: 'Hiển thị cho khách sạn' },
@@ -98,9 +99,7 @@ export default function AmenityFormPage() {
     return (
       <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
         <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy tiện nghi</p>
-        <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/amenities')}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={() => navigate('/admin/amenities')} />
       </div>
     );
   }
@@ -110,16 +109,8 @@ export default function AmenityFormPage() {
       <ManagementHeader
         title="Quản lý Tiện nghi"
         subtitle={isEdit ? 'Chỉnh sửa tiện nghi' : 'Thêm tiện nghi mới'}
+        onBack={() => navigate('/admin/amenities')}
       />
-
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={() => navigate('/admin/amenities')}
-      >
-        ← Quay lại
-      </button>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <span className="mgmt-type-tag" style={{ padding: '8px 14px', fontSize: 13, background: '#f1f5f9' }}>

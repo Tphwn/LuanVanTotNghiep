@@ -6,6 +6,7 @@ import {
   clearUserMsg,
 } from '../../../store/slices/adminUserSlice';
 import EditField from './components/EditField';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
 const INIT_FORM = {
   email: '',
@@ -129,15 +130,12 @@ export default function CreatePartnerPage() {
   };
 
   return (
-    <div>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={() => navigate('/admin/users')}
-      >
-        ← Quay lại
-      </button>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý người dùng"
+        subtitle="Tạo tài khoản đối tác"
+        onBack={() => navigate('/admin/users')}
+      />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <span

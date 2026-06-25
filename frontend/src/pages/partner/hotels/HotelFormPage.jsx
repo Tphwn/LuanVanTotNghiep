@@ -9,6 +9,7 @@ import {
   updateHotel,
 } from '../../../store/slices/partnerHotelSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import BackButton from '../../../components/common/BackButton';
 import HotelFormContent from './HotelFormModal';
 
 export default function HotelFormPage() {
@@ -50,9 +51,7 @@ export default function HotelFormPage() {
     return (
       <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
         <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy khách sạn</p>
-        <button type="button" className="btn btn-outline" onClick={() => navigate('/partner/hotels')}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={() => navigate('/partner/hotels')} />
       </div>
     );
   }
@@ -62,16 +61,8 @@ export default function HotelFormPage() {
       <ManagementHeader
         title="Quản Lý Hồ Sơ Khách sạn"
         subtitle={isEdit ? `Chỉnh sửa: ${hotel?.ten}` : 'Thêm khách sạn mới'}
+        onBack={() => navigate('/partner/hotels')}
       />
-
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={() => navigate('/partner/hotels')}
-      >
-        ← Quay lại 
-      </button>
 
       <div className="content-card">
         <HotelFormContent

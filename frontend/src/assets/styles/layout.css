@@ -1315,6 +1315,16 @@ body {
   margin: 0;
 }
 
+.mgmt-header-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.mgmt-header-main .page-back-btn {
+  margin-top: 10px;
+}
+
 .mgmt-header-action { gap: 8px; padding: 10px 20px; border-radius: 10px; }
 
 .mgmt-stats-grid {
@@ -1344,6 +1354,41 @@ body {
   font-size: 28px;
   font-weight: 700;
   line-height: 1.1;
+}
+
+.mgmt-metric-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mgmt-metric-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mgmt-metric-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mgmt-metric-card {
+  text-align: center;
+  padding: 18px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--metric-color) 5%, #fff);
+  border: 1px solid color-mix(in srgb, var(--metric-color) 20%, #fff);
+}
+
+.mgmt-metric-card__value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--metric-color);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.mgmt-metric-card__label {
+  font-size: 12px;
+  color: #5a7a72;
+  margin-top: 6px;
 }
 
 .mgmt-toolbar-row {
@@ -1497,7 +1542,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
+  width: min(320px, 100%);
 }
 
 .mgmt-filter-field--grow {
@@ -1512,6 +1557,11 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: #64748b;
+}
+
+.mgmt-toolbar--filters .mgmt-filter-field {
+  width: 100%;
+  min-width: 0;
 }
 
 .mgmt-toolbar--filters .mgmt-select-inline {
@@ -1870,12 +1920,16 @@ body {
 
 @media (max-width: 768px) {
   .mgmt-stats-grid { grid-template-columns: 1fr 1fr; }
+  .mgmt-metric-grid--3,
+  .mgmt-metric-grid--4 { grid-template-columns: 1fr 1fr; }
   .mgmt-toolbar { flex-direction: column; align-items: stretch; }
   .mgmt-filter-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
 }
 
 @media (max-width: 480px) {
   .mgmt-stats-grid { grid-template-columns: 1fr; }
+  .mgmt-metric-grid--3,
+  .mgmt-metric-grid--4 { grid-template-columns: 1fr; }
 }
 
 /* ===== AMENITY PAGE ===== */
@@ -3055,7 +3109,66 @@ body {
 }
 
 .booking-detail-page-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+.page-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  text-decoration: none;
+  font-family: var(--font-family);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.page-back-btn--default {
+  margin: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3C7363;
+  background: #eef4f2;
+  border: 1px solid #d4ede6;
+}
+
+.page-back-btn--default:hover {
+  background: #e4f0ec;
+  border-color: #b8ddd2;
+  color: #2d5c50;
+}
+
+.page-back-btn--outline {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3C7363;
+  background: #fff;
+  border: 1px solid #d4ede6;
+}
+
+.page-back-btn--outline:hover {
+  background: #f8fdfb;
+  border-color: #3C7363;
+}
+
+.page-back-btn--standalone {
+  margin-bottom: 16px;
+}
+
+.booking-detail-table-scroll {
+  overflow-x: auto;
+}
+
+.booking-detail-table-scroll .data-table {
+  min-width: 360px;
 }
 
 .booking-detail-page-title {

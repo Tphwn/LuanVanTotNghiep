@@ -5,7 +5,9 @@ import { lockUser, unlockUser } from "../../../store/slices/adminUserSlice";
 import adminUserService from "../../../services/adminUserService";
 import { resolveUploadUrl } from "../../../utils/media";
 import { Eye } from "lucide-react";
-import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
+import ActionButton, { ActionCell, TableActions } from "../../../components/common/ActionButton";
+import BackButton from "../../../components/common/BackButton";
+import ManagementHeader from "../../../components/common/management/ManagementHeader";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND"}).format(Number(amount) || 0);
@@ -108,9 +110,7 @@ const UserDetailPage = () => {
     return (
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>Không tìm thấy người dùng</p>
-        <button type="button"className="btn btn-outline"onClick={() => navigate("/admin/users")}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={() => navigate("/admin/users")} />
       </div>
     );
   }
@@ -141,61 +141,51 @@ const UserDetailPage = () => {
   ].filter(Boolean);
 
   return (
-    <div>
-      <button type="button"className="btn btn-ghost btn-sm"style={{ marginBottom: 12 }} onClick={() => navigate("/admin/users")}>
-        ← Quay lại
-      </button>
-
-      {/* Hero */}
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Chi Tiết Người Dùng"
+        onBack={() => navigate("/admin/users")}
+      />
       <div className="content-card"style={{ padding: 0, overflow:"hidden", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "24px 28px", flexWrap: "wrap"}}>
-          <div style={{
-            width: 72, height: 72, borderRadius:"50%", overflow: "hidden",
-            background: "#e8f5f1", border: "2px solid #d4ede6", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 28,
-          }}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt=""style={{ width:"100%", height: "100%", objectFit: "cover"}} />
-            ) : (
-              isPartner ?"":"")}
-          </div>
-
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ display:"flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
-              <h1 className="page-title"style={{ margin: 0, fontSize: 22 }}>{displayName ||"Chưa cập nhật"}</h1>
-              <span className={`badge ${isCustomer ? "badge-info":"badge-success"}`}>
-                {isCustomer ? "Khách hàng": isPartner ?"Đối tác":"Admin"}
-              </span>
-              <span className={`badge ${accountSt.cls}`}>{accountSt.label}</span>
+        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+            <div style={{
+              width: 72, height: 72, borderRadius:"50%", overflow: "hidden",
+              background: "#e8f5f1", border: "2px solid #d4ede6", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 28,
+            }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt=""style={{ width:"100%", height: "100%", objectFit: "cover"}} />
+              ) : (
+                isPartner ?"":"")}
             </div>
-            <p style={{ margin: 0, fontSize: 14, color: "#5a7a72"}}>
-             Email:{user.email} <> </><br></br>Số điện thoại: {user.so_dien_thoai}
-            </p>
+
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ display:"flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+                <h1 className="page-title"style={{ margin: 0, fontSize: 22 }}>{displayName ||"Chưa cập nhật"}</h1>
+                <span className={`badge ${isCustomer ? "badge-info":"badge-success"}`}>
+                  {isCustomer ? "Khách hàng": isPartner ?"Đối tác":"Admin"}
+                </span>
+                <span className={`badge ${accountSt.cls}`}>{accountSt.label}</span>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, color: "#5a7a72"}}>
+               Email:{user.email} <> </><br></br>Số điện thoại: {user.so_dien_thoai}
+              </p>
+            </div>
           </div>
 
-          <ActionButton
-            variant={user.trang_thai === "hoat_dong" ? "lock" : "unlock"}
-            onClick={handleLockToggle}
-            disabled={actionLoading}
-          >
-            {actionLoading ? "Đang xử lý..." : user.trang_thai === "hoat_dong" ? "Khóa tài khoản" : "Mở khóa"}
-          </ActionButton>
+          <TableActions style={{ marginTop: 12, justifyContent: "flex-start" }}>
+            <ActionButton
+              variant={user.trang_thai === "hoat_dong" ? "lock" : "unlock"}
+              onClick={handleLockToggle}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Đang xử lý..." : user.trang_thai === "hoat_dong" ? "Khóa tài khoản" : "Mở khóa"}
+            </ActionButton>
+          </TableActions>
         </div>
       </div>
-
-      {isPartner && partner && (
-        <div style={{ display:"grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-          <StatMini label="Khách sạn"value={hotels.length} color="#3C7363"icon=""/>
-          <StatMini
-            label="Hoa hồng"value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` :"—"}
-            color="#b36b00"icon=""/>
-          <StatMini
-            label="Hợp tác"value={PARTNER_STATUS[partner.trang_thai]?.label || partner.trang_thai}
-            color={partner.trang_thai ==="hoat_dong"?"#52c41a":"#e05c5c"}
-            icon=""/>
-        </div>
-      )}
 
       {/* Tabs */}
       <div style={{ display:"flex", gap: 8, marginBottom: 16, flexWrap: "wrap"}}>
@@ -245,7 +235,7 @@ const UserDetailPage = () => {
             <div className="content-card">
               <h3 className="content-card-title"style={{ marginBottom: 12 }}> Hồ sơ đối tác</h3>
               <InfoRow label="Tên công ty"value={partner.ten_cong_ty} />
-              <InfoRow label="Mã đối tác"value={`#${partner.ma_doi_tac}`} />
+              <InfoRow label="Mã đối tác"value={`${partner.ma_doi_tac}`} />
               <InfoRow label="Email liên hệ"value={partner.email_lien_he || user.email} />
               <InfoRow label="SĐT công ty"value={partner.so_dien_thoai || user.so_dien_thoai} />
               <InfoRow label="Địa chỉ"value={partner.dia_chi} />

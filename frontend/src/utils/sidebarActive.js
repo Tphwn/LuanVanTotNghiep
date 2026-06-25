@@ -12,8 +12,8 @@ export const isPartnerMenuActive = (pathname, path) => {
       || /^\/partner\/hotels\/\d+\/rooms(\/|$)/.test(pathname);
   }
 
-  if (path === '/partner/inventory') {
-    return pathname.startsWith('/partner/inventory/');
+  if (path === '/partner/promotions') {
+    return pathname.startsWith('/partner/promotions');
   }
 
   if (path === '/partner/account') {

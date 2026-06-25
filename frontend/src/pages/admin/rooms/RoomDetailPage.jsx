@@ -3,14 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "../../../services/api";
 import { resolveUploadUrl } from "../../../utils/media";
 import ActionButton from "../../../components/common/ActionButton";
+import BackButton from "../../../components/common/BackButton";
+import ManagementHeader from "../../../components/common/management/ManagementHeader";
+import MetricCard from "../../../components/common/management/MetricCard";
+import { getAdminRoomTypeStatus } from "../../../constants/statuses";
 
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
 const fmtDate = (d) => new Date(d).toLocaleDateString("vi-VN");
-
-const ROOM_STATUS = {
-  hoat_dong: { label: "Đang bán", cls: "badge-success"},
-  an:        { label:"Đã ẩn", cls: "badge-warning"},
-};
+const fmtPrice = (v) => (v != null && v !== "" ? `${fmt(v)} ₫` : "—");
 
 const StarRating = ({ value }) => (
   <span style={{ fontSize: 13, fontWeight: 600, color: '#b36b00' }}>
@@ -24,31 +24,6 @@ const InfoItem = ({ label, value, highlight }) => (
     <div style={{ fontSize: 14, fontWeight: highlight ? 600 : 500, color: highlight ? "#3C7363":"#1a2e28"}}>
       {value ??"—"}
     </div>
-  </div>
-);
-
-const PriceCard = ({ label, value, color, icon }) => (
-  <div style={{
-    flex: 1, minWidth: 140, padding: "16px 18px", borderRadius: 12,
-    background: "#fff", border: `1.5px solid ${color}22`,
-    borderTop: `3px solid ${color}`,
-  }}>
-    <div style={{ fontSize: 12, color: "#5a7a72", marginBottom: 6 }}>{icon} {label}</div>
-    <div style={{ fontSize: 20, fontWeight: 700, color }}>
-      {value != null ? `${fmt(value)} ₫` : "Chưa thiết lập"}
-    </div>
-    <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>Chỉ xem</div>
-  </div>
-);
-
-const InventoryCard = ({ label, value, color, icon }) => (
-  <div style={{
-    textAlign: "center", padding: "18px 12px", borderRadius: 12,
-    background: `${color}08`, border: `1px solid ${color}33`,
-  }}>
-    <div style={{ fontSize: 22, marginBottom: 6 }}>{icon}</div>
-    <div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div>
-    <div style={{ fontSize: 12, color: "#5a7a72", marginTop: 4 }}>{label}</div>
   </div>
 );
 
@@ -100,14 +75,12 @@ const RoomDetailPage = () => {
     return (
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>{error || "Không tìm thấy loại phòng"}</p>
-        <button type="button"className="btn btn-outline"onClick={() => navigate("/admin/room-types")}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={() => navigate("/admin/room-types")} />
       </div>
     );
   }
 
-  const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "badge-default"};
+  const st = getAdminRoomTypeStatus(room.trang_thai);
   const isHidden = room.trang_thai ==="an";
   const mainImg = room.hinh_anh?.find((i) => i.la_anh_chinh) || room.hinh_anh?.[0];
   const amenities = room.loai_phong_tien_nghi || [];
@@ -123,13 +96,13 @@ const RoomDetailPage = () => {
   ];
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <button type="button"className="btn btn-ghost btn-sm"onClick={() => navigate("/admin/room-types")} style={{ marginBottom: 12 }}>
-          ← Quay lại
-        </button>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Quản lý loại phòng"
+        onBack={() => navigate("/admin/room-types")}
+      />
 
+      <div style={{ marginBottom: 20 }}>
         <div className="content-card"style={{ padding: 0, overflow:"hidden"}}>
           <div style={{ display:"grid", gridTemplateColumns: mainImg ? "280px 1fr":"1fr", minHeight: 200 }}>
             {mainImg && (
@@ -144,7 +117,7 @@ const RoomDetailPage = () => {
               <div>
                 <div style={{ display:"flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap"}}>
                   <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{room.ten_loai}</h1>
-                  <span className={`badge ${st.cls}`}>{st.label}</span>
+                  <span className={`badge ${st.badgeCls}`}>{st.label}</span>
                 </div>
                 <p style={{ margin:"0 0 4px", color: "#5a7a72", fontSize: 14 }}>
                    <> Khách sạn: </><strong style={{ color: "#1a2e28"}}>{room.khach_san?.ten}</strong>
@@ -184,19 +157,28 @@ const RoomDetailPage = () => {
         </div>
 
         <div className="content-card">
-          <h3 className="content-card-title"style={{ marginBottom: 12 }}> Bảng giá (chỉ xem)</h3>
-          <div style={{ display:"flex", gap: 12, flexWrap: "wrap"}}>
-            <PriceCard label="Giá cơ bản"value={gia.gia_co_ban ?? room.gia_co_ban} color="#3C7363"icon=""/>
-            <PriceCard label="Cuối tuần"value={gia.gia_cuoi_tuan} color="#b36b00"icon=""/>
-            <PriceCard label="Lễ / Tết"value={gia.gia_le} color="#e05c5c"icon=""/>
+          <h3 className="content-card-title" style={{ marginBottom: 12 }}>Bảng giá</h3>
+          <div className="mgmt-metric-grid mgmt-metric-grid--3">
+            <MetricCard
+              label="Giá cơ bản"
+              value={fmtPrice(gia.gia_co_ban ?? room.gia_co_ban)}
+              color="#3C7363"
+            />
+            <MetricCard label="Cuối tuần" value={fmtPrice(gia.gia_cuoi_tuan)} color="#b36b00" />
+            <MetricCard label="Lễ / Tết" value={fmtPrice(gia.gia_le)} color="#e05c5c" />
           </div>
-          <h3 className="content-card-title"style={{ marginBottom: 14 }}> Tình trạng phòng</h3>
-          <div style={{ display:"grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-          <InventoryCard label="Tổng số phòng"value={inv.tong_so_phong ?? room.so_luong_phong} color="#3C7363"icon=""/>
-          <InventoryCard label="Đang mở bán"value={inv.dang_mo_ban ?? 0} color="#52c41a"icon=""/>
-          <InventoryCard label="Đang bảo trì"value={inv.dang_bao_tri ?? 0} color="#b36b00"icon=""/>
-          <InventoryCard label="Đang khóa"value={inv.dang_khoa ?? 0} color="#e05c5c"icon=""/>
-        </div>
+
+          <h3 className="content-card-title" style={{ margin: '20px 0 12px' }}>Tình trạng phòng</h3>
+          <div className="mgmt-metric-grid mgmt-metric-grid--4">
+            <MetricCard
+              label="Tổng số phòng"
+              value={inv.tong_so_phong ?? room.so_luong_phong ?? 0}
+              color="#3C7363"
+            />
+            <MetricCard label="Đang mở bán" value={inv.dang_mo_ban ?? 0} color="#52c41a" />
+            <MetricCard label="Đang bảo trì" value={inv.dang_bao_tri ?? 0} color="#b36b00" />
+            <MetricCard label="Đang khóa" value={inv.dang_khoa ?? 0} color="#e05c5c" />
+          </div>
         </div>
       </div>
 

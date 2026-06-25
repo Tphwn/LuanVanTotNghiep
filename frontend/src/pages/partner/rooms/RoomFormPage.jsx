@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import BackButton from '../../../components/common/BackButton';
 import RoomFormContent from './RoomFormModal';
 
 export default function RoomFormPage() {
@@ -51,9 +52,7 @@ export default function RoomFormPage() {
     return (
       <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
         <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy loại phòng</p>
-        <button type="button" className="btn btn-outline" onClick={() => navigate(listPath)}>
-          ← Quay lại 
-        </button>
+        <BackButton variant="outline" onClick={() => navigate(listPath)} />
       </div>
     );
   }
@@ -64,19 +63,11 @@ export default function RoomFormPage() {
         title="Quản Lý Loại Phòng"
         subtitle={
           isEdit
-            ? `Chỉnh sửa loại phòng — ${hotelName}`
-            : `Thêm loại phòng mới — ${hotelName}`
+            ? `Chỉnh sửa loại phòng cho khách sạn: ${hotelName}`
+            : `Thêm loại phòng mới cho khách sạn:  ${hotelName}`
         }
+        onBack={() => navigate(listPath)}
       />
-
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={() => navigate(listPath)}
-      >
-        ← Quay lại
-      </button>
 
       <div className="content-card">
         <RoomFormContent

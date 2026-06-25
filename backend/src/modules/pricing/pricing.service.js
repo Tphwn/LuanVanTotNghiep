@@ -1,5 +1,23 @@
 const prisma = require('../../config/prisma');
 
+const formatDateKey = (d) => {
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const parseLocalDate = (str) => {
+  const [y, m, d] = String(str).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const getDefaultLoaiGia = (dateStr) => {
+  const d = new Date(`${dateStr}T12:00:00`).getDay();
+  return d === 0 || d === 6 ? 'cuoi_tuan' : 'co_ban';
+};
+
 const pricingService = {
 
   // Lấy danh sách KS của đối tác
@@ -23,6 +41,98 @@ const pricingService = {
         },
       },
     });
+  },
+
+  // Lịch quản lý giá + kho + đặt phòng theo ngày
+  getManagementCalendar: async (maLoaiPhong, tuNgay, denNgay) => {
+    const roomId = Number(maLoaiPhong);
+    const room = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: roomId },
+      select: {
+        ma_loai_phong: true,
+        ten_loai: true,
+        gia_co_ban: true,
+        so_luong_phong: true,
+        so_luong_mo_ban: true,
+        trang_thai: true,
+        ma_khach_san: true,
+      },
+    });
+    if (!room) throw new Error('Không tìm thấy loại phòng');
+
+    const start = parseLocalDate(tuNgay);
+    const end = parseLocalDate(denNgay);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const priceRows = await prisma.bang_gia_phong.findMany({
+      where: {
+        ma_loai_phong: roomId,
+        ngay: { gte: start, lte: end },
+      },
+    });
+    const priceMap = new Map(priceRows.map((p) => [formatDateKey(p.ngay), p]));
+
+    const bookings = await prisma.dat_phong.findMany({
+      where: {
+        ma_loai_phong: roomId,
+        trang_thai: { in: ['cho_xac_nhan', 'da_xac_nhan', 'hoan_thanh'] },
+        ngay_nhan_phong: { lte: end },
+        ngay_tra_phong: { gt: start },
+      },
+      select: { ngay_nhan_phong: true, ngay_tra_phong: true },
+    });
+
+    const moBanBase = room.trang_thai === 'an' ? 0 : Number(room.so_luong_mo_ban);
+    const tongPhong = Number(room.so_luong_phong);
+    const giaCoBan = Number(room.gia_co_ban);
+
+    const days = [];
+    const cur = new Date(start);
+    cur.setHours(0, 0, 0, 0);
+    const endDay = new Date(end);
+    endDay.setHours(0, 0, 0, 0);
+
+    while (cur <= endDay) {
+      const key = formatDateKey(cur);
+      const priceRow = priceMap.get(key);
+      const donGia = priceRow ? Number(priceRow.don_gia) : giaCoBan;
+
+      const nightStart = new Date(cur);
+      nightStart.setHours(0, 0, 0, 0);
+      const daDat = bookings.filter((b) => {
+        const checkIn = new Date(b.ngay_nhan_phong);
+        const checkOut = new Date(b.ngay_tra_phong);
+        checkIn.setHours(0, 0, 0, 0);
+        checkOut.setHours(0, 0, 0, 0);
+        return nightStart >= checkIn && nightStart < checkOut;
+      }).length;
+
+      days.push({
+        ngay: key,
+        don_gia: donGia,
+        gia_co_ban: giaCoBan,
+        loai_gia: priceRow?.loai_gia || getDefaultLoaiGia(key),
+        gia_tuy_chinh: priceRow != null && donGia !== giaCoBan,
+        tong_phong: tongPhong,
+        mo_ban: moBanBase,
+        con_lai: Math.max(moBanBase - daDat, 0),
+        da_dat: daDat,
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return {
+      room: {
+        ma_loai_phong: room.ma_loai_phong,
+        ten_loai: room.ten_loai,
+        gia_co_ban: giaCoBan,
+        tong_phong: tongPhong,
+        mo_ban: moBanBase,
+        trang_thai: room.trang_thai,
+      },
+      days,
+    };
   },
 
   // Lấy lịch giá của 1 loại phòng

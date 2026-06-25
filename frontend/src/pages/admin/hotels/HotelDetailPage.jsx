@@ -8,6 +8,9 @@ import {
 import { resolveUploadUrl } from "../../../utils/media";
 import { Eye } from "lucide-react";
 import ActionButton, { ActionCell, TableActions } from "../../../components/common/ActionButton";
+import BackButton from "../../../components/common/BackButton";
+import ManagementHeader from "../../../components/common/management/ManagementHeader";
+import { getAdminRoomTypeStatus } from "../../../constants/statuses";
 
 const HOTEL_STATUS = {
   cho_duyet: { label: "Chờ duyệt", cls: "badge-warning"},
@@ -16,11 +19,6 @@ const HOTEL_STATUS = {
   bi_khoa: { label:"Bị khóa", cls: "badge-danger"},
   yeu_cau_sua: { label:"Yêu cầu sửa", cls: "badge-info"},
   da_duyet: { label:"Đã duyệt", cls: "badge-info"},
-};
-
-const ROOM_STATUS = {
-  hoat_dong: { label:"Đang bán", cls: "badge-success"},
-  an: { label:"Đã ẩn", cls: "badge-warning"},
 };
 
 const PARTNER_STATUS = {
@@ -116,9 +114,7 @@ const HotelDetailPage = () => {
     return (
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>Không tìm thấy khách sạn</p>
-        <button type="button"className="btn btn-outline"onClick={() => navigate("/admin/hotels")}>
-          ← Quay lại danh sách
-        </button>
+        <BackButton variant="outline" onClick={() => navigate("/admin/hotels")} />
       </div>
     );
   }
@@ -138,12 +134,12 @@ const HotelDetailPage = () => {
   ];
 
   return (
-    <div>
-      <button type="button"className="btn btn-ghost btn-sm"style={{ marginBottom: 12 }} onClick={() => navigate("/admin/hotels")}>
-        ← Quay lại
-      </button>
+    <div className="mgmt-page">
+      <ManagementHeader
+        title="Chi tiết khách sạn"
+        onBack={() => navigate("/admin/hotels")}
+      />
 
-      {/* Hero */}
       <div className="content-card"style={{ padding: 0, overflow:"hidden", marginBottom: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: mainImg ? "280px 1fr":"1fr", minHeight: 200 }}>
           {mainImg && (
@@ -175,7 +171,7 @@ const HotelDetailPage = () => {
               )}
             </div>
 
-            <TableActions style={{ marginTop: 16, justifyContent: "flex-start" }}>
+            <TableActions style={{ marginTop: 12, justifyContent: "flex-start" }}>
               {hotel.trang_thai === "cho_duyet" && (
                 <>
                   <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction("approve")}>
@@ -311,14 +307,14 @@ const HotelDetailPage = () => {
                 </thead>
                 <tbody>
                   {rooms.map((room) => {
-                    const rst = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls:"badge-default"};
+                    const rst = getAdminRoomTypeStatus(room.trang_thai);
                     return (
                       <tr key={room.ma_loai_phong}>
                         <td style={{ fontWeight: 500 }}>{room.ten_loai}</td>
                         <td style={{ fontWeight: 600, color:"#b36b00"}}>{fmt(room.gia_co_ban)} ₫</td>
                         <td>{room.suc_chua} khách</td>
                         <td>{room.so_luong_phong} phòng</td>
-                        <td><span className={`badge ${rst.cls}`}>{rst.label}</span></td>
+                        <td><span className={`badge ${rst.badgeCls}`}>{rst.label}</span></td>
                         <ActionCell>
                           <ActionButton
                             variant="view"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import BackButton from '../../../components/common/BackButton';
 import EditField from '../../admin/users/components/EditField';
 
 export default function InventoryEditPage() {
@@ -58,9 +59,7 @@ export default function InventoryEditPage() {
     return (
       <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
         <p style={{ color: '#e05c5c', marginBottom: 16 }}>{error || 'Không tìm thấy dữ liệu kho phòng'}</p>
-        <button type="button" className="btn btn-outline" onClick={() => navigate('/partner/inventory')}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={() => navigate('/partner/inventory')} />
       </div>
     );
   }
@@ -73,16 +72,8 @@ export default function InventoryEditPage() {
       <ManagementHeader
         title="Quản lý Kho phòng"
         subtitle={`Điều chỉnh mở bán — ${item.ten_loai}`}
+        onBack={() => navigate('/partner/inventory')}
       />
-
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={() => navigate('/partner/inventory')}
-      >
-        ← Quay lại
-      </button>
 
       <div className="content-card" style={{ maxWidth: 520 }}>
         <p style={{ fontSize: 14, color: '#5a7a72', marginBottom: 16 }}>

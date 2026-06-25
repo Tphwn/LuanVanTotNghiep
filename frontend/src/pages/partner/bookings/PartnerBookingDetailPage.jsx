@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import ActionButton, { TableActions } from '../../../components/common/ActionButton';
-import DetailTable from '../../../components/booking/DetailTable';
+import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import DetailTable from '../../../components/booking/DetailTable';
+import BookingSectionTable from '../../../components/booking/BookingSectionTable';
 import {
   fetchBookingDetail,
   confirmBooking,
@@ -106,7 +108,7 @@ export default function PartnerBookingDetailPage() {
 
   const handleConfirm = async () => {
     if (!detail) return;
-    if (!window.confirm(`Xác nhận đơn đặt phòng #${detail.ma_don_hang}?`)) return;
+    if (!window.confirm(`Xác nhận đơn đặt phòng ${detail.ma_don_hang}?`)) return;
     await dispatch(confirmBooking(detail.ma_dat_phong));
     dispatch(fetchPartnerBookings());
     navigate('/partner/bookings');
@@ -131,30 +133,47 @@ export default function PartnerBookingDetailPage() {
     return (
       <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
         <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy đơn đặt phòng</p>
-        <button type="button" className="btn btn-outline" onClick={handleBack}>
-          ← Quay lại
-        </button>
+        <BackButton variant="outline" onClick={handleBack} />
       </div>
     );
   }
 
   const isPending = detail.trang_thai === 'cho_xac_nhan';
 
+  const paymentMethod =
+    PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
+
+  const paymentRows = [
+    {
+      key: 'payment',
+      cells: [
+        formatCurrency(detail.thanh_toan_cuoi),
+        <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
+        paymentMethod,
+      ],
+      cellProps: [{ style: { fontWeight: 500 } }, {}, {}],
+    },
+  ];
+
+  const nightlyRows = (detail.chi_tiet_dat_phong || []).map((item) => ({
+    key: item.ma_chi_tiet,
+    cells: [
+      formatDate(item.ngay),
+      formatCurrency(item.don_gia),
+      <span className={`badge ${getPriceTypeBadge(item.loai_gia)}`}>
+        {getPriceTypeLabel(item.loai_gia)}
+      </span>,
+    ],
+    cellProps: [{}, { style: { fontWeight: 500 } }, {}],
+  }));
+
   return (
     <div className="booking-detail-page mgmt-page">
       <ManagementHeader
-        title="Quản lý Đặt phòng"
-        subtitle={`Chi tiết đơn #${detail.ma_don_hang}`}
+        title="Quản lý đặt phòng"
+        subtitle={`Chi tiết đơn ${detail.ma_don_hang}`}
+        onBack={handleBack}
       />
-
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        style={{ marginBottom: 12 }}
-        onClick={handleBack}
-      >
-        ← Quay lại
-      </button>
 
       {(successMsg || error) && (
         <div className={`mgmt-toast ${successMsg ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
@@ -163,11 +182,6 @@ export default function PartnerBookingDetailPage() {
       )}
 
       <div className="content-card booking-detail-page-card">
-        <div className="booking-detail-page-header">
-          <h2 className="booking-detail-page-title">Chi tiết đơn đặt phòng</h2>
-          <p className="booking-detail-code">#{detail.ma_don_hang}</p>
-        </div>
-
         <div className="booking-detail-status-bar booking-detail-status-bar--page">
           <div className="booking-detail-status-left">
             <span className={`badge ${bookingStatus.cls}`}>{bookingStatus.label}</span>
@@ -216,76 +230,17 @@ export default function PartnerBookingDetailPage() {
           <DetailTable title="Thông tin khách" rows={guestRows} />
         </div>
 
-        <div className="booking-detail-section">
-          <h4 className="booking-detail-section-title">Thanh toán</h4>
-          <div className="booking-detail-payment">
-            <div className="booking-detail-payment-item">
-              <span className="booking-detail-payment-label">Tổng tiền</span>
-              <span className="booking-detail-payment-value booking-detail-payment-value--total">
-                {formatCurrency(detail.thanh_toan_cuoi)}
-              </span>
-              {Number(detail.tien_giam) > 0 && (
-                <span className="booking-detail-discount">
-                  Giảm {formatCurrency(detail.tien_giam)}
-                  {detail.khuyen_mai ? ` (${detail.khuyen_mai.ma_code})` : ''}
-                </span>
-              )}
-            </div>
-            <div className="booking-detail-payment-item">
-              <span className="booking-detail-payment-label">Trạng thái</span>
-              <span className="booking-detail-payment-value">
-                <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>
-              </span>
-            </div>
-            <div className="booking-detail-payment-item">
-              <span className="booking-detail-payment-label">Phương thức</span>
-              <span className="booking-detail-payment-value">
-                {PHUONG_THUC[detail.phuong_thuc_tt] || detail.phuong_thuc_tt || '—'}
-              </span>
-            </div>
-          </div>
-        </div>
+        <BookingSectionTable
+          title="Thanh toán"
+          columns={['Tổng tiền', 'Trạng thái', 'Phương thức']}
+          rows={paymentRows}
+        />
 
-        {detail.chi_tiet_dat_phong?.length > 0 && (
-          <div className="booking-detail-section">
-            <h4 className="booking-detail-section-title">Chi tiết giá từng đêm</h4>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table data-table-grid" style={{ minWidth: 360 }}>
-                <thead>
-                  <tr>
-                    <th>Ngày</th>
-                    <th>Giá/đêm</th>
-                    <th>Loại giá</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.chi_tiet_dat_phong.map((item) => (
-                    <tr key={item.ma_chi_tiet}>
-                      <td>{formatDate(item.ngay)}</td>
-                      <td style={{ fontWeight: 500 }}>{formatCurrency(item.don_gia)}</td>
-                      <td>
-                        <span className={`badge ${getPriceTypeBadge(item.loai_gia)}`}>
-                          {getPriceTypeLabel(item.loai_gia)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <div className="booking-detail-footer">
-          <button type="button" className="btn btn-ghost" onClick={handleBack}>
-            Đóng
-          </button>
-          {isPending && !rejectMode && (
-            <ActionButton variant="confirm" onClick={handleConfirm} disabled={loading}>
-              Xác nhận
-            </ActionButton>
-          )}
-        </div>
+        <BookingSectionTable
+          title="Chi tiết giá từng đêm"
+          columns={['Ngày', 'Giá/đêm', 'Loại giá']}
+          rows={nightlyRows}
+        />
       </div>
     </div>
   );

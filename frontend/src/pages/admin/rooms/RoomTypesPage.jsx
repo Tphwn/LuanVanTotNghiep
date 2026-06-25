@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { resolveUploadUrl } from "../../../utils/media";
 import { Eye, Lock, Unlock } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
+import SearchBar from "../../../components/common/management/SearchBar";
+import FilterTabs from "../../../components/common/management/FilterTabs";
+
+import { getAdminRoomTypeStatus } from "../../../constants/statuses";
 
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
-
-const ROOM_STATUS = {
-  hoat_dong: { label: "Đang mở", cls: "mgmt-status-text--active" },
-  an: { label: "Đã ẩn", cls: "mgmt-status-text--locked" },
-};
 
 const getMainImage = (room) => {
   const imgs = room?.hinh_anh || [];
@@ -23,6 +22,7 @@ const RoomTypesPage = () => {
   const [rooms, setRooms] = useState([]);
   const [hotels, setHotels] = useState([]);
   const [partners, setPartners] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
@@ -31,12 +31,7 @@ const RoomTypesPage = () => {
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
-    return () => clearTimeout(timer);
-  }, [keyword]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -47,6 +42,7 @@ const RoomTypesPage = () => {
 
       const res = await api.get("/admin/room-types", { params });
       setRooms(res.data.data || []);
+      setStats(res.data.stats || null);
       setHotels(res.data.hotels || []);
       setPartners(res.data.partners || []);
     } catch {
@@ -54,11 +50,16 @@ const RoomTypesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hotelFilter, partnerFilter, statusFilter, debouncedKeyword]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
+    return () => clearTimeout(timer);
+  }, [keyword]);
 
   useEffect(() => {
     loadData();
-  }, [hotelFilter, partnerFilter, statusFilter, debouncedKeyword]);
+  }, [loadData]);
 
   const filteredHotels = useMemo(() => {
     if (partnerFilter === "all") return hotels;
@@ -70,6 +71,10 @@ const RoomTypesPage = () => {
       setHotelFilter("all");
     }
   }, [filteredHotels, hotelFilter]);
+
+  const handleTabChange = (tab) => {
+    setStatusFilter(tab);
+  };
 
   const handleToggleStatus = async (room) => {
     const isHidden = room.trang_thai === "an";
@@ -87,14 +92,11 @@ const RoomTypesPage = () => {
     }
   };
 
-  const handleResetFilters = () => {
-    setKeyword("");
-    setHotelFilter("all");
-    setPartnerFilter("all");
-    setStatusFilter("all");
-  };
-
-  const hasActiveFilters = hotelFilter !== "all" || partnerFilter !== "all" || statusFilter !== "all" || keyword;
+  const filterTabs = useMemo(() => [
+    { id: "all", label: "Tất cả", count: stats?.total ?? rooms.length },
+    { id: "hoat_dong", label: "Đang mở", count: stats?.active ?? 0 },
+    { id: "an", label: "Đã ẩn", count: stats?.hidden ?? 0 },
+  ], [stats, rooms.length]);
 
   return (
     <div className="mgmt-page">
@@ -103,64 +105,35 @@ const RoomTypesPage = () => {
         subtitle="Giám sát và kiểm soát loại phòng của tất cả khách sạn"
       />
 
-      <div className="mgmt-toolbar mgmt-toolbar--filters">
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Khách sạn</label>
-          <select
-            className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
-          >
-            <option value="all">Tất cả khách sạn</option>
-            {filteredHotels.map((h) => (
-              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Đối tác</label>
-          <select
-            className="mgmt-select-inline"
-            value={partnerFilter}
-            onChange={(e) => setPartnerFilter(e.target.value)}
-          >
-            <option value="all">Tất cả đối tác</option>
-            {partners.map((p) => (
-              <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Trạng thái</label>
-          <select
-            className="mgmt-select-inline"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="hoat_dong">Đang mở</option>
-            <option value="an">Đã ẩn</option>
-          </select>
-        </div>
-        <div className="mgmt-filter-field mgmt-filter-field--grow">
-          <label className="mgmt-filter-label">Tìm kiếm</label>
-          <input
-            type="text"
-            className="mgmt-select-inline"
-            placeholder="Tên phòng, khách sạn..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
-        </div>
-        {hasActiveFilters && (
-          <div className="mgmt-filter-field mgmt-filter-field--action">
-            <label className="mgmt-filter-label">&nbsp;</label>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={handleResetFilters}>
-              Xóa bộ lọc
-            </button>
-          </div>
-        )}
+      <div className="mgmt-toolbar">
+        <SearchBar
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="Tên phòng, khách sạn..."
+        />
+        <select
+          className="mgmt-select-inline"
+          value={partnerFilter}
+          onChange={(e) => setPartnerFilter(e.target.value)}
+        >
+          <option value="all">Tất cả đối tác</option>
+          {partners.map((p) => (
+            <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+          ))}
+        </select>
+        <select
+          className="mgmt-select-inline"
+          value={hotelFilter}
+          onChange={(e) => setHotelFilter(e.target.value)}
+        >
+          <option value="all">Tất cả khách sạn</option>
+          {filteredHotels.map((h) => (
+            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+          ))}
+        </select>
       </div>
+
+      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         <div className="mgmt-table-card-header">
@@ -189,7 +162,7 @@ const RoomTypesPage = () => {
               </thead>
               <tbody>
                 {rooms.map((room) => {
-                  const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: "" };
+                  const st = getAdminRoomTypeStatus(room.trang_thai);
                   const thumb = getMainImage(room);
                   const isHidden = room.trang_thai === "an";
                   return (
@@ -216,7 +189,7 @@ const RoomTypesPage = () => {
                       </td>
                       <td style={{ fontSize: 13, color: "#64748b" }}>{room.suc_chua} khách</td>
                       <td>
-                        <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                        <span className={`mgmt-status-text ${st.textCls}`}>{st.label}</span>
                       </td>
                       <ActionCell>
                         <ActionButton

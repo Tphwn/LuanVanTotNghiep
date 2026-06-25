@@ -48,6 +48,12 @@ const TAB_FILTER = {
   bi_khoa: (u) => u.trang_thai === "bi_khoa",
 };
 
+const ROLE_FILTER = {
+  all: () => true,
+  khach_hang: (u) => u.vai_tro === "khach_hang",
+  doi_tac: (u) => u.vai_tro === "doi_tac",
+};
+
 const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -56,7 +62,7 @@ const UsersPage = () => {
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-
+  const [roleFilter, setRoleFilter] = useState("all");
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
     return () => clearTimeout(t);
@@ -84,6 +90,12 @@ const UsersPage = () => {
     biKhoa: nonAdminUsers.filter((u) => u.trang_thai === "bi_khoa").length,
   }), [nonAdminUsers]);
 
+  const roleStats = useMemo(() => ({
+    all: nonAdminUsers.length,
+    khach_hang: nonAdminUsers.filter((u) => u.vai_tro === "khach_hang").length,
+    doi_tac: nonAdminUsers.filter((u) => u.vai_tro === "doi_tac").length,
+  }), [nonAdminUsers]);
+
   const filterTabs = useMemo(() => [
     { id: "all", label: "Tất cả", count: stats.total },
     { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong },
@@ -92,9 +104,11 @@ const UsersPage = () => {
 
   const filteredUsers = useMemo(() => {
     const tabFilter = TAB_FILTER[activeTab] || TAB_FILTER.all;
+    const roleFn = ROLE_FILTER[roleFilter] || ROLE_FILTER.all;
     const searchText = debouncedKeyword.toLowerCase().trim();
     return nonAdminUsers.filter((user) => {
       if (!tabFilter(user)) return false;
+      if (!roleFn(user)) return false;
       if (!searchText) return true;
       const name = getDisplayName(user).toLowerCase();
       return (
@@ -103,7 +117,7 @@ const UsersPage = () => {
         || name.includes(searchText)
       );
     });
-  }, [nonAdminUsers, activeTab, debouncedKeyword]);
+  }, [nonAdminUsers, activeTab, roleFilter, debouncedKeyword]);
 
   const handleToggleActive = (user) => {
     const isActive = user.trang_thai === "hoat_dong";
@@ -146,7 +160,18 @@ const UsersPage = () => {
         tabs={filterTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      />
+      >
+        <select
+          className="mgmt-select-inline"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          style={{ marginLeft: 8 }}
+        >
+          <option value="all">Tất cả vai trò</option>
+          <option value="khach_hang">Khách hàng</option>
+          <option value="doi_tac">Đối tác </option>
+        </select>
+      </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (

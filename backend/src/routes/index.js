@@ -17,6 +17,7 @@ const registerRoutes = (app) => {
   app.use('/api/partner/bookings', require('../modules/booking/booking.routes'));
   app.use('/api/partner/pricing', require('../modules/pricing/pricing.routes'));
   app.use('/api/partner/inventory', require('../modules/inventory/inventory.routes'));
+  app.use('/api/partner/promotions', require('../modules/promotion/partnerPromotion.routes'));
   app.use('/api/partner/reviews', require('../modules/review/partnerReview.routes'));
   app.use('/api/partner/account', require('../modules/account/partnerAccount.routes'));
   app.use('/api/customer/account', require('../modules/account/customerAccount.routes'));

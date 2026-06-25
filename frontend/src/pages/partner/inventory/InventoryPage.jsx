@@ -106,36 +106,20 @@ const InventoryPage = () => {
           {toast.msg}
         </div>
       )}
+          <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label">Khách sạn</label>
+                <select
+               className="mgmt-select-inline"
+              value={hotelFilter}
+               onChange={(e) => setHotelFilter(e.target.value)}
+              >
+              <option value="">Tất cả khách sạn</option>
+             {hotels.map((h) => (
+             <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+               ))}
+              </select>
+            </div>
 
-      <div className="mgmt-toolbar mgmt-toolbar--filters">
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Khách sạn</label>
-          <select
-            className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
-          >
-            <option value="">Tất cả khách sạn</option>
-            {hotels.map((h) => (
-              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Loại phòng</label>
-          <select
-            className="mgmt-select-inline"
-            value={roomFilter}
-            onChange={(e) => setRoomFilter(e.target.value)}
-            disabled={!hotelFilter}
-          >
-            <option value="">Tất cả loại phòng</option>
-            {roomTypes.map((r) => (
-              <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
-            ))}
-          </select>
-        </div>
-      </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         <div className="mgmt-table-card-header">

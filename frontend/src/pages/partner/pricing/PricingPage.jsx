@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import '../../../assets/styles/pricing-calendar.css';
 
-const LOAI_GIA = {
-  co_ban:    { label: 'Cơ bản',    color: '#5a7a72'},
-  cuoi_tuan: { label:'Cuối tuần', color: '#b36b00'},
-  le_tet:    { label:'Lễ Tết',    color: '#e05c5c'},
-  cao_diem:  { label:'Cao điểm',  color: '#7c3aed'},
+const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+const formatPriceShort = (v) => {
+  const n = Number(v) || 0;
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m % 1 === 0 ? m : m.toFixed(1)}M`;
+  }
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(n);
 };
-
-const QUICK_ADJUST = [
-  { label:'Cuối tuần +20%', pct: 1.2 },
-  { label: 'Lễ Tết +50%',   pct: 1.5 },
-  { label: 'Thấp điểm -15%', pct: 0.85 },
-];
 
 const formatCurrency = (v) =>
   new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
@@ -21,139 +21,320 @@ const formatCurrency = (v) =>
 const parseCurrency = (s) =>
   Number(String(s).replace(/\./g, '').replace(/,/g, ''));
 
+/** Ngày theo giờ địa phương — tránh lệch UTC làm mất ngày 30–31 */
+const toDateKey = (d) => {
+  const dt = d instanceof Date ? d : new Date(`${String(d).slice(0, 10)}T12:00:00`);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const normalizeNgay = (ngay) => {
+  if (!ngay) return '';
+  if (typeof ngay === 'string') {
+    const part = ngay.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
+    return toDateKey(new Date(ngay));
+  }
+  return toDateKey(ngay);
+};
+
+const getDefaultLoaiGia = (dateStr) => {
+  const day = new Date(`${dateStr}T12:00:00`).getDay();
+  return day === 0 || day === 6 ? 'cuoi_tuan' : 'co_ban';
+};
+
 const getDatesInRange = (from, to) => {
   const dates = [];
-  const cur = new Date(from);
-  const end = new Date(to);
+  const cur = new Date(`${from}T12:00:00`);
+  const end = new Date(`${to}T12:00:00`);
   while (cur <= end) {
-    dates.push(new Date(cur).toISOString().slice(0, 10));
+    dates.push(toDateKey(cur));
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
 };
 
-const getDefaultLoaiGia = (dateStr) => {
-  const d = new Date(dateStr).getDay();
-  return d === 0 || d === 6 ? 'cuoi_tuan':'co_ban';
+const buildMonthWeeks = (year, month) => {
+  const first = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let pad = first.getDay() - 1;
+  if (pad < 0) pad = 6;
+
+  const cells = [];
+  for (let i = 0; i < pad; i += 1) cells.push(null);
+  for (let d = 1; d <= lastDay; d += 1) {
+    const m = String(month + 1).padStart(2, '0');
+    const day = String(d).padStart(2, '0');
+    cells.push(`${year}-${m}-${day}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    weeks.push(cells.slice(i, i + 7));
+  }
+  return weeks;
+};
+
+const isInRange = (dateStr, from, to) => {
+  if (!from || !to) return false;
+  return dateStr >= from && dateStr <= to;
+};
+
+const MonthCalendar = ({
+  year,
+  month,
+  dayMap,
+  selectedFrom,
+  selectedTo,
+  today,
+  onDayClick,
+}) => {
+  const weeks = buildMonthWeeks(year, month);
+
+  return (
+    <table className="price-inv-table">
+      <thead>
+        <tr>
+          {WEEKDAYS.map((d, i) => (
+            <th key={d} className={i === 6 ? 'sun' : ''}>{d}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {weeks.map((week, wi) => (
+          <tr key={`w-${wi}`}>
+            {week.map((dateStr, di) => {
+              if (!dateStr) {
+                return <td key={`e-${wi}-${di}`} className="empty" />;
+              }
+
+              const info = dayMap[dateStr];
+              const isPast = dateStr < today;
+              const selected = isInRange(dateStr, selectedFrom, selectedTo);
+              const isCustom = info?.gia_tuy_chinh;
+              const dayNum = parseInt(dateStr.slice(8), 10);
+
+              return (
+                <td key={dateStr} className={selected ? 'selected' : ''}>
+                  <button
+                    type="button"
+                    className="price-inv-cell-btn"
+                    onClick={() => !isPast && onDayClick(dateStr)}
+                    disabled={isPast}
+                  >
+                    <span className="price-inv-cell-left">
+                      <span className="price-inv-cell-day">{dayNum}</span>
+                    </span>
+                    <span className="price-inv-cell-right">
+                      {info ? (
+                        <>
+                          <span className={`price-inv-cell-price ${isCustom || selected ? 'custom' : ''}`}>
+                            {formatPriceShort(info.don_gia)}
+                          </span>
+                          <span className="price-inv-cell-inv">
+                            {info.mo_ban}/{info.tong_phong} Phòng
+                          </span>
+                          <span className="price-inv-cell-booked">
+                            {info.da_dat}: Đã đặt
+                          </span>
+                        </>
+                      ) : (
+                        <span className="price-inv-cell-price">—</span>
+                      )}
+                    </span>
+                  </button>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 };
 
 const PricingPage = () => {
+  const now = new Date();
+  const today = toDateKey(now);
+
   const [hotels, setHotels] = useState([]);
   const [selectedHotel, setSelectedHotel] = useState('');
   const [rooms, setRooms] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
-  const [tuNgay, setTuNgay] = useState(today);
-  const [denNgay, setDenNgay] = useState(today);
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
 
-  const [rows, setRows] = useState([]);
+  const [calendarData, setCalendarData] = useState({ room: null, days: [] });
+  const [loading, setLoading] = useState(false);
 
-  const [viewRoom, setViewRoom] = useState('');
-  const [calendar, setCalendar] = useState([]);
+  const [rangeAnchor, setRangeAnchor] = useState(null);
+  const [selectedFrom, setSelectedFrom] = useState('');
+  const [selectedTo, setSelectedTo] = useState('');
 
+  const [donGia, setDonGia] = useState('');
+  const [moBan, setMoBan] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
-
-  useEffect(() => {
-    api.get('/partner/pricing/hotels').then((res) => {
-      setHotels(res.data.data || []);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!selectedHotel) {
-      setRooms([]);
-      setRows([]);
-      return;
-    }
-    const hotel = hotels.find((h) => h.ma_khach_san === Number(selectedHotel));
-    const r = hotel?.loai_phong || [];
-    setRooms(r);
-    setRows(r.map((room) => ({
-      ma_loai_phong: room.ma_loai_phong,
-      ten_loai: room.ten_loai,
-      gia_co_ban: Number(room.gia_co_ban),
-      checked: true,
-      don_gia: Number(room.gia_co_ban),
-    })));
-    setViewRoom('');
-    setCalendar([]);
-  }, [selectedHotel, hotels]);
-
-  const loadCalendar = async (maLoaiPhong, from, to) => {
-    if (!maLoaiPhong) {
-      setCalendar([]);
-      return;
-    }
-    const room = rooms.find((r) => r.ma_loai_phong === Number(maLoaiPhong));
-    const giaCoBan = Number(room?.gia_co_ban || 0);
-
-    const res = await api.get('/partner/pricing/calendar', {
-      params: { maLoaiPhong, tuNgay: from, denNgay: to },
-    });
-
-    const changedOnly = (res.data.data || []).filter(
-      (c) => Number(c.don_gia) !== giaCoBan
-    );
-    setCalendar(changedOnly);
-  };
-
-  useEffect(() => {
-    if (!viewRoom) {
-      setCalendar([]);
-      return;
-    }
-    loadCalendar(viewRoom, tuNgay, denNgay);
-  }, [viewRoom, tuNgay, denNgay, rooms]);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  const updateRow = (maLoaiPhong, field, value) => {
-    setRows((prev) => prev.map((r) =>
-      r.ma_loai_phong === maLoaiPhong ? { ...r, [field]: value } : r
-    ));
+  useEffect(() => {
+    api.get('/partner/pricing/hotels').then((res) => {
+      setHotels(res.data.data || []);
+    }).catch(() => showToast('Không tải được danh sách khách sạn', 'error'));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedHotel) {
+      setRooms([]);
+      setSelectedRoom('');
+      return;
+    }
+    const hotel = hotels.find((h) => h.ma_khach_san === Number(selectedHotel));
+    const list = hotel?.loai_phong || [];
+    setRooms(list);
+    setSelectedRoom(list[0] ? String(list[0].ma_loai_phong) : '');
+    setRangeAnchor(null);
+    setSelectedFrom('');
+    setSelectedTo('');
+  }, [selectedHotel, hotels]);
+
+  const rangeStart = useMemo(() => {
+    const m = String(viewMonth + 1).padStart(2, '0');
+    return `${viewYear}-${m}-01`;
+  }, [viewYear, viewMonth]);
+
+  const rangeEnd = useMemo(() => {
+    const lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const m = String(viewMonth + 1).padStart(2, '0');
+    const d = String(lastDay).padStart(2, '0');
+    return `${viewYear}-${m}-${d}`;
+  }, [viewYear, viewMonth]);
+
+  const monthLabel = `Tháng ${viewMonth + 1} / ${viewYear}`;
+
+  const loadCalendar = useCallback(async () => {
+    if (!selectedRoom) {
+      setCalendarData({ room: null, days: [] });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.get('/partner/pricing/management-calendar', {
+        params: {
+          maLoaiPhong: selectedRoom,
+          tuNgay: rangeStart,
+          denNgay: rangeEnd,
+        },
+      });
+      const data = res.data.data || { room: null, days: [] };
+      setCalendarData(data);
+      if (data.room) {
+        setMoBan(String(data.room.mo_ban ?? 0));
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Lỗi tải lịch', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedRoom, rangeStart, rangeEnd]);
+
+  useEffect(() => {
+    loadCalendar();
+  }, [loadCalendar]);
+
+  const dayMap = useMemo(() => {
+    const map = {};
+    (calendarData.days || []).forEach((d) => {
+      map[normalizeNgay(d.ngay)] = d;
+    });
+    return map;
+  }, [calendarData.days]);
+
+  const handleDayClick = (dateStr) => {
+    if (!rangeAnchor) {
+      setRangeAnchor(dateStr);
+      setSelectedFrom(dateStr);
+      setSelectedTo(dateStr);
+      const info = dayMap[dateStr];
+      if (info) setDonGia(formatCurrency(info.don_gia));
+      return;
+    }
+
+    if (dateStr < rangeAnchor) {
+      setSelectedFrom(dateStr);
+      setSelectedTo(rangeAnchor);
+    } else {
+      setSelectedFrom(rangeAnchor);
+      setSelectedTo(dateStr);
+    }
+    setRangeAnchor(null);
+
+    const info = dayMap[dateStr];
+    if (info) setDonGia(formatCurrency(info.don_gia));
   };
 
-  const applyQuickAdjust = (pct) => {
-    setRows((prev) => prev.map((r) => ({
-      ...r,
-      don_gia: Math.round(r.gia_co_ban * pct),
-    })));
+  const prevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear((y) => y - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+    setRangeAnchor(null);
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) {
+      setViewYear((y) => y + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+    setRangeAnchor(null);
   };
 
   const handleSave = async () => {
-    const checkedRows = rows.filter((r) => r.checked);
-    if (checkedRows.length === 0) return showToast('Chọn ít nhất 1 loại phòng', 'error');
-    if (!tuNgay || !denNgay) return showToast('Chọn khoảng ngày', 'error');
-    if (new Date(denNgay) < new Date(tuNgay)) {
-      return showToast('Ngày kết thúc phải sau ngày bắt đầu', 'error');
+    if (!selectedRoom || !selectedFrom || !selectedTo) {
+      return showToast('Chọn khoảng ngày trên lịch', 'error');
     }
 
-    const dates = getDatesInRange(tuNgay, denNgay);
+    const priceValue = parseCurrency(donGia);
+    if (!priceValue || priceValue <= 0) {
+      return showToast('Nhập giá hợp lệ', 'error');
+    }
+
+    const moBanValue = Number(moBan);
+    if (Number.isNaN(moBanValue) || moBanValue < 0) {
+      return showToast('Số lượng mở bán không hợp lệ', 'error');
+    }
+
+    const roomInfo = calendarData.room;
+    const giaCoBan = Number(roomInfo?.gia_co_ban || 0);
+    const dates = getDatesInRange(selectedFrom, selectedTo);
+
     const entries = [];
     const toDelete = [];
 
-    for (const row of checkedRows) {
-      for (const ngay of dates) {
-        if (Number(row.don_gia) !== Number(row.gia_co_ban)) {
-          entries.push({
-            ma_loai_phong: row.ma_loai_phong,
-            ngay,
-            don_gia: row.don_gia,
-            loai_gia: getDefaultLoaiGia(ngay),
-          });
-        } else {
-          toDelete.push({ ma_loai_phong: row.ma_loai_phong, ngay });
-        }
+    dates.forEach((ngay) => {
+      if (priceValue !== giaCoBan) {
+        entries.push({
+          ma_loai_phong: Number(selectedRoom),
+          ngay,
+          don_gia: priceValue,
+          loai_gia: getDefaultLoaiGia(ngay),
+        });
+      } else {
+        toDelete.push({ ma_loai_phong: Number(selectedRoom), ngay });
       }
-    }
-
-    if (entries.length === 0 && toDelete.length === 0) {
-      return showToast('Không có thay đổi giá nào so với giá cơ bản', 'error');
-    }
+    });
 
     setSaving(true);
     try {
@@ -164,278 +345,188 @@ const PricingPage = () => {
         await api.post('/partner/pricing/delete-bulk', { items: toDelete });
       }
 
-      const changedCount = entries.length;
-      showToast(
-        changedCount > 0
-          ? `Đã cập nhật giá cho ${checkedRows.length} loại phòng (${changedCount} ngày thay đổi)`
-          : 'Đã khôi phục giá cơ bản cho khoảng ngày đã chọn');
-
-      if (viewRoom) {
-        await loadCalendar(viewRoom, tuNgay, denNgay);
+      if (moBanValue !== Number(roomInfo?.mo_ban ?? 0)) {
+        await api.put(`/partner/inventory/${selectedRoom}/open-sale`, {
+          so_luong_mo_ban: moBanValue,
+        });
       }
+
+      showToast('Đã cập nhật giá và kho phòng');
+      setRangeAnchor(null);
+      await loadCalendar();
     } catch (err) {
-      showToast(err.response?.data?.message ||'Lỗi lưu giá', 'error');
+      showToast(err.response?.data?.message || 'Lỗi lưu dữ liệu', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const inputSt = {
-    padding: '9px 12px',
-    border: '1px solid #d4ede6',
-    borderRadius: 8,
-    fontSize: 14,
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-  };
-
-  const viewRoomBase = rooms.find((r) => r.ma_loai_phong === Number(viewRoom))?.gia_co_ban;
+  const tongPhong = calendarData.room?.tong_phong ?? 0;
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page price-inv-page">
       <ManagementHeader
-        title="Quản lý Giá"
-        subtitle="Thiết lập giá theo khoảng thời gian cho từng loại phòng"
+        title="Quản lý giá và kho phòng"
+        subtitle="Thiết lập giá theo ngày và số phòng mở bán cho từng loại phòng"
       />
 
       {toast && (
-        <div style={{
-          position: 'fixed', top: 80, right: 24, zIndex: 999,
-          padding: '12px 20px', borderRadius: 10,
-          background: toast.type === 'success'?'#e8f5f1':'#fff0f0',
-          border: `1px solid ${toast.type === 'success'?'#8FD9C4':'#ffb3b3'}`,
-          color: toast.type === 'success'?'#3C7363':'#e05c5c',
-          fontSize: 14, fontWeight: 500,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-        }}>
-          {toast.type === 'success'?'':''} {toast.msg}
+        <div className="price-inv-toast" data-type={toast.type}>
+          {toast.msg}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start'}}>
-
-        <div>
-          <div className="content-card"style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color:'#3C7363', marginBottom: 16 }}>
-              1. Khách sạn & khoảng thời gian
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Khách sạn</label>
-                <select
-                  className="search-input"style={{ width: '100%'}}
-                  value={selectedHotel}
-                  onChange={(e) => setSelectedHotel(e.target.value)}
-                >
-                  <option value="">-- Chọn khách sạn --</option>
-                  {hotels.map((h) => (
-                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, color:'#5a7a72', display: 'block', marginBottom: 4 }}>Khoảng ngày áp giá</label>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '9px 12px', border: '1px solid #d4ede6', borderRadius: 8, fontSize: 14,
-                }}>
-                  <input
-                    type="date"value={tuNgay}
-                    onChange={(e) => setTuNgay(e.target.value)}
-                    style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', flex: 1 }}
-                  />
-                  <span style={{ color: '#5a7a72'}}>đến</span>
-                  <input
-                    type="date"value={denNgay}
-                    min={tuNgay}
-                    onChange={(e) => setDenNgay(e.target.value)}
-                    style={{ border:'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', flex: 1 }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {rows.length > 0 && (
-            <div className="content-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: '#3C7363', margin: 0 }}>
-                  2. Cập nhật giá loại phòng
-                </h3>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap'}}>
-                  {QUICK_ADJUST.map((qa) => (
-                    <button
-                      key={qa.label}
-                      type="button"className="btn btn-ghost btn-sm"onClick={() => applyQuickAdjust(qa.pct)}
-                    >
-                      {qa.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <input
-                        type="checkbox"checked={rows.every((r) => r.checked)}
-                        onChange={(e) => setRows((prev) => prev.map((r) => ({ ...r, checked: e.target.checked })))}
-                        style={{ marginRight: 8 }}
-                      />
-                      Loại phòng
-                    </th>
-                    <th>Giá cơ bản</th>
-                    <th>Giá sau cập nhật</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const isChanged = Number(row.don_gia) !== Number(row.gia_co_ban);
-                    return (
-                      <tr key={row.ma_loai_phong}>
-                        <td>
-                          <div style={{ display:'flex', alignItems: 'center', gap: 10 }}>
-                            <input
-                              type="checkbox"checked={row.checked}
-                              onChange={(e) => updateRow(row.ma_loai_phong, 'checked', e.target.checked)}
-                              style={{ accentColor: '#3C7363', width: 16, height: 16, cursor: 'pointer'}}
-                            />
-                            <span style={{ fontWeight: 500, color:'#1a2e28'}}>{row.ten_loai}</span>
-                          </div>
-                        </td>
-                        <td style={{ color:'#5a7a72'}}>
-                          {formatCurrency(row.gia_co_ban)} đ
-                        </td>
-                        <td>
-                          <input
-                            type="text"value={formatCurrency(row.don_gia)}
-                            onChange={(e) => updateRow(row.ma_loai_phong,'don_gia', parseCurrency(e.target.value))}
-                            disabled={!row.checked}
-                            style={{
-                              ...inputSt,
-                              width: 160,
-                              background: row.checked ? '#fff':'#f5f5f5',
-                              color: isChanged ? '#b36b00':'#1a2e28',
-                              fontWeight: isChanged ? 600 : 400,
-                            }}
-                          />
-                          {isChanged && (
-                            <span style={{ fontSize: 11, color: '#b36b00', marginLeft: 6 }}>
-                              đã thay đổi
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              <button
-                type="button"className="btn btn-primary"onClick={handleSave}
-                disabled={saving || rows.every((r) => !r.checked)}
-                style={{ marginTop: 16, width: '100%', padding: '14px', justifyContent: 'center'}}
-              >
-                {saving ?'Đang lưu...':'Xác nhận & lưu giá'}
-              </button>
-            </div>
-          )}
-
-          {!selectedHotel && (
-            <div className="content-card">
-              <div className="empty-state">
-                <p className="empty-state-text">Chọn khách sạn để bắt đầu quản lý giá</p>
-              </div>
-            </div>
-          )}
+      <div className="price-inv-toolbar">
+        <div className="field">
+          <label>Chọn khách sạn</label>
+          <select
+            className="search-input"
+            style={{ width: '100%' }}
+            value={selectedHotel}
+            onChange={(e) => setSelectedHotel(e.target.value)}
+          >
+            <option value="">-- Chọn khách sạn --</option>
+            {hotels.map((h) => (
+              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+            ))}
+          </select>
         </div>
-
-        <div className="content-card"style={{ position: 'sticky', top: 80 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>
-            Lịch thay đổi giá
-          </h3>
-          <p style={{ fontSize: 12, color: '#5a7a72', marginBottom: 14 }}>
-            Chỉ hiển thị các ngày có giá khác giá cơ bản
-          </p>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>
-              Loại phòng
-            </label>
-            <select
-              className="search-input"style={{ width: '100%'}}
-              value={viewRoom}
-              onChange={(e) => setViewRoom(e.target.value)}
-            >
-              <option value="">-- Chọn loại phòng --</option>
-              {rooms.map((r) => (
-                <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
-              ))}
-            </select>
-          </div>
-
-          {viewRoom && viewRoomBase != null && (
-            <div style={{
-              padding:'8px 12px', background: '#f8fdfb', borderRadius: 8,
-              border: '1px solid #d4ede6', fontSize: 12, color: '#5a7a72', marginBottom: 12,
-            }}>
-              Giá cơ bản: <strong style={{ color: '#3C7363'}}>{formatCurrency(viewRoomBase)} đ</strong>
-            </div>
-          )}
-
-          {!viewRoom ? (
-            <div className="empty-state"style={{ padding:'24px 0'}}>
-              <p className="empty-state-text">Chọn loại phòng để xem lịch thay đổi giá</p>
-            </div>
-          ) : calendar.length === 0 ? (
-            <div style={{ textAlign:'center', padding: '24px 12px', color: '#5a7a72', fontSize: 13 }}>
-              Chưa có thay đổi giá trong khoảng {tuNgay} → {denNgay}
-            </div>
-          ) : (
-            <div style={{ maxHeight: 420, overflowY: 'auto'}}>
-              {calendar.map((c) => {
-                const loai = LOAI_GIA[c.loai_gia] || { label: c.loai_gia, color:'#5a7a72'};
-                const d = new Date(c.ngay);
-                const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-                return (
-                  <div
-                    key={c.ma_bang_gia}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 12px',
-                      background: '#fff',
-                      borderRadius: 8,
-                      marginBottom: 6,
-                      border: '1px solid #e8f5f1',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 500, fontSize: 13, color: '#1a2e28'}}>
-                        {dayNames[d.getDay()]}, {d.getDate()}/{d.getMonth() + 1}/{d.getFullYear()}
-                      </div>
-                      <div style={{ fontSize: 11, color: loai.color }}>{loai.label}</div>
-                    </div>
-                    <div style={{ textAlign:'right'}}>
-                      <div style={{ fontSize: 11, color:'#999', textDecoration: 'line-through'}}>
-                        {formatCurrency(viewRoomBase)} đ
-                      </div>
-                      <div style={{ fontWeight: 700, color:'#b36b00', fontSize: 14 }}>
-                        {formatCurrency(c.don_gia)} đ
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        <div className="field">
+          <label>Chọn loại phòng</label>
+          <select
+            className="search-input"
+            style={{ width: '100%' }}
+            value={selectedRoom}
+            onChange={(e) => {
+              setSelectedRoom(e.target.value);
+              setRangeAnchor(null);
+              setSelectedFrom('');
+              setSelectedTo('');
+            }}
+            disabled={!selectedHotel}
+          >
+            <option value="">-- Chọn loại phòng --</option>
+            {rooms.map((r) => (
+              <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {!selectedRoom ? (
+        <div className="content-card price-inv-empty">
+          Chọn khách sạn và loại phòng để xem lịch giá & kho
+        </div>
+      ) : (
+        <div className="price-inv-body">
+          <div className="price-inv-calendar-wrap">
+            <div className="price-inv-nav">
+              <button type="button" onClick={prevMonth}>← Tháng trước</button>
+              <div className="price-inv-nav-center">
+                <span className="price-inv-month-title">{monthLabel}</span>
+                {loading && <span className="price-inv-loading">Đang tải...</span>}
+              </div>
+              <button type="button" onClick={nextMonth}>Tháng sau →</button>
+            </div>
+            <MonthCalendar
+              year={viewYear}
+              month={viewMonth}
+              dayMap={dayMap}
+              selectedFrom={selectedFrom}
+              selectedTo={selectedTo}
+              today={today}
+              onDayClick={handleDayClick}
+            />
+          </div>
+
+          <aside className="price-inv-panel">
+            <h3>Ngày áp giá</h3>
+            <div className="price-inv-panel-section">
+              <div className="price-inv-date-row">
+                <span>Từ</span>
+                <input
+                  type="date"
+                  value={selectedFrom}
+                  min={today}
+                  onChange={(e) => setSelectedFrom(e.target.value)}
+                />
+              </div>
+              <div className="price-inv-date-row">
+                <span>Đến</span>
+                <input
+                  type="date"
+                  value={selectedTo}
+                  min={selectedFrom || today}
+                  onChange={(e) => setSelectedTo(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="price-inv-panel-section">
+              <h3>Giá phòng / đêm</h3>
+              <div className="form-row">
+                <label>Đơn giá (VNĐ)</label>
+                <input
+                  type="text"
+                  value={donGia}
+                  onChange={(e) => setDonGia(formatCurrency(parseCurrency(e.target.value)))}
+                  placeholder="Nhập giá"
+                />
+                {calendarData.room && (
+                  <p className="price-inv-hint">
+                    Giá cơ bản: {formatCurrency(calendarData.room.gia_co_ban)} đ
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="price-inv-panel-section">
+              <h3>Sét phòng</h3>
+              <div className="form-row">
+                <label>Mở bán</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={tongPhong}
+                  value={moBan}
+                  onChange={(e) => setMoBan(e.target.value)}
+                />
+                <p className="price-inv-hint">Có {tongPhong} phòng</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
+              onClick={handleSave}
+              disabled={saving || !selectedFrom}
+            >
+              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+
+            <div className="price-inv-legend">
+              <strong>Chú thích</strong>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--green" />
+                Giá cơ bản (xanh lá)
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--red" />
+                Giá tùy chỉnh / ngày chọn (đỏ)
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--blue" />
+                Mở bán / tổng phòng (xanh dương)
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-swatch price-inv-legend-swatch--sel" />
+                Ô ngày đang chọn
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 };
