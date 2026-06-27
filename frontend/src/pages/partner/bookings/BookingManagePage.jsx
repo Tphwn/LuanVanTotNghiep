@@ -37,12 +37,11 @@ const BookingManagePage = () => {
     navigate(`/partner/bookings/${id}`);
   };
 
-  const handleConfirmBooking = async (id) => {
-    navigate(`/partner/bookings/${id}`);
-  };
-
   const filtered = list.filter((b) => {
     let matchStatus = statusFilter === 'all' || b.trang_thai === statusFilter;
+    if (statusFilter === 'da_xac_nhan') {
+      matchStatus = ['da_xac_nhan', 'cho_xac_nhan'].includes(b.trang_thai);
+    }
     if (statusFilter === 'da_huy') {
       matchStatus = ['da_huy', 'tu_choi'].includes(b.trang_thai);
     }
@@ -55,12 +54,17 @@ const BookingManagePage = () => {
     return matchStatus && matchKeyword;
   });
 
-  const countByStatus = (s) => list.filter((b) => b.trang_thai === s).length;
+  const countByStatus = (s) => {
+    if (s === 'da_xac_nhan') {
+      return list.filter((b) => ['da_xac_nhan', 'cho_xac_nhan'].includes(b.trang_thai)).length;
+    }
+    return list.filter((b) => b.trang_thai === s).length;
+  };
 
   const filterTabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: list.length },
-    { id: 'cho_xac_nhan', label: 'Chờ xác nhận', count: countByStatus('cho_xac_nhan') },
-    { id: 'da_xac_nhan', label: 'Đã xác nhận', count: countByStatus('da_xac_nhan') },
+    { id: 'da_xac_nhan', label: 'Chờ check-in', count: countByStatus('da_xac_nhan') },
+    { id: 'da_checkin', label: 'Đã check-in', count: countByStatus('da_checkin') },
     { id: 'hoan_thanh', label: 'Hoàn thành', count: countByStatus('hoan_thanh') },
     { id: 'da_huy', label: 'Đã hủy', count: countByStatus('da_huy') + countByStatus('tu_choi') },
   ], [list]);
@@ -110,7 +114,6 @@ const BookingManagePage = () => {
               <BookingTable
                 bookings={filtered}
                 onViewDetail={handleViewDetail}
-                onConfirmBooking={handleConfirmBooking}
               />
             </table>
           </div>

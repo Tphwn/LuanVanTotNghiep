@@ -13,6 +13,7 @@ const fmtDateShort = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { day: 
 const STATUS_CLS = {
   cho_xac_nhan: 'badge-warning',
   da_xac_nhan: 'badge-success',
+  da_checkin: 'badge-info',
   da_huy: 'badge-default',
   tu_choi: 'badge-danger',
   hoan_thanh: 'badge-info',
@@ -20,8 +21,8 @@ const STATUS_CLS = {
 
 const FILTER_TABS = [
   { id: 'all', label: 'Tất cả'},
-  { id:'cho_xac_nhan', label: 'Chờ xác nhận'},
-  { id:'da_xac_nhan', label: 'Đã xác nhận'},
+  { id:'da_xac_nhan', label: 'Chờ check-in'},
+  { id:'da_checkin', label: 'Đang lưu trú'},
   { id:'hoan_thanh', label: 'Hoàn thành'},
   { id:'da_huy', label: 'Đã hủy'},
 ];
@@ -39,6 +40,20 @@ const MyBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewForm, setReviewForm] = useState({
+    so_sao: 5,
+    noi_dung: '',
+    diem_sach_se: 5,
+    diem_dich_vu: 5,
+    diem_vi_tri: 5,
+  });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState('');
+
+  const loadBookings = () => customerBookingService.getMyBookings()
+    .then((res) => setBookings(res.data?.data || []))
+    .catch((err) => setError(err.response?.data?.message || 'Không thể tải danh sách đặt chỗ'));
 
   useEffect(() => {
     if (!token) return;
@@ -48,16 +63,14 @@ const MyBookingsPage = () => {
       return;
     }
 
-    customerBookingService.getMyBookings()
-      .then((res) => setBookings(res.data?.data || []))
-      .catch((err) => setError(err.response?.data?.message || 'Không thể tải danh sách đặt chỗ'))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    loadBookings().finally(() => setLoading(false));
   }, [token, user]);
 
   const stats = useMemo(() => ({
     all: bookings.length,
-    cho_xac_nhan: bookings.filter((b) => b.trang_thai === 'cho_xac_nhan').length,
-    da_xac_nhan: bookings.filter((b) => b.trang_thai === 'da_xac_nhan').length,
+    da_xac_nhan: bookings.filter((b) => ['da_xac_nhan', 'cho_xac_nhan'].includes(b.trang_thai)).length,
+    da_checkin: bookings.filter((b) => b.trang_thai === 'da_checkin').length,
     hoan_thanh: bookings.filter((b) => b.trang_thai === 'hoan_thanh').length,
     da_huy: bookings.filter((b) => b.trang_thai === 'da_huy'|| b.trang_thai ==='tu_choi').length,
   }), [bookings]);
@@ -67,8 +80,58 @@ const MyBookingsPage = () => {
     if (statusFilter === 'da_huy') {
       return bookings.filter((b) => b.trang_thai === 'da_huy'|| b.trang_thai ==='tu_choi');
     }
+    if (statusFilter === 'da_xac_nhan') {
+      return bookings.filter((b) => ['da_xac_nhan', 'cho_xac_nhan'].includes(b.trang_thai));
+    }
     return bookings.filter((b) => b.trang_thai === statusFilter);
   }, [bookings, statusFilter]);
+
+  const openReview = (booking) => {
+    setReviewTarget(booking);
+    setReviewForm({
+      so_sao: 5,
+      noi_dung: '',
+      diem_sach_se: 5,
+      diem_dich_vu: 5,
+      diem_vi_tri: 5,
+    });
+    setReviewMsg('');
+  };
+
+  const closeReview = () => {
+    setReviewTarget(null);
+    setReviewMsg('');
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!reviewTarget) return;
+    setReviewSubmitting(true);
+    setReviewMsg('');
+    try {
+      await customerBookingService.createReview(reviewTarget.ma_dat_phong, reviewForm);
+      await loadBookings();
+      closeReview();
+    } catch (err) {
+      setReviewMsg(err.response?.data?.message || 'Không thể gửi đánh giá');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const renderStarSelect = (name, label) => (
+    <label className="my-booking-review-field">
+      <span>{label}</span>
+      <select
+        value={reviewForm[name]}
+        onChange={(e) => setReviewForm((prev) => ({ ...prev, [name]: Number(e.target.value) }))}
+      >
+        {[5, 4, 3, 2, 1].map((n) => (
+          <option key={n} value={n}>{n} sao</option>
+        ))}
+      </select>
+    </label>
+  );
 
   if (!token) {
     return <Navigate to={ROUTES.HOME} replace />;
@@ -187,10 +250,62 @@ const MyBookingsPage = () => {
                 <div className="my-booking-price">
                   <span className="my-booking-price-label">Tổng thanh toán</span>
                   <span className="my-booking-price-value">{fmt(b.thanh_toan_cuoi)} ₫</span>
+                  {b.co_the_danh_gia && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: 12 }}
+                      onClick={() => openReview(b)}
+                    >
+                      Đánh giá
+                    </button>
+                  )}
                 </div>
               </article>
             );
           })}
+        </div>
+      )}
+
+      {reviewTarget && (
+        <div className="modal-overlay" onClick={closeReview} role="presentation">
+          <div
+            className="content-card my-booking-review-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <h3 style={{ margin: '0 0 8px' }}>Đánh giá trải nghiệm</h3>
+            <p style={{ margin: '0 0 16px', color: '#5a7a72', fontSize: 14 }}>
+              {reviewTarget.khach_san?.ten} · {reviewTarget.ten_loai_phong}
+            </p>
+            <form onSubmit={handleReviewSubmit}>
+              {renderStarSelect('so_sao', 'Điểm tổng thể')}
+              {renderStarSelect('diem_sach_se', 'Độ sạch sẽ')}
+              {renderStarSelect('diem_dich_vu', 'Dịch vụ')}
+              {renderStarSelect('diem_vi_tri', 'Vị trí')}
+              <label className="my-booking-review-field">
+                <span>Nội dung (tuỳ chọn)</span>
+                <textarea
+                  rows={4}
+                  value={reviewForm.noi_dung}
+                  onChange={(e) => setReviewForm((prev) => ({ ...prev, noi_dung: e.target.value }))}
+                  placeholder="Chia sẻ trải nghiệm của bạn..."
+                />
+              </label>
+              {reviewMsg && (
+                <p style={{ color: '#e05c5c', fontSize: 13, margin: '0 0 12px' }}>{reviewMsg}</p>
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={closeReview}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={reviewSubmitting}>
+                  {reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

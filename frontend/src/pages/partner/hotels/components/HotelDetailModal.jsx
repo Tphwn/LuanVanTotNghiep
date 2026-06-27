@@ -4,6 +4,7 @@ import ActionButton from '../../../../components/common/ActionButton';
 import ToggleSwitch from '../../../../components/common/management/ToggleSwitch';
 import { TRANG_THAI } from '../constants';
 import InfoRow from './InfoRow';
+import { HotelAmenityDisplay } from './HotelAmenityGroups';
 
 export default function HotelDetailModal({ hotel, onClose, onEdit, onToggle }) {
   if (!hotel) return null;
@@ -70,14 +71,8 @@ export default function HotelDetailModal({ hotel, onClose, onEdit, onToggle }) {
 
         {hotel.khach_san_tien_nghi?.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>Tiện nghi chung</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {hotel.khach_san_tien_nghi.map((tn) => (
-                <span key={tn.ma_tien_nghi} style={{ padding: '4px 12px', borderRadius: 20, background: '#e8f5f1', color: '#3C7363', fontSize: 13 }}>
-                  {tn.tien_nghi?.ten}
-                </span>
-              ))}
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#3C7363', marginBottom: 8 }}>Tiện nghi khách sạn</div>
+            <HotelAmenityDisplay items={hotel.khach_san_tien_nghi} />
           </div>
         )}
       </div>

@@ -1938,3 +1938,33 @@
 .home-search-wrap {
   overflow: visible;
 }
+
+.my-booking-review-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.my-booking-review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #1a2e28;
+}
+
+.my-booking-review-field select,
+.my-booking-review-field textarea {
+  width: 100%;
+  border: 1px solid #d4ede6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.my-booking-review-field textarea {
+  resize: vertical;
+  min-height: 96px;
+}

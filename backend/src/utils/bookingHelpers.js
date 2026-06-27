@@ -1,9 +1,22 @@
 const prisma = require('../config/prisma');
 
-const ACTIVE_BOOKING = ['cho_xac_nhan', 'da_xac_nhan'];
+const ACTIVE_BOOKING = ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'];
+
+const formatDateKey = (d) => {
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 const parseDate = (value) => {
   if (!value) return null;
+  const part = String(value).slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(part)) {
+    const [y, m, d] = part.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
   const d = new Date(value);
   d.setHours(0, 0, 0, 0);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -13,8 +26,10 @@ const getDatesInRange = (checkIn, checkOut) => {
   const dates = [];
   const cur = new Date(checkIn);
   const end = new Date(checkOut);
+  cur.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
   while (cur < end) {
-    dates.push(new Date(cur).toISOString().slice(0, 10));
+    dates.push(formatDateKey(cur));
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
@@ -50,7 +65,7 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
   });
 
   const priceMap = customPrices.reduce((acc, row) => {
-    acc[row.ngay.toISOString().slice(0, 10)] = Number(row.don_gia);
+    acc[formatDateKey(row.ngay)] = Number(row.don_gia);
     return acc;
   }, {});
 

@@ -60,12 +60,48 @@ export const rejectBooking = createAsyncThunk(
   }
 );
 
+export const checkInBooking = createAsyncThunk(
+  'partnerBooking/checkIn',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`${BASE}/${id}/check-in`);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Lỗi xác nhận check-in'
+      );
+    }
+  }
+);
+
+export const checkOutBooking = createAsyncThunk(
+  'partnerBooking/checkOut',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`${BASE}/${id}/check-out`);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Lỗi xác nhận check-out'
+      );
+    }
+  }
+);
+
+const upsertListItem = (list, payload) => {
+  const index = list.findIndex((item) => item.ma_dat_phong === payload.ma_dat_phong);
+  if (index !== -1) {
+    list[index] = payload;
+  }
+};
+
 const partnerBookingSlice = createSlice({
   name: 'partnerBooking',
   initialState: {
     list: [],
     detail: null,
     loading: false,
+    actionLoading: false,
     detailLoading: false,
     error: null,
     successMsg: null,
@@ -115,27 +151,57 @@ const partnerBookingSlice = createSlice({
       })
 
       .addCase(confirmBooking.fulfilled, (state, action) => {
-        state.successMsg = 'Đã xác nhận booking';
-
-        const index = state.list.findIndex(
-          item => item.ma_dat_phong === action.payload.ma_dat_phong
-        );
-
-        if (index !== -1) {
-          state.list[index] = action.payload;
+        state.successMsg = 'Đã xác nhận đơn đặt phòng';
+        upsertListItem(state.list, action.payload);
+        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
+          state.detail = action.payload;
         }
       })
 
       .addCase(rejectBooking.fulfilled, (state, action) => {
-        state.successMsg = 'Đã từ chối booking';
-
-        const index = state.list.findIndex(
-          item => item.ma_dat_phong === action.payload.ma_dat_phong
-        );
-
-        if (index !== -1) {
-          state.list[index] = action.payload;
+        state.successMsg = 'Đã từ chối đơn đặt phòng';
+        upsertListItem(state.list, action.payload);
+        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
+          state.detail = action.payload;
         }
+      })
+
+      .addCase(checkInBooking.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+
+      .addCase(checkInBooking.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.successMsg = 'Đã xác nhận check-in';
+        upsertListItem(state.list, action.payload);
+        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
+          state.detail = action.payload;
+        }
+      })
+
+      .addCase(checkInBooking.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(checkOutBooking.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+
+      .addCase(checkOutBooking.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.successMsg = 'Đã xác nhận check-out, đơn hoàn thành';
+        upsertListItem(state.list, action.payload);
+        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
+          state.detail = action.payload;
+        }
+      })
+
+      .addCase(checkOutBooking.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       });
   },
 });

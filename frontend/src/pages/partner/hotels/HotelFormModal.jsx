@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../../../services/api';
 import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
+import { HotelAmenityPicker } from './components/HotelAmenityGroups';
 
 const INIT_FORM = {
   ten: '', dia_chi: '', mo_ta: '',
@@ -220,23 +221,11 @@ const HotelFormContent = ({
 
               <div>
                 <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Tiện nghi khách sạn</label>
-                <div style={{
-                  display:'flex', flexWrap: 'wrap', gap: 8, padding: 12,
-                  background: '#f8fdfb', borderRadius: 8, border: '1px solid #d4ede6', minHeight: 60,
-                }}>
-                  {amenities.map((a) => {
-                    const checked = form.tien_nghi_ids.includes(a.ma_tien_nghi);
-                    return (
-                      <button
-                        key={a.ma_tien_nghi}
-                        type="button"className={`btn btn-sm ${checked ? 'btn-primary':'btn-outline'}`}
-                        onClick={() => toggleAmenity(a.ma_tien_nghi)}
-                      >
-                        {a.ten}
-                      </button>
-                    );
-                  })}
-                </div>
+                <HotelAmenityPicker
+                  amenities={amenities}
+                  selectedIds={form.tien_nghi_ids}
+                  onToggle={toggleAmenity}
+                />
                 <button type="button"className="btn btn-ghost btn-sm"style={{ marginTop: 8 }} onClick={() => setShowPropose(!showPropose)}>
                   {showPropose ? 'Ẩn phần đề xuất':'Đề xuất tiện nghi mới'}
                 </button>

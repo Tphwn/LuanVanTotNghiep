@@ -8,6 +8,7 @@ import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import { fetchMyHotels, updateHotel } from '../../../store/slices/partnerHotelSlice';
 import { TRANG_THAI } from './constants';
 import DetailTable from '../../../components/booking/DetailTable';
+import { HotelAmenityDisplay } from './components/HotelAmenityGroups';
 
 const formatTime = (d) => {
   if (!d) return '—';
@@ -110,14 +111,8 @@ export default function HotelDetailPage() {
 
         {hotel.khach_san_tien_nghi?.length > 0 && (
           <div className="partner-hotel-detail-amenities">
-            <div className="booking-detail-section-title">Tiện nghi chung</div>
-            <div className="partner-hotel-amenity-tags">
-              {hotel.khach_san_tien_nghi.map((tn) => (
-                <span key={tn.ma_tien_nghi} className="mgmt-type-tag">
-                  {tn.tien_nghi?.ten}
-                </span>
-              ))}
-            </div>
+            <div className="booking-detail-section-title">Tiện nghi khách sạn</div>
+            <HotelAmenityDisplay items={hotel.khach_san_tien_nghi} />
           </div>
         )}
       </div>

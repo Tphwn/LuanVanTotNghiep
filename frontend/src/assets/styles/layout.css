@@ -3097,6 +3097,40 @@ body {
   margin-top: 8px;
 }
 
+.partner-hotel-amenity-grid {
+  margin-top: 4px;
+}
+
+.partner-amenity-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.partner-hotel-amenity-display {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.partner-hotel-amenity-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c7363;
+  margin-bottom: 8px;
+}
+
+.partner-hotel-amenity-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 768px) {
   .hotel-detail-info-grid {
     grid-template-columns: 1fr;

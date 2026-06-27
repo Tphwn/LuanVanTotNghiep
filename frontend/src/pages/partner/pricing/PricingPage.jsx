@@ -21,7 +21,6 @@ const formatCurrency = (v) =>
 const parseCurrency = (s) =>
   Number(String(s).replace(/\./g, '').replace(/,/g, ''));
 
-/** Ngày theo giờ địa phương — tránh lệch UTC làm mất ngày 30–31 */
 const toDateKey = (d) => {
   const dt = d instanceof Date ? d : new Date(`${String(d).slice(0, 10)}T12:00:00`);
   const y = dt.getFullYear();
@@ -381,7 +380,7 @@ const PricingPage = () => {
           <label>Chọn khách sạn</label>
           <select
             className="search-input"
-            style={{ width: '100%' }}
+            style={{ width: '10%' }}
             value={selectedHotel}
             onChange={(e) => setSelectedHotel(e.target.value)}
           >
@@ -395,7 +394,7 @@ const PricingPage = () => {
           <label>Chọn loại phòng</label>
           <select
             className="search-input"
-            style={{ width: '100%' }}
+            style={{ width: '10%' }}
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
@@ -437,6 +436,26 @@ const PricingPage = () => {
               today={today}
               onDayClick={handleDayClick}
             />
+
+            <div className="price-inv-legend price-inv-legend--horizontal">
+              <strong>Chú thích:</strong>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--green" />
+                Giá cơ bản
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--red" />
+                Giá chỉnh sửa
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--blue" />
+                Mở bán / tổng phòng
+              </div>
+              <div className="price-inv-legend-item">
+                <span className="price-inv-legend-swatch price-inv-legend-swatch--sel" />
+                Ô đang chọn
+              </div>
+            </div>
           </div>
 
           <aside className="price-inv-panel">
@@ -463,7 +482,7 @@ const PricingPage = () => {
             </div>
 
             <div className="price-inv-panel-section">
-              <h3>Giá phòng / đêm</h3>
+              <h3>Giá phòng </h3>
               <div className="form-row">
                 <label>Đơn giá (VNĐ)</label>
                 <input
@@ -491,7 +510,7 @@ const PricingPage = () => {
                   value={moBan}
                   onChange={(e) => setMoBan(e.target.value)}
                 />
-                <p className="price-inv-hint">Có {tongPhong} phòng</p>
+                <p className="price-inv-hint">Có tổng cộng: {tongPhong} phòng</p>
               </div>
             </div>
 
@@ -504,26 +523,6 @@ const PricingPage = () => {
             >
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
-
-            <div className="price-inv-legend">
-              <strong>Chú thích</strong>
-              <div className="price-inv-legend-item">
-                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--green" />
-                Giá cơ bản (xanh lá)
-              </div>
-              <div className="price-inv-legend-item">
-                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--red" />
-                Giá tùy chỉnh / ngày chọn (đỏ)
-              </div>
-              <div className="price-inv-legend-item">
-                <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--blue" />
-                Mở bán / tổng phòng (xanh dương)
-              </div>
-              <div className="price-inv-legend-item">
-                <span className="price-inv-legend-swatch price-inv-legend-swatch--sel" />
-                Ô ngày đang chọn
-              </div>
-            </div>
           </aside>
         </div>
       )}

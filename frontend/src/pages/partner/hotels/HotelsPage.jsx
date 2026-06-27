@@ -12,7 +12,7 @@ import ManagementToolbar from '../../../components/common/management/ManagementT
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import StarRating from '../../../components/common/management/StarRating';
 import HotelThumb from '../../../components/common/management/HotelThumb';
-import { TRANG_THAI, TAB_FILTER, getLoaiHinh } from './constants';
+import { TRANG_THAI, TAB_FILTER } from './constants';
 
 const HotelsPage = () => {
   const dispatch = useDispatch();
@@ -129,7 +129,6 @@ const HotelsPage = () => {
                   <th style={{ width: 72 }}>Ảnh</th>
                   <th>Tên khách sạn</th>
                   <th>Địa chỉ</th>
-                  <th style={{ width: 110 }}>Loại hình</th>
                   <th style={{ width: 90 }}>Sao</th>
                   <th style={{ width: 150 }}>Trạng thái</th>
                   <th style={{ width: 100 }}>Thao tác</th>
@@ -159,7 +158,6 @@ const HotelsPage = () => {
                           {hotel.dia_chi || '—'}
                         </div>
                       </td>
-                      <td><span className="mgmt-type-tag">{getLoaiHinh(hotel)}</span></td>
                       <td><StarRating value={hotel.so_sao} /></td>
                       <td>
                         {canToggle(hotel.trang_thai) ? (

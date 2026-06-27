@@ -40,6 +40,7 @@ const bookingService = {
           },
         },
         thanh_toan: true,
+        hoan_tien: { select: { trang_thai: true, so_tien_hoan: true } },
       },
       orderBy: { ngay_dat: 'desc' },
     });
@@ -74,22 +75,67 @@ const bookingService = {
     });
   },
 
-  // Xác nhận đơn
+  // Xác nhận đơn (thanh toán tại khách sạn)
   confirm: async (id, doiTacId) => {
-    await verifyOwner(id, doiTacId);
-    return await prisma.dat_phong.update({
+    const booking = await verifyOwner(id, doiTacId);
+    if (booking.trang_thai !== 'cho_xac_nhan') {
+      throw new Error('Chỉ xác nhận đơn đang chờ xác nhận');
+    }
+    await prisma.dat_phong.update({
       where: { ma_dat_phong: Number(id) },
       data: { trang_thai: 'da_xac_nhan' },
     });
+    return bookingService.getDetailById(id);
+  },
+
+  // Xác nhận khách đã check-in
+  checkIn: async (id, doiTacId) => {
+    const booking = await verifyOwner(id, doiTacId);
+    if (!['da_xac_nhan', 'cho_xac_nhan'].includes(booking.trang_thai)) {
+      throw new Error('Chỉ check-in đơn đang chờ khách đến');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.dat_phong.update({
+        where: { ma_dat_phong: Number(id) },
+        data: { trang_thai: 'da_checkin' },
+      });
+
+      if (booking.phuong_thuc_tt === 'truc_tuyen') {
+        await tx.thanh_toan.updateMany({
+          where: { ma_dat_phong: Number(id) },
+          data: { trang_thai: 'thanh_cong' },
+        });
+      }
+    });
+
+    return bookingService.getDetailById(id);
+  },
+
+  // Xác nhận khách đã check-out → hoàn thành
+  checkOut: async (id, doiTacId) => {
+    const booking = await verifyOwner(id, doiTacId);
+    if (booking.trang_thai !== 'da_checkin') {
+      throw new Error('Chỉ check-out đơn đã check-in');
+    }
+    await prisma.dat_phong.update({
+      where: { ma_dat_phong: Number(id) },
+      data: { trang_thai: 'hoan_thanh' },
+    });
+    return bookingService.getDetailById(id);
   },
 
   // Từ chối đơn
   reject: async (id, doiTacId, ly_do) => {
     await verifyOwner(id, doiTacId);
-    return await prisma.dat_phong.update({
-      where: { ma_dat_phong: Number(id) },
-      data: { trang_thai: 'tu_choi', ghi_chu: ly_do },
+    await prisma.$transaction(async (tx) => {
+      await tx.dat_phong.update({
+        where: { ma_dat_phong: Number(id) },
+        data: { trang_thai: 'tu_choi', ghi_chu: ly_do },
+      });
+      await processRefundOnCancel(tx, id, ly_do);
     });
+    return bookingService.getDetailById(id);
   },
 
   // ── Admin ────────────────────────────────────────────────
@@ -177,22 +223,25 @@ const bookingService = {
       throw new Error('Không thể hủy đơn đã hoàn thành hoặc đã hủy');
     }
 
-    const updated = await prisma.dat_phong.update({
-      where: { ma_dat_phong: Number(id) },
-      data: { trang_thai: 'da_huy', ghi_chu: `[Admin hủy] ${ly_do}` },
+    await prisma.$transaction(async (tx) => {
+      await tx.dat_phong.update({
+        where: { ma_dat_phong: Number(id) },
+        data: { trang_thai: 'da_huy', ghi_chu: `[Admin hủy] ${ly_do}` },
+      });
+      await processRefundOnCancel(tx, id, ly_do);
+
+      await tx.thong_bao.create({
+        data: {
+          ma_nguoi_dung: booking.ma_khach_hang,
+          ma_dat_phong: Number(id),
+          tieu_de: 'Đơn đặt phòng bị hủy bởi Admin',
+          noi_dung: `Đơn #${booking.ma_don_hang} đã bị hủy. Lý do: ${ly_do}`,
+          loai: 'dat_phong',
+        },
+      });
     });
 
-    await prisma.thong_bao.create({
-      data: {
-        ma_nguoi_dung: booking.ma_khach_hang,
-        ma_dat_phong: Number(id),
-        tieu_de: 'Đơn đặt phòng bị hủy bởi Admin',
-        noi_dung: `Đơn #${booking.ma_don_hang} đã bị hủy. Lý do: ${ly_do}`,
-        loai: 'dat_phong',
-      },
-    });
-
-    return updated;
+    return bookingService.getDetailForAdmin(id);
   },
 
   getHotelsForAdminFilter: async () => {
@@ -230,6 +279,31 @@ const bookingService = {
   },
 };
 
+const processRefundOnCancel = async (tx, bookingId, lyDo) => {
+  const booking = await tx.dat_phong.findUnique({
+    where: { ma_dat_phong: Number(bookingId) },
+    include: { thanh_toan: true, hoan_tien: true },
+  });
+
+  if (!booking?.thanh_toan || booking.hoan_tien) return;
+
+  const wasPaid =
+    booking.phuong_thuc_tt === 'truc_tuyen'
+    || booking.thanh_toan.trang_thai === 'thanh_cong';
+  if (!wasPaid) return;
+
+  await tx.hoan_tien.create({
+    data: {
+      ma_dat_phong: booking.ma_dat_phong,
+      ma_thanh_toan: booking.thanh_toan.ma_thanh_toan,
+      so_tien_hoan: booking.thanh_toan.so_tien,
+      ly_do: lyDo || 'Hủy đơn đặt phòng',
+      trang_thai: 'da_hoan',
+      ngay_xu_ly: new Date(),
+    },
+  });
+};
+
 // Helper: kiểm tra đơn có thuộc KS của đối tác không
 const verifyOwner = async (bookingId, doiTacId) => {
   const booking = await prisma.dat_phong.findUnique({
@@ -241,7 +315,7 @@ const verifyOwner = async (bookingId, doiTacId) => {
     },
   });
   if (!booking) throw new Error('Không tìm thấy đơn đặt phòng');
-  if (booking.loai_phong.khach_san.ma_doi_tac !== doiTacId) {
+  if (Number(booking.loai_phong.khach_san.ma_doi_tac) !== Number(doiTacId)) {
     throw new Error('Không có quyền xử lý đơn này');
   }
   return booking;

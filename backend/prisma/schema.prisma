@@ -589,6 +589,7 @@ enum dat_phong_phuong_thuc_tt {
 enum dat_phong_trang_thai {
   cho_xac_nhan
   da_xac_nhan
+  da_checkin
   tu_choi
   hoan_thanh
   da_huy

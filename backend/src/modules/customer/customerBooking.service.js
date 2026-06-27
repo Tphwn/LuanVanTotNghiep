@@ -7,10 +7,11 @@ const {
 } = require('../../utils/bookingHelpers');
 
 const BOOKING_STATUS = {
-  cho_xac_nhan: 'Chờ xác nhận',
-  da_xac_nhan: 'Đã xác nhận',
+  cho_xac_nhan: 'Chờ check-in',
+  da_xac_nhan: 'Chờ check-in',
+  da_checkin: 'Đã check-in',
   da_huy: 'Đã hủy',
-  tu_choi: 'Bị từ chối',
+  tu_choi: 'Đã hủy',
   hoan_thanh: 'Hoàn thành',
 };
 
@@ -66,6 +67,7 @@ const customerBookingService = {
           },
         },
         thanh_toan: { select: { trang_thai: true } },
+        danh_gia: { select: { ma_danh_gia: true } },
       },
       orderBy: { ngay_dat: 'desc' },
     });
@@ -79,6 +81,7 @@ const customerBookingService = {
       thanh_toan_cuoi: Number(b.thanh_toan_cuoi),
       trang_thai: b.trang_thai,
       trang_thai_label: BOOKING_STATUS[b.trang_thai] || b.trang_thai,
+      co_the_danh_gia: b.trang_thai === 'hoan_thanh' && !b.danh_gia,
       khach_san: b.loai_phong?.khach_san,
       ten_loai_phong: b.loai_phong?.ten_loai,
     }));
@@ -150,6 +153,7 @@ const customerBookingService = {
     const chiTietRows = await buildNightDetails(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
 
     const paymentMethod = phuong_thuc_tt === 'tai_khach_san' ? 'Tại khách sạn' : 'Trực tuyến';
+    const isOnline = phuong_thuc_tt === 'truc_tuyen';
 
     const booking = await prisma.$transaction(async (tx) => {
       return tx.dat_phong.create({
@@ -166,14 +170,15 @@ const customerBookingService = {
           tien_giam: 0,
           thanh_toan_cuoi: tongTien,
           phuong_thuc_tt,
-          trang_thai: 'cho_xac_nhan',
+          trang_thai: 'da_xac_nhan',
           ghi_chu: ghi_chu?.trim() || null,
           chi_tiet_dat_phong: { create: chiTietRows },
           thanh_toan: {
             create: {
               so_tien: tongTien,
               phuong_thuc: paymentMethod,
-              trang_thai: 'cho',
+              trang_thai: isOnline ? 'thanh_cong' : 'cho',
+              ma_giao_dich: isOnline ? `PAY${Date.now()}` : null,
             },
           },
         },
@@ -200,6 +205,53 @@ const customerBookingService = {
       ten_loai_phong: booking.loai_phong?.ten_loai,
       ten_khach_san: booking.loai_phong?.khach_san?.ten,
     };
+  },
+
+  createReview: async (userId, maDatPhong, payload) => {
+    const { so_sao, noi_dung, diem_sach_se, diem_dich_vu, diem_vi_tri } = payload;
+    const rating = Number(so_sao);
+
+    if (!rating || rating < 1 || rating > 5) {
+      throw { statusCode: 400, message: 'Điểm đánh giá phải từ 1 đến 5 sao' };
+    }
+
+    const khachHang = await prisma.khach_hang.findUnique({
+      where: { ma_nguoi_dung: Number(userId) },
+    });
+    if (!khachHang) {
+      throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
+    }
+
+    const booking = await prisma.dat_phong.findFirst({
+      where: {
+        ma_dat_phong: Number(maDatPhong),
+        ma_khach_hang: khachHang.ma_khach_hang,
+      },
+      include: { danh_gia: true },
+    });
+
+    if (!booking) {
+      throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
+    }
+    if (booking.trang_thai !== 'hoan_thanh') {
+      throw { statusCode: 400, message: 'Chỉ đánh giá được sau khi đơn hoàn thành' };
+    }
+    if (booking.danh_gia) {
+      throw { statusCode: 400, message: 'Đơn này đã được đánh giá' };
+    }
+
+    return prisma.danh_gia.create({
+      data: {
+        ma_dat_phong: booking.ma_dat_phong,
+        ma_khach_hang: khachHang.ma_khach_hang,
+        so_sao: rating,
+        noi_dung: noi_dung?.trim() || null,
+        diem_sach_se: diem_sach_se != null ? Number(diem_sach_se) : null,
+        diem_dich_vu: diem_dich_vu != null ? Number(diem_dich_vu) : null,
+        diem_vi_tri: diem_vi_tri != null ? Number(diem_vi_tri) : null,
+        trang_thai: 'cho_duyet',
+      },
+    });
   },
 };
 

@@ -1,6 +1,6 @@
 const prisma = require('../../config/prisma');
 
-const ACTIVE_BOOKING_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
+const ACTIVE_BOOKING_STATUS = ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'];
 
 const getToday = () => {
   const d = new Date();

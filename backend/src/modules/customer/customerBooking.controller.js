@@ -21,4 +21,14 @@ const createBooking = async (req, res, next) => {
   }
 };
 
-module.exports = { getMyBookings, createBooking };
+const createReview = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.createReview(userId, req.params.id, req.body);
+    return success(res, data, 'Đã gửi đánh giá', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getMyBookings, createBooking, createReview };

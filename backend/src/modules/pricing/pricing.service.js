@@ -76,7 +76,7 @@ const pricingService = {
     const bookings = await prisma.dat_phong.findMany({
       where: {
         ma_loai_phong: roomId,
-        trang_thai: { in: ['cho_xac_nhan', 'da_xac_nhan', 'hoan_thanh'] },
+        trang_thai: { in: ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin', 'hoan_thanh'] },
         ngay_nhan_phong: { lte: end },
         ngay_tra_phong: { gt: start },
       },
@@ -141,8 +141,8 @@ const pricingService = {
       where: {
         ma_loai_phong: Number(maLoaiPhong),
         ngay: {
-          gte: new Date(tuNgay),
-          lte: new Date(denNgay),
+          gte: parseLocalDate(tuNgay),
+          lte: parseLocalDate(denNgay),
         },
       },
       orderBy: { ngay: 'asc' },
@@ -151,7 +151,6 @@ const pricingService = {
 
   // Lưu giá hàng loạt cho nhiều loại phòng + nhiều ngày
   savePrices: async (entries) => {
-    // entries = [{ ma_loai_phong, ngay, don_gia, loai_gia }]
     const results = [];
 
     for (const entry of entries) {
@@ -160,17 +159,18 @@ const pricingService = {
         throw new Error('Mỗi bản ghi giá cần có ma_loai_phong và ngay');
       }
 
+      const ngayDate = parseLocalDate(ngay);
       const result = await prisma.bang_gia_phong.upsert({
         where: {
           ma_loai_phong_ngay: {
             ma_loai_phong: Number(ma_loai_phong),
-            ngay: new Date(ngay),
+            ngay: ngayDate,
           },
         },
         update: { don_gia: Number(don_gia), loai_gia },
         create: {
           ma_loai_phong: Number(ma_loai_phong),
-          ngay: new Date(ngay),
+          ngay: ngayDate,
           don_gia: Number(don_gia),
           loai_gia,
         },
@@ -192,7 +192,7 @@ const pricingService = {
     return prisma.bang_gia_phong.deleteMany({
       where: {
         ma_loai_phong: roomId,
-        ngay: new Date(ngay),
+        ngay: parseLocalDate(ngay),
       },
     });
   },
@@ -211,7 +211,7 @@ const pricingService = {
       where: {
         OR: conditions.map((item) => ({
           ma_loai_phong: item.ma_loai_phong,
-          ngay: new Date(item.ngay),
+          ngay: parseLocalDate(item.ngay),
         })),
       },
     });

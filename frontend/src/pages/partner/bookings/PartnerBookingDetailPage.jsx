@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import ActionButton, { TableActions } from '../../../components/common/ActionButton';
@@ -8,15 +8,15 @@ import DetailTable from '../../../components/booking/DetailTable';
 import BookingSectionTable from '../../../components/booking/BookingSectionTable';
 import {
   fetchBookingDetail,
-  confirmBooking,
-  rejectBooking,
-  fetchPartnerBookings,
+  checkInBooking,
+  checkOutBooking,
   clearDetail,
   clearMsg,
 } from '../../../store/slices/partnerBookingSlice';
 import {
   TRANG_THAI,
   PHUONG_THUC,
+  getPaymentDisplay,
   formatCurrency,
   formatDate,
   formatDateTime,
@@ -43,16 +43,15 @@ const getPriceTypeBadge = (type) => {
   return badges[type] || 'badge-default';
 };
 
+const canCheckIn = (status) => ['da_xac_nhan', 'cho_xac_nhan'].includes(status);
+
 export default function PartnerBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { detail, detailLoading, loading, error, successMsg } = useSelector(
+  const { detail, detailLoading, actionLoading, error, successMsg } = useSelector(
     (s) => s.partnerBooking || {},
   );
-
-  const [rejectMode, setRejectMode] = useState(false);
-  const [lyDo, setLyDo] = useState('');
 
   useEffect(() => {
     if (id) dispatch(fetchBookingDetail(id));
@@ -71,13 +70,7 @@ export default function PartnerBookingDetailPage() {
     return TRANG_THAI[detail.trang_thai] || { label: detail.trang_thai, cls: 'badge-default' };
   }, [detail]);
 
-  const paymentInfo = useMemo(() => {
-    const isPaid = detail?.thanh_toan?.trang_thai === 'thanh_cong';
-    return {
-      label: isPaid ? 'Đã thanh toán' : 'Chờ thanh toán',
-      badge: isPaid ? 'badge-success' : 'badge-warning',
-    };
-  }, [detail]);
+  const paymentInfo = useMemo(() => getPaymentDisplay(detail), [detail]);
 
   const roomRows = useMemo(() => {
     if (!detail) return [];
@@ -106,19 +99,16 @@ export default function PartnerBookingDetailPage() {
 
   const handleBack = () => navigate('/partner/bookings');
 
-  const handleConfirm = async () => {
+  const handleCheckIn = async () => {
     if (!detail) return;
-    if (!window.confirm(`Xác nhận đơn đặt phòng ${detail.ma_don_hang}?`)) return;
-    await dispatch(confirmBooking(detail.ma_dat_phong));
-    dispatch(fetchPartnerBookings());
-    navigate('/partner/bookings');
+    if (!window.confirm(`Xác nhận khách đã check-in cho đơn ${detail.ma_don_hang}?`)) return;
+    await dispatch(checkInBooking(detail.ma_dat_phong));
   };
 
-  const handleReject = async () => {
-    if (!detail || !lyDo.trim()) return alert('Nhập lý do từ chối');
-    await dispatch(rejectBooking({ id: detail.ma_dat_phong, ly_do: lyDo }));
-    dispatch(fetchPartnerBookings());
-    navigate('/partner/bookings');
+  const handleCheckOut = async () => {
+    if (!detail) return;
+    if (!window.confirm(`Xác nhận khách đã check-out cho đơn ${detail.ma_don_hang}?`)) return;
+    await dispatch(checkOutBooking(detail.ma_dat_phong));
   };
 
   if (detailLoading) {
@@ -138,7 +128,8 @@ export default function PartnerBookingDetailPage() {
     );
   }
 
-  const isPending = detail.trang_thai === 'cho_xac_nhan';
+  const showCheckInAction = canCheckIn(detail.trang_thai);
+  const showCheckOutAction = detail.trang_thai === 'da_checkin';
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -187,43 +178,21 @@ export default function PartnerBookingDetailPage() {
             <span className={`badge ${bookingStatus.cls}`}>{bookingStatus.label}</span>
             <span className="booking-detail-meta">Đặt lúc {formatDateTime(detail.ngay_dat)}</span>
           </div>
-          {isPending && !rejectMode && (
+          {showCheckInAction && (
             <TableActions style={{ justifyContent: 'flex-end' }}>
-              <ActionButton variant="confirm" onClick={handleConfirm} disabled={loading}>
-                Xác nhận
+              <ActionButton variant="confirm" onClick={handleCheckIn} disabled={actionLoading}>
+                {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-in'}
               </ActionButton>
-              <ActionButton variant="reject" onClick={() => setRejectMode(true)}>
-                Từ chối
+            </TableActions>
+          )}
+          {showCheckOutAction && (
+            <TableActions style={{ justifyContent: 'flex-end' }}>
+              <ActionButton variant="confirm" onClick={handleCheckOut} disabled={actionLoading}>
+                {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-out'}
               </ActionButton>
             </TableActions>
           )}
         </div>
-
-        {rejectMode && (
-          <div className="booking-reject-box">
-            <p className="booking-reject-warning">
-              Từ chối đơn sẽ thông báo cho khách hàng. Vui lòng nhập lý do rõ ràng.
-            </p>
-            <label className="booking-reject-label">
-              Lý do từ chối <span style={{ color: '#e05c5c' }}>*</span>
-            </label>
-            <textarea
-              rows={3}
-              className="booking-reject-textarea"
-              placeholder="Nhập lý do từ chối để khách hàng biết..."
-              value={lyDo}
-              onChange={(e) => setLyDo(e.target.value)}
-            />
-            <div className="booking-reject-actions">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setRejectMode(false); setLyDo(''); }}>
-                Hủy bỏ
-              </button>
-              <button type="button" className="btn btn-danger btn-sm" disabled={loading} onClick={handleReject}>
-                {loading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="booking-detail-grid">
           <DetailTable title="Thông tin phòng" rows={roomRows} />
