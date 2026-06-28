@@ -7,7 +7,7 @@ import partnerHotelReducer from './slices/partnerHotelSlice';
 import partnerRoomReducer from './slices/partnerRoomSlice';
 import partnerBookingReducer from './slices/partnerBookingSlice';
 import adminBookingReducer from './slices/adminBookingSlice';
-import adminPaymentReducer from './slices/adminPaymentSlice';
+import adminFinanceReducer from './slices/adminFinanceSlice';
 
 const store = configureStore({
   reducer: {
@@ -19,7 +19,7 @@ const store = configureStore({
     partnerRooms: partnerRoomReducer,
     partnerBooking: partnerBookingReducer,
     adminBooking: adminBookingReducer,
-    adminPayment: adminPaymentReducer,
+    adminFinance: adminFinanceReducer,
   },
 });
 

@@ -282,7 +282,7 @@ export default function CreatePartnerPage() {
                   className="btn btn-ghost btn-sm"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {avatarPreview ? 'Đổi ảnh' : 'Chọn ảnh (tùy chọn)'}
+                  {avatarPreview ? 'Đổi ảnh' : 'Chọn ảnh đại diện'}
                 </button>
                 {avatarPreview && (
                   <button
@@ -294,9 +294,6 @@ export default function CreatePartnerPage() {
                     Xóa
                   </button>
                 )}
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#64748b' }}>
-                  Không bắt buộc — có thể bỏ trống khi tạo tài khoản.
-                </p>
               </div>
             </div>
           </EditField>

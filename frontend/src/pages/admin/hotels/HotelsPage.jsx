@@ -24,12 +24,7 @@ const HOTEL_STATUS = {
   da_duyet: { label: "Đã duyệt", cls: "mgmt-status-text--active" },
 };
 
-const getLoaiHinh = (hotel) => {
-  const sao = hotel.so_sao || 0;
-  if (sao >= 5) return "Khu nghỉ dưỡng";
-  if (sao >= 3) return "Khách sạn";
-  return "Homestay";
-};
+const getLoaiHinh = () => "Khách sạn";
 
 const TAB_STATUS_MAP = {
   all: null,
@@ -202,7 +197,7 @@ const HotelsPage = () => {
                           {hotel.dia_chi || "—"}
                         </div>
                       </td>
-                      <td><span className="mgmt-type-tag">{getLoaiHinh(hotel)}</span></td>
+                      <td><span className="mgmt-type-tag">{getLoaiHinh()}</span></td>
                       <td><StarRating value={hotel.so_sao} /></td>
                       <td>
                         <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>

@@ -6,12 +6,8 @@ import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug } from '
 import EditField from '../users/components/EditField';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import BackButton from '../../../components/common/BackButton';
-
-const LOAI_OPTIONS = [
-  { value: 'khach_san', label: 'Khách sạn', desc: 'Hiển thị cho khách sạn' },
-  { value: 'phong', label: 'Loại phòng', desc: 'Hiển thị cho loại phòng' },
-  { value: 'ca_hai', label: 'Cả hai', desc: 'Khách sạn & Loại phòng' },
-];
+import { AMENITY_CATEGORY_GROUPS } from './constants';
+import { findCategoryForAmenity } from './utils';
 
 const inputStyle = {
   width: '100%',
@@ -33,9 +29,14 @@ export default function AmenityFormPage() {
   const { list = [], loading = false } = useSelector((state) => state.amenities || {});
 
   const isEdit = Boolean(id);
-  const defaultLoai = location.state?.loai || 'khach_san';
+  const defaultCategoryId = location.state?.categoryId || AMENITY_CATEGORY_GROUPS[0].id;
 
-  const [form, setForm] = useState({ ten: '', bieu_tuong: 'wifi', loai: defaultLoai });
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
+  const [form, setForm] = useState({
+    ten: '',
+    bieu_tuong: 'wifi',
+    loai: AMENITY_CATEGORY_GROUPS[0].loai,
+  });
   const [iconManual, setIconManual] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,6 +51,8 @@ export default function AmenityFormPage() {
 
   useEffect(() => {
     if (isEdit && existing) {
+      const matchedCategory = findCategoryForAmenity(existing, AMENITY_CATEGORY_GROUPS);
+      setCategoryId(matchedCategory);
       setForm({
         ten: existing.ten,
         bieu_tuong: existing.bieu_tuong || suggestIconSlugFromName(existing.ten),
@@ -58,6 +61,16 @@ export default function AmenityFormPage() {
       setIconManual(true);
     }
   }, [isEdit, existing]);
+
+  const selectedCategory = AMENITY_CATEGORY_GROUPS.find((g) => g.id === categoryId)
+    || AMENITY_CATEGORY_GROUPS[0];
+
+  const handleCategoryChange = (nextCategoryId) => {
+    const category = AMENITY_CATEGORY_GROUPS.find((g) => g.id === nextCategoryId);
+    if (!category) return;
+    setCategoryId(nextCategoryId);
+    setForm((prev) => ({ ...prev, loai: category.loai }));
+  };
 
   const PreviewIcon = getAmenityLucideIcon(form.ten || form.bieu_tuong);
 
@@ -142,7 +155,7 @@ export default function AmenityFormPage() {
               <input
                 type="text"
                 style={inputStyle}
-                placeholder={defaultLoai === 'phong' ? 'VD: Tủ lạnh, Ban công...' : 'VD: Hồ bơi, Bãi đỗ xe...'}
+                placeholder={`VD: ${selectedCategory.label}...`}
                 value={form.ten}
                 onChange={(e) => handleNameChange(e.target.value)}
                 autoFocus
@@ -158,20 +171,25 @@ export default function AmenityFormPage() {
         </div>
 
         <div className="content-card">
-          <h3 className="content-card-title" style={{ marginBottom: 12 }}>Phạm vi áp dụng</h3>
+          <h3 className="content-card-title" style={{ marginBottom: 12 }}>Loại tiện nghi</h3>
 
-          <EditField label="Áp dụng cho">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-              {LOAI_OPTIONS.map(({ value, label, desc }) => (
+          <EditField label="Danh mục">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: 4 }}>
+              {AMENITY_CATEGORY_GROUPS.map(({ id, label, Icon, loai }) => (
                 <button
-                  key={value}
+                  key={id}
                   type="button"
-                  className={`amenity-scope-btn${form.loai === value ? ' active' : ''}`}
+                  className={`amenity-scope-btn${categoryId === id ? ' active' : ''}`}
                   style={{ width: '100%', textAlign: 'left' }}
-                  onClick={() => setForm({ ...form, loai: value })}
+                  onClick={() => handleCategoryChange(id)}
                 >
-                  <span className="amenity-scope-label">{label}</span>
-                  <span className="amenity-scope-desc">{desc}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Icon size={15} strokeWidth={1.6} />
+                    <span className="amenity-scope-label">{label}</span>
+                  </span>
+                  <span className="amenity-scope-desc">
+                    {loai === 'phong' ? 'Loại phòng' : loai === 'khach_san' ? 'Khách sạn' : 'Khách sạn & Loại phòng'}
+                  </span>
                 </button>
               ))}
             </div>

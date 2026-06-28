@@ -8,9 +8,8 @@ import {
   clearMsg,
 } from '../../../store/slices/adminBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import SearchBar from '../../../components/common/management/SearchBar';
-import FilterTabs from '../../../components/common/management/FilterTabs';
-import BookingTable from './components/BookingTable';
+import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import BookingTable from '../../../components/booking/BookingTable';
 
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
@@ -59,21 +58,17 @@ const AdminBookingsPage = () => {
 
   const filterTabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: stats?.total ?? list.length },
-    { id: 'cho_xac_nhan', label: 'Chờ xác nhận', count: stats?.cho_xac_nhan ?? 0 },
-    { id: 'da_xac_nhan', label: 'Đã xác nhận', count: stats?.da_xac_nhan ?? 0 },
+    { id: 'da_xac_nhan', label: 'Chờ check-in', count: stats?.da_xac_nhan ?? 0 },
+    { id: 'da_checkin', label: 'Đã check-in', count: stats?.da_checkin ?? 0 },
     { id: 'hoan_thanh', label: 'Hoàn thành', count: stats?.hoan_thanh ?? 0 },
     { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0 },
   ], [stats, list.length]);
-
-  const handleTabChange = (tab) => {
-    setStatusFilter(tab);
-  };
 
   return (
     <div className="mgmt-page">
       <ManagementHeader
         title="Quản Lý Đặt Phòng"
-        subtitle="Tất cả đơn đặt phòng đã đặt"
+        subtitle="Tất cả đơn đặt phòng trên hệ thống"
       />
 
       {(successMsg || error) && (
@@ -82,40 +77,49 @@ const AdminBookingsPage = () => {
         </div>
       )}
 
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Mã đơn, tên khách, SĐT..."
-        />
-        <select
-          className="mgmt-select-inline"
-          value={hotelFilter}
-          onChange={(e) => setHotelFilter(e.target.value)}
-        >
-          <option value="all">Tất cả khách sạn</option>
-          {hotels.map((h) => (
-            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-          ))}
-        </select>
-        <input
-          type="date"
-          className="mgmt-select-inline"
-          value={tuNgay}
-          onChange={(e) => setTuNgay(e.target.value)}
-          title="Từ ngày"
-        />
-        <input
-          type="date"
-          className="mgmt-select-inline"
-          value={denNgay}
-          min={tuNgay}
-          onChange={(e) => setDenNgay(e.target.value)}
-          title="Đến ngày"
-        />
-      </div>
+      <ManagementToolbar
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchPlaceholder="Tìm mã đơn, tên khách, SĐT..."
+        tabs={filterTabs}
+        activeTab={statusFilter}
+        onTabChange={setStatusFilter}
+      />
 
-      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />
+      <div className="mgmt-toolbar mgmt-toolbar--filters">
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label">Khách sạn</label>
+          <select
+            className="mgmt-select-inline"
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
+          >
+            <option value="all">Tất cả khách sạn</option>
+            {hotels.map((h) => (
+              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label">Ngày nhận</label>
+          <input
+            type="date"
+            className="mgmt-select-inline"
+            value={tuNgay}
+            onChange={(e) => setTuNgay(e.target.value)}
+          />
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label">Ngày trả</label>
+          <input
+            type="date"
+            className="mgmt-select-inline"
+            value={denNgay}
+            min={tuNgay}
+            onChange={(e) => setDenNgay(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
@@ -129,15 +133,16 @@ const AdminBookingsPage = () => {
             <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th style={{ width: 148 }}>Mã đơn</th>
+                  <th style={{ width: 140 }}>Mã đơn</th>
                   <th>Khách hàng</th>
-                  <th>Khách sạn / Phòng</th>
-                  <th style={{ width: 100 }}>Check-in</th>
-                  <th style={{ width: 100 }}>Check-out</th>
+                  <th>Khách sạn</th>
+                  <th>Loại phòng</th>
+                  <th style={{ width: 108 }}>Check-in</th>
+                  <th style={{ width: 108 }}>Check-out</th>
                   <th style={{ width: 120 }}>Tổng tiền</th>
                   <th style={{ width: 100 }}>Thanh toán</th>
                   <th style={{ width: 120 }}>Trạng thái</th>
-                  <th style={{ width: 80 }}>Thao tác</th>
+                  <th style={{ width: 72 }}>Thao tác</th>
                 </tr>
               </thead>
               <BookingTable

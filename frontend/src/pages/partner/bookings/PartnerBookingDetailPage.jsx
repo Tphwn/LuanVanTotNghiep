@@ -19,7 +19,9 @@ import {
   getPaymentDisplay,
   formatCurrency,
   formatDate,
-  formatDateTime,
+  formatOrderTime,
+  formatStayDateTime,
+  addDays,
   diffDays,
 } from '../../../utils/bookingDisplay';
 
@@ -74,12 +76,16 @@ export default function PartnerBookingDetailPage() {
 
   const roomRows = useMemo(() => {
     if (!detail) return [];
+    const hotel = detail.loai_phong?.khach_san;
     const nights = diffDays(detail.ngay_nhan_phong, detail.ngay_tra_phong);
+    const checkIn = formatStayDateTime(detail.ngay_nhan_phong, hotel?.gio_nhan_phong, '14:00');
+    const checkOut = formatStayDateTime(detail.ngay_tra_phong, hotel?.gio_tra_phong, '12:00');
+
     return [
-      { label: 'Khách sạn', value: detail.loai_phong?.khach_san?.ten || '—' },
+      { label: 'Khách sạn', value: hotel?.ten || '—' },
       { label: 'Loại phòng', value: detail.loai_phong?.ten_loai || '—' },
-      { label: 'Nhận phòng', value: formatDate(detail.ngay_nhan_phong) },
-      { label: 'Trả phòng', value: formatDate(detail.ngay_tra_phong) },
+      { label: 'Nhận phòng', value: `${checkIn.date} · ${checkIn.time}` },
+      { label: 'Trả phòng', value: `${checkOut.date} · ${checkOut.time}` },
       { label: 'Số đêm', value: `${nights} đêm` },
       { label: 'Số khách', value: `${detail.so_khach || 0} khách` },
     ];
@@ -130,6 +136,8 @@ export default function PartnerBookingDetailPage() {
 
   const showCheckInAction = canCheckIn(detail.trang_thai);
   const showCheckOutAction = detail.trang_thai === 'da_checkin';
+  const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
+  const refundInfo = detail.thong_tin_hoan_tien;
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -150,12 +158,13 @@ export default function PartnerBookingDetailPage() {
     key: item.ma_chi_tiet,
     cells: [
       formatDate(item.ngay),
+      formatDate(addDays(item.ngay, 1)),
       formatCurrency(item.don_gia),
       <span className={`badge ${getPriceTypeBadge(item.loai_gia)}`}>
         {getPriceTypeLabel(item.loai_gia)}
       </span>,
     ],
-    cellProps: [{}, { style: { fontWeight: 500 } }, {}],
+    cellProps: [{}, {}, { style: { fontWeight: 500 } }, {}],
   }));
 
   return (
@@ -176,7 +185,6 @@ export default function PartnerBookingDetailPage() {
         <div className="booking-detail-status-bar booking-detail-status-bar--page">
           <div className="booking-detail-status-left">
             <span className={`badge ${bookingStatus.cls}`}>{bookingStatus.label}</span>
-            <span className="booking-detail-meta">Đặt lúc {formatDateTime(detail.ngay_dat)}</span>
           </div>
           {showCheckInAction && (
             <TableActions style={{ justifyContent: 'flex-end' }}>
@@ -194,6 +202,15 @@ export default function PartnerBookingDetailPage() {
           )}
         </div>
 
+        {isCancelled && refundInfo && (
+          <div className="booking-detail-inline-notice booking-detail-inline-notice--cancel">
+            <span className="badge badge-danger">Đã hủy</span>
+            <span>
+              Lý do: {refundInfo.ly_do_huy}. {refundInfo.tom_tat_chinh_sach}
+            </span>
+          </div>
+        )}
+
         <div className="booking-detail-grid">
           <DetailTable title="Thông tin phòng" rows={roomRows} />
           <DetailTable title="Thông tin khách" rows={guestRows} />
@@ -207,7 +224,7 @@ export default function PartnerBookingDetailPage() {
 
         <BookingSectionTable
           title="Chi tiết giá từng đêm"
-          columns={['Ngày', 'Giá/đêm', 'Loại giá']}
+          columns={['Ngày nhận', 'Ngày trả', 'Giá/đêm', 'Loại giá']}
           rows={nightlyRows}
         />
       </div>

@@ -23,7 +23,16 @@ export const groupAmenitiesByCategory = (items, categoryGroups) => {
     }
     if (!assigned && catchAll) catchAll.items.push(item);
   });
-  return groups.filter((g) => g.items.length > 0 || g.slugs.length === 0);
+  return groups;
+};
+
+export const findCategoryForAmenity = (item, categoryGroups) => {
+  if (!item) return categoryGroups[0]?.id || null;
+  const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
+  const matched = categoryGroups.find((g) => g.slugs.length > 0 && g.slugs.includes(slug));
+  if (matched) return matched.id;
+  const catchAll = categoryGroups.find((g) => g.slugs.length === 0);
+  return catchAll?.id || categoryGroups[0]?.id || null;
 };
 
 export const formatTimeAgo = (date) => {

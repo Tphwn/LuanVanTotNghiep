@@ -19,12 +19,35 @@ import ManagementHeader from '../../../components/common/management/ManagementHe
 import {
   TRANG_THAI,
   PHUONG_THUC,
+  getPaymentDisplay,
   formatCurrency,
   formatDate,
-  formatDateTime,
+  formatStayDateTime,
+  addDays,
+  diffDays,
 } from '../../../utils/bookingDisplay';
 
 const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi'];
+
+const getPriceTypeLabel = (type) => {
+  const labels = {
+    co_ban: 'Cơ bản',
+    cuoi_tuan: 'Cuối tuần',
+    le_tet: 'Lễ tết',
+    cao_diem: 'Cao điểm',
+  };
+  return labels[type] || 'Khác';
+};
+
+const getPriceTypeBadge = (type) => {
+  const badges = {
+    co_ban: 'badge-default',
+    cuoi_tuan: 'badge-warning',
+    le_tet: 'badge-danger',
+    cao_diem: 'badge-info',
+  };
+  return badges[type] || 'badge-default';
+};
 
 export default function BookingDetailPage() {
   const { id } = useParams();
@@ -71,45 +94,27 @@ export default function BookingDetailPage() {
     };
   }, [detail]);
 
-  const paymentInfo = useMemo(() => {
-    const isPaid = detail?.thanh_toan?.trang_thai === 'thanh_cong';
-
-    return {
-      label: isPaid ? 'Đã thanh toán' : 'Chờ thanh toán',
-      badge: isPaid ? 'badge-success' : 'badge-warning',
-    };
-  }, [detail]);
+  const paymentInfo = useMemo(() => getPaymentDisplay(detail), [detail]);
 
   const canCancel = detail && !CANCEL_BLOCKED_STATUS.includes(detail.trang_thai);
 
-  const hotelRows = useMemo(() => {
+  const roomRows = useMemo(() => {
     if (!detail) return [];
 
+    const hotel = detail.loai_phong?.khach_san;
+    const nights = diffDays(detail.ngay_nhan_phong, detail.ngay_tra_phong);
+    const checkIn = formatStayDateTime(detail.ngay_nhan_phong, hotel?.gio_nhan_phong, '14:00');
+    const checkOut = formatStayDateTime(detail.ngay_tra_phong, hotel?.gio_tra_phong, '12:00');
+
     return [
-      {
-        label: 'Khách sạn',
-        value: detail.loai_phong?.khach_san?.ten || '—',
-      },
-      {
-        label: 'Đối tác',
-        value: detail.loai_phong?.khach_san?.doi_tac?.ten_cong_ty || '—',
-      },
-      {
-        label: 'Loại phòng',
-        value: detail.loai_phong?.ten_loai || '—',
-      },
-      {
-        label: 'Địa chỉ',
-        value: detail.loai_phong?.khach_san?.dia_chi || '—',
-      },
-      {
-        label: 'Nhận phòng',
-        value: formatDate(detail.ngay_nhan_phong),
-      },
-      {
-        label: 'Trả phòng',
-        value: formatDate(detail.ngay_tra_phong),
-      },
+      { label: 'Khách sạn', value: hotel?.ten || '—' },
+      { label: 'Đối tác', value: hotel?.doi_tac?.ten_cong_ty || '—' },
+      { label: 'Loại phòng', value: detail.loai_phong?.ten_loai || '—' },
+      { label: 'Địa chỉ', value: hotel?.dia_chi || '—' },
+      { label: 'Nhận phòng', value: `${checkIn.date} · ${checkIn.time}` },
+      { label: 'Trả phòng', value: `${checkOut.date} · ${checkOut.time}` },
+      { label: 'Số đêm', value: `${nights} đêm` },
+      { label: 'Số khách', value: `${detail.so_khach || 0} khách` },
     ];
   }, [detail]);
 
@@ -117,61 +122,14 @@ export default function BookingDetailPage() {
     if (!detail) return [];
 
     return [
-      {
-        label: 'Khách hàng',
-        value: detail.khach_hang?.ho_ten || '—',
-      },
-      {
-        label: 'Email',
-        value: detail.khach_hang?.nguoi_dung?.email || '—',
-      },
-      {
-        label: 'SĐT',
-        value: detail.khach_hang?.nguoi_dung?.so_dien_thoai || '—',
-      },
-      {
-        label: 'Người nhận phòng',
-        value: detail.ten_nguoi_nhan || '—',
-      },
-      {
-        label: 'SĐT người nhận',
-        value: detail.sdt_nguoi_nhan || '—',
-      },
-      {
-        label: 'Ghi chú',
-        value: detail.ghi_chu || '—',
-      },
+      { label: 'Khách hàng', value: detail.khach_hang?.ho_ten || '—' },
+      { label: 'Email', value: detail.khach_hang?.nguoi_dung?.email || '—' },
+      { label: 'SĐT', value: detail.khach_hang?.nguoi_dung?.so_dien_thoai || '—' },
+      { label: 'Người nhận phòng', value: detail.ten_nguoi_nhan || '—' },
+      { label: 'SĐT người nhận', value: detail.sdt_nguoi_nhan || '—' },
+      { label: 'Ghi chú', value: detail.ghi_chu || '—' },
     ];
   }, [detail]);
-
-  const paymentMethod =
-    PHUONG_THUC[detail?.phuong_thuc_tt] || detail?.thanh_toan?.phuong_thuc || detail?.phuong_thuc_tt || '—';
-
-  const paymentRows = detail
-    ? [
-        {
-          key: 'payment',
-          cells: [
-            formatCurrency(detail.thanh_toan_cuoi),
-            <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
-            paymentMethod,
-          ],
-          cellProps: [{ style: { fontWeight: 500 } }, {}, {}],
-        },
-      ]
-    : [];
-
-  const nightlyRows = (detail?.chi_tiet_dat_phong || []).map((item) => ({
-    key: item.ma_chi_tiet,
-    cells: [
-      formatDate(item.ngay),
-      formatCurrency(item.don_gia),
-      <span className={`badge ${getPriceTypeBadge(item.loai_gia)}`}>
-        {getPriceTypeLabel(item.loai_gia)}
-      </span>,
-    ],
-    cellProps: [{}, { style: { fontWeight: 500 } }, {}],
-  }));
 
   const handleBack = () => {
     navigate('/admin/bookings');
@@ -224,6 +182,37 @@ export default function BookingDetailPage() {
     );
   }
 
+  const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
+  const refundInfo = detail.thong_tin_hoan_tien;
+
+  const paymentMethod =
+    PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
+
+  const paymentRows = [
+    {
+      key: 'payment',
+      cells: [
+        formatCurrency(detail.thanh_toan_cuoi),
+        <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
+        paymentMethod,
+      ],
+      cellProps: [{ style: { fontWeight: 500 } }, {}, {}],
+    },
+  ];
+
+  const nightlyRows = (detail.chi_tiet_dat_phong || []).map((item) => ({
+    key: item.ma_chi_tiet,
+    cells: [
+      formatDate(item.ngay),
+      formatDate(addDays(item.ngay, 1)),
+      formatCurrency(item.don_gia),
+      <span className={`badge ${getPriceTypeBadge(item.loai_gia)}`}>
+        {getPriceTypeLabel(item.loai_gia)}
+      </span>,
+    ],
+    cellProps: [{}, {}, { style: { fontWeight: 500 } }, {}],
+  }));
+
   return (
     <div className="booking-detail-page mgmt-page">
       <ManagementHeader
@@ -246,10 +235,6 @@ export default function BookingDetailPage() {
           <div className="booking-detail-status-left">
             <span className={`badge ${bookingStatus.cls}`}>
               {bookingStatus.label}
-            </span>
-
-            <span className="booking-detail-meta">
-              Đặt lúc {formatDateTime(detail.ngay_dat)}
             </span>
           </div>
 
@@ -304,8 +289,17 @@ export default function BookingDetailPage() {
           </div>
         )}
 
+        {isCancelled && refundInfo && (
+          <div className="booking-detail-inline-notice booking-detail-inline-notice--cancel">
+            <span className="badge badge-danger">Đã hủy</span>
+            <span>
+              Lý do: {refundInfo.ly_do_huy}. {refundInfo.tom_tat_chinh_sach}
+            </span>
+          </div>
+        )}
+
         <div className="booking-detail-grid">
-          <DetailTable title="Thông tin khách sạn" rows={hotelRows} />
+          <DetailTable title="Thông tin phòng" rows={roomRows} />
           <DetailTable title="Thông tin khách" rows={guestRows} />
         </div>
 
@@ -317,33 +311,10 @@ export default function BookingDetailPage() {
 
         <BookingSectionTable
           title="Chi tiết giá từng đêm"
-          columns={['Ngày', 'Giá/đêm', 'Loại giá']}
+          columns={['Ngày nhận', 'Ngày trả', 'Giá/đêm', 'Loại giá']}
           rows={nightlyRows}
         />
-
       </div>
     </div>
   );
-}
-
-function getPriceTypeLabel(type) {
-  const labels = {
-    co_ban: 'Cơ bản',
-    cuoi_tuan: 'Cuối tuần',
-    le_tet: 'Lễ tết',
-    cao_diem: 'Cao điểm',
-  };
-
-  return labels[type] || 'Khác';
-}
-
-function getPriceTypeBadge(type) {
-  const badges = {
-    co_ban: 'badge-default',
-    cuoi_tuan: 'badge-warning',
-    le_tet: 'badge-danger',
-    cao_diem: 'badge-info',
-  };
-
-  return badges[type] || 'badge-default';
 }

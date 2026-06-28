@@ -62,9 +62,9 @@ const adminFinanceService = {
   },
 
   getReconciliations: async () => {
-    return await prisma.doi_soat.findMany({
+    return prisma.doi_soat.findMany({
       include: { doi_tac: true },
-      orderBy: [{ thang_nam: 'desc' }, { ma_doi_soat: 'desc' }]
+      orderBy: [{ thang_nam: 'desc' }, { ma_doi_soat: 'desc' }],
     });
   },
 
@@ -110,7 +110,18 @@ const adminFinanceService = {
         tong_doanh_thu: doanhThu, tong_hoa_hong: hoaHong, tong_hoan_tien: hoanTien, thanh_toan_doi_tac: thanhToanDoiTac
       }
     });
-  }
+  },
+
+  updateReconciliationStatus: async (id, status) => {
+    const data = { trang_thai: status };
+    if (status === 'da_thanh_toan') {
+      data.ngay_thanh_toan = new Date();
+    }
+    return prisma.doi_soat.update({
+      where: { ma_doi_soat: Number(id) },
+      data,
+    });
+  },
 };
 
 module.exports = adminFinanceService;

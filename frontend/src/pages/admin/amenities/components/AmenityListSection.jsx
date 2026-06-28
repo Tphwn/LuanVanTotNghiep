@@ -8,7 +8,6 @@ export const AmenityListSection = ({
   filteredGroups,
   onEdit,
   onDelete,
-  onAdd,
 }) => (
   <>
     <div className="amenity-toolbar">
@@ -29,7 +28,6 @@ export const AmenityListSection = ({
             group={group}
             onEdit={onEdit}
             onDelete={onDelete}
-            onAdd={onAdd}
           />
         ))}
         {filteredGroups.length === 0 && (

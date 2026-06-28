@@ -7,7 +7,7 @@ import partnerRoomReducer from '../store/slices/partnerRoomSlice';
 import partnerHotelReducer from '../store/slices/partnerHotelSlice';
 import amenityReducer from '../store/slices/amenitySlice';
 import adminBookingReducer from './slices/adminBookingSlice';
-import adminPaymentReducer from './slices/adminPaymentSlice';
+import adminFinanceReducer from '../store/slices/adminFinanceSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -18,6 +18,6 @@ export const store = configureStore({
     partnerHotel: partnerHotelReducer,
     amenities: amenityReducer,
     adminBooking: adminBookingReducer,
-    adminPayment: adminPaymentReducer,
+    adminFinance: adminFinanceReducer,
   },
 });

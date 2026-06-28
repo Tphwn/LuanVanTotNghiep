@@ -47,8 +47,9 @@ import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
 import BookingDetailPage from '../pages/admin/bookings/BookingDetailPage';
-import AdminPaymentsPage from '../pages/admin/payment/PaymentsPage';
-import AdminFinancePage from "../pages/admin/finance/AdminFinancePage";
+import AdminFinancePage from '../pages/admin/finance/AdminFinancePage';
+import TransactionDetailPage from '../pages/admin/finance/TransactionDetailPage';
+import RefundDetailPage from '../pages/admin/finance/RefundDetailPage';
 import AdminReportsPage from '../pages/admin/reports/ReportsPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AmenityFormPage from '../pages/admin/amenities/AmenityFormPage';
@@ -162,7 +163,7 @@ const AppRoutes = () => {
           <Route path="hotels" element={<AdminHotelsPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
           <Route path="bookings/:id" element={<BookingDetailPage />} />
-          <Route path="payments" element={<AdminPaymentsPage />} />
+          <Route path="payments" element={<Navigate to="/admin/finance" replace />} />
           <Route path="amenities" element={<AdminAmenitiesPage />} />
           <Route path="amenities/create" element={<AmenityFormPage />} />
           <Route path="amenities/:id/edit" element={<AmenityFormPage />} />
@@ -170,6 +171,8 @@ const AppRoutes = () => {
           <Route path="room-types/:id" element={<AdminRoomDetailPage />} />
           <Route path="reviews" element={<AdminReviewsPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
+          <Route path="finance/transactions/:id" element={<TransactionDetailPage />} />
+          <Route path="finance/refunds/:id" element={<RefundDetailPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="partners" element={<PartnersPage />} />
           <Route path="users/:id" element={<UserDetailPage />} />

@@ -4,20 +4,16 @@ import { useSelector } from 'react-redux';
 import customerBookingService from '../../services/customerBookingService';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
+import { TRANG_THAI } from '../../utils/bookingDisplay';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'}) :'—');
 const fmtDateShort = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit'}) :'—');
 
-const STATUS_CLS = {
-  cho_xac_nhan: 'badge-warning',
-  da_xac_nhan: 'badge-success',
-  da_checkin: 'badge-info',
-  da_huy: 'badge-default',
-  tu_choi: 'badge-danger',
-  hoan_thanh: 'badge-info',
-};
+const STATUS_CLS = Object.fromEntries(
+  Object.entries(TRANG_THAI).map(([key, val]) => [key, val.cls]),
+);
 
 const FILTER_TABS = [
   { id: 'all', label: 'Tất cả'},

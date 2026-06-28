@@ -7,7 +7,7 @@ import {
 } from '../../../store/slices/partnerBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
-import BookingTable from './components/BookingTable';
+import BookingTable from '../../../components/booking/BookingTable';
 
 const BookingManagePage = () => {
   const dispatch = useDispatch();
@@ -100,15 +100,16 @@ const BookingManagePage = () => {
             <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th style={{ width: 148 }}>Mã đơn</th>
+                  <th style={{ width: 140 }}>Mã đơn</th>
                   <th>Khách hàng</th>
-                  <th>Khách sạn / Phòng</th>
-                  <th style={{ width: 100 }}>Check-in</th>
-                  <th style={{ width: 100 }}>Check-out</th>
+                  <th>Khách sạn</th>
+                  <th>Loại phòng</th>
+                  <th style={{ width: 108 }}>Check-in</th>
+                  <th style={{ width: 108 }}>Check-out</th>
                   <th style={{ width: 120 }}>Tổng tiền</th>
                   <th style={{ width: 100 }}>Thanh toán</th>
                   <th style={{ width: 120 }}>Trạng thái</th>
-                  <th style={{ width: 100 }}>Thao tác</th>
+                  <th style={{ width: 72 }}>Thao tác</th>
                 </tr>
               </thead>
               <BookingTable

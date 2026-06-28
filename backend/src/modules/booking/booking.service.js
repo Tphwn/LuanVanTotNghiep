@@ -1,4 +1,44 @@
 const prisma = require('../../config/prisma');
+const { calcRefundFromPolicy, wasBookingPaid } = require('../../utils/refundHelpers');
+
+const ADMIN_HOTEL_LIST_SELECT = {
+  select: {
+    ten: true,
+    ma_khach_san: true,
+    gio_nhan_phong: true,
+    gio_tra_phong: true,
+  },
+};
+
+const ADMIN_HOTEL_DETAIL_SELECT = {
+  select: {
+    ten: true,
+    dia_chi: true,
+    so_sao: true,
+    ma_khach_san: true,
+    gio_nhan_phong: true,
+    gio_tra_phong: true,
+    chinh_sach_huy: {
+      where: { trang_thai: 'hoat_dong' },
+      orderBy: { so_ngay_truoc: 'desc' },
+    },
+    doi_tac: { select: { ten_cong_ty: true } },
+  },
+};
+
+const HOTEL_INCLUDE = {
+  select: {
+    ten: true,
+    dia_chi: true,
+    ma_khach_san: true,
+    gio_nhan_phong: true,
+    gio_tra_phong: true,
+    chinh_sach_huy: {
+      where: { trang_thai: 'hoat_dong' },
+      orderBy: { so_ngay_truoc: 'desc' },
+    },
+  },
+};
 
 const bookingService = {
 
@@ -36,11 +76,18 @@ const bookingService = {
         },
         loai_phong: {
           include: {
-            khach_san: { select: { ten: true } },
+            khach_san: HOTEL_INCLUDE,
           },
         },
         thanh_toan: true,
-        hoan_tien: { select: { trang_thai: true, so_tien_hoan: true } },
+        hoan_tien: {
+          select: {
+            trang_thai: true,
+            so_tien_hoan: true,
+            ly_do: true,
+            ngay_yeu_cau: true,
+          },
+        },
       },
       orderBy: { ngay_dat: 'desc' },
     });
@@ -62,9 +109,7 @@ const bookingService = {
         },
         loai_phong: {
           include: {
-            khach_san: {
-              select: { ten: true, dia_chi: true },
-            },
+            khach_san: HOTEL_INCLUDE,
           },
         },
         chi_tiet_dat_phong: true,
@@ -143,15 +188,22 @@ const bookingService = {
     const { trang_thai, keyword, ks_id, tu_ngay, den_ngay } = filters;
     const where = {};
 
-    if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
+    if (trang_thai === 'da_xac_nhan') {
+      where.trang_thai = { in: ['da_xac_nhan', 'cho_xac_nhan'] };
+    } else if (trang_thai === 'da_huy') {
+      where.trang_thai = { in: ['da_huy', 'tu_choi'] };
+    } else if (trang_thai && trang_thai !== 'all') {
+      where.trang_thai = trang_thai;
+    }
     if (ks_id) where.loai_phong = { ma_khach_san: Number(ks_id) };
 
     if (tu_ngay && den_ngay) {
-      where.ngay_dat = { gte: new Date(tu_ngay), lte: new Date(den_ngay) };
+      where.ngay_nhan_phong = { gte: new Date(tu_ngay) };
+      where.ngay_tra_phong = { lte: new Date(den_ngay) };
     } else if (tu_ngay) {
-      where.ngay_dat = { gte: new Date(tu_ngay) };
+      where.ngay_nhan_phong = { gte: new Date(tu_ngay) };
     } else if (den_ngay) {
-      where.ngay_dat = { lte: new Date(den_ngay) };
+      where.ngay_tra_phong = { lte: new Date(den_ngay) };
     }
 
     if (keyword) {
@@ -170,10 +222,18 @@ const bookingService = {
         loai_phong: {
           select: {
             ten_loai: true,
-            khach_san: { select: { ten: true, ma_khach_san: true } },
+            khach_san: ADMIN_HOTEL_LIST_SELECT,
           },
         },
-        thanh_toan: { select: { trang_thai: true, phuong_thuc: true, so_tien: true } },
+        thanh_toan: true,
+        hoan_tien: {
+          select: {
+            trang_thai: true,
+            so_tien_hoan: true,
+            ly_do: true,
+            ngay_yeu_cau: true,
+          },
+        },
         khuyen_mai: { select: { ma_code: true, ten: true } },
       },
       orderBy: { ngay_dat: 'desc' },
@@ -195,14 +255,7 @@ const bookingService = {
         },
         loai_phong: {
           include: {
-            khach_san: {
-              select: {
-                ten: true,
-                dia_chi: true,
-                so_sao: true,
-                doi_tac: { select: { ten_cong_ty: true } },
-              },
-            },
+            khach_san: ADMIN_HOTEL_DETAIL_SELECT,
           },
         },
         chi_tiet_dat_phong: { orderBy: { ngay: 'asc' } },
@@ -253,12 +306,22 @@ const bookingService = {
   },
 
   getStatsForAdmin: async () => {
-    const [total, cho_xac_nhan, da_xac_nhan, hoan_thanh, da_huy] = await Promise.all([
+    const [
+      total,
+      cho_xac_nhan,
+      da_xac_nhan,
+      da_checkin,
+      hoan_thanh,
+      da_huy,
+      tu_choi,
+    ] = await Promise.all([
       prisma.dat_phong.count(),
       prisma.dat_phong.count({ where: { trang_thai: 'cho_xac_nhan' } }),
       prisma.dat_phong.count({ where: { trang_thai: 'da_xac_nhan' } }),
+      prisma.dat_phong.count({ where: { trang_thai: 'da_checkin' } }),
       prisma.dat_phong.count({ where: { trang_thai: 'hoan_thanh' } }),
       prisma.dat_phong.count({ where: { trang_thai: 'da_huy' } }),
+      prisma.dat_phong.count({ where: { trang_thai: 'tu_choi' } }),
     ]);
 
     const now = new Date();
@@ -271,9 +334,10 @@ const bookingService = {
     return {
       total,
       cho_xac_nhan,
-      da_xac_nhan,
+      da_xac_nhan: da_xac_nhan + cho_xac_nhan,
+      da_checkin,
       hoan_thanh,
-      da_huy,
+      da_huy: da_huy + tu_choi,
       doanh_thu_thang: revenue._sum.thanh_toan_cuoi || 0,
     };
   },
@@ -282,24 +346,45 @@ const bookingService = {
 const processRefundOnCancel = async (tx, bookingId, lyDo) => {
   const booking = await tx.dat_phong.findUnique({
     where: { ma_dat_phong: Number(bookingId) },
-    include: { thanh_toan: true, hoan_tien: true },
+    include: {
+      thanh_toan: true,
+      hoan_tien: true,
+      loai_phong: {
+        include: {
+          khach_san: {
+            include: {
+              chinh_sach_huy: {
+                where: { trang_thai: 'hoat_dong' },
+                orderBy: { so_ngay_truoc: 'desc' },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!booking?.thanh_toan || booking.hoan_tien) return;
+  if (!wasBookingPaid(booking)) return;
 
-  const wasPaid =
-    booking.phuong_thuc_tt === 'truc_tuyen'
-    || booking.thanh_toan.trang_thai === 'thanh_cong';
-  if (!wasPaid) return;
+  const cancelDate = new Date();
+  const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
+  const { so_tien_hoan: soTienHoan } = calcRefundFromPolicy(
+    policies,
+    booking.ngay_nhan_phong,
+    cancelDate,
+    booking.thanh_toan_cuoi,
+  );
+
+  if (soTienHoan <= 0) return;
 
   await tx.hoan_tien.create({
     data: {
       ma_dat_phong: booking.ma_dat_phong,
       ma_thanh_toan: booking.thanh_toan.ma_thanh_toan,
-      so_tien_hoan: booking.thanh_toan.so_tien,
+      so_tien_hoan: soTienHoan,
       ly_do: lyDo || 'Hủy đơn đặt phòng',
-      trang_thai: 'da_hoan',
-      ngay_xu_ly: new Date(),
+      trang_thai: 'cho_xu_ly',
     },
   });
 };

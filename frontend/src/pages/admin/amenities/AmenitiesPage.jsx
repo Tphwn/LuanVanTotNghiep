@@ -52,8 +52,6 @@ const AmenitiesPage = () => {
     [list],
   );
 
-  const currentLoai = activeTab === 'hotel' ? 'khach_san' : activeTab === 'room' ? 'phong' : null;
-
   const hotelGroups = useMemo(() => groupAmenitiesByCategory(hotelAmenities, HOTEL_CATEGORY_GROUPS), [hotelAmenities]);
   const roomGroups = useMemo(() => groupAmenitiesByCategory(roomAmenities, ROOM_CATEGORY_GROUPS), [roomAmenities]);
   const currentGroups = activeTab === 'hotel' ? hotelGroups : roomGroups;
@@ -87,7 +85,7 @@ const AmenitiesPage = () => {
   };
 
   const openAddPage = () => {
-    navigate('/admin/amenities/create', { state: { loai: currentLoai || 'khach_san' } });
+    navigate('/admin/amenities/create');
   };
 
   const openApprove = (req) => {
@@ -144,7 +142,6 @@ const AmenitiesPage = () => {
           filteredGroups={filteredGroups}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onAdd={openAddPage}
         />
       )}
 

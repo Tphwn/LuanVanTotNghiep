@@ -6,6 +6,7 @@ router.get('/stats', ctrl.getStats);
 router.get('/transactions', ctrl.getTransactions);
 router.get('/transactions/:id', ctrl.getTransactionById);
 router.get('/refunds', ctrl.getRefunds);
+router.get('/refunds/:id', ctrl.getRefundById);
 router.patch('/refunds/:id/approve', ctrl.approveRefund);
 router.patch('/refunds/:id/reject', ctrl.rejectRefund);
 router.get('/commissions', ctrl.getCommissions);

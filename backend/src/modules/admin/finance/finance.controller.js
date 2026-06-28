@@ -43,3 +43,11 @@ exports.calculateReconciliation = async (req, res) => {
     res.json({ success: true, message: 'Đã tính toán đối soát thành công' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
+
+exports.updateReconciliation = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const data = await financeService.updateReconciliationStatus(req.params.id, status);
+    res.json({ success: true, data });
+  } catch (err) { res.status(400).json({ success: false, message: err.message }); }
+};

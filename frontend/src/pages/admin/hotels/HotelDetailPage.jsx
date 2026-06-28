@@ -148,51 +148,53 @@ const HotelDetailPage = () => {
               alt=""style={{ width:"100%", height: "100%", minHeight: 200, objectFit: "cover"}}
             />
           )}
-          <div style={{ padding:"24px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between"}}>
-            <div>
-              <div style={{ display:"flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{hotel.ten}</h1>
-                <span className={`badge ${st.cls}`}>{st.label}</span>
-                {hotel.so_sao > 0 && (
-                  <span style={{ color:"#b36b00", fontSize: 14 }}>{"".repeat(hotel.so_sao)}</span>
+          <div style={{ padding:"24px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: mainImg ? 200 : undefined }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display:"flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                  <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{hotel.ten}</h1>
+                  <span className={`badge ${st.cls}`}>{st.label}</span>
+                  {hotel.so_sao > 0 && (
+                    <span style={{ color:"#b36b00", fontSize: 14 }}>{"".repeat(hotel.so_sao)}</span>
+                  )}
+                </div>
+                <p style={{ margin: "0 0 4px", color: "#5a7a72", fontSize: 14 }}>
+                  <>Mã Khách sạn: </>{hotel.ma_khach_san} <br /> <> Địa điểm: </>{hotel.dia_diem?.ten_dia_diem} <br /> <> Đối tác: </>{partner?.ten_cong_ty}
+                </p>
+                <p style={{ margin: 0, fontSize: 13, color: "#888"}}> <> Địa chỉ: </>{hotel.dia_chi}</p>
+                {hotel.ly_do_tu_choi && (hotel.trang_thai ==="tu_choi"|| hotel.trang_thai ==="yeu_cau_sua") && (
+                  <div style={{
+                    marginTop: 12, padding: "10px 14px", background: "#fff8f0",
+                    borderRadius: 8, border: "1px solid #ffe0b0", fontSize: 13, color: "#b36b00",
+                  }}>
+                     {hotel.trang_thai === "tu_choi"?"Lý do từ chối":"Yêu cầu bổ sung"}: {hotel.ly_do_tu_choi}
+                  </div>
                 )}
               </div>
-              <p style={{ margin: "0 0 4px", color: "#5a7a72", fontSize: 14 }}>
-                <>Mã Khách sạn: </>{hotel.ma_khach_san} <br /> <> Địa điểm: </>{hotel.dia_diem?.ten_dia_diem} <br /> <> Đối tác: </>{partner?.ten_cong_ty}
-              </p> 
-              <p style={{ margin: 0, fontSize: 13, color: "#888"}}> <> Địa chỉ: </>{hotel.dia_chi}</p>
-              {hotel.ly_do_tu_choi && (hotel.trang_thai ==="tu_choi"|| hotel.trang_thai ==="yeu_cau_sua") && (
-                <div style={{
-                  marginTop: 12, padding: "10px 14px", background: "#fff8f0",
-                  borderRadius: 8, border: "1px solid #ffe0b0", fontSize: 13, color: "#b36b00",
-                }}>
-                   {hotel.trang_thai === "tu_choi"?"Lý do từ chối":"Yêu cầu bổ sung"}: {hotel.ly_do_tu_choi}
-                </div>
-              )}
-            </div>
 
-            <TableActions style={{ marginTop: 12, justifyContent: "flex-start" }}>
-              {hotel.trang_thai === "cho_duyet" && (
-                <>
-                  <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction("approve")}>
-                    {actionLoading ? "..." : "Duyệt"}
+              <TableActions style={{ flexShrink: 0, justifyContent: "flex-end" }}>
+                {hotel.trang_thai === "cho_duyet" && (
+                  <>
+                    <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction("approve")}>
+                      {actionLoading ? "..." : "Duyệt"}
+                    </ActionButton>
+                    <ActionButton variant="reject" disabled={actionLoading} onClick={() => handleAction("reject")}>
+                      Từ chối
+                    </ActionButton>
+                  </>
+                )}
+                {hotel.trang_thai === "hoat_dong" && (
+                  <ActionButton variant="lock" disabled={actionLoading} onClick={() => handleAction("lock")}>
+                    Khóa khách sạn
                   </ActionButton>
-                  <ActionButton variant="reject" disabled={actionLoading} onClick={() => handleAction("reject")}>
-                    Từ chối
+                )}
+                {hotel.trang_thai === "bi_khoa" && (
+                  <ActionButton variant="unlock" disabled={actionLoading} onClick={() => handleAction("unlock")}>
+                    Mở khóa
                   </ActionButton>
-                </>
-              )}
-              {hotel.trang_thai === "hoat_dong" && (
-                <ActionButton variant="lock" disabled={actionLoading} onClick={() => handleAction("lock")}>
-                  Khóa khách sạn
-                </ActionButton>
-              )}
-              {hotel.trang_thai === "bi_khoa" && (
-                <ActionButton variant="unlock" disabled={actionLoading} onClick={() => handleAction("unlock")}>
-                  Mở khóa
-                </ActionButton>
-              )}
-            </TableActions>
+                )}
+              </TableActions>
+            </div>
           </div>
         </div>
       </div>

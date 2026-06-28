@@ -31,7 +31,6 @@ const ROUTES = {
     USERS: '/admin/users',
     HOTELS: '/admin/hotels',
     BOOKINGS: '/admin/bookings',
-    PAYMENTS: '/admin/payments',
     AMENITIES: '/admin/amenities',
     ROOM_TYPES: '/admin/room-types',
     REVIEWS: '/admin/reviews',

@@ -12,8 +12,8 @@ export const PARTNER_TRANG_THAI = {
   da_xac_nhan: { label: 'Chờ check-in', cls: 'mgmt-status-text--info' },
   da_checkin: { label: 'Đã check-in', cls: 'mgmt-status-text--info' },
   hoan_thanh: { label: 'Hoàn thành', cls: 'mgmt-status-text--active' },
-  da_huy: { label: 'Đã hủy', cls: 'mgmt-status-text--locked' },
-  tu_choi: { label: 'Đã hủy', cls: 'mgmt-status-text--locked' },
+  da_huy: { label: 'Đã hủy', cls: 'mgmt-status-text--danger' },
+  tu_choi: { label: 'Đã hủy', cls: 'mgmt-status-text--danger' },
 };
 
 export const PHUONG_THUC = {
@@ -30,31 +30,48 @@ export const isOnlinePaid = (booking) => {
   return booking.thanh_toan?.trang_thai === 'thanh_cong';
 };
 
-export const isRefunded = (booking) => {
-  if (!booking) return false;
-  if (booking.hoan_tien?.trang_thai === 'da_hoan') return true;
-  if (!isCancelledBooking(booking)) return false;
-  return (
-    booking.phuong_thuc_tt === 'truc_tuyen'
-    || booking.thanh_toan?.trang_thai === 'thanh_cong'
-  );
-};
+const getRefundStatus = (booking) =>
+  booking?.hoan_tien?.trang_thai
+  || booking?.thong_tin_hoan_tien?.trang_thai_hoan
+  || null;
 
 export const getPaymentDisplay = (booking) => {
-  if (isRefunded(booking)) {
-    return {
-      shortLabel: 'Đã hoàn',
-      label: 'Đã hoàn tiền',
-      cls: 'mgmt-status-text--locked',
-      badge: 'badge-default',
-    };
-  }
-
   if (isCancelledBooking(booking)) {
+    const refundStatus = getRefundStatus(booking);
+    const refundInfo = booking?.thong_tin_hoan_tien;
+    const hasRefundAmount = Number(refundInfo?.so_tien_hoan || booking?.hoan_tien?.so_tien_hoan) > 0;
+
+    if (refundStatus === 'da_hoan') {
+      return {
+        shortLabel: '✓ Đã hoàn',
+        label: 'Đã hoàn tiền',
+        cls: 'mgmt-status-text--active',
+        badge: 'badge-success',
+      };
+    }
+
+    if (['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus) || (hasRefundAmount && !refundStatus)) {
+      return {
+        shortLabel: '⏳ Đang hoàn',
+        label: 'Đang hoàn tiền',
+        cls: 'mgmt-status-text--pending',
+        badge: 'badge-warning',
+      };
+    }
+
+    if (refundStatus === 'tu_choi') {
+      return {
+        shortLabel: 'Không hoàn',
+        label: 'Từ chối hoàn tiền',
+        cls: 'mgmt-status-text--danger',
+        badge: 'badge-danger',
+      };
+    }
+
     return {
-      shortLabel: '—',
-      label: 'Không phát sinh',
-      cls: 'mgmt-status-text--locked',
+      shortLabel: 'Không hoàn',
+      label: 'Không hoàn tiền',
+      cls: 'mgmt-status-text--muted',
       badge: 'badge-default',
     };
   }
@@ -90,6 +107,43 @@ export const formatCurrency = (amount) =>
 
 export const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString('vi-VN') : '—';
+
+export const formatHotelTime = (time, fallback = '14:00') => {
+  if (!time) return fallback;
+  const d = new Date(time);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return d.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+export const formatStayDateTime = (date, hotelTime, fallbackTime) => {
+  if (!date) return '—';
+  return {
+    date: formatDate(date),
+    time: formatHotelTime(hotelTime, fallbackTime),
+  };
+};
+
+export const addDays = (date, days = 1) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+export const formatOrderTime = (date) => {
+  if (!date) return '—';
+  const d = new Date(date);
+  const time = d.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  return `${time} ${d.toLocaleDateString('vi-VN')}`;
+};
 
 export const formatDateTime = (date) =>
   date ? new Date(date).toLocaleString('vi-VN') : '—';

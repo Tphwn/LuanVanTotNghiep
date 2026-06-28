@@ -154,9 +154,10 @@ const customerBookingService = {
 
     const paymentMethod = phuong_thuc_tt === 'tai_khach_san' ? 'Tại khách sạn' : 'Trực tuyến';
     const isOnline = phuong_thuc_tt === 'truc_tuyen';
+    const now = new Date();
 
     const booking = await prisma.$transaction(async (tx) => {
-      return tx.dat_phong.create({
+      const created = await tx.dat_phong.create({
         data: {
           ma_khach_hang: khachHang.ma_khach_hang,
           ma_loai_phong: room.ma_loai_phong,
@@ -177,12 +178,16 @@ const customerBookingService = {
             create: {
               so_tien: tongTien,
               phuong_thuc: paymentMethod,
+              cong_thanh_toan: isOnline ? 'MoMo (Ví điện tử)' : 'Tại khách sạn',
               trang_thai: isOnline ? 'thanh_cong' : 'cho',
-              ma_giao_dich: isOnline ? `PAY${Date.now()}` : null,
+              thoi_gian: now,
+              ngay_cap_nhat: isOnline ? new Date(now.getTime() + 120000) : null,
+              ma_tham_chieu: isOnline ? String(3145689000 + Math.floor(Math.random() * 999999)) : null,
             },
           },
         },
         include: {
+          thanh_toan: true,
           loai_phong: {
             select: {
               ten_loai: true,
@@ -191,6 +196,17 @@ const customerBookingService = {
           },
         },
       });
+
+      if (created.thanh_toan) {
+        await tx.thanh_toan.update({
+          where: { ma_thanh_toan: created.thanh_toan.ma_thanh_toan },
+          data: {
+            ma_giao_dich: `TXN-${String(created.thanh_toan.ma_thanh_toan).padStart(6, '0')}`,
+          },
+        });
+      }
+
+      return created;
     });
 
     return {

@@ -13,6 +13,7 @@ exports.getStats          = wrap(async (req) => svc.getStats());
 exports.getTransactions   = wrap(async (req) => svc.getTransactions(req.query));
 exports.getTransactionById= wrap(async (req) => svc.getTransactionById(req.params.id));
 exports.getRefunds        = wrap(async (req) => svc.getRefunds(req.query));
+exports.getRefundById     = wrap(async (req) => svc.getRefundById(req.params.id));
 exports.getCommissions    = wrap(async (req) => svc.getCommissions(req.query));
 exports.getCommissionByPartner = wrap(async () => svc.getCommissionByPartner());
 exports.getPartnerPayments= wrap(async () => svc.getPartnerPayments());
