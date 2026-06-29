@@ -1,0 +1,79 @@
+const STORAGE_KEY = 'hotel_search_criteria';
+
+export const getDefaultSearchForm = () => {
+  const addDays = (date, days) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
+
+  return {
+    ma_dia_diem: '',
+    ngay_nhan: addDays(new Date(), 1),
+    ngay_tra: addDays(new Date(), 2),
+    so_khach: 2,
+    so_giuong: 1,
+    tre_em: 0,
+    so_phong: 1,
+  };
+};
+
+export const loadSearchForm = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+export const saveSearchForm = (form) => {
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+};
+
+export const clearSearchForm = () => {
+  sessionStorage.removeItem(STORAGE_KEY);
+};
+
+export const hasSavedSearch = () => Boolean(loadSearchForm());
+
+/** URL params ưu tiên hơn session; không có thì dùng session; không có nữa thì default */
+export const resolveSearchForm = (fromUrl = {}) => {
+  const defaults = getDefaultSearchForm();
+  const saved = loadSearchForm();
+  const base = saved ? { ...defaults, ...saved } : defaults;
+
+  const patch = Object.fromEntries(
+    Object.entries(fromUrl).filter(([, v]) => v !== undefined && v !== '' && v !== null),
+  );
+
+  return { ...base, ...patch };
+};
+
+export const searchFormToParams = (form) => {
+  const params = new URLSearchParams();
+  if (form.ma_dia_diem) params.set('ma_dia_diem', String(form.ma_dia_diem));
+  if (form.ngay_nhan) params.set('ngay_nhan', form.ngay_nhan);
+  if (form.ngay_tra) params.set('ngay_tra', form.ngay_tra);
+  params.set('so_khach', String(Math.max(1, Number(form.so_khach) || 1)));
+  params.set('so_giuong', String(Math.max(1, Number(form.so_giuong) || 1)));
+  if (form.tre_em) params.set('tre_em', String(form.tre_em));
+  if (form.so_phong) params.set('so_phong', String(form.so_phong));
+  return params;
+};
+
+export const isDefaultSearchForm = (form) => {
+  const defaults = getDefaultSearchForm();
+  return (
+    !form.ma_dia_diem
+    && form.ngay_nhan === defaults.ngay_nhan
+    && form.ngay_tra === defaults.ngay_tra
+    && Number(form.so_khach) === defaults.so_khach
+    && Number(form.so_giuong) === defaults.so_giuong
+    && Number(form.tre_em) === defaults.tre_em
+    && Number(form.so_phong) === defaults.so_phong
+  );
+};

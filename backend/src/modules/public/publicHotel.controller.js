@@ -92,4 +92,21 @@ const getRoomById = async (req, res, next) => {
   }
 };
 
-module.exports = { getLocations, getPopularDestinations, listHotels, searchHotels, getHotelById, getRoomById };
+const getAmenityFilters = async (req, res, next) => {
+  try {
+    const data = await publicHotelService.getAmenityFilters();
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getLocations,
+  getPopularDestinations,
+  getAmenityFilters,
+  listHotels,
+  searchHotels,
+  getHotelById,
+  getRoomById,
+};

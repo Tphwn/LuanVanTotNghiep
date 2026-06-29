@@ -11,6 +11,7 @@ import {
   Star,
   Wallet,
   FileBarChart,
+  Handshake,
   Bell,
   LogOut,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const adminMenus = [
   { title: 'Đánh giá', path: '/admin/reviews', icon: Star },
   { title: 'Tài chính', path: '/admin/finance', icon: Wallet },
   { title: 'Báo cáo', path: '/admin/reports', icon: FileBarChart },
+  { title: 'Hợp tác', path: '/admin/partner-requests', icon: Handshake },
 ];
 
 const getInitials = (email) => {

@@ -6,6 +6,7 @@ const authMiddleware = require('../../middlewares/auth.middleware');
 router.get('/hotels', authMiddleware, ctrl.getHotels);
 router.get('/room-types', authMiddleware, ctrl.getRoomTypes);
 router.get('/', authMiddleware, ctrl.getReviews);
+router.get('/:id', authMiddleware, ctrl.getReviewById);
 router.put('/:id/respond', authMiddleware, ctrl.respond);
 
 module.exports = router;

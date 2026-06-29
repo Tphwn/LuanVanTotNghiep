@@ -1,0 +1,241 @@
+.partner-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: var(--font-family);
+  color: var(--color-text);
+}
+
+.partner-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.partner-header h1 {
+  font-size: 32px;
+  color: #3C7363;
+  margin-bottom: 10px;
+}
+
+.partner-header p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-lg);
+}
+
+.section-title {
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+  margin-top: 36px;
+}
+
+.section-title--center {
+  text-align: center;
+}
+
+.benefits-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.benefit-card {
+  background: #f0f7f5;
+  padding: 24px 20px;
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.benefit-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.benefit-card h3 {
+  font-size: var(--font-size-lg);
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+.benefit-card p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.steps-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.step-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.step-circle {
+  width: 44px;
+  height: 44px;
+  background-color: #3C7363;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 auto 12px;
+}
+
+.step-item h4 {
+  font-size: var(--font-size-md);
+  margin-bottom: 4px;
+}
+
+.step-item p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.form-container {
+  background-color: var(--color-white);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+}
+
+.form-group-title {
+  font-size: var(--font-size-lg);
+  color: #3C7363;
+  margin-bottom: 12px;
+  margin-top: 20px;
+}
+
+.form-group-title:first-of-type {
+  margin-top: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full-width {
+  grid-column: span 2;
+}
+
+.form-group label {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-text);
+}
+
+.form-control {
+  padding: 11px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  background: #fff;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #3C7363;
+}
+
+textarea.form-control {
+  resize: vertical;
+}
+
+.form-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.submit-btn {
+  grid-column: span 2;
+  margin-top: 8px;
+  padding: 14px;
+  background-color: #3C7363;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #2d5a4d;
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.submit-btn--inline {
+  grid-column: auto;
+  margin-top: 16px;
+  width: auto;
+  padding: 12px 24px;
+}
+
+.partner-success {
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.partner-success p {
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+}
+
+.contact-footer {
+  margin-top: 40px;
+  background-color: #3C7363;
+  color: #fff;
+  text-align: center;
+  padding: 28px 20px;
+  border-radius: var(--radius-md);
+}
+
+.contact-footer h3 {
+  margin-bottom: 8px;
+  font-size: var(--font-size-lg);
+}
+
+.contact-footer p {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--font-size-sm);
+  margin-bottom: 8px;
+}
+
+.contact-footer strong {
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group.full-width,
+  .submit-btn {
+    grid-column: span 1;
+  }
+}

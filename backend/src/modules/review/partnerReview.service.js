@@ -18,6 +18,7 @@ const mapReview = (dg) => ({
   diem_sach_se: dg.diem_sach_se,
   diem_dich_vu: dg.diem_dich_vu,
   diem_vi_tri: dg.diem_vi_tri,
+  diem_tien_nghi: dg.diem_tien_nghi,
   noi_dung: dg.noi_dung,
   phan_hoi_doi_tac: dg.phan_hoi_doi_tac,
   ngay_danh_gia: dg.ngay_danh_gia,
@@ -26,11 +27,33 @@ const mapReview = (dg) => ({
   da_phan_hoi: !!dg.phan_hoi_doi_tac,
   khach_hang: dg.khach_hang ? { ho_ten: dg.khach_hang.ho_ten } : null,
   ma_don_hang: dg.dat_phong?.ma_don_hang,
+  ma_dat_phong: dg.dat_phong?.ma_dat_phong,
+  ngay_nhan_phong: dg.dat_phong?.ngay_nhan_phong,
+  ngay_tra_phong: dg.dat_phong?.ngay_tra_phong,
   ma_loai_phong: dg.dat_phong?.loai_phong?.ma_loai_phong,
   ten_loai: dg.dat_phong?.loai_phong?.ten_loai,
   ma_khach_san: dg.dat_phong?.loai_phong?.khach_san?.ma_khach_san,
   ten_khach_san: dg.dat_phong?.loai_phong?.khach_san?.ten,
 });
+
+const reviewInclude = {
+  khach_hang: { select: { ho_ten: true } },
+  dat_phong: {
+    select: {
+      ma_dat_phong: true,
+      ma_don_hang: true,
+      ngay_nhan_phong: true,
+      ngay_tra_phong: true,
+      loai_phong: {
+        select: {
+          ma_loai_phong: true,
+          ten_loai: true,
+          khach_san: { select: { ma_khach_san: true, ten: true } },
+        },
+      },
+    },
+  },
+};
 
 const partnerReviewService = {
   getHotels: async (doiTacId) => {
@@ -83,21 +106,7 @@ const partnerReviewService = {
 
     const reviews = await prisma.danh_gia.findMany({
       where,
-      include: {
-        khach_hang: { select: { ho_ten: true } },
-        dat_phong: {
-          select: {
-            ma_don_hang: true,
-            loai_phong: {
-              select: {
-                ma_loai_phong: true,
-                ten_loai: true,
-                khach_san: { select: { ma_khach_san: true, ten: true } },
-              },
-            },
-          },
-        },
-      },
+      include: reviewInclude,
       orderBy: { ngay_danh_gia: 'desc' },
     });
 
@@ -105,6 +114,7 @@ const partnerReviewService = {
 
     const tong = mapped.length;
     const chuaPhanHoi = mapped.filter((r) => !r.da_phan_hoi).length;
+    const daPhanHoi = tong - chuaPhanHoi;
     const diemTB = tong > 0
       ? Math.round((mapped.reduce((s, r) => s + r.so_sao, 0) / tong) * 10) / 10
       : 0;
@@ -147,12 +157,29 @@ const partnerReviewService = {
       stats: {
         diem_trung_binh: diemTB,
         tong_danh_gia: tong,
+        da_phan_hoi: daPhanHoi,
         chua_phan_hoi: chuaPhanHoi,
         phan_bo_sao: phanBoSao,
       },
       theo_loai_phong: theoLoaiPhong,
       danh_sach: mapped,
     };
+  },
+
+  getReviewById: async (maDanhGia, doiTacId) => {
+    const review = await prisma.danh_gia.findFirst({
+      where: {
+        ma_danh_gia: Number(maDanhGia),
+        trang_thai: 'hien_thi',
+        dat_phong: {
+          loai_phong: { khach_san: { ma_doi_tac: doiTacId } },
+        },
+      },
+      include: reviewInclude,
+    });
+
+    if (!review) throw new Error('Không tìm thấy đánh giá');
+    return mapReview(review);
   },
 
   respond: async (maDanhGia, phan_hoi_doi_tac, doiTacId) => {
@@ -164,21 +191,7 @@ const partnerReviewService = {
           loai_phong: { khach_san: { ma_doi_tac: doiTacId } },
         },
       },
-      include: {
-        khach_hang: { select: { ho_ten: true } },
-        dat_phong: {
-          select: {
-            ma_don_hang: true,
-            loai_phong: {
-              select: {
-                ma_loai_phong: true,
-                ten_loai: true,
-                khach_san: { select: { ma_khach_san: true, ten: true } },
-              },
-            },
-          },
-        },
-      },
+      include: reviewInclude,
     });
 
     if (!review) throw new Error('Không tìm thấy đánh giá');
@@ -189,21 +202,7 @@ const partnerReviewService = {
         phan_hoi_doi_tac: phan_hoi_doi_tac.trim(),
         ngay_phan_hoi: new Date(),
       },
-      include: {
-        khach_hang: { select: { ho_ten: true } },
-        dat_phong: {
-          select: {
-            ma_don_hang: true,
-            loai_phong: {
-              select: {
-                ma_loai_phong: true,
-                ten_loai: true,
-                khach_san: { select: { ma_khach_san: true, ten: true } },
-              },
-            },
-          },
-        },
-      },
+      include: reviewInclude,
     });
 
     return mapReview(updated);

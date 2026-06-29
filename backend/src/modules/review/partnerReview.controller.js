@@ -42,6 +42,17 @@ exports.getReviews = async (req, res) => {
   }
 };
 
+exports.getReviewById = async (req, res) => {
+  try {
+    const doiTacId = await getDoiTacId(req.user.id);
+    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
+    const data = await service.getReviewById(req.params.id, doiTacId);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(404).json({ success: false, message: err.message });
+  }
+};
+
 exports.respond = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);

@@ -51,6 +51,7 @@ model danh_gia {
   diem_sach_se     Int?                @db.TinyInt
   diem_dich_vu     Int?                @db.TinyInt
   diem_vi_tri      Int?                @db.TinyInt
+  diem_tien_nghi   Int?                @db.TinyInt
   noi_dung         String?             @db.Text
   phan_hoi_doi_tac String?             @db.Text
   ngay_phan_hoi    DateTime?           @db.DateTime(0)
@@ -327,6 +328,7 @@ model nguoi_dung {
   thong_bao                                 thong_bao[]
   yeu_cau_tien_nghi                         yeu_cau_tien_nghi[]
   bao_cao_xu_ly                             bao_cao[]             @relation("bao_cao_admin")
+  yeu_cau_hop_tac_xu_ly                     yeu_cau_hop_tac[]     @relation("yeu_cau_hop_tac_admin")
 }
 
 model thanh_toan {
@@ -445,6 +447,26 @@ model doi_soat {
   doi_tac            doi_tac             @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_ds_dt")
 
   @@unique([ma_doi_tac, thang_nam], map: "uq_doi_soat")
+}
+
+model yeu_cau_hop_tac {
+  ma_yeu_cau     Int                         @id @default(autoincrement())
+  ho_ten         String                      @db.VarChar(100)
+  so_dien_thoai  String                      @db.VarChar(15)
+  email          String                      @db.VarChar(100)
+  ten_co_so      String                      @db.VarChar(150)
+  quy_mo         String                      @db.VarChar(50)
+  tinh_thanh     String                      @db.VarChar(100)
+  ghi_chu        String?                     @db.Text
+  trang_thai     yeu_cau_hop_tac_trang_thai  @default(cho_xu_ly)
+  admin_xu_ly_id Int?
+  phan_hoi       String?                     @db.Text
+  ngay_yeu_cau   DateTime                    @default(now()) @db.DateTime(0)
+  ngay_xu_ly     DateTime?                   @db.DateTime(0)
+  nguoi_dung     nguoi_dung?                 @relation("yeu_cau_hop_tac_admin", fields: [admin_xu_ly_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ycht_admin")
+
+  @@index([trang_thai], map: "idx_ycht_trang_thai")
+  @@index([admin_xu_ly_id], map: "fk_ycht_admin")
 }
 
 enum loai_enum {
@@ -611,4 +633,11 @@ enum doi_soat_trang_thai {
   chua_doi_soat
   da_doi_soat
   da_thanh_toan
+}
+
+enum yeu_cau_hop_tac_trang_thai {
+  cho_xu_ly
+  da_lien_he
+  tu_choi
+  da_hop_tac
 }

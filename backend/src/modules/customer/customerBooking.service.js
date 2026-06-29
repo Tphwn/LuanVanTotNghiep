@@ -224,7 +224,7 @@ const customerBookingService = {
   },
 
   createReview: async (userId, maDatPhong, payload) => {
-    const { so_sao, noi_dung, diem_sach_se, diem_dich_vu, diem_vi_tri } = payload;
+    const { so_sao, noi_dung, diem_sach_se, diem_dich_vu, diem_vi_tri, diem_tien_nghi } = payload;
     const rating = Number(so_sao);
 
     if (!rating || rating < 1 || rating > 5) {
@@ -265,6 +265,7 @@ const customerBookingService = {
         diem_sach_se: diem_sach_se != null ? Number(diem_sach_se) : null,
         diem_dich_vu: diem_dich_vu != null ? Number(diem_dich_vu) : null,
         diem_vi_tri: diem_vi_tri != null ? Number(diem_vi_tri) : null,
+        diem_tien_nghi: diem_tien_nghi != null ? Number(diem_tien_nghi) : null,
         trang_thai: 'cho_duyet',
       },
     });

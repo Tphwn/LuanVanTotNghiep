@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { Prisma } = require('@prisma/client');
 const { attachHotelImages, attachRoomImages } = require('../../utils/images');
 const {
   parseDate,
@@ -24,6 +25,30 @@ const getAvailableRooms = async (rooms, checkIn, checkOut, soKhach) => {
     }
   }
   return available;
+};
+
+const getHotelReviewStatsMap = async (hotelIds) => {
+  if (!hotelIds.length) return {};
+  const rows = await prisma.$queryRaw`
+    SELECT lp.ma_khach_san AS ma_khach_san,
+           COUNT(dg.ma_danh_gia) AS so_danh_gia,
+           AVG(dg.so_sao) AS diem_trung_binh
+    FROM loai_phong lp
+    INNER JOIN dat_phong dp ON dp.ma_loai_phong = lp.ma_loai_phong
+    INNER JOIN danh_gia dg ON dg.ma_dat_phong = dp.ma_dat_phong
+      AND dg.trang_thai = 'hien_thi'
+    WHERE lp.ma_khach_san IN (${Prisma.join(hotelIds)})
+    GROUP BY lp.ma_khach_san
+  `;
+  return rows.reduce((acc, row) => {
+    acc[Number(row.ma_khach_san)] = {
+      so_danh_gia: Number(row.so_danh_gia) || 0,
+      diem_trung_binh: row.diem_trung_binh != null
+        ? Math.round(Number(row.diem_trung_binh) * 10) / 10
+        : 0,
+    };
+    return acc;
+  }, {});
 };
 
 const publicHotelService = {
@@ -53,6 +78,22 @@ const publicHotelService = {
       .filter((l) => l.so_khach_san > 0)
       .sort((a, b) => b.so_khach_san - a.so_khach_san)
       .slice(0, 6);
+  },
+
+  getAmenityFilters: async () => {
+    return prisma.tien_nghi.findMany({
+      where: {
+        trang_thai: 'hoat_dong',
+        loai: { in: ['khach_san', 'ca_hai'] },
+      },
+      select: {
+        ma_tien_nghi: true,
+        ten: true,
+        bieu_tuong: true,
+        loai: true,
+      },
+      orderBy: { ten: 'asc' },
+    });
   },
 
   /**
@@ -101,7 +142,14 @@ const publicHotelService = {
         };
       });
 
-    return attachHotelImages(mapped);
+    const withImages = await attachHotelImages(mapped);
+    const reviewMap = await getHotelReviewStatsMap(withImages.map((h) => h.ma_khach_san));
+
+    return withImages.map((hotel) => ({
+      ...hotel,
+      so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
+      diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
+    }));
   },
 
   searchHotels: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2 }) => {

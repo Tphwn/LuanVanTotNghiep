@@ -35,6 +35,7 @@ import PartnerHotelFormPage from '../pages/partner/hotels/HotelFormPage';
 import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
 import PartnerRoomFormPage from '../pages/partner/rooms/RoomFormPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
+import PartnerReviewDetailPage from '../pages/partner/reviews/ReviewDetailPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
@@ -43,6 +44,8 @@ import PartnerBookingDetailPage from '../pages/partner/bookings/PartnerBookingDe
 import PricingPage from '../pages/partner/pricing/PricingPage';
 import PartnerPromotionsPage from '../pages/partner/promotions/PromotionsPage';
 
+import PartnerRequestsPage from '../pages/admin/partnerRequests/PartnerRequestsPage';
+import PartnerRequestDetailPage from '../pages/admin/partnerRequests/PartnerRequestDetailPage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
@@ -141,6 +144,7 @@ const AppRoutes = () => {
           <Route path="bookings" element={<PartnerBookingsPage />} />
           <Route path="bookings/:id" element={<PartnerBookingDetailPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
+          <Route path="reviews/:id" element={<PartnerReviewDetailPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
@@ -174,6 +178,8 @@ const AppRoutes = () => {
           <Route path="finance/transactions/:id" element={<TransactionDetailPage />} />
           <Route path="finance/refunds/:id" element={<RefundDetailPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
+          <Route path="partner-requests" element={<PartnerRequestsPage />} />
+          <Route path="partner-requests/:id" element={<PartnerRequestDetailPage />} />
           <Route path="partners" element={<PartnersPage />} />
           <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="hotels/:id" element={<HotelDetailPage />} />

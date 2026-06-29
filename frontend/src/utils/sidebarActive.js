@@ -37,6 +37,7 @@ export const isAdminMenuActive = (pathname, path) => {
     '/admin/bookings',
     '/admin/amenities',
     '/admin/room-types',
+    '/admin/partner-requests',
   ];
 
   if (nestedMenuPaths.includes(path) && pathname.startsWith(`${path}/`)) {

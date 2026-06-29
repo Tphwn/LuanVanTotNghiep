@@ -36,6 +36,7 @@ const ROUTES = {
     REVIEWS: '/admin/reviews',
     FINANCE: '/admin/finance',
     REPORTS: '/admin/reports',
+    PARTNER_REQUESTS: '/admin/partner-requests',
   },
 };
 

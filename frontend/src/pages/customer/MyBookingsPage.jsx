@@ -43,6 +43,7 @@ const MyBookingsPage = () => {
     diem_sach_se: 5,
     diem_dich_vu: 5,
     diem_vi_tri: 5,
+    diem_tien_nghi: 5,
   });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewMsg, setReviewMsg] = useState('');
@@ -90,6 +91,7 @@ const MyBookingsPage = () => {
       diem_sach_se: 5,
       diem_dich_vu: 5,
       diem_vi_tri: 5,
+      diem_tien_nghi: 5,
     });
     setReviewMsg('');
   };
@@ -115,19 +117,28 @@ const MyBookingsPage = () => {
     }
   };
 
-  const renderStarSelect = (name, label) => (
-    <label className="my-booking-review-field">
-      <span>{label}</span>
-      <select
-        value={reviewForm[name]}
-        onChange={(e) => setReviewForm((prev) => ({ ...prev, [name]: Number(e.target.value) }))}
-      >
-        {[5, 4, 3, 2, 1].map((n) => (
-          <option key={n} value={n}>{n} sao</option>
+  const renderStarField = (name, label, required = false) => (
+    <div className="customer-review-field" key={name}>
+      <span className={required ? 'required' : ''}>{label}</span>
+      <div className="customer-review-stars">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`customer-review-star-btn${reviewForm[name] === n ? ' active' : ''}`}
+            onClick={() => setReviewForm((prev) => ({ ...prev, [name]: n }))}
+          >
+            {n}
+          </button>
         ))}
-      </select>
-    </label>
+      </div>
+    </div>
   );
+
+  const fmtStayRange = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return '—';
+    return `${new Date(checkIn).toLocaleDateString('vi-VN')} - ${new Date(checkOut).toLocaleDateString('vi-VN')}`;
+  };
 
   if (!token) {
     return <Navigate to={ROUTES.HOME} replace />;
@@ -266,32 +277,41 @@ const MyBookingsPage = () => {
       {reviewTarget && (
         <div className="modal-overlay" onClick={closeReview} role="presentation">
           <div
-            className="content-card my-booking-review-modal"
+            className="content-card customer-review-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 style={{ margin: '0 0 8px' }}>Đánh giá trải nghiệm</h3>
-            <p style={{ margin: '0 0 16px', color: '#5a7a72', fontSize: 14 }}>
-              {reviewTarget.khach_san?.ten} · {reviewTarget.ten_loai_phong}
-            </p>
+            <h3 style={{ margin: '0 0 16px' }}>Đánh giá khách sạn</h3>
+
+            <div className="customer-review-info">
+              <div><strong>Khách sạn:</strong> {reviewTarget.khach_san?.ten}</div>
+              <div><strong>Loại phòng:</strong> {reviewTarget.ten_loai_phong}</div>
+              <div><strong>Thời gian lưu trú:</strong> {fmtStayRange(reviewTarget.ngay_nhan_phong, reviewTarget.ngay_tra_phong)}</div>
+            </div>
+
             <form onSubmit={handleReviewSubmit}>
-              {renderStarSelect('so_sao', 'Điểm tổng thể')}
-              {renderStarSelect('diem_sach_se', 'Độ sạch sẽ')}
-              {renderStarSelect('diem_dich_vu', 'Dịch vụ')}
-              {renderStarSelect('diem_vi_tri', 'Vị trí')}
-              <label className="my-booking-review-field">
-                <span>Nội dung (tuỳ chọn)</span>
+              {renderStarField('so_sao', 'Điểm tổng thể', true)}
+              {renderStarField('diem_sach_se', 'Sạch sẽ')}
+              {renderStarField('diem_dich_vu', 'Dịch vụ')}
+              {renderStarField('diem_vi_tri', 'Vị trí')}
+              {renderStarField('diem_tien_nghi', 'Tiện nghi')}
+
+              <label className="customer-review-field">
+                <span>Nhận xét của bạn</span>
                 <textarea
+                  className="customer-review-textarea"
                   rows={4}
                   value={reviewForm.noi_dung}
                   onChange={(e) => setReviewForm((prev) => ({ ...prev, noi_dung: e.target.value }))}
-                  placeholder="Chia sẻ trải nghiệm của bạn..."
+                  placeholder="Phòng sạch, nhân viên hỗ trợ tốt..."
                 />
               </label>
+
               {reviewMsg && (
                 <p style={{ color: '#e05c5c', fontSize: 13, margin: '0 0 12px' }}>{reviewMsg}</p>
               )}
+
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={closeReview}>
                   Hủy
