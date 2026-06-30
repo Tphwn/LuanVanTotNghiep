@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   fetchAmenities,
   removeAmenity,
@@ -8,11 +8,10 @@ import {
   approveRequest,
   rejectRequest,
 } from '../../../store/slices/amenitySlice';
-import { suggestIconSlugFromName, resolveIconSlug } from '../../../utils/amenityIcons';
 import { Plus } from 'lucide-react';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import { HOTEL_CATEGORY_GROUPS, ROOM_CATEGORY_GROUPS } from './constants';
-import { inferLoaiDeXuat, groupAmenitiesByCategory } from './utils';
+import { groupAmenitiesByCategory } from './utils';
 import { AmenityTabs } from './components/AmenityTabs';
 import { AmenityListSection } from './components/AmenityListSection';
 import { RequestsSection } from './components/RequestsSection';
@@ -22,16 +21,18 @@ import { RejectRequestModal } from './components/RejectRequestModal';
 const AmenitiesPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { list = [], requests = [], loading = false } = useSelector(
     (state) => state.amenities || {},
   );
 
-  const [activeTab, setActiveTab] = useState('hotel');
+  const [activeTab, setActiveTab] = useState(
+    () => location.state?.tab || 'hotel',
+  );
   const [keyword, setKeyword] = useState('');
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveModal, setApproveModal] = useState(null);
-  const [approveForm, setApproveForm] = useState({ loai: 'ca_hai', bieu_tuong: 'wifi' });
   const [requestFilter, setRequestFilter] = useState('cho_xu_ly');
 
   useEffect(() => {
@@ -80,8 +81,14 @@ const AmenitiesPage = () => {
     navigate(`/admin/amenities/${item.ma_tien_nghi}/edit`);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Xóa tiện nghi này?')) dispatch(removeAmenity(id));
+  const handleDelete = async (id) => {
+    if (!window.confirm('Xóa tiện nghi này?')) return;
+    try {
+      await dispatch(removeAmenity(id)).unwrap();
+    } catch (err) {
+      const msg = err?.message || err?.response?.data?.message || 'Không thể xóa tiện nghi';
+      alert(msg);
+    }
   };
 
   const openAddPage = () => {
@@ -89,21 +96,12 @@ const AmenitiesPage = () => {
   };
 
   const openApprove = (req) => {
-    const loai = inferLoaiDeXuat(req) || 'ca_hai';
-    const icon = suggestIconSlugFromName(req.ten_de_xuat);
     setApproveModal(req);
-    setApproveForm({ loai, bieu_tuong: icon });
   };
 
   const handleApproveSubmit = () => {
     if (!approveModal) return;
-    const bieu_tuong = resolveIconSlug(approveForm.bieu_tuong, approveModal.ten_de_xuat);
-    dispatch(approveRequest({
-      id: approveModal.ma_yeu_cau,
-      loai: approveForm.loai,
-      bieu_tuong,
-    })).then(() => {
-      dispatch(fetchAmenities());
+    dispatch(approveRequest({ id: approveModal.ma_yeu_cau })).then(() => {
       dispatch(fetchRequests());
       setApproveModal(null);
     });
@@ -161,10 +159,8 @@ const AmenitiesPage = () => {
 
       <ApproveRequestModal
         request={approveModal}
-        approveForm={approveForm}
         onClose={() => setApproveModal(null)}
         onSubmit={handleApproveSubmit}
-        onLoaiChange={(value) => setApproveForm({ ...approveForm, loai: value })}
       />
 
       <RejectRequestModal

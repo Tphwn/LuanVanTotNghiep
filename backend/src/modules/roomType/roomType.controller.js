@@ -10,7 +10,20 @@ const parseJsonField = (value, fallback) => {
   catch { return fallback; }
 };
 
-// Hàm xử lý ảnh đại diện
+const calcMoBanOnTotalChange = (existing, newSoPhong) => {
+  const oldTong = Number(existing.so_luong_phong) || 0;
+  const oldMoBan = Number(existing.so_luong_mo_ban) || 0;
+  if (existing.trang_thai !== 'hoat_dong') return oldMoBan;
+  // Đang mở bán hết → thêm/bớt phòng vật lý vẫn mở bán hết
+  if (oldTong > 0 && oldMoBan >= oldTong) return newSoPhong;
+  // Mở bán một phần, tăng tổng phòng → cộng thêm phần mở bán
+  if (oldMoBan > 0 && newSoPhong > oldTong) {
+    return Math.min(oldMoBan + (newSoPhong - oldTong), newSoPhong);
+  }
+  if (newSoPhong < oldTong) return Math.min(oldMoBan, newSoPhong);
+  return oldMoBan;
+};
+
 const applyMainImage = async (tx, roomId, { mainImageId, mainNewIndex, files = [] }) => {
   await tx.hinh_anh.updateMany({ 
     where: { loai_doi_tuong: 'loai_phong', ma_doi_tuong: roomId }, 
@@ -67,22 +80,33 @@ exports.getMyRooms = async (req, res) => {
 };
 
 // ===== API THÊM MỚI =====
+const MAX_ROOM_IMAGES = 30;
+
+const pickRoomImageFiles = (req) => {
+  const files = (req.files || []).filter((f) => f.fieldname === 'images');
+  if (files.length > MAX_ROOM_IMAGES) {
+    const err = new Error(`Chỉ được tải tối đa ${MAX_ROOM_IMAGES} ảnh mỗi loại phòng`);
+    err.statusCode = 400;
+    throw err;
+  }
+  return files;
+};
+
 exports.createRoomType = async (req, res) => {
   try {
     const data = req.body;
     const tienNghi = parseJsonField(data.tien_nghi_ids, []);
-    const files = req.files || [];
+    const files = pickRoomImageFiles(req);
     const hotelId = safeInt(data.ma_khach_san);
 
     const hotel = await prisma.khach_san.findUnique({
       where: { ma_khach_san: hotelId },
-      select: { trang_thai: true },
+      select: { ma_khach_san: true },
     });
     if (!hotel) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn' });
     }
 
-    const hotelActive = hotel.trang_thai === 'hoat_dong';
     const soPhong = safeInt(data.so_luong_phong);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -94,10 +118,10 @@ exports.createRoomType = async (req, res) => {
           dien_tich: safeInt(data.dien_tich),
           suc_chua: safeInt(data.suc_chua),
           so_luong_phong: soPhong,
-          so_luong_mo_ban: hotelActive ? soPhong : 0,
+          so_luong_mo_ban: soPhong,
           so_giuong: safeInt(data.so_giuong),
           mo_ta: data.mo_ta || '',
-          trang_thai: hotelActive ? 'hoat_dong' : 'an',
+          trang_thai: 'hoat_dong',
           loai_phong_tien_nghi: {
             create: tienNghi.map((id) => ({ ma_tien_nghi: safeInt(id) })),
           },
@@ -121,7 +145,8 @@ exports.createRoomType = async (req, res) => {
 
     res.status(201).json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
@@ -130,20 +155,31 @@ exports.updateRoomType = async (req, res) => {
   try {
     const roomId = parseInt(req.params.id);
     const data = req.body;
-    const files = req.files || []; // Đảm bảo luôn là mảng
-    
+    const files = pickRoomImageFiles(req);
+
+    const existing = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: roomId },
+    });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy loại phòng' });
+    }
+
+    const soPhong = safeInt(data.so_luong_phong);
+    const newMoBan = calcMoBanOnTotalChange(existing, soPhong);
+
     await prisma.$transaction(async (tx) => {
       await tx.loai_phong.update({
         where: { ma_loai_phong: roomId },
-        data: { 
-          ten_loai: data.ten_loai, 
-          gia_co_ban: safeFloat(data.gia_co_ban), 
-          dien_tich: safeInt(data.dien_tich), 
-          suc_chua: safeInt(data.suc_chua), 
-          so_luong_phong: safeInt(data.so_luong_phong), 
-          so_giuong: safeInt(data.so_giuong), 
-          mo_ta: data.mo_ta 
-        }
+        data: {
+          ten_loai: data.ten_loai,
+          gia_co_ban: safeFloat(data.gia_co_ban),
+          dien_tich: safeInt(data.dien_tich),
+          suc_chua: safeInt(data.suc_chua),
+          so_luong_phong: soPhong,
+          so_luong_mo_ban: newMoBan,
+          so_giuong: safeInt(data.so_giuong),
+          mo_ta: data.mo_ta,
+        },
       });
 
       await tx.loai_phong_tien_nghi.deleteMany({ where: { ma_loai_phong: roomId } });
@@ -153,8 +189,22 @@ exports.updateRoomType = async (req, res) => {
       }
 
       const parsedRemoved = parseJsonField(data.removedImageIds, []);
-      if (parsedRemoved.length > 0) {
-        await tx.hinh_anh.deleteMany({ where: { ma_hinh_anh: { in: parsedRemoved.map(Number) } } });
+      const removedIds = parsedRemoved.map(Number).filter((id) => !Number.isNaN(id));
+      const remainingImages = await tx.hinh_anh.count({
+        where: {
+          loai_doi_tuong: 'loai_phong',
+          ma_doi_tuong: roomId,
+          ...(removedIds.length > 0 ? { ma_hinh_anh: { notIn: removedIds } } : {}),
+        },
+      });
+      if (remainingImages + files.length > MAX_ROOM_IMAGES) {
+        const err = new Error(`Tối đa ${MAX_ROOM_IMAGES} ảnh mỗi loại phòng`);
+        err.statusCode = 400;
+        throw err;
+      }
+
+      if (removedIds.length > 0) {
+        await tx.hinh_anh.deleteMany({ where: { ma_hinh_anh: { in: removedIds } } });
       }
 
       if (files.length > 0) {
@@ -167,7 +217,8 @@ exports.updateRoomType = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Cập nhật thành công' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
@@ -177,7 +228,6 @@ exports.toggleRoomStatus = async (req, res) => {
     const roomId = parseInt(req.params.id, 10);
     const room = await prisma.loai_phong.findUnique({
       where: { ma_loai_phong: roomId },
-      include: { khach_san: { select: { trang_thai: true } } },
     });
 
     if (!room) {
@@ -185,13 +235,6 @@ exports.toggleRoomStatus = async (req, res) => {
     }
 
     const newStatus = room.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong';
-
-    if (newStatus === 'hoat_dong' && room.khach_san.trang_thai !== 'hoat_dong') {
-      return res.status(400).json({
-        success: false,
-        message: 'Khách sạn chưa hoạt động. Chỉ loại phòng của khách sạn đã duyệt mới hiển thị trên trang khách hàng.',
-      });
-    }
 
     const updated = await prisma.loai_phong.update({
       where: { ma_loai_phong: roomId },
@@ -212,7 +255,13 @@ exports.toggleRoomStatus = async (req, res) => {
 // ===== API LẤY TIỆN NGHI =====
 exports.getAmenitiesForRoom = async (req, res) => {
   try {
-    const amenities = await prisma.tien_nghi.findMany({ where: { trang_thai: 'hoat_dong' } });
+    const amenities = await prisma.tien_nghi.findMany({
+      where: {
+        loai: { in: ['phong', 'ca_hai'] },
+        trang_thai: 'hoat_dong',
+      },
+      orderBy: { ten: 'asc' },
+    });
     res.status(200).json({ success: true, data: amenities });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi server' });

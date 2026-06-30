@@ -21,7 +21,7 @@ export default function RoomFormPage() {
       setLoading(true);
       try {
         const [amenitiesRes, hotelsRes] = await Promise.all([
-          api.get('/partner/hotels/amenities'),
+          api.get('/partner/rooms/amenities'),
           api.get('/partner/hotels'),
         ]);
         setAmenities(amenitiesRes.data.data || []);

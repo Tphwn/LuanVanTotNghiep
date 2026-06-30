@@ -30,8 +30,8 @@ export const fetchRequests = createAsyncThunk("amenities/fetchRequests", async (
   return res.data.data;
 });
 
-export const approveRequest = createAsyncThunk("amenities/approveRequest", async ({ id, loai, bieu_tuong }) => {
-  const res = await api.patch(`${ENDPOINT}/requests/${id}/approve`, { loai, bieu_tuong });
+export const approveRequest = createAsyncThunk('amenities/approveRequest', async ({ id }) => {
+  const res = await api.patch(`${ENDPOINT}/requests/${id}/approve`);
   return res.data.data;
 });
 

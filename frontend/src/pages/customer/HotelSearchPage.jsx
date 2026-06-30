@@ -31,16 +31,6 @@ const ratingLabel = (score) => {
   return 'Trung bình';
 };
 
-const buildRoomDetailUrl = (hotelId, roomId, filters) => {
-  const params = new URLSearchParams();
-  if (filters.ma_dia_diem) params.set('ma_dia_diem', filters.ma_dia_diem);
-  if (filters.ngay_nhan) params.set('ngay_nhan', filters.ngay_nhan);
-  if (filters.ngay_tra) params.set('ngay_tra', filters.ngay_tra);
-  if (filters.so_khach) params.set('so_khach', filters.so_khach);
-  const qs = params.toString();
-  return `/hotels/${hotelId}/rooms/${roomId}${qs ? `?${qs}` : ''}`;
-};
-
 const buildHotelDetailUrl = (hotelId, filters) => {
   const params = new URLSearchParams();
   if (filters.ma_dia_diem) params.set('ma_dia_diem', filters.ma_dia_diem);
@@ -49,13 +39,6 @@ const buildHotelDetailUrl = (hotelId, filters) => {
   if (filters.so_khach) params.set('so_khach', filters.so_khach);
   const qs = params.toString();
   return `/hotels/${hotelId}${qs ? `?${qs}` : ''}`;
-};
-
-const getRoomImage = (room) => {
-  const roomImg = room.hinh_anh?.find((i) => i.la_anh_chinh) || room.hinh_anh?.[0];
-  if (roomImg) return roomImg;
-  const hotelImgs = room.khach_san?.hinh_anh || [];
-  return hotelImgs.find((i) => i.la_anh_chinh) || hotelImgs[0];
 };
 
 const getHotelImage = (hotel) => {
@@ -180,7 +163,6 @@ const HotelSearchPage = () => {
   const [locations, setLocations] = useState([]);
   const [amenityCatalog, setAmenityCatalog] = useState([]);
   const [hotels, setHotels] = useState([]);
-  const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -200,7 +182,8 @@ const HotelSearchPage = () => {
     so_phong: searchParams.get('so_phong') || '1',
   }), [searchParams]);
 
-  const isSearchMode = location.pathname === ROUTES.CUSTOMER.ROOM_SEARCH;
+  const hasDateSearch = Boolean(filters.ngay_nhan && filters.ngay_tra);
+  const isSearchRoute = location.pathname === ROUTES.CUSTOMER.ROOM_SEARCH;
 
   const searchBarInitial = useMemo(() => {
     const init = {
@@ -246,27 +229,34 @@ const HotelSearchPage = () => {
       setPriceMin('');
       setPriceMax('');
       try {
-        if (isSearchMode) {
-          const res = await publicHotelService.searchRooms(filters);
-          setRooms(res.data?.data || []);
-          setHotels([]);
-        } else {
-          const res = await publicHotelService.listHotels({
-            ma_dia_diem: filters.ma_dia_diem || undefined,
-          });
-          setHotels(res.data?.data || []);
-          setRooms([]);
-        }
+        const params = {
+          ma_dia_diem: filters.ma_dia_diem || undefined,
+          ngay_nhan: filters.ngay_nhan || undefined,
+          ngay_tra: filters.ngay_tra || undefined,
+          so_khach: filters.so_khach,
+        };
+
+        const res = (isSearchRoute && hasDateSearch)
+          ? await publicHotelService.searchHotels(params)
+          : await publicHotelService.listHotels({ ma_dia_diem: params.ma_dia_diem });
+
+        setHotels(res.data?.data || []);
       } catch (err) {
         setHotels([]);
-        setRooms([]);
         setError(err.response?.data?.message || 'Không thể tải dữ liệu');
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [filters.ma_dia_diem, filters.ngay_nhan, filters.ngay_tra, filters.so_khach, isSearchMode]);
+  }, [
+    filters.ma_dia_diem,
+    filters.ngay_nhan,
+    filters.ngay_tra,
+    filters.so_khach,
+    isSearchRoute,
+    hasDateSearch,
+  ]);
 
   const amenityGroups = useMemo(
     () => groupHotelAmenities(amenityCatalog),
@@ -274,12 +264,10 @@ const HotelSearchPage = () => {
   );
 
   const priceRange = useMemo(() => {
-    const prices = isSearchMode
-      ? rooms.map((r) => r.gia_hien_thi)
-      : hotels.map((h) => h.gia_tu).filter(Boolean);
+    const prices = hotels.map((h) => h.gia_tu).filter(Boolean);
     if (!prices.length) return { min: 0, max: 0 };
     return { min: Math.min(...prices), max: Math.max(...prices) };
-  }, [hotels, rooms, isSearchMode]);
+  }, [hotels]);
 
   useEffect(() => {
     if (priceRange.max > priceRange.min && priceMin === '' && priceMax === '') {
@@ -327,31 +315,6 @@ const HotelSearchPage = () => {
     return list;
   }, [hotels, priceMin, priceMax, selectedStars, selectedAmenities, sortBy]);
 
-  const filteredRooms = useMemo(() => {
-    let list = applyPriceFilter(rooms, (r) => r.gia_hien_thi);
-
-    if (selectedStars.length) {
-      list = list.filter((r) => selectedStars.includes(r.khach_san?.so_sao || 0));
-    }
-    if (selectedAmenities.length) {
-      list = list.filter((r) => {
-        const hotelAmenities = (r.khach_san?.tien_nghi || []).map((name) => {
-          const found = amenityCatalog.find((a) => a.ten === name);
-          return found?.ma_tien_nghi;
-        }).filter(Boolean);
-        return selectedAmenities.every((id) => hotelAmenities.includes(id));
-      });
-    }
-
-    if (sortBy === 'price_asc') list.sort((a, b) => a.gia_hien_thi - b.gia_hien_thi);
-    else if (sortBy === 'price_desc') list.sort((a, b) => b.gia_hien_thi - a.gia_hien_thi);
-    else if (sortBy === 'stars_desc') {
-      list.sort((a, b) => (b.khach_san?.so_sao || 0) - (a.khach_san?.so_sao || 0));
-    }
-
-    return list;
-  }, [rooms, priceMin, priceMax, selectedStars, selectedAmenities, sortBy, amenityCatalog]);
-
   const locationName = locations.find(
     (l) => String(l.ma_dia_diem) === String(filters.ma_dia_diem),
   )?.ten_dia_diem || 'Tất cả địa điểm';
@@ -363,8 +326,8 @@ const HotelSearchPage = () => {
     return Math.max(Math.round((b - a) / (1000 * 60 * 60 * 24)), 1);
   }, [filters.ngay_nhan, filters.ngay_tra]);
 
-  const resultCount = isSearchMode ? filteredRooms.length : filteredHotels.length;
-  const sourceCount = isSearchMode ? rooms.length : hotels.length;
+  const resultCount = filteredHotels.length;
+  const sourceCount = hotels.length;
 
   const handleBarSearch = (data) => {
     navigate(`${ROUTES.CUSTOMER.ROOM_SEARCH}?${searchFormToParams(data).toString()}`);
@@ -461,11 +424,11 @@ const HotelSearchPage = () => {
             <div className="search-summary-main">
               <h1 className="search-summary-title">{locationName}</h1>
               <p className="search-summary-meta">
-                {resultCount} nơi lưu trú được tìm thấy
+                {resultCount} khách sạn được tìm thấy
                 {hasActiveFilters && sourceCount !== resultCount && (
                   <span> (lọc từ {sourceCount})</span>
                 )}
-                {isSearchMode && filters.ngay_nhan && filters.ngay_tra && (
+                {hasDateSearch && (
                   <>
                     {' · '}
                     {fmtDate(filters.ngay_nhan)} – {fmtDate(filters.ngay_tra)}, {nights} đêm
@@ -499,7 +462,7 @@ const HotelSearchPage = () => {
         <div className="search-results-col">
           {loading && (
             <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>
-              {isSearchMode ? 'Đang tìm loại phòng phù hợp...' : 'Đang tải danh sách khách sạn...'}
+              Đang tìm khách sạn phù hợp...
             </div>
           )}
 
@@ -512,8 +475,8 @@ const HotelSearchPage = () => {
           {!loading && !error && sourceCount === 0 && (
             <div className="empty-state content-card">
               <p className="empty-state-text">
-                {isSearchMode
-                  ? 'Không tìm thấy loại phòng phù hợp. Hãy thử đổi địa điểm hoặc ngày.'
+                {hasDateSearch
+                  ? 'Không tìm thấy khách sạn phù hợp. Hãy thử đổi địa điểm hoặc ngày.'
                   : 'Chưa có khách sạn nào đang hoạt động tại địa điểm này.'}
               </p>
               <Link to={ROUTES.HOME} className="btn btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>
@@ -531,7 +494,7 @@ const HotelSearchPage = () => {
             </div>
           )}
 
-          {!loading && !error && !isSearchMode && filteredHotels.length > 0 && (
+          {!loading && !error && filteredHotels.length > 0 && (
             <div className="hotel-result-grid">
               {filteredHotels.map((hotel) => {
                 const img = getHotelImage(hotel);
@@ -573,75 +536,11 @@ const HotelSearchPage = () => {
                     <div className="hotel-result-aside">
                       <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
                       <div className="hotel-result-price-block">
-                        <span className="hotel-result-price-value">{fmt(hotel.gia_tu)} ₫</span>
+                        Giá từ: <span className="hotel-result-price-value">{fmt(hotel.gia_tu)} ₫</span>
                         <span className="hotel-result-price-unit">/ phòng / đêm</span>
                       </div>
                       <Link
                         to={buildHotelDetailUrl(hotel.ma_khach_san, filters)}
-                        className="btn btn-primary btn-sm hotel-result-cta"
-                      >
-                        Chọn phòng
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-
-          {!loading && !error && isSearchMode && filteredRooms.length > 0 && (
-            <div className="hotel-result-grid">
-              {filteredRooms.map((room) => {
-                const hotel = room.khach_san;
-                const img = getRoomImage(room);
-                return (
-                  <article key={room.ma_loai_phong} className="hotel-result-card room-result-card">
-                    <div className="hotel-result-media">
-                      {img ? (
-                        <img src={resolveUploadUrl(img.url)} alt={room.ten_loai} className="hotel-result-img" />
-                      ) : (
-                        <div className="hotel-result-img-placeholder" />
-                      )}
-                    </div>
-
-                    <div className="hotel-result-body">
-                      <h2 className="hotel-result-name">{hotel?.ten}</h2>
-                      <div className="hotel-result-type-row">
-                        <span className="hotel-result-type">Khách sạn</span>
-                        {hotel?.so_sao > 0 && (
-                          <span className="hotel-result-stars">{stars(hotel.so_sao)}</span>
-                        )}
-                      </div>
-                      <p className="room-result-hotel">{room.ten_loai}</p>
-                      <p className="hotel-result-location">
-                        {hotel?.dia_diem?.ten_dia_diem} · {hotel?.dia_chi}
-                      </p>
-                      {(room.tien_nghi?.length > 0 || hotel?.tien_nghi?.length > 0) && (
-                        <div className="hotel-result-amenities">
-                          {[...(room.tien_nghi || []), ...(hotel?.tien_nghi || [])]
-                            .filter((v, i, a) => a.indexOf(v) === i)
-                            .slice(0, 4)
-                            .map((t) => (
-                              <span key={t} className="hotel-result-amenity">{t}</span>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="hotel-result-aside">
-                      <HotelRatingBadge
-                        score={hotel?.diem_trung_binh}
-                        count={hotel?.so_danh_gia}
-                      />
-                      <div className="hotel-result-price-block">
-                        <span className="hotel-result-price-value">{fmt(room.gia_hien_thi)} ₫</span>
-                        <span className="hotel-result-price-unit">
-                          / phòng / đêm
-                          {nights > 1 && room.tong_gia ? ` · Tổng ${nights} đêm: ${fmt(room.tong_gia)} ₫` : ''}
-                        </span>
-                      </div>
-                      <Link
-                        to={buildRoomDetailUrl(hotel.ma_khach_san, room.ma_loai_phong, filters)}
                         className="btn btn-primary btn-sm hotel-result-cta"
                       >
                         Chọn phòng

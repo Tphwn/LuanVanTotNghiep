@@ -112,11 +112,8 @@ export const formatHotelTime = (time, fallback = '14:00') => {
   if (!time) return fallback;
   const d = new Date(time);
   if (Number.isNaN(d.getTime())) return fallback;
-  return d.toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  // Giờ nhận/trả phòng lưu dạng TIME UTC — hiển thị HH:mm không cộng múi giờ
+  return d.toISOString().slice(11, 16);
 };
 
 export const formatStayDateTime = (date, hotelTime, fallbackTime) => {

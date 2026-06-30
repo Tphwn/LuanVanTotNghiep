@@ -13,7 +13,11 @@ const getAvailableRooms = async (rooms, checkIn, checkOut, soKhach) => {
   );
 
   if (!checkIn || !checkOut) {
-    return eligible.map((r) => ({ ...r, gia_hien_thi: Number(r.gia_co_ban) }));
+    return eligible.map((r) => ({
+      ...r,
+      gia_hien_thi: Number(r.gia_co_ban),
+      phong_con_lai: Number(r.so_luong_mo_ban),
+    }));
   }
 
   const available = [];
@@ -49,6 +53,47 @@ const getHotelReviewStatsMap = async (hotelIds) => {
     };
     return acc;
   }, {});
+};
+
+const getRoomTypeReviewData = async (roomTypeId) => {
+  const [statsRow] = await prisma.$queryRaw`
+    SELECT COUNT(dg.ma_danh_gia) AS so_danh_gia,
+           AVG(dg.so_sao) AS diem_trung_binh
+    FROM danh_gia dg
+    INNER JOIN dat_phong dp ON dp.ma_dat_phong = dg.ma_dat_phong
+    WHERE dp.ma_loai_phong = ${Number(roomTypeId)}
+      AND dg.trang_thai = 'hien_thi'
+  `;
+
+  const danh_gia = await prisma.danh_gia.findMany({
+    where: {
+      trang_thai: 'hien_thi',
+      dat_phong: { ma_loai_phong: Number(roomTypeId) },
+    },
+    include: {
+      khach_hang: { select: { ho_ten: true, anh_dai_dien: true } },
+    },
+    orderBy: { ngay_danh_gia: 'desc' },
+    take: 15,
+  });
+
+  return {
+    so_danh_gia: Number(statsRow?.so_danh_gia) || 0,
+    diem_trung_binh: statsRow?.diem_trung_binh != null
+      ? Math.round(Number(statsRow.diem_trung_binh) * 10) / 10
+      : 0,
+    danh_gia: danh_gia.map((dg) => ({
+      ma_danh_gia: dg.ma_danh_gia,
+      so_sao: dg.so_sao,
+      noi_dung: dg.noi_dung,
+      diem_sach_se: dg.diem_sach_se,
+      diem_dich_vu: dg.diem_dich_vu,
+      diem_vi_tri: dg.diem_vi_tri,
+      diem_tien_nghi: dg.diem_tien_nghi,
+      ngay_danh_gia: dg.ngay_danh_gia,
+      khach_hang: dg.khach_hang,
+    })),
+  };
 };
 
 const publicHotelService = {
@@ -153,14 +198,13 @@ const publicHotelService = {
   },
 
   searchHotels: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2 }) => {
-    return publicHotelService.searchRooms({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach });
-  },
-
-  /** Tìm kiếm theo loại phòng (mỗi kết quả = 1 loại phòng khả dụng) */
-  searchRooms: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2 }) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
     const guests = Math.max(Number(so_khach) || 0, 0);
+
+    if (!checkIn || !checkOut) {
+      return publicHotelService.listHotels({ ma_dia_diem });
+    }
 
     const where = { trang_thai: 'hoat_dong' };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
@@ -170,7 +214,7 @@ const publicHotelService = {
       include: {
         dia_diem: true,
         khach_san_tien_nghi: {
-          include: { tien_nghi: { select: { ten: true, bieu_tuong: true } } },
+          include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
         },
         loai_phong: {
           where: { trang_thai: 'hoat_dong' },
@@ -180,70 +224,60 @@ const publicHotelService = {
             gia_co_ban: true,
             suc_chua: true,
             so_luong_mo_ban: true,
-            dien_tich: true,
-            so_giuong: true,
-            mo_ta: true,
+            so_luong_phong: true,
             trang_thai: true,
-            loai_phong_tien_nghi: {
-              include: { tien_nghi: { select: { ten: true } } },
-            },
+          },
+        },
+        _count: {
+          select: {
+            loai_phong: { where: { trang_thai: 'hoat_dong' } },
           },
         },
       },
       orderBy: [{ so_sao: 'desc' }, { ten: 'asc' }],
     });
 
-    const hotelIds = hotels.map((h) => h.ma_khach_san);
-    const hotelImages = hotelIds.length
-      ? await prisma.hinh_anh.findMany({
-        where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: { in: hotelIds } },
-        orderBy: { thu_tu: 'asc' },
-      })
-      : [];
-    const imagesByHotel = hotelImages.reduce((acc, img) => {
-      if (!acc[img.ma_doi_tuong]) acc[img.ma_doi_tuong] = [];
-      acc[img.ma_doi_tuong].push(img);
-      return acc;
-    }, {});
+    const hotelResults = [];
 
-    const roomResults = [];
     for (const hotel of hotels) {
       const availableRooms = await getAvailableRooms(hotel.loai_phong, checkIn, checkOut, guests);
-      const hotelAmenities = hotel.khach_san_tien_nghi.map((t) => t.tien_nghi?.ten).filter(Boolean);
+      if (!availableRooms.length) continue;
 
-      for (const room of availableRooms) {
-        const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-        const roomAmenities = (room.loai_phong_tien_nghi || [])
-          .map((t) => t.tien_nghi?.ten)
-          .filter(Boolean);
+      const nightlyPrices = await Promise.all(
+        availableRooms.map(async (room) => {
+          const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
+          return pricing.gia_tu_dem;
+        })
+      );
 
-        roomResults.push({
-          ma_loai_phong: room.ma_loai_phong,
-          ten_loai: room.ten_loai,
-          suc_chua: room.suc_chua,
-          dien_tich: room.dien_tich ? Number(room.dien_tich) : null,
-          so_giuong: room.so_giuong,
-          mo_ta: room.mo_ta,
-          phong_con_lai: room.phong_con_lai,
-          gia_hien_thi: pricing.gia_tu_dem,
-          tong_gia: pricing.tong_luong_tru,
-          so_dem: pricing.so_dem,
-          tien_nghi: roomAmenities,
-          khach_san: {
-            ma_khach_san: hotel.ma_khach_san,
-            ten: hotel.ten,
-            dia_chi: hotel.dia_chi,
-            so_sao: hotel.so_sao,
-            dia_diem: hotel.dia_diem,
-            tien_nghi: hotelAmenities,
-            hinh_anh: imagesByHotel[hotel.ma_khach_san] || [],
-          },
-        });
-      }
+      const giaTu = Math.min(...nightlyPrices);
+
+      hotelResults.push({
+        ma_khach_san: hotel.ma_khach_san,
+        ten: hotel.ten,
+        dia_chi: hotel.dia_chi,
+        mo_ta: hotel.mo_ta,
+        so_sao: hotel.so_sao,
+        dia_diem: hotel.dia_diem,
+        so_loai_phong: hotel._count.loai_phong,
+        so_phong_trong: availableRooms.reduce((sum, r) => sum + (r.phong_con_lai || 0), 0),
+        gia_tu: giaTu,
+        tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+      });
     }
 
-    return attachRoomImages(roomResults);
+    const withImages = await attachHotelImages(hotelResults);
+    const reviewMap = await getHotelReviewStatsMap(withImages.map((h) => h.ma_khach_san));
+
+    return withImages.map((hotel) => ({
+      ...hotel,
+      so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
+      diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
+    }));
   },
+
+  /** @deprecated Dùng searchHotels — giữ để tương thích API cũ */
+  searchRooms: async (params) => publicHotelService.searchHotels(params),
 
   getRoomById: async (hotelId, roomId, { ngay_nhan, ngay_tra, so_khach = 2 } = {}) => {
     const checkIn = parseDate(ngay_nhan);
@@ -322,10 +356,13 @@ const publicHotelService = {
       tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
     }]);
 
+    const reviewData = await getRoomTypeReviewData(roomId);
+
     return {
       ...roomWithImages,
       khach_san: hotelWithImages,
       loai_phong_khac: otherWithImages,
+      ...reviewData,
     };
   },
 
@@ -354,6 +391,9 @@ const publicHotelService = {
             so_giuong: true,
             mo_ta: true,
             trang_thai: true,
+            loai_phong_tien_nghi: {
+              include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
+            },
           },
         },
       },
@@ -371,6 +411,7 @@ const publicHotelService = {
           gia_hien_thi: pricing.gia_tu_dem,
           tong_gia: pricing.tong_luong_tru,
           so_dem: pricing.so_dem,
+          tien_nghi: (room.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
         };
       })
     );
@@ -392,7 +433,13 @@ const publicHotelService = {
         : null,
     }]);
 
-    return hotelWithImages;
+    const reviewMap = await getHotelReviewStatsMap([hotel.ma_khach_san]);
+
+    return {
+      ...hotelWithImages,
+      so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
+      diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
+    };
   },
 };
 

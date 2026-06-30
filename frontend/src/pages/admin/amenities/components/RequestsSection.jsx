@@ -22,7 +22,9 @@ export const RequestsSection = ({
     <div className="request-section-header">
       <div>
         <div className="request-section-title">Yêu cầu thêm tiện nghi từ đối tác</div>
-        <div className="request-section-sub">Xét duyệt để thêm vào danh mục.</div>
+        <div className="request-section-sub">
+          Duyệt hoặc từ chối để thông báo đối tác — thêm tiện nghi thủ công ở tab Khách sạn / Loại phòng.
+        </div>
       </div>
       <div className="request-subtabs">
         {REQUEST_FILTERS.map(({ id, label, countKey }) => {

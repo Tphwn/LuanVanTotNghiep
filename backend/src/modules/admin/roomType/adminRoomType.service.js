@@ -1,6 +1,32 @@
 const prisma = require('../../../config/prisma');
 const { attachRoomImages } = require('../../../utils/images');
 
+const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet'];
+
+const buildApprovedHotelWhere = (filters = {}) => {
+  const hotelWhere = { trang_thai: { in: APPROVED_HOTEL_STATUSES } };
+  if (filters.ma_dia_diem) hotelWhere.ma_dia_diem = Number(filters.ma_dia_diem);
+  if (filters.ma_doi_tac) hotelWhere.ma_doi_tac = Number(filters.ma_doi_tac);
+  return hotelWhere;
+};
+
+const buildRoomWhere = (filters = {}) => {
+  const { trang_thai, keyword } = filters;
+  const where = { khach_san: buildApprovedHotelWhere(filters) };
+
+  if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
+
+  if (keyword?.trim()) {
+    where.OR = [
+      { ten_loai: { contains: keyword.trim() } },
+      { khach_san: { ten: { contains: keyword.trim() } } },
+      { khach_san: { doi_tac: { ten_cong_ty: { contains: keyword.trim() } } } },
+    ];
+  }
+
+  return where;
+};
+
 const getLoaiGiuongLabel = (soGiuong, sucChua) => {
   const n = Number(soGiuong) || 1;
   const sc = Number(sucChua) || 1;
@@ -50,34 +76,15 @@ const getPriceSummary = async (maLoaiPhong, giaCoBan) => {
 };
 
 const getRoomTypes = async (filters = {}) => {
-  const { ma_khach_san, ma_doi_tac, trang_thai, keyword } = filters;
-  const where = {};
-
-  if (ma_khach_san || ma_doi_tac) {
-    where.khach_san = {};
-    if (ma_khach_san) where.khach_san.ma_khach_san = Number(ma_khach_san);
-    if (ma_doi_tac) where.khach_san.ma_doi_tac = Number(ma_doi_tac);
-  }
-
-  if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
-
-  if (keyword?.trim()) {
-    where.OR = [
-      { ten_loai: { contains: keyword.trim() } },
-      { khach_san: { ten: { contains: keyword.trim() } } },
-      { khach_san: { doi_tac: { ten_cong_ty: { contains: keyword.trim() } } } },
-    ];
-  }
-
   const rooms = await prisma.loai_phong.findMany({
-    where,
+    where: buildRoomWhere(filters),
     include: {
       khach_san: {
         select: {
           ma_khach_san: true,
           ten: true,
           trang_thai: true,
-          dia_diem: { select: { ten_dia_diem: true } },
+          dia_diem: { select: { ma_dia_diem: true, ten_dia_diem: true } },
           doi_tac: { select: { ma_doi_tac: true, ten_cong_ty: true } },
         },
       },
@@ -103,6 +110,7 @@ const getRoomTypeById = async (id) => {
   });
 
   if (!room) return null;
+  if (!APPROVED_HOTEL_STATUSES.includes(room.khach_san?.trang_thai)) return null;
 
   const [hinh_anh, gia, reviews, reviewAgg] = await Promise.all([
     prisma.hinh_anh.findMany({
@@ -165,25 +173,42 @@ const getRoomTypeById = async (id) => {
   };
 };
 
-const getFilterHotels = async () => {
-  return prisma.khach_san.findMany({
-    select: { ma_khach_san: true, ten: true, ma_doi_tac: true },
-    orderBy: { ten: 'asc' },
+const getFilterLocations = async () => {
+  const rows = await prisma.khach_san.groupBy({
+    by: ['ma_dia_diem'],
+    where: { trang_thai: { in: APPROVED_HOTEL_STATUSES } },
+  });
+  const ids = rows.map((r) => r.ma_dia_diem);
+  if (!ids.length) return [];
+
+  return prisma.dia_diem.findMany({
+    where: { ma_dia_diem: { in: ids } },
+    select: { ma_dia_diem: true, ten_dia_diem: true },
+    orderBy: { ten_dia_diem: 'asc' },
   });
 };
 
 const getFilterPartners = async () => {
+  const rows = await prisma.khach_san.groupBy({
+    by: ['ma_doi_tac'],
+    where: { trang_thai: { in: APPROVED_HOTEL_STATUSES } },
+  });
+  const ids = rows.map((r) => r.ma_doi_tac);
+  if (!ids.length) return [];
+
   return prisma.doi_tac.findMany({
+    where: { ma_doi_tac: { in: ids } },
     select: { ma_doi_tac: true, ten_cong_ty: true },
     orderBy: { ten_cong_ty: 'asc' },
   });
 };
 
-const getStats = async () => {
+const getStats = async (filters = {}) => {
+  const baseWhere = buildRoomWhere({ ...filters, trang_thai: 'all' });
   const [total, active, hidden] = await Promise.all([
-    prisma.loai_phong.count(),
-    prisma.loai_phong.count({ where: { trang_thai: 'hoat_dong' } }),
-    prisma.loai_phong.count({ where: { trang_thai: 'an' } }),
+    prisma.loai_phong.count({ where: baseWhere }),
+    prisma.loai_phong.count({ where: { ...baseWhere, trang_thai: 'hoat_dong' } }),
+    prisma.loai_phong.count({ where: { ...baseWhere, trang_thai: 'an' } }),
   ]);
   return { total, active, hidden };
 };
@@ -218,7 +243,7 @@ const showRoomType = async (id) => {
 module.exports = {
   getRoomTypes,
   getRoomTypeById,
-  getFilterHotels,
+  getFilterLocations,
   getFilterPartners,
   getStats,
   hideRoomType,

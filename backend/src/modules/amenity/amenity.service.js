@@ -49,6 +49,7 @@ const amenityService = {
         ten: data.ten,
         bieu_tuong: data.bieu_tuong,
         loai: data.loai,
+        danh_muc: data.danh_muc || null,
         trang_thai: "hoat_dong",
       },
     });
@@ -61,6 +62,7 @@ const amenityService = {
         ten: data.ten,
         bieu_tuong: data.bieu_tuong,
         loai: data.loai,
+        danh_muc: data.danh_muc || null,
       },
     });
   },
@@ -79,36 +81,24 @@ const amenityService = {
     return rows.map(mapRequestRow);
   },
 
-  approveRequest: async (id, adminId, options = {}) => {
+  approveRequest: async (id, adminId) => {
     const req = await prisma.yeu_cau_tien_nghi.findUnique({
       where: { ma_yeu_cau: Number(id) },
     });
     if (!req) throw new Error('Không tìm thấy yêu cầu');
     if (req.trang_thai !== 'cho_xu_ly') throw new Error('Yêu cầu đã được xử lý');
 
-    const loai = options.loai || req.loai_de_xuat || 'ca_hai';
-    const bieu_tuong = options.bieu_tuong || 'wifi';
-
-    const newAmenity = await prisma.tien_nghi.create({
-      data: {
-        ten: req.ten_de_xuat,
-        bieu_tuong,
-        loai,
-        trang_thai: 'hoat_dong',
-      },
-    });
-
     await prisma.yeu_cau_tien_nghi.update({
       where: { ma_yeu_cau: Number(id) },
       data: {
         trang_thai: 'da_tao',
-        tien_nghi_tao_id: newAmenity.ma_tien_nghi,
+        tien_nghi_tao_id: null,
         admin_xu_ly_id: Number(adminId),
         ngay_phan_hoi: new Date(),
       },
     });
 
-    await notifyAmenityApproved(req, loai);
+    await notifyAmenityApproved(req);
 
     return findRequestById(id);
   },

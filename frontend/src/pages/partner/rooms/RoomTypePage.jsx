@@ -15,7 +15,6 @@ const RoomTypePage = () => {
   const [loadingHotels, setLoadingHotels] = useState(true);
   const [selectedHotel, setSelected]    = useState(urlHotelId || '');
   const [rooms, setRooms]               = useState([]);
-  const [amenities, setAmenities]       = useState([]);
   const [loading, setLoading]           = useState(false);
   const [toast, setToast]               = useState(null);
   const [refreshKey, setRefreshKey]     = useState(0);
@@ -57,13 +56,9 @@ const RoomTypePage = () => {
     const load = async () => {
       setLoadingHotels(true);
       try {
-        const [hotelsRes, amenitiesRes] = await Promise.all([
-          api.get('/partner/hotels'),
-          api.get('/partner/hotels/amenities'),
-        ]);
+        const hotelsRes = await api.get('/partner/hotels');
         const hotelList = hotelsRes.data.data || [];
         setHotels(hotelList);
-        setAmenities(amenitiesRes.data.data || []);
         await loadHotelStats(hotelList);
 
         if (urlHotelId) {
@@ -112,8 +107,7 @@ const RoomTypePage = () => {
     const action = room.trang_thai === 'hoat_dong' ? 'ẩn' : 'mở';
     if (!window.confirm(`Xác nhận ${action} loại phòng "${room.ten_loai}"?`)) return;
     try {
-      const newStatus = room.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong';
-      await api.put(`/partner/rooms/${room.ma_loai_phong}`, { trang_thai: newStatus });
+      await api.patch(`/partner/rooms/${room.ma_loai_phong}/toggle-status`);
       showToast(`Đã ${action} loại phòng!`);
       triggerReloadRooms();
     } catch {

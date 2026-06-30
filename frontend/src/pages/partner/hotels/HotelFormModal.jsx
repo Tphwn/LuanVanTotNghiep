@@ -75,10 +75,16 @@ const HotelFormContent = ({
 
   const handlePropose = async () => {
     if (!proposeForm.ten_de_xuat.trim()) return alert('Nhập tên tiện nghi đề xuất');
+    const hotelName = form.ten?.trim();
+    if (!hotelName) return alert('Vui lòng nhập tên khách sạn trước khi gửi đề xuất');
     try {
+      const contextTag = hotel?.ma_khach_san
+        ? `[khách sạn:${hotel.ma_khach_san}:${hotelName}]`
+        : `[khách sạn:moi:${hotelName}]`;
       await api.post('/amenities/requests', {
-        ...proposeForm,
+        ten_de_xuat: proposeForm.ten_de_xuat.trim(),
         loai_de_xuat: 'khach_san',
+        mo_ta: `${contextTag} ${proposeForm.mo_ta || 'Đối tác yêu cầu tiện nghi cho khách sạn này'}`,
       });
       alert('Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
       setProposeForm({ ten_de_xuat: '', mo_ta: ''});
@@ -217,7 +223,12 @@ const HotelFormContent = ({
                 <textarea className="search-input"rows={3} style={{ resize:'vertical', width: '100%', boxSizing: 'border-box'}} value={form.mo_ta} onChange={(e) => setForm({ ...form, mo_ta: e.target.value })} placeholder="Giới thiệu về khách sạn..."/>
               </div>
 
-              <AmenityRequestStatus loaiFilter="khach_san"refreshKey={requestRefresh} />
+              <AmenityRequestStatus
+                loaiFilter="khach_san"
+                refreshKey={requestRefresh}
+                contextId={hotel?.ma_khach_san || null}
+                contextName={form.ten?.trim() || ''}
+              />
 
               <div>
                 <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Tiện nghi khách sạn</label>

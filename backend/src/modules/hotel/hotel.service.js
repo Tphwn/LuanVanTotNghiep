@@ -152,14 +152,57 @@ const hotelService = {
     return { ...hotel, hinh_anh };
   },
 
-  approveHotel: async (id, adminId) => {
-    return prisma.khach_san.update({
-      where: { ma_khach_san: Number(id) },
-      data: {
-        trang_thai: 'hoat_dong',
-        duyet_boi_admin_id: Number(adminId),
-        ngay_duyet: new Date(),
+  /**
+   * Kích hoạt loại phòng bị ẩn do logic cũ (tạo khi KS còn chờ duyệt).
+   * Chỉ chạy khi KS vừa được duyệt — admin khóa loại phòng sau đó dùng chức năng riêng.
+   */
+  activateRoomsAfterHotelApproval: async (hotelId, tx = prisma) => {
+    const hotel = await tx.khach_san.findUnique({
+      where: { ma_khach_san: Number(hotelId) },
+      select: { ngay_duyet: true },
+    });
+
+    const stuckRooms = await tx.loai_phong.findMany({
+      where: {
+        ma_khach_san: Number(hotelId),
+        so_luong_mo_ban: 0,
+        so_luong_phong: { gt: 0 },
+        OR: [
+          { trang_thai: 'an' },
+          {
+            trang_thai: 'hoat_dong',
+            ...(hotel?.ngay_duyet ? { ngay_tao: { lte: hotel.ngay_duyet } } : {}),
+          },
+        ],
       },
+    });
+
+    await Promise.all(
+      stuckRooms.map((room) => tx.loai_phong.update({
+        where: { ma_loai_phong: room.ma_loai_phong },
+        data: {
+          trang_thai: 'hoat_dong',
+          so_luong_mo_ban: room.so_luong_phong,
+        },
+      }))
+    );
+
+    return stuckRooms.length;
+  },
+
+  approveHotel: async (id, adminId) => {
+    return prisma.$transaction(async (tx) => {
+      const hotel = await tx.khach_san.update({
+        where: { ma_khach_san: Number(id) },
+        data: {
+          trang_thai: 'hoat_dong',
+          duyet_boi_admin_id: Number(adminId),
+          ngay_duyet: new Date(),
+        },
+      });
+
+      await hotelService.activateRoomsAfterHotelApproval(id, tx);
+      return hotel;
     });
   },
 

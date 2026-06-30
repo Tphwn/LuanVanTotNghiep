@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import api from "../../../services/api";
 import { resolveUploadUrl } from "../../../utils/media";
 import ActionButton from "../../../components/common/ActionButton";
@@ -30,6 +30,8 @@ const InfoItem = ({ label, value, highlight }) => (
 const RoomDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo = location.state?.backTo || "/admin/room-types";
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("amenities");
@@ -75,7 +77,7 @@ const RoomDetailPage = () => {
     return (
       <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
         <p style={{ color: "#e05c5c", marginBottom: 16 }}>{error || "Không tìm thấy loại phòng"}</p>
-        <BackButton variant="outline" onClick={() => navigate("/admin/room-types")} />
+        <BackButton variant="outline" onClick={() => navigate(backTo)} />
       </div>
     );
   }
@@ -99,7 +101,7 @@ const RoomDetailPage = () => {
     <div className="mgmt-page">
       <ManagementHeader
         title="Quản lý loại phòng"
-        onBack={() => navigate("/admin/room-types")}
+        onBack={() => navigate(backTo)}
       />
 
       <div style={{ marginBottom: 20 }}>
@@ -114,26 +116,27 @@ const RoomDetailPage = () => {
               </div>
             )}
             <div style={{ padding:"24px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between"}}>
-              <div>
-                <div style={{ display:"flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap"}}>
-                  <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{room.ten_loai}</h1>
-                  <span className={`badge ${st.badgeCls}`}>{st.label}</span>
-                </div>
-                <p style={{ margin:"0 0 4px", color: "#5a7a72", fontSize: 14 }}>
-                   <> Khách sạn: </><strong style={{ color: "#1a2e28"}}>{room.khach_san?.ten}</strong>
-                  {room.khach_san?.doi_tac?.ten_cong_ty && (
-                    <> <br /> Đối tác: <strong>{room.khach_san.doi_tac.ten_cong_ty}</strong></>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                <div>
+                  <div style={{ display:"flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap"}}>
+                    <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{room.ten_loai}</h1>
+                    <span className={`badge ${st.badgeCls}`}>{st.label}</span>
+                  </div>
+                  <p style={{ margin:"0 0 4px", color: "#5a7a72", fontSize: 14 }}>
+                     <> Khách sạn: </><strong style={{ color: "#1a2e28"}}>{room.khach_san?.ten}</strong>
+                    {room.khach_san?.doi_tac?.ten_cong_ty && (
+                      <> <br /> Đối tác: <strong>{room.khach_san.doi_tac.ten_cong_ty}</strong></>
+                    )}
+                  </p>
+                  {room.khach_san?.dia_diem?.ten_dia_diem && (
+                    <p style={{ margin: 0, fontSize: 13, color:"#888"}}> <> Địa điểm: </>{room.khach_san.dia_diem.ten_dia_diem}</p>
                   )}
-                </p>
-                {room.khach_san?.dia_diem?.ten_dia_diem && (
-                  <p style={{ margin: 0, fontSize: 13, color:"#888"}}> <> Địa điểm: </>{room.khach_san.dia_diem.ten_dia_diem}</p>
-                )}
-              </div>
-              <div style={{ display:"flex", gap: 8, marginTop: 16, flexWrap: "wrap"}}>
+                </div>
                 <ActionButton
                   variant={isHidden ? "unlock" : "lock"}
                   onClick={handleToggleStatus}
                   disabled={actionLoading}
+                  style={{ flexShrink: 0 }}
                 >
                   {actionLoading ? "Đang xử lý..." : isHidden ? "Mở loại phòng" : "Ẩn loại phòng"}
                 </ActionButton>

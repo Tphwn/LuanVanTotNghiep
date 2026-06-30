@@ -55,9 +55,8 @@ exports.approveRequest = async (req, res) => {
     const data = await amenityService.approveRequest(
       req.params.id,
       req.user?.id || 1,
-      { loai: req.body.loai, bieu_tuong: req.body.bieu_tuong }
     );
-    res.json({ success: true, data, message: 'Đã duyệt và tạo tiện nghi mới' });
+    res.json({ success: true, data, message: 'Đã duyệt yêu cầu' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

@@ -97,7 +97,18 @@ const roomService = {
         dien_tich: dien_tich ? Number(dien_tich) : null,
         suc_chua: Number(suc_chua),
         so_luong_phong: Number(so_luong_phong),
-        so_luong_mo_ban: Number(so_luong_phong),
+        so_luong_mo_ban: (() => {
+          const oldTong = Number(room.so_luong_phong) || 0;
+          const oldMoBan = Number(room.so_luong_mo_ban) || 0;
+          const newTong = Number(so_luong_phong);
+          if (room.trang_thai !== 'hoat_dong') return oldMoBan;
+          if (oldTong > 0 && oldMoBan >= oldTong) return newTong;
+          if (oldMoBan > 0 && newTong > oldTong) {
+            return Math.min(oldMoBan + (newTong - oldTong), newTong);
+          }
+          if (newTong < oldTong) return Math.min(oldMoBan, newTong);
+          return oldMoBan;
+        })(),
         gia_co_ban: Number(gia_co_ban),
         mo_ta,
         so_giuong: Number(so_giuong),

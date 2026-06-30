@@ -41,7 +41,9 @@ const RoomsPage = () => {
                 <div style={{ display:'flex', gap: 8 }}>
                   <button
                     style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #0958d9', background: '#fff', color: '#0958d9', cursor: 'pointer'}}
-                    onClick={() => navigate(`/admin/room-types/${room.id}`)}
+                    onClick={() => navigate(`/admin/room-types/${room.id}`, {
+                      state: { backTo: '/admin/room-types' },
+                    })}
                   >
                     Xem chi tiết
                   </button>

@@ -98,7 +98,7 @@ const InventoryPage = () => {
     <div className="mgmt-page">
       <ManagementHeader
         title="Quản lý Kho phòng"
-        subtitle="Theo dõi tồn kho và điều chỉnh số lượng phòng mở bán"
+        subtitle="Tạm điều chỉnh số phòng mở bán hoặc đóng bán (khác với thêm loại phòng mới)"
       />
 
       {toast && (

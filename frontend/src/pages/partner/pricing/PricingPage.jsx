@@ -236,7 +236,8 @@ const PricingPage = () => {
       const data = res.data.data || { room: null, days: [] };
       setCalendarData(data);
       if (data.room) {
-        setMoBan(String(data.room.mo_ban ?? 0));
+        const defaultQty = data.room.mo_ban > 0 ? data.room.mo_ban : data.room.tong_phong;
+        setMoBan(String(defaultQty));
       }
     } catch (err) {
       showToast(err.response?.data?.message || 'Lỗi tải lịch', 'error');
@@ -263,7 +264,12 @@ const PricingPage = () => {
       setSelectedFrom(dateStr);
       setSelectedTo(dateStr);
       const info = dayMap[dateStr];
-      if (info) setDonGia(formatCurrency(info.don_gia));
+      if (info) {
+        setDonGia(formatCurrency(info.don_gia));
+        if (info.so_luong_ap_dung != null) {
+          setMoBan(String(info.so_luong_ap_dung));
+        }
+      }
       return;
     }
 
@@ -277,7 +283,12 @@ const PricingPage = () => {
     setRangeAnchor(null);
 
     const info = dayMap[dateStr];
-    if (info) setDonGia(formatCurrency(info.don_gia));
+    if (info) {
+      setDonGia(formatCurrency(info.don_gia));
+      if (info.so_luong_ap_dung != null) {
+        setMoBan(String(info.so_luong_ap_dung));
+      }
+    }
   };
 
   const prevMonth = () => {
@@ -310,12 +321,15 @@ const PricingPage = () => {
       return showToast('Nhập giá hợp lệ', 'error');
     }
 
+    const roomInfo = calendarData.room;
     const moBanValue = Number(moBan);
-    if (Number.isNaN(moBanValue) || moBanValue < 0) {
-      return showToast('Số lượng mở bán không hợp lệ', 'error');
+    if (Number.isNaN(moBanValue) || moBanValue < 1) {
+      return showToast('Số phòng áp dụng giá phải từ 1', 'error');
+    }
+    if (moBanValue > Number(roomInfo?.tong_phong || 0)) {
+      return showToast(`Số phòng áp dụng không được vượt quá tổng phòng (${roomInfo.tong_phong})`, 'error');
     }
 
-    const roomInfo = calendarData.room;
     const giaCoBan = Number(roomInfo?.gia_co_ban || 0);
     const dates = getDatesInRange(selectedFrom, selectedTo);
 
@@ -329,6 +343,7 @@ const PricingPage = () => {
           ngay,
           don_gia: priceValue,
           loai_gia: getDefaultLoaiGia(ngay),
+          so_luong_ap_dung: moBanValue,
         });
       } else {
         toDelete.push({ ma_loai_phong: Number(selectedRoom), ngay });
@@ -344,13 +359,7 @@ const PricingPage = () => {
         await api.post('/partner/pricing/delete-bulk', { items: toDelete });
       }
 
-      if (moBanValue !== Number(roomInfo?.mo_ban ?? 0)) {
-        await api.put(`/partner/inventory/${selectedRoom}/open-sale`, {
-          so_luong_mo_ban: moBanValue,
-        });
-      }
-
-      showToast('Đã cập nhật giá và kho phòng');
+      showToast('Đã cập nhật giá theo ngày');
       setRangeAnchor(null);
       await loadCalendar();
     } catch (err) {
@@ -366,7 +375,7 @@ const PricingPage = () => {
     <div className="mgmt-page price-inv-page">
       <ManagementHeader
         title="Quản lý giá và kho phòng"
-        subtitle="Thiết lập giá theo ngày và số phòng mở bán cho từng loại phòng"
+        subtitle="Đặt giá theo ngày và số phòng áp dụng giá đó. Thêm loại phòng mới sẽ tự mở bán toàn bộ."
       />
 
       {toast && (
@@ -500,17 +509,19 @@ const PricingPage = () => {
             </div>
 
             <div className="price-inv-panel-section">
-              <h3>Sét phòng</h3>
+              <h3>Sét phòng áp dụng giá</h3>
               <div className="form-row">
-                <label>Mở bán</label>
+                <label>Số phòng</label>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   max={tongPhong}
                   value={moBan}
                   onChange={(e) => setMoBan(e.target.value)}
                 />
-                <p className="price-inv-hint">Có tổng cộng: {tongPhong} phòng</p>
+                <p className="price-inv-hint">
+                  Áp dụng giá trên cho {moBan || '—'} / {tongPhong} phòng trong khoảng ngày đã chọn
+                </p>
               </div>
             </div>
 

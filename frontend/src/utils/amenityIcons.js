@@ -24,7 +24,7 @@ export const suggestIconSlugFromName = (name) => {
     { keys: ['spa', 'massa', 'massage', 'ghế'], slug: 'massage' },
     { keys: ['điều hòa', 'máy lạnh', 'ac'], slug: 'ac' },
     { keys: ['tivi', 'tv'], slug: 'tv' },
-    { keys: ['bồn tắm', 'bathtub', 'tắm'], slug: 'bathtub' },
+    { keys: ['bồn tắm', 'bathtub', 'tắm', 'vòi sen', 'sen'], slug: 'bathtub' },
     { keys: ['bữa sáng', 'breakfast'], slug: 'breakfast' },
     { keys: ['bar', 'quầy bar'], slug: 'bar' },
     { keys: ['giặt', 'laundry'], slug: 'laundry' },

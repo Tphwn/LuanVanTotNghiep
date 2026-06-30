@@ -28,11 +28,11 @@ const notifyPartner = async (maDoiTac, { tieu_de, noi_dung }) => {
   });
 };
 
-const notifyAmenityApproved = async (req, loai) => {
-  const phamVi = LOAI_LABEL[loai] || LOAI_LABEL[req.loai_de_xuat] || 'hệ thống';
+const notifyAmenityApproved = async (req) => {
+  const phamVi = LOAI_LABEL[req.loai_de_xuat] || 'hệ thống';
   return notifyPartner(req.ma_doi_tac, {
-    tieu_de: 'Đề xuất tiện nghi đã được duyệt',
-    noi_dung: `Tiện nghi "${req.ten_de_xuat}" đã được admin duyệt và thêm vào danh mục ${phamVi}. Bạn có thể chọn tiện nghi này ngay bây giờ.`,
+    tieu_de: 'Yêu cầu tiện nghi đã được duyệt',
+    noi_dung: `Yêu cầu "${req.ten_de_xuat}" (${phamVi}) đã được admin duyệt. Tiện nghi sẽ được thêm vào danh mục — bạn có thể chọn sau khi admin cập nhật.`,
   });
 };
 

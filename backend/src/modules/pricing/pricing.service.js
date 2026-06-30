@@ -114,6 +114,9 @@ const pricingService = {
         gia_co_ban: giaCoBan,
         loai_gia: priceRow?.loai_gia || getDefaultLoaiGia(key),
         gia_tuy_chinh: priceRow != null && donGia !== giaCoBan,
+        so_luong_ap_dung: priceRow?.so_luong_ap_dung != null
+          ? Number(priceRow.so_luong_ap_dung)
+          : null,
         tong_phong: tongPhong,
         mo_ban: moBanBase,
         con_lai: Math.max(moBanBase - daDat, 0),
@@ -154,12 +157,16 @@ const pricingService = {
     const results = [];
 
     for (const entry of entries) {
-      const { ma_loai_phong, ngay, don_gia, loai_gia } = entry;
+      const { ma_loai_phong, ngay, don_gia, loai_gia, so_luong_ap_dung } = entry;
       if (!ma_loai_phong || !ngay) {
         throw new Error('Mỗi bản ghi giá cần có ma_loai_phong và ngay');
       }
 
       const ngayDate = parseLocalDate(ngay);
+      const apDung = so_luong_ap_dung != null && so_luong_ap_dung !== ''
+        ? Number(so_luong_ap_dung)
+        : null;
+
       const result = await prisma.bang_gia_phong.upsert({
         where: {
           ma_loai_phong_ngay: {
@@ -167,12 +174,17 @@ const pricingService = {
             ngay: ngayDate,
           },
         },
-        update: { don_gia: Number(don_gia), loai_gia },
+        update: {
+          don_gia: Number(don_gia),
+          loai_gia,
+          so_luong_ap_dung: apDung,
+        },
         create: {
           ma_loai_phong: Number(ma_loai_phong),
           ngay: ngayDate,
           don_gia: Number(don_gia),
           loai_gia,
+          so_luong_ap_dung: apDung,
         },
       });
       results.push(result);

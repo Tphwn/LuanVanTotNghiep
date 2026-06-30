@@ -1,6 +1,13 @@
 const errorHandler = (err, req, res, next) => {
-  // Log toàn bộ lỗi ra console để dễ dàng debug
   console.error(err);
+
+  if (err.name === 'MulterError' || err.code?.startsWith?.('LIMIT_')) {
+    const message = err.code === 'LIMIT_UNEXPECTED_FILE' && err.field === 'images'
+      ? 'Chỉ được tải tối đa 10 ảnh mỗi loại phòng'
+      : (err.message || 'Lỗi tải file');
+    return res.status(400).json({ success: false, message });
+  }
+
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,

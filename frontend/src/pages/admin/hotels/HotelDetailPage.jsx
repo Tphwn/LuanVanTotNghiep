@@ -323,7 +323,9 @@ const HotelDetailPage = () => {
                             iconOnly
                             icon={Eye}
                             title="Chi tiết"
-                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
+                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`, {
+                              state: { backTo: `/admin/hotels/${id}` },
+                            })}
                           />
                         </ActionCell>
                       </tr>

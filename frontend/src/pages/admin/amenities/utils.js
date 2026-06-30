@@ -11,7 +11,14 @@ export const inferLoaiDeXuat = (req) => {
 export const groupAmenitiesByCategory = (items, categoryGroups) => {
   const groups = categoryGroups.map((g) => ({ ...g, items: [] }));
   const catchAll = groups.find((g) => g.slugs.length === 0);
+  const groupById = Object.fromEntries(groups.map((g) => [g.id, g]));
+
   items.forEach((item) => {
+    if (item.danh_muc && groupById[item.danh_muc]) {
+      groupById[item.danh_muc].items.push(item);
+      return;
+    }
+
     const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
     let assigned = false;
     for (const g of groups) {
@@ -28,6 +35,9 @@ export const groupAmenitiesByCategory = (items, categoryGroups) => {
 
 export const findCategoryForAmenity = (item, categoryGroups) => {
   if (!item) return categoryGroups[0]?.id || null;
+  if (item.danh_muc && categoryGroups.some((g) => g.id === item.danh_muc)) {
+    return item.danh_muc;
+  }
   const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
   const matched = categoryGroups.find((g) => g.slugs.length > 0 && g.slugs.includes(slug));
   if (matched) return matched.id;

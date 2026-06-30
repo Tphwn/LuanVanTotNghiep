@@ -20,14 +20,14 @@ const getMainImage = (room) => {
 const RoomTypesPage = () => {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
-  const [hotels, setHotels] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [partners, setPartners] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
-  const [hotelFilter, setHotelFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -35,7 +35,7 @@ const RoomTypesPage = () => {
     setLoading(true);
     try {
       const params = {};
-      if (hotelFilter !== "all") params.ma_khach_san = hotelFilter;
+      if (locationFilter !== "all") params.ma_dia_diem = locationFilter;
       if (partnerFilter !== "all") params.ma_doi_tac = partnerFilter;
       if (statusFilter !== "all") params.trang_thai = statusFilter;
       if (debouncedKeyword.trim()) params.keyword = debouncedKeyword.trim();
@@ -43,14 +43,14 @@ const RoomTypesPage = () => {
       const res = await api.get("/admin/room-types", { params });
       setRooms(res.data.data || []);
       setStats(res.data.stats || null);
-      setHotels(res.data.hotels || []);
+      setLocations(res.data.locations || []);
       setPartners(res.data.partners || []);
     } catch {
       setRooms([]);
     } finally {
       setLoading(false);
     }
-  }, [hotelFilter, partnerFilter, statusFilter, debouncedKeyword]);
+  }, [locationFilter, partnerFilter, statusFilter, debouncedKeyword]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
@@ -60,17 +60,6 @@ const RoomTypesPage = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const filteredHotels = useMemo(() => {
-    if (partnerFilter === "all") return hotels;
-    return hotels.filter((h) => String(h.ma_doi_tac) === String(partnerFilter));
-  }, [hotels, partnerFilter]);
-
-  useEffect(() => {
-    if (hotelFilter !== "all" && !filteredHotels.some((h) => String(h.ma_khach_san) === String(hotelFilter))) {
-      setHotelFilter("all");
-    }
-  }, [filteredHotels, hotelFilter]);
 
   const handleTabChange = (tab) => {
     setStatusFilter(tab);
@@ -102,7 +91,7 @@ const RoomTypesPage = () => {
     <div className="mgmt-page">
       <ManagementHeader
         title="Quản lý loại phòng"
-        subtitle="Giám sát và kiểm soát loại phòng của tất cả khách sạn"
+        subtitle="Giám sát loại phòng của các khách sạn đã được duyệt"
       />
 
       <div className="mgmt-toolbar">
@@ -123,12 +112,12 @@ const RoomTypesPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={hotelFilter}
-          onChange={(e) => setHotelFilter(e.target.value)}
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
         >
-          <option value="all">Tất cả khách sạn</option>
-          {filteredHotels.map((h) => (
-            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+          <option value="all">Tất cả địa điểm</option>
+          {locations.map((loc) => (
+            <option key={loc.ma_dia_diem} value={loc.ma_dia_diem}>{loc.ten_dia_diem}</option>
           ))}
         </select>
       </div>
@@ -197,7 +186,9 @@ const RoomTypesPage = () => {
                           iconOnly
                           icon={Eye}
                           title="Chi tiết"
-                          onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`)}
+                          onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`, {
+                            state: { backTo: '/admin/room-types' },
+                          })}
                         />
                         <ActionButton
                           variant={isHidden ? "unlock" : "lock"}

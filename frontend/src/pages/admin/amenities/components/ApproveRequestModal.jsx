@@ -2,23 +2,28 @@ import { getAmenityLucideIcon } from '../../../../utils/amenityIcons';
 import { LOAI_LABEL } from '../constants';
 import { inferLoaiDeXuat } from '../utils';
 
+const TARGET_TAB_HINT = {
+  khach_san: 'Tiện nghi khách sạn',
+  phong: 'Tiện nghi loại phòng',
+  ca_hai: 'Tiện nghi khách sạn hoặc loại phòng',
+};
+
 export const ApproveRequestModal = ({
   request,
-  approveForm,
   onClose,
   onSubmit,
-  onLoaiChange,
 }) => {
   if (!request) return null;
 
   const ApproveIcon = getAmenityLucideIcon(request.ten_de_xuat);
   const loaiDx = inferLoaiDeXuat(request);
+  const targetTab = TARGET_TAB_HINT[loaiDx] || 'tab tiện nghi tương ứng';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Duyệt đề xuất tiện nghi</h3>
+          <h3 className="modal-title">Duyệt yêu cầu tiện nghi</h3>
           <button type="button" className="modal-close" onClick={onClose}>×</button>
         </div>
 
@@ -39,27 +44,37 @@ export const ApproveRequestModal = ({
           </div>
         </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
-            Áp dụng cho
-          </label>
-          <div className="amenity-form-scope-row">
-            {[
-              { value: 'khach_san', label: 'Khách sạn', desc: 'Hiển thị khi tạo khách sạn' },
-              { value: 'phong', label: 'Loại phòng', desc: 'Hiển thị khi tạo loại phòng' },
-              { value: 'ca_hai', label: 'Cả hai', desc: 'Khách sạn & loại phòng' },
-            ].map(({ value, label, desc }) => (
-              <button
-                key={value}
-                type="button"
-                className={`amenity-scope-btn${approveForm.loai === value ? ' active' : ''}`}
-                onClick={() => onLoaiChange(value)}
-              >
-                <span className="amenity-scope-label">{label}</span>
-                <span className="amenity-scope-desc">{desc}</span>
-              </button>
-            ))}
+        {request.mo_ta && (
+          <div style={{
+            marginBottom: 16,
+            padding: '10px 12px',
+            background: '#f8fdfb',
+            borderRadius: 8,
+            fontSize: 13,
+            color: '#5a7a72',
+            border: '1px solid #e8f5f1',
+          }}
+          >
+            {request.mo_ta}
           </div>
+        )}
+
+        <div style={{
+          marginBottom: 20,
+          padding: '12px 14px',
+          background: '#fff8e6',
+          borderRadius: 8,
+          border: '1px solid #fac775',
+          fontSize: 13,
+          color: '#7a5a00',
+          lineHeight: 1.5,
+        }}
+        >
+          Xác nhận duyệt sẽ thông báo cho đối tác. Bạn cần tự thêm tiện nghi vào tab
+          {' '}
+          <strong>{targetTab}</strong>
+          {' '}
+          (có thể tách nhiều tiện nghi nếu đối tác gửi cùng lúc).
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

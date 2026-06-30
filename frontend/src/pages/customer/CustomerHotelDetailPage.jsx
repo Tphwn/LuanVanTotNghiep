@@ -1,29 +1,125 @@
-
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { createElement, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { ChevronLeft, ChevronRight, Images } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
+import RoomSpecs from '../../components/customer/RoomSpecs';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
+import { getAmenityLucideIcon } from '../../utils/amenityIcons';
 import ROUTES from '../../constants/routes';
+import { formatHotelTime } from '../../utils/bookingDisplay';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const stars = (n) => '★'.repeat(Math.max(0, Number(n) || 0));
 
-const formatTime = (d) => {
-  if (!d) return '—';
-  return new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit'});
+const buildQueryString = (query) => {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([k, v]) => { if (v) params.set(k, v); });
+  return params.toString();
+};
+
+const buildBookingUrl = (hotelId, roomId, query) => {
+  const params = new URLSearchParams();
+  params.set('ma_khach_san', String(hotelId));
+  params.set('ma_loai_phong', String(roomId));
+  if (query.ngay_nhan) params.set('ngay_nhan', query.ngay_nhan);
+  if (query.ngay_tra) params.set('ngay_tra', query.ngay_tra);
+  if (query.so_khach) params.set('so_khach', query.so_khach);
+  if (query.ma_dia_diem) params.set('ma_dia_diem', query.ma_dia_diem);
+  return `${ROUTES.CUSTOMER.BOOKING}?${params.toString()}`;
+};
+
+const AmenityIcon = ({ amenity }) => {
+  const Icon = getAmenityLucideIcon(amenity.bieu_tuong || amenity.ten);
+  return createElement(Icon, { size: 18, strokeWidth: 1.6, 'aria-hidden': true });
+};
+
+const RoomOfferCard = ({
+  room,
+  nights,
+  buildRoomUrl,
+  onBook,
+}) => {
+  const images = room.hinh_anh?.length ? room.hinh_anh : [];
+  const [imgIdx, setImgIdx] = useState(0);
+  const currentImg = images[imgIdx] || images.find((i) => i.la_anh_chinh) || images[0];
+  const amenityNames = (room.tien_nghi || []).map((t) => t.ten || t).slice(0, 6);
+
+  const prevImg = () => setImgIdx((i) => (images.length ? (i - 1 + images.length) % images.length : 0));
+  const nextImg = () => setImgIdx((i) => (images.length ? (i + 1) % images.length : 0));
+
+  return (
+    <article className="hotel-room-offer-card">
+      <div className="hotel-room-offer-media-col">
+        <div className="hotel-room-offer-media">
+          {currentImg ? (
+            <img src={resolveUploadUrl(currentImg.url)} alt={room.ten_loai} />
+          ) : (
+            <div className="hotel-room-offer-media-placeholder" />
+          )}
+          {images.length > 1 && (
+            <>
+              <button type="button" className="hotel-room-offer-nav hotel-room-offer-nav--prev" onClick={prevImg} aria-label="Ảnh trước">
+                <ChevronLeft size={18} />
+              </button>
+              <button type="button" className="hotel-room-offer-nav hotel-room-offer-nav--next" onClick={nextImg} aria-label="Ảnh sau">
+                <ChevronRight size={18} />
+              </button>
+            </>
+          )}
+        </div>
+        <Link to={buildRoomUrl(room.ma_loai_phong)} className="hotel-room-offer-detail-link">
+          Chi tiết phòng
+        </Link>
+      </div>
+
+      <div className="hotel-room-offer-body">
+        <h3 className="hotel-room-offer-name">{room.ten_loai}</h3>
+        <RoomSpecs
+          sucChua={room.suc_chua}
+          dienTich={room.dien_tich}
+          soGiuong={room.so_giuong}
+        />
+        {amenityNames.length > 0 && (
+          <ul className="hotel-room-offer-amenities">
+            {amenityNames.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="hotel-room-offer-aside">
+        <div className="hotel-room-offer-price">{fmt(room.gia_hien_thi)} VNĐ</div>
+        <p className="hotel-room-offer-tax-note">(Chưa bao gồm thuế và phí)</p>
+        {nights > 1 && room.tong_gia && (
+          <p className="hotel-room-offer-total">Tổng {nights} đêm: {fmt(room.tong_gia)} VNĐ</p>
+        )}
+        {room.phong_con_lai != null && room.so_luong_phong != null && (
+          <p className="hotel-room-offer-stock">Còn {room.phong_con_lai}/{room.so_luong_phong} phòng</p>
+        )}
+        <button type="button" className="btn btn-primary hotel-room-offer-cta" onClick={() => onBook(room.ma_loai_phong)}>
+          Đặt Phòng Ngay
+        </button>
+      </div>
+    </article>
+  );
 };
 
 const CustomerHotelDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useSelector((state) => state.auth);
   const [searchParams] = useSearchParams();
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const roomListRef = useRef(null);
 
   const query = useMemo(() => ({
     ma_dia_diem: searchParams.get('ma_dia_diem') || '',
@@ -35,16 +131,12 @@ const CustomerHotelDetailPage = () => {
   const isSearchMode = Boolean(query.ngay_nhan && query.ngay_tra);
 
   const buildRoomUrl = (roomId) => {
-    const params = new URLSearchParams();
-    Object.entries(query).forEach(([k, v]) => { if (v) params.set(k, v); });
-    const qs = params.toString();
+    const qs = buildQueryString(query);
     return `/hotels/${id}/rooms/${roomId}${qs ? `?${qs}` : ''}`;
   };
 
   const backUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    Object.entries(query).forEach(([k, v]) => { if (v) params.set(k, v); });
-    const qs = params.toString();
+    const qs = buildQueryString(query);
     const base = isSearchMode ? ROUTES.CUSTOMER.ROOM_SEARCH : ROUTES.CUSTOMER.HOTELS;
     return `${base}${qs ? `?${qs}` : ''}`;
   }, [query, isSearchMode]);
@@ -74,11 +166,24 @@ const CustomerHotelDetailPage = () => {
     load();
   }, [id, query]);
 
+  const scrollToRooms = () => {
+    roomListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleBookRoom = (roomId) => {
+    const bookingUrl = buildBookingUrl(id, roomId, query);
+    if (!token) {
+      navigate(ROUTES.LOGIN, { state: { from: bookingUrl } });
+      return;
+    }
+    navigate(bookingUrl);
+  };
+
   if (loading) {
     return (
       <div className="hotel-detail-page">
-        <div className="content-card"style={{ textAlign: 'center', padding: 64, color: '#5a7a72'}}>
-           Đang tải chi tiết khách sạn...
+        <div className="content-card" style={{ textAlign: 'center', padding: 64, color: '#5a7a72' }}>
+          Đang tải chi tiết khách sạn...
         </div>
       </div>
     );
@@ -87,8 +192,8 @@ const CustomerHotelDetailPage = () => {
   if (error || !hotel) {
     return (
       <div className="hotel-detail-page">
-        <div className="content-card"style={{ textAlign:'center', padding: 48 }}>
-          <p style={{ color: '#e05c5c', marginBottom: 16 }}> {error || 'Không tìm thấy khách sạn'}</p>
+        <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
+          <p style={{ color: '#e05c5c', marginBottom: 16 }}>{error || 'Không tìm thấy khách sạn'}</p>
           <BackButton to={backUrl} variant="outline" />
         </div>
       </div>
@@ -97,151 +202,162 @@ const CustomerHotelDetailPage = () => {
 
   const images = hotel.hinh_anh || [];
   const mainImg = images[activeImg] || images[0];
+  const sideImages = images.slice(1, 5);
+  const addressLine = [
+    hotel.dia_diem?.ten_dia_diem,
+    hotel.dia_chi,
+  ].filter(Boolean).join(' - ');
 
   return (
     <div className="hotel-detail-page">
       <BackButton to={backUrl} className="page-back-btn--standalone" />
 
-      <div className="hotel-detail-gallery">
-        {mainImg ? (
-          <img
-            src={resolveUploadUrl(mainImg.url)}
-            alt={hotel.ten}
-            className="hotel-detail-main-img"/>
-        ) : (
-          <div className="hotel-detail-main-img hotel-detail-img-placeholder"></div>
-        )}
-        {images.length > 1 && (
-          <div className="hotel-detail-thumbs">
-            {images.map((img, i) => (
-              <button
-                key={img.ma_hinh_anh}
-                type="button"className={`hotel-detail-thumb${i === activeImg ? 'active' : ''}`}
-                onClick={() => setActiveImg(i)}
-              >
-                <img src={resolveUploadUrl(img.url)} alt=""/>
-              </button>
-            ))}
+      {images.length > 0 ? (
+        <div className="hotel-gallery-mosaic hotel-gallery-mosaic--tall">
+          <div className="hotel-gallery-main">
+            {mainImg && (
+              <img src={resolveUploadUrl(mainImg.url)} alt={hotel.ten} />
+            )}
           </div>
-        )}
-      </div>
-
-      <div className="hotel-detail-header">
-        <div>
-          <h1 className="hotel-detail-name">{hotel.ten}</h1>
-          <p className="hotel-detail-location">
-             {hotel.dia_diem?.ten_dia_diem} · {hotel.dia_chi}
-          </p>
-          {hotel.so_sao > 0 && (
-            <div className="hotel-result-stars" style={{ marginTop: 8 }}>
-              {stars(hotel.so_sao)} · {hotel.so_sao} sao
+          {sideImages.length > 0 && (
+            <div className="hotel-gallery-side hotel-gallery-side--3rows">
+              {sideImages.map((img, i) => {
+                const realIndex = i + 1;
+                const isLast = i === sideImages.length - 1 && images.length > 5;
+                return (
+                  <button
+                    key={img.ma_hinh_anh || realIndex}
+                    type="button"
+                    className={`hotel-gallery-thumb${isLast ? ' hotel-gallery-thumb--more' : ''}`}
+                    onClick={() => (isLast ? setLightboxOpen(true) : setActiveImg(realIndex))}
+                  >
+                    <img src={resolveUploadUrl(img.url)} alt="" />
+                    {isLast && (
+                      <span className="hotel-gallery-more-label">
+                        <Images size={20} strokeWidth={1.5} style={{ marginBottom: 4 }} />
+                        Xem tất cả {images.length} hình
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
-        <div className="hotel-detail-booking-info">
-          {query.ngay_nhan && query.ngay_tra && (
-            <>
-              <div className="hotel-detail-booking-label">Thời gian lưu trú</div>
-              <div className="hotel-detail-booking-value">
-                {fmtDate(query.ngay_nhan)} → {fmtDate(query.ngay_tra)}
-              </div>
-              <div className="hotel-detail-booking-sub">
-                {nights} đêm · {query.so_khach} khách
-              </div>
-            </>
-          )}
-          <div style={{ marginTop: 10, fontSize: 12, color: '#5a7a72'}}>
-            Nhận phòng {formatTime(hotel.gio_nhan_phong)} · Trả phòng {formatTime(hotel.gio_tra_phong)}
+      ) : (
+        <div className="hotel-detail-main-img hotel-detail-img-placeholder" style={{ marginBottom: 16 }} />
+      )}
+
+      <div className="hotel-detail-body">
+        <div className="hotel-detail-main-col">
+          <h1 className="hotel-detail-name">{hotel.ten}</h1>
+          <div className="hotel-detail-meta-row">
+            <span className="hotel-detail-type-badge">Khách sạn</span>
+            {hotel.so_sao > 0 && (
+              <span className="hotel-result-stars">{stars(hotel.so_sao)}</span>
+            )}
           </div>
+          {addressLine && (
+            <p className="hotel-detail-location">{addressLine}</p>
+          )}
+
+          {hotel.tien_nghi?.length > 0 && (
+            <section className="hotel-detail-block">
+              <h2 className="hotel-detail-block-title">Tiện nghi</h2>
+              <div className="hotel-detail-amenity-grid">
+                {hotel.tien_nghi.map((tn) => (
+                  <div key={tn.ma_tien_nghi || tn.ten} className="hotel-detail-amenity-item">
+                    <span className="hotel-detail-amenity-icon">
+                      <AmenityIcon amenity={tn} />
+                    </span>
+                    <span>{tn.ten}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {hotel.mo_ta && (
+            <section className="hotel-detail-block">
+              <h2 className="hotel-detail-block-title">Giới thiệu</h2>
+              <p className="hotel-detail-intro">{hotel.mo_ta}</p>
+            </section>
+          )}
         </div>
+
+        <aside className="hotel-detail-booking-card">
+          {hotel.gia_tu && (
+            <div className="hotel-detail-booking-price-row">
+              <span className="hotel-detail-booking-price-label">Giá từ:</span>
+              <span className="hotel-detail-booking-price-value">{fmt(hotel.gia_tu)} VNĐ</span>
+            </div>
+          )}
+          {query.ngay_nhan && query.ngay_tra ? (
+            <p className="hotel-detail-booking-sub">
+              {fmtDate(query.ngay_nhan)} – {fmtDate(query.ngay_tra)} · {nights} đêm
+            </p>
+          ) : (
+            <p className="hotel-detail-booking-sub">Tổng cộng (bao gồm thuế và phí)</p>
+          )}
+          <div className="hotel-detail-check-times">
+            <div>
+              <span className="hotel-detail-check-label">Nhận phòng:</span>
+              <strong>{formatHotelTime(hotel.gio_nhan_phong, '14:00')}</strong>
+            </div>
+            <div>
+              <span className="hotel-detail-check-label">Trả phòng:</span>
+              <strong>{formatHotelTime(hotel.gio_tra_phong, '12:00')}</strong>
+            </div>
+          </div>
+          <button type="button" className="btn btn-primary hotel-detail-booking-btn" onClick={scrollToRooms}>
+            Chọn Phòng
+          </button>
+        </aside>
       </div>
 
-      {hotel.mo_ta && (
-        <div className="content-card"style={{ marginBottom: 20 }}>
-          <h3 className="content-card-title">Giới thiệu</h3>
-          <p style={{ margin: 0, fontSize: 14, color:'#5a7a72', lineHeight: 1.7 }}>{hotel.mo_ta}</p>
-        </div>
-      )}
-
-      {hotel.tien_nghi?.length > 0 && (
-        <div className="content-card"style={{ marginBottom: 20 }}>
-          <h3 className="content-card-title">Tiện nghi khách sạn</h3>
-          <div className="hotel-detail-amenities">
-            {hotel.tien_nghi.map((tn) => (
-              <span key={tn.ma_tien_nghi || tn.ten} className="hotel-detail-amenity">
-                {tn.ten}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="content-card">
-        <div className="content-card-header">
-          <h3 className="content-card-title"style={{ margin: 0 }}>
-             Loại phòng ({hotel.loai_phong?.length || 0})
-          </h3>
-          {hotel.gia_tu && (
-            <span style={{ fontSize: 13, color: '#5a7a72'}}>
-              Giá từ <strong style={{ color:'#b36b00' }}>{fmt(hotel.gia_tu)} ₫</strong>/đêm
-            </span>
-          )}
-        </div>
+      <section className="hotel-detail-rooms-section" ref={roomListRef}>
+        <h2 className="hotel-detail-rooms-heading">
+          Các Loại phòng có tại: {hotel.ten}
+        </h2>
 
         {!hotel.loai_phong?.length ? (
           <div className="empty-state">
             <p className="empty-state-text">Không có phòng trống cho khoảng thời gian đã chọn</p>
           </div>
         ) : (
-          <div className="hotel-detail-rooms">
-            {hotel.loai_phong.map((room) => {
-              const roomImg = room.hinh_anh?.find((i) => i.la_anh_chinh) || room.hinh_anh?.[0];
-              return (
-                <article key={room.ma_loai_phong} className="hotel-detail-room-card">
-                  {roomImg ? (
-                    <img src={resolveUploadUrl(roomImg.url)} alt={room.ten_loai} className="hotel-detail-room-img"/>
-                  ) : (
-                    <div className="hotel-detail-room-img hotel-detail-img-placeholder"></div>
-                  )}
-
-                  <div className="hotel-detail-room-body">
-                    <h4 className="hotel-detail-room-name">{room.ten_loai}</h4>
-                    {room.mo_ta && (
-                      <p className="hotel-detail-room-desc">{room.mo_ta}</p>
-                    )}
-                    <div className="hotel-detail-room-meta">
-                      <span> Tối đa {room.suc_chua} khách</span>
-                      {room.dien_tich && <span> {room.dien_tich} m²</span>}
-                      {room.so_giuong && <span> {room.so_giuong} giường</span>}
-                      {room.phong_con_lai != null && (
-                        <span className="badge badge-success">Còn {room.phong_con_lai} phòng</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="hotel-detail-room-price">
-                    <div className="hotel-detail-room-price-night">
-                      {fmt(room.gia_hien_thi)} ₫<span>/đêm</span>
-                    </div>
-                    {nights > 1 && room.tong_gia && (
-                      <div className="hotel-detail-room-total">
-                        Tổng {nights} đêm: <strong>{fmt(room.tong_gia)} ₫</strong>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => navigate(buildRoomUrl(room.ma_loai_phong))}
-                    >
-                      Xem phòng
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+          <div className="hotel-detail-room-list">
+            {hotel.loai_phong.map((room) => (
+              <RoomOfferCard
+                key={room.ma_loai_phong}
+                room={room}
+                nights={nights}
+                buildRoomUrl={buildRoomUrl}
+                onBook={handleBookRoom}
+              />
+            ))}
           </div>
         )}
-      </div>
+      </section>
+
+      {lightboxOpen && images.length > 0 && (
+        <div className="hotel-gallery-lightbox" role="dialog" aria-modal="true">
+          <button type="button" className="hotel-gallery-lightbox-close" onClick={() => setLightboxOpen(false)}>
+            ×
+          </button>
+          <div className="hotel-gallery-lightbox-grid">
+            {images.map((img, i) => (
+              <button
+                key={img.ma_hinh_anh || i}
+                type="button"
+                className={`hotel-gallery-lightbox-item${i === activeImg ? ' active' : ''}`}
+                onClick={() => { setActiveImg(i); setLightboxOpen(false); }}
+              >
+                <img src={resolveUploadUrl(img.url)} alt="" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -45,7 +45,7 @@ export const RequestCard = ({ req, onApprove, onReject }) => {
             disabled={!isPending}
             onClick={() => isPending && onApprove(req)}
           >
-            <Check size={13} /> Duyệt & thêm
+            <Check size={13} /> Duyệt
           </button>
         </div>
       </div>

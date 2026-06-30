@@ -1,6 +1,6 @@
 import {
   Building2, BedDouble, ConciergeBell, MapPin, Wifi,
-  Bus, UtensilsCrossed, Shield, Monitor,
+  Bus, UtensilsCrossed, Shield, Monitor, Droplets, ChefHat,
 } from 'lucide-react';
 
 export const LOAI_LABEL = {
@@ -15,10 +15,27 @@ export const REQUEST_STATUS = {
   tu_choi:   { label: 'Từ chối', cls: 'badge-danger' },
 };
 
+export const AMENITY_SCOPE = {
+  khach_san: { label: 'Tiện nghi khách sạn', desc: 'Hiển thị khi đối tác tạo / sửa khách sạn' },
+  phong: { label: 'Tiện nghi loại phòng', desc: 'Hiển thị khi đối tác tạo / sửa loại phòng' },
+};
+
 export const AMENITY_CATEGORY_GROUPS = [
   {
     id: 'phong', label: 'Tiện nghi phòng', Icon: BedDouble, loai: 'phong',
-    slugs: ['ac', 'fridge', 'bathtub', 'balcony', 'bed', 'safe', 'minibar', 'hairdryer', 'iron', 'desk', 'kitchen', 'coffee', 'phone', 'laundry', 'tv'],
+    slugs: ['ac', 'tv', 'balcony', 'bed', 'safe', 'iron', 'laundry', 'desk'],
+  },
+  {
+    id: 'phong_tam', label: 'Đồ dùng phòng tắm', Icon: Droplets, loai: 'phong',
+    slugs: ['bathtub', 'hairdryer', 'shower'],
+  },
+  {
+    id: 'bep', label: 'Tiện nghi bếp', Icon: ChefHat, loai: 'phong',
+    slugs: ['kitchen', 'fridge', 'minibar', 'coffee'],
+  },
+  {
+    id: 'ket_noi', label: 'Kết nối mạng', Icon: Wifi, loai: 'phong',
+    slugs: ['wifi', 'phone'],
   },
   {
     id: 'dich_vu', label: 'Dịch vụ khách sạn', Icon: ConciergeBell, loai: 'khach_san',
@@ -38,11 +55,7 @@ export const AMENITY_CATEGORY_GROUPS = [
   },
   {
     id: 'am_thuc', label: 'Ẩm thực', Icon: UtensilsCrossed, loai: 'khach_san',
-    slugs: ['restaurant', 'bar', 'breakfast', 'food', 'coffee', 'kitchen', 'minibar'],
-  },
-  {
-    id: 'ket_noi', label: 'Kết nối mạng', Icon: Wifi, loai: 'phong',
-    slugs: ['wifi', 'tv', 'phone'],
+    slugs: ['restaurant', 'bar', 'breakfast', 'food'],
   },
   {
     id: 'chung', label: 'Tiện nghi chung', Icon: Shield, loai: 'ca_hai',
@@ -59,5 +72,5 @@ export const HOTEL_CATEGORY_GROUPS = AMENITY_CATEGORY_GROUPS.filter((g) =>
 );
 
 export const ROOM_CATEGORY_GROUPS = AMENITY_CATEGORY_GROUPS.filter((g) =>
-  ['phong', 'ket_noi', 'chung', 'van_phong'].includes(g.id),
+  ['phong', 'phong_tam', 'bep', 'ket_noi', 'chung', 'van_phong'].includes(g.id),
 );

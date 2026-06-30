@@ -2,14 +2,15 @@ const service = require('./adminRoomType.service');
 
 exports.getRoomTypes = async (req, res, next) => {
   try {
-    const { ma_khach_san, ma_doi_tac, trang_thai, keyword } = req.query;
-    const [data, stats, hotels, partners] = await Promise.all([
-      service.getRoomTypes({ ma_khach_san, ma_doi_tac, trang_thai, keyword }),
-      service.getStats(),
-      service.getFilterHotels(),
+    const { ma_dia_diem, ma_doi_tac, trang_thai, keyword } = req.query;
+    const filters = { ma_dia_diem, ma_doi_tac, trang_thai, keyword };
+    const [data, stats, locations, partners] = await Promise.all([
+      service.getRoomTypes(filters),
+      service.getStats(filters),
+      service.getFilterLocations(),
       service.getFilterPartners(),
     ]);
-    res.json({ success: true, data, stats, hotels, partners });
+    res.json({ success: true, data, stats, locations, partners });
   } catch (err) {
     next(err);
   }
