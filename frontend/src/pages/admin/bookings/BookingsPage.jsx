@@ -85,40 +85,35 @@ const AdminBookingsPage = () => {
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
       />
-
-      <div className="mgmt-toolbar mgmt-toolbar--filters">
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Khách sạn</label>
-          <select
-            className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
-          >
-            <option value="all">Tất cả khách sạn</option>
-            {hotels.map((h) => (
-              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Ngày nhận</label>
-          <input
-            type="date"
-            className="mgmt-select-inline"
-            value={tuNgay}
-            onChange={(e) => setTuNgay(e.target.value)}
-          />
-        </div>
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label">Ngày trả</label>
-          <input
-            type="date"
-            className="mgmt-select-inline"
-            value={denNgay}
-            min={tuNgay}
-            onChange={(e) => setDenNgay(e.target.value)}
-          />
-        </div>
+      <div className="mgmt-toolbar">
+        <select
+          className="mgmt-select-inline"
+          value={hotelFilter}
+          onChange={(e) => setHotelFilter(e.target.value)}
+          aria-label="Lọc theo khách sạn"
+        >
+          <option value="all">Tất cả khách sạn</option>
+          {hotels.map((h) => (
+            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+          ))}
+        </select>
+        <span className="mgmt-toolbar-label">Ngày check-in</span>
+        <input
+          type="date"
+          className="mgmt-select-inline"
+          value={tuNgay}
+          onChange={(e) => setTuNgay(e.target.value)}
+          aria-label="Ngày nhận"
+        />
+        <span className="mgmt-toolbar-label">Ngày check-out</span>
+        <input
+          type="date"
+          className="mgmt-select-inline"
+          value={denNgay}
+          min={tuNgay}
+          onChange={(e) => setDenNgay(e.target.value)}
+          aria-label="Ngày trả"
+        />
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

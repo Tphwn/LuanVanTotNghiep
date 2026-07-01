@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSelector } from 'react-redux';
 import BackButton from '../../components/common/BackButton';
 import RoomSpecs from '../../components/customer/RoomSpecs';
-import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
+import { ROOM_CATEGORY_GROUPS } from '../admin/amenities/constants';
+import { groupAmenitiesByCategory } from '../admin/amenities/utils';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
@@ -26,14 +29,6 @@ const buildBookingUrl = (hId, roomId, query) => {
   if (query.so_khach) params.set('so_khach', query.so_khach);
   if (query.ma_dia_diem) params.set('ma_dia_diem', query.ma_dia_diem);
   return `${ROUTES.CUSTOMER.BOOKING}?${params.toString()}`;
-};
-
-const ratingLabel = (score) => {
-  if (!score) return '';
-  if (score >= 4.5) return 'Xuất sắc';
-  if (score >= 4) return 'Rất tốt';
-  if (score >= 3.5) return 'Tốt';
-  return 'Khá';
 };
 
 const CustomerRoomDetailPage = () => {
@@ -94,7 +89,7 @@ const CustomerRoomDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="hotel-detail-page">
+      <div className="room-detail-page">
         <div className="content-card" style={{ textAlign: 'center', padding: 64, color: '#5a7a72' }}>
           Đang tải chi tiết loại phòng...
         </div>
@@ -104,7 +99,7 @@ const CustomerRoomDetailPage = () => {
 
   if (error || !room) {
     return (
-      <div className="hotel-detail-page">
+      <div className="room-detail-page">
         <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
           <p style={{ color: '#e05c5c', marginBottom: 16 }}>{error || 'Không tìm thấy loại phòng'}</p>
           <BackButton to={backUrl} variant="outline" />
@@ -115,132 +110,139 @@ const CustomerRoomDetailPage = () => {
 
   const hotel = room.khach_san;
   const images = room.hinh_anh?.length ? room.hinh_anh : [];
-  const mainImg = images[activeImg] || images[0];
-  const sideImages = images.slice(1, 5);
+  const currentImg = images[activeImg] || images[0];
   const reviews = room.danh_gia || [];
-  const amenityNames = (room.tien_nghi || []).map((t) => t.ten || t);
+  const amenityGroups = room.tien_nghi?.length
+    ? groupAmenitiesByCategory(room.tien_nghi, ROOM_CATEGORY_GROUPS).filter((g) => g.items.length > 0)
+    : [];
+
+  const prevImg = () => {
+    if (!images.length) return;
+    setActiveImg((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const nextImg = () => {
+    if (!images.length) return;
+    setActiveImg((i) => (i + 1) % images.length);
+  };
 
   return (
-    <div className="hotel-detail-page">
-      <BackButton to={backUrl} label="Quay lại khách sạn" className="page-back-btn--standalone" />
+    <div className="room-detail-page">
+      <BackButton to={backUrl} label="Quay lại" className="page-back-btn--standalone" />
 
-      {images.length > 0 ? (
-        <div className="hotel-gallery-mosaic">
-          <div className="hotel-gallery-main">
-            {mainImg && (
-              <img src={resolveUploadUrl(mainImg.url)} alt={room.ten_loai} />
+      <p className="room-detail-hotel-name">{hotel?.ten}</p>
+
+      <div className="room-detail-layout">
+        <div className="room-detail-gallery">
+          <div className="room-detail-main-view">
+            {currentImg ? (
+              <img src={resolveUploadUrl(currentImg.url)} alt={room.ten_loai} />
+            ) : (
+              <div className="room-detail-main-placeholder" />
+            )}
+            {images.length > 1 && (
+              <>
+                <button type="button" className="room-detail-nav room-detail-nav--prev" onClick={prevImg} aria-label="Ảnh trước">
+                  <ChevronLeft size={22} />
+                </button>
+                <button type="button" className="room-detail-nav room-detail-nav--next" onClick={nextImg} aria-label="Ảnh sau">
+                  <ChevronRight size={22} />
+                </button>
+              </>
             )}
           </div>
-          {sideImages.length > 0 && (
-            <div className="hotel-gallery-side">
-              {sideImages.map((img, i) => {
-                const realIndex = i + 1;
-                const isLast = i === sideImages.length - 1 && images.length > 5;
-                return (
+
+          {images.length > 0 && (
+            <div className="room-detail-thumb-bar">
+              <span className="room-detail-thumb-label">Khác</span>
+              <div className="room-detail-thumb-list">
+                {images.map((img, i) => (
                   <button
-                    key={img.ma_hinh_anh || realIndex}
+                    key={img.ma_hinh_anh || i}
                     type="button"
-                    className={`hotel-gallery-thumb${isLast ? ' hotel-gallery-thumb--more' : ''}`}
-                    onClick={() => (isLast ? setActiveImg(0) : setActiveImg(realIndex))}
+                    className={`room-detail-thumb${i === activeImg ? ' active' : ''}`}
+                    onClick={() => setActiveImg(i)}
                   >
                     <img src={resolveUploadUrl(img.url)} alt="" />
-                    {isLast && (
-                      <span className="hotel-gallery-more-label">
-                        Xem tất cả hình ảnh ({images.length})
-                      </span>
-                    )}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <span className="room-detail-thumb-count">
+                {activeImg + 1}/{images.length}
+              </span>
             </div>
           )}
         </div>
-      ) : (
-        <div className="hotel-detail-main-img hotel-detail-img-placeholder" style={{ marginBottom: 16 }} />
-      )}
 
-      {images.length > 1 && (
-        <div className="hotel-detail-thumbs" style={{ marginBottom: 16 }}>
-          {images.map((img, i) => (
-            <button
-              key={img.ma_hinh_anh || i}
-              type="button"
-              className={`hotel-detail-thumb${i === activeImg ? ' active' : ''}`}
-              onClick={() => setActiveImg(i)}
-            >
-              <img src={resolveUploadUrl(img.url)} alt="" />
+        <aside className="room-detail-panel">
+          <h1 className="room-detail-title">{room.ten_loai}</h1>
+
+          <section className="room-detail-block">
+            <h2 className="room-detail-block-title">Thông tin phòng</h2>
+            <RoomSpecs
+              sucChua={room.suc_chua}
+              dienTich={room.dien_tich}
+              soGiuong={room.so_giuong}
+            />
+            {room.phong_con_lai != null && room.so_luong_phong != null && (
+              <p className="room-detail-stock">
+                Còn {room.phong_con_lai}/{room.so_luong_phong} phòng
+              </p>
+            )}
+            {query.ngay_nhan && query.ngay_tra && (
+              <p className="room-detail-dates">
+                {fmtDate(query.ngay_nhan)} – {fmtDate(query.ngay_tra)}
+                {nights > 1 ? ` · ${nights} đêm` : ''}
+              </p>
+            )}
+          </section>
+
+          {amenityGroups.length > 0 && (
+            <section className="room-detail-block">
+              <h2 className="room-detail-block-title">Tiện ích có tại phòng:</h2>
+              {amenityGroups.map((group) => (
+                <div key={group.id} className="room-detail-amenity-group">
+                  <h3 className="room-detail-amenity-group-title">{group.label}</h3>
+                  <div className="room-detail-amenity-tags">
+                    {group.items.map((item) => (
+                      <span key={item.ma_tien_nghi || item.ten} className="room-detail-amenity-tag">
+                        {item.ten}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          <div className="room-detail-booking">
+            <div className="room-detail-price-row">
+              <span className="room-detail-price-label">Giá:</span>
+              <span className="room-detail-price-value">{fmt(room.gia_hien_thi)} VNĐ</span>
+            </div>
+            {nights > 1 && room.tong_gia && (
+              <p className="room-detail-total">Tổng {nights} đêm: {fmt(room.tong_gia)} VNĐ</p>
+            )}
+            <button type="button" className="btn btn-primary room-detail-book-btn" onClick={handleBook}>
+              Đặt phòng ngay
             </button>
-          ))}
-        </div>
-      )}
-
-      <div className="hotel-detail-summary-bar">
-        <div className="hotel-detail-summary-left">
-          <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>{hotel?.ten}</p>
-          <h1 className="hotel-detail-name">{room.ten_loai}</h1>
-          <div style={{ marginTop: 8 }}>
-            <span className="hotel-detail-type-badge">Loại phòng</span>
           </div>
-          <RoomSpecs
-            sucChua={room.suc_chua}
-            dienTich={room.dien_tich}
-            soGiuong={room.so_giuong}
-          />
-        </div>
-
-        <div className="hotel-detail-summary-right">
-          {room.so_danh_gia > 0 && (
-            <p style={{ margin: '0 0 8px', fontSize: 14, color: '#3C7363', fontWeight: 600 }}>
-              {room.diem_trung_binh}/5 · {ratingLabel(room.diem_trung_binh)}
-            </p>
-          )}
-          <div className="hotel-detail-price-big">{fmt(room.gia_hien_thi)} ₫</div>
-          <p className="hotel-detail-price-from">/ phòng / đêm</p>
-          {room.phong_con_lai != null && room.so_luong_phong != null && (
-            <span className="hotel-room-stock" style={{ textAlign: 'right', display: 'block', marginBottom: 8 }}>
-              {room.phong_con_lai}/{room.so_luong_phong}
-            </span>
-          )}
-          {nights > 1 && room.tong_gia && (
-            <p style={{ fontSize: 13, color: '#666', margin: '0 0 12px' }}>
-              Tổng {nights} đêm: {fmt(room.tong_gia)} ₫
-            </p>
-          )}
-          {query.ngay_nhan && query.ngay_tra && (
-            <p style={{ fontSize: 13, color: '#666', margin: '0 0 12px' }}>
-              {fmtDate(query.ngay_nhan)} – {fmtDate(query.ngay_tra)}
-            </p>
-          )}
-          <button type="button" className="btn btn-primary" onClick={handleBook}>
-            Đặt phòng ngay
-          </button>
-        </div>
+        </aside>
       </div>
 
       {room.mo_ta && (
-        <div className="hotel-detail-section">
-          <h2 className="hotel-detail-section-title">Mô tả phòng</h2>
-          <p style={{ margin: 0, fontSize: 14, color: '#555', lineHeight: 1.7 }}>{room.mo_ta}</p>
-        </div>
+        <section className="room-detail-section-below">
+          <h2 className="room-detail-block-title">Mô tả phòng</h2>
+          <p className="room-detail-desc">{room.mo_ta}</p>
+        </section>
       )}
 
-      {amenityNames.length > 0 && (
-        <div className="hotel-detail-section">
-          <h2 className="hotel-detail-section-title">Tiện nghi phòng</h2>
-          <ul className="amenity-plain-list">
-            {amenityNames.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="hotel-detail-section">
-        <h2 className="hotel-detail-section-title">
+      <section className="room-detail-section-below">
+        <h2 className="room-detail-block-title">
           Đánh giá {room.so_danh_gia > 0 ? `(${room.so_danh_gia})` : ''}
         </h2>
         {reviews.length === 0 ? (
-          <p style={{ margin: 0, color: '#888', fontSize: 14 }}>Chưa có đánh giá cho loại phòng này</p>
+          <p className="room-detail-empty">Chưa có đánh giá cho loại phòng này</p>
         ) : (
           <div className="hotel-review-list">
             {reviews.map((rv) => (
@@ -255,7 +257,7 @@ const CustomerRoomDetailPage = () => {
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };

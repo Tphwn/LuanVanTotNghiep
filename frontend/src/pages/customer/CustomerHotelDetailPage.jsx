@@ -37,6 +37,45 @@ const AmenityIcon = ({ amenity }) => {
   return createElement(Icon, { size: 18, strokeWidth: 1.6, 'aria-hidden': true });
 };
 
+const ExpandableIntro = ({ text }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    if (expanded) return undefined;
+    const el = textRef.current;
+    if (!el) return undefined;
+
+    const checkOverflow = () => {
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+
+    const frameId = requestAnimationFrame(checkOverflow);
+    return () => cancelAnimationFrame(frameId);
+  }, [text, expanded]);
+
+  return (
+    <div className="hotel-detail-intro-wrap">
+      <p
+        ref={textRef}
+        className={`hotel-detail-intro${expanded ? '' : ' hotel-detail-intro--clamped'}`}
+      >
+        {text}
+      </p>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          className="hotel-detail-intro-toggle"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? 'Thu gọn' : 'Xem thêm'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const RoomOfferCard = ({
   room,
   nights,
@@ -280,7 +319,7 @@ const CustomerHotelDetailPage = () => {
           {hotel.mo_ta && (
             <section className="hotel-detail-block">
               <h2 className="hotel-detail-block-title">Giới thiệu</h2>
-              <p className="hotel-detail-intro">{hotel.mo_ta}</p>
+              <ExpandableIntro key={hotel.mo_ta} text={hotel.mo_ta} />
             </section>
           )}
         </div>

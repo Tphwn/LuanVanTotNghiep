@@ -42,6 +42,8 @@ const HotelsPage = () => {
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [starFilter, setStarFilter] = useState("all");
+  const [partnerFilter, setPartnerFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -66,6 +68,30 @@ const HotelsPage = () => {
     { id: "tu_choi", label: "Đã khóa", count: stats.biKhoa },
   ], [stats]);
 
+  const partnerOptions = useMemo(() => {
+    const map = new Map();
+    (hotels || []).forEach((hotel) => {
+      const partner = hotel.doi_tac;
+      if (partner?.ma_doi_tac) {
+        map.set(partner.ma_doi_tac, partner.ten_cong_ty);
+      }
+    });
+    return Array.from(map, ([ma_doi_tac, ten_cong_ty]) => ({ ma_doi_tac, ten_cong_ty }))
+      .sort((a, b) => (a.ten_cong_ty || "").localeCompare(b.ten_cong_ty || "", "vi"));
+  }, [hotels]);
+
+  const locationOptions = useMemo(() => {
+    const map = new Map();
+    (hotels || []).forEach((hotel) => {
+      const location = hotel.dia_diem;
+      if (location?.ma_dia_diem) {
+        map.set(location.ma_dia_diem, location.ten_dia_diem);
+      }
+    });
+    return Array.from(map, ([ma_dia_diem, ten_dia_diem]) => ({ ma_dia_diem, ten_dia_diem }))
+      .sort((a, b) => (a.ten_dia_diem || "").localeCompare(b.ten_dia_diem || "", "vi"));
+  }, [hotels]);
+
   const filteredHotels = useMemo(() => {
     const statusFilter = TAB_STATUS_MAP[activeTab];
     const text = debouncedKeyword.toLowerCase().trim();
@@ -79,16 +105,20 @@ const HotelsPage = () => {
         matchStatus = ["hoat_dong", "da_duyet"].includes(hotel.trang_thai);
       }
       const matchStar = starFilter === "all" || hotel.so_sao === Number(starFilter);
-      if (!text) return matchStatus && matchStar;
+      const partnerId = hotel.ma_doi_tac ?? hotel.doi_tac?.ma_doi_tac;
+      const locationId = hotel.ma_dia_diem ?? hotel.dia_diem?.ma_dia_diem;
+      const matchPartner = partnerFilter === "all" || String(partnerId) === partnerFilter;
+      const matchLocation = locationFilter === "all" || String(locationId) === locationFilter;
+      if (!text) return matchStatus && matchStar && matchPartner && matchLocation;
       const loc = hotel.dia_diem?.ten_dia_diem;
       const matchKeyword =
         hotel.ten?.toLowerCase().includes(text)
         || hotel.doi_tac?.ten_cong_ty?.toLowerCase().includes(text)
         || hotel.dia_chi?.toLowerCase().includes(text)
         || loc?.toLowerCase().includes(text);
-      return matchStatus && matchStar && matchKeyword;
+      return matchStatus && matchStar && matchPartner && matchLocation && matchKeyword;
     });
-  }, [hotels, activeTab, starFilter, debouncedKeyword]);
+  }, [hotels, activeTab, starFilter, partnerFilter, locationFilter, debouncedKeyword]);
 
   const handleApprove = async (hotel, e) => {
     e?.stopPropagation();
@@ -141,20 +171,47 @@ const HotelsPage = () => {
         tabs={filterTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      >
+      />
+
+      <div className="mgmt-toolbar">
+        <select
+          className="mgmt-select-inline"
+          value={partnerFilter}
+          onChange={(e) => setPartnerFilter(e.target.value)}
+          aria-label="Lọc theo đối tác"
+        >
+          <option value="all">Tất cả đối tác</option>
+          {partnerOptions.map((partner) => (
+            <option key={partner.ma_doi_tac} value={partner.ma_doi_tac}>
+              {partner.ten_cong_ty}
+            </option>
+          ))}
+        </select>
+        <select
+          className="mgmt-select-inline"
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+          aria-label="Lọc theo địa điểm"
+        >
+          <option value="all">Tất cả địa điểm</option>
+          {locationOptions.map((location) => (
+            <option key={location.ma_dia_diem} value={location.ma_dia_diem}>
+              {location.ten_dia_diem}
+            </option>
+          ))}
+        </select>
         <select
           className="mgmt-select-inline"
           value={starFilter}
           onChange={(e) => setStarFilter(e.target.value)}
-          style={{ marginLeft: 8 }}
+          aria-label="Lọc theo hạng sao"
         >
           <option value="all">Tất cả hạng sao</option>
           {[5, 4, 3, 2, 1].map((s) => (
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
-      </ManagementToolbar>
-
+      </div>
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>

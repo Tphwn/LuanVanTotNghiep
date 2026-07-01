@@ -970,6 +970,7 @@ body {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 9px 20px;
   border-radius: 8px;
@@ -979,6 +980,7 @@ body {
   border: none;
   transition: all 0.18s;
   white-space: nowrap;
+  text-align: center;
 }
 
 .btn-primary   { background: #3C7363; color: #fff; }
@@ -1623,6 +1625,13 @@ body {
   gap: 12px;
 }
 
+.mgmt-toolbar-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 .mgmt-toolbar--filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -2082,7 +2091,6 @@ body {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 0;
 }
 
@@ -2091,9 +2099,8 @@ body {
   align-items: center;
   gap: 7px;
   padding: 10px 18px;
-  border-radius: 10px 10px 0 0;
+  border-radius: 10px;
   border: 1px solid transparent;
-  border-bottom: none;
   background: transparent;
   color: #5a7a72;
   font-size: 14px;
@@ -2101,7 +2108,6 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   position: relative;
-  bottom: -1px;
   font-family: inherit;
 }
 
@@ -2965,8 +2971,8 @@ body {
   .request-card-body { flex-direction: column; }
   .request-card-actions { width: 100%; justify-content: flex-end; }
   .request-section-header { flex-direction: column; }
-  .amenity-tabs-row { flex-wrap: wrap; border-bottom: 1px solid #e5e7eb; }
-  .amenity-tab-btn { border-radius: 8px; bottom: 0; }
+  .amenity-tabs-row { flex-wrap: wrap; }
+  .amenity-tab-btn { border-radius: 8px; }
 }
 
 /* ===== BOOKING DETAIL MODAL (Partner/Admin) ===== */

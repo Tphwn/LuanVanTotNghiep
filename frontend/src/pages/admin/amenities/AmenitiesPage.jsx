@@ -29,7 +29,6 @@ const AmenitiesPage = () => {
   const [activeTab, setActiveTab] = useState(
     () => location.state?.tab || 'hotel',
   );
-  const [keyword, setKeyword] = useState('');
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveModal, setApproveModal] = useState(null);
@@ -57,16 +56,6 @@ const AmenitiesPage = () => {
   const roomGroups = useMemo(() => groupAmenitiesByCategory(roomAmenities, ROOM_CATEGORY_GROUPS), [roomAmenities]);
   const currentGroups = activeTab === 'hotel' ? hotelGroups : roomGroups;
 
-  const filteredGroups = useMemo(() => {
-    if (!keyword) return currentGroups;
-    return currentGroups
-      .map((g) => ({
-        ...g,
-        items: g.items.filter((item) => item.ten?.toLowerCase().includes(keyword.toLowerCase())),
-      }))
-      .filter((g) => g.items.length > 0);
-  }, [currentGroups, keyword]);
-
   const filteredRequests = requests.filter((req) => {
     if (requestFilter === 'all') return true;
     return req.trang_thai === requestFilter;
@@ -74,7 +63,6 @@ const AmenitiesPage = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setKeyword('');
   };
 
   const handleEdit = (item) => {
@@ -134,10 +122,8 @@ const AmenitiesPage = () => {
 
       {(activeTab === 'hotel' || activeTab === 'room') && (
         <AmenityListSection
-          keyword={keyword}
-          onKeywordChange={setKeyword}
           loading={loading}
-          filteredGroups={filteredGroups}
+          groups={currentGroups}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />

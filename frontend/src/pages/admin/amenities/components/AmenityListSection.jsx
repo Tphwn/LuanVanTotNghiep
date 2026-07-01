@@ -1,28 +1,17 @@
-import SearchBar from '../../../../components/common/management/SearchBar';
 import { AmenityGroupCard } from './AmenityGroupCard';
 
 export const AmenityListSection = ({
-  keyword,
-  onKeywordChange,
   loading,
-  filteredGroups,
+  groups,
   onEdit,
   onDelete,
 }) => (
   <>
-    <div className="amenity-toolbar">
-      <SearchBar
-        value={keyword}
-        onChange={(e) => onKeywordChange(e.target.value)}
-        placeholder="Tìm tiện nghi..."
-      />
-    </div>
-
     {loading ? (
       <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
     ) : (
       <div className="amenity-grid">
-        {filteredGroups.map((group) => (
+        {groups.map((group) => (
           <AmenityGroupCard
             key={group.id}
             group={group}
@@ -30,9 +19,9 @@ export const AmenityListSection = ({
             onDelete={onDelete}
           />
         ))}
-        {filteredGroups.length === 0 && (
+        {groups.length === 0 && (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: '#5a7a72' }}>
-            {keyword ? 'Không tìm thấy tiện nghi phù hợp' : 'Chưa có tiện nghi nào'}
+            Chưa có tiện nghi nào
           </div>
         )}
       </div>

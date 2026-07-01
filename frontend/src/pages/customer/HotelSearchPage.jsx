@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Building2, MapPin } from 'lucide-react';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
@@ -12,6 +13,8 @@ import '../../assets/styles/home.css';
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const stars = (n) => '★'.repeat(Math.max(0, Number(n) || 0));
+
+const MAX_VISIBLE_AMENITIES = 4;
 
 const SORT_OPTIONS = [
   { value: 'price_asc', label: 'Giá thấp → cao' },
@@ -499,6 +502,12 @@ const HotelSearchPage = () => {
               {filteredHotels.map((hotel) => {
                 const img = getHotelImage(hotel);
                 const amenityNames = (hotel.tien_nghi || []).map((t) => t.ten || t);
+                const detailUrl = buildHotelDetailUrl(hotel.ma_khach_san, filters);
+                const visibleAmenities = amenityNames.slice(0, MAX_VISIBLE_AMENITIES);
+                const hasMoreAmenities = amenityNames.length > MAX_VISIBLE_AMENITIES;
+                const addressLine = hotel.dia_chi
+                  || [hotel.dia_diem?.ten_dia_diem].filter(Boolean).join('');
+
                 return (
                   <article key={hotel.ma_khach_san} className="hotel-result-card hotel-browse-card">
                     <div className="hotel-result-media">
@@ -509,42 +518,57 @@ const HotelSearchPage = () => {
                       )}
                     </div>
 
-                    <div className="hotel-result-body">
-                      <h2 className="hotel-result-name">{hotel.ten}</h2>
-                      <div className="hotel-result-type-row">
-                        <span className="hotel-result-type">Khách sạn</span>
-                        {hotel.so_sao > 0 && (
-                          <span className="hotel-result-stars">{stars(hotel.so_sao)}</span>
-                        )}
-                      </div>
-                      <p className="hotel-result-location">
-                        {hotel.dia_diem?.ten_dia_diem ? `${hotel.dia_diem.ten_dia_diem} · ` : ''}
-                        {hotel.dia_chi}
-                      </p>
-                      {amenityNames.length > 0 && (
-                        <div className="hotel-result-amenities">
-                          {amenityNames.slice(0, 4).map((t) => (
-                            <span key={t} className="hotel-result-amenity">{t}</span>
-                          ))}
-                          {amenityNames.length > 4 && (
-                            <span className="hotel-result-amenity">+{amenityNames.length - 4}</span>
+                    <div className="hotel-result-main">
+                      <div className="hotel-result-info">
+                        <h2 className="hotel-result-name">{hotel.ten}</h2>
+
+                        <div className="hotel-result-type-row">
+                          <span className="hotel-result-type-badge">
+                            <Building2 size={14} strokeWidth={2} aria-hidden />
+                            Khách sạn
+                          </span>
+                          {hotel.so_sao > 0 && (
+                            <span className="hotel-result-stars">{stars(hotel.so_sao)}</span>
                           )}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="hotel-result-aside">
-                      <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
-                      <div className="hotel-result-price-block">
-                        Giá từ: <span className="hotel-result-price-value">{fmt(hotel.gia_tu)} ₫</span>
-                        <span className="hotel-result-price-unit">/ phòng / đêm</span>
+                        {addressLine && (
+                          <p className="hotel-result-location">
+                            <MapPin size={14} strokeWidth={2} aria-hidden className="hotel-result-location-icon" />
+                            <span>{addressLine}</span>
+                          </p>
+                        )}
+
+                        {amenityNames.length > 0 && (
+                          <div className="hotel-result-amenities">
+                            {visibleAmenities.map((t) => (
+                              <span key={t} className="hotel-result-amenity-tag">{t}</span>
+                            ))}
+                            {hasMoreAmenities && (
+                              <Link to={detailUrl} className="hotel-result-amenity-tag hotel-result-amenity-more" title="Xem thêm tiện nghi">
+                                Xem thêm tiện nghi
+                              </Link>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <Link
-                        to={buildHotelDetailUrl(hotel.ma_khach_san, filters)}
-                        className="btn btn-primary btn-sm hotel-result-cta"
-                      >
-                        Chọn phòng
-                      </Link>
+
+                      <div className="hotel-result-aside">
+                        <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
+                        <div className="hotel-result-price-block">
+                          <span className="hotel-result-price-label">
+                            Giá từ:{' '}
+                            <span className="hotel-result-price-value">{fmt(hotel.gia_tu)} ₫</span>
+                          </span>
+                          <span className="hotel-result-price-unit">/ phòng / đêm</span>
+                        </div>
+                        <Link
+                          to={detailUrl}
+                          className="btn btn-primary hotel-result-cta"
+                        >
+                          Chọn phòng
+                        </Link>
+                      </div>
                     </div>
                   </article>
                 );

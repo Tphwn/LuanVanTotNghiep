@@ -5,7 +5,6 @@ import { resolveUploadUrl } from "../../../utils/media";
 import { Eye, Lock, Unlock } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import SearchBar from "../../../components/common/management/SearchBar";
 import FilterTabs from "../../../components/common/management/FilterTabs";
 
 import { getAdminRoomTypeStatus } from "../../../constants/statuses";
@@ -25,8 +24,6 @@ const RoomTypesPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [keyword, setKeyword] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -38,7 +35,6 @@ const RoomTypesPage = () => {
       if (locationFilter !== "all") params.ma_dia_diem = locationFilter;
       if (partnerFilter !== "all") params.ma_doi_tac = partnerFilter;
       if (statusFilter !== "all") params.trang_thai = statusFilter;
-      if (debouncedKeyword.trim()) params.keyword = debouncedKeyword.trim();
 
       const res = await api.get("/admin/room-types", { params });
       setRooms(res.data.data || []);
@@ -50,12 +46,7 @@ const RoomTypesPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [locationFilter, partnerFilter, statusFilter, debouncedKeyword]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
-    return () => clearTimeout(timer);
-  }, [keyword]);
+  }, [locationFilter, partnerFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
@@ -94,35 +85,31 @@ const RoomTypesPage = () => {
         subtitle="Giám sát loại phòng của các khách sạn đã được duyệt"
       />
 
-      <div className="mgmt-toolbar">
-        <SearchBar
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tên phòng, khách sạn..."
-        />
-        <select
-          className="mgmt-select-inline"
-          value={partnerFilter}
-          onChange={(e) => setPartnerFilter(e.target.value)}
-        >
-          <option value="all">Tất cả đối tác</option>
-          {partners.map((p) => (
-            <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
-          ))}
-        </select>
-        <select
-          className="mgmt-select-inline"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-        >
-          <option value="all">Tất cả địa điểm</option>
-          {locations.map((loc) => (
-            <option key={loc.ma_dia_diem} value={loc.ma_dia_diem}>{loc.ten_dia_diem}</option>
-          ))}
-        </select>
+      <div className="mgmt-toolbar-row">
+        <div className="mgmt-toolbar">
+          <select
+            className="mgmt-select-inline"
+            value={partnerFilter}
+            onChange={(e) => setPartnerFilter(e.target.value)}
+          >
+            <option value="all">Tất cả đối tác</option>
+            {partners.map((p) => (
+              <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+            ))}
+          </select>
+          <select
+            className="mgmt-select-inline"
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+          >
+            <option value="all">Tất cả địa điểm</option>
+            {locations.map((loc) => (
+              <option key={loc.ma_dia_diem} value={loc.ma_dia_diem}>{loc.ten_dia_diem}</option>
+            ))}
+          </select>
+        </div>
+        <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />
       </div>
-
-      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={handleTabChange} />
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         <div className="mgmt-table-card-header">

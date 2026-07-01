@@ -223,10 +223,7 @@ const ReviewsPage = () => {
           {toast.type === "success"?"":""} {toast.msg}
         </div>
       )}
-
-      {/* Filters */}
-      <div className="content-card"style={{ marginBottom: 16, padding:"16px 20px"}}>
-        <div style={{ display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end"}}>
+<div style={{ display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end"}}>
           <div>
             <label style={{ fontSize: 12, color:"#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Số sao</label>
             <select className="search-input"style={{ width:"100%"}} value={starFilter} onChange={(e) => setStarFilter(e.target.value)}>
@@ -288,8 +285,7 @@ const ReviewsPage = () => {
             </div>
           )}
         </div>
-      </div>
-
+      <br />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 320px) 1fr", gap: 16, alignItems: "start"}}>
         {/* Stats table by hotel */}
         <div className="content-card">
@@ -367,7 +363,6 @@ const ReviewsPage = () => {
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <StarDisplay value={rv.so_sao} size={12} />
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>{rv.so_sao}</span>
                           </div>
                         </td>
                         <td style={{ fontSize: 13, color: "#555", maxWidth: 200 }}>{truncate(rv.noi_dung)}</td>

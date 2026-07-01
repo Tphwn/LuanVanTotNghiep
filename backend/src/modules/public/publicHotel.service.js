@@ -140,12 +140,6 @@ const publicHotelService = {
       orderBy: { ten: 'asc' },
     });
   },
-
-  /**
-   * Danh sách khách sạn đang hoạt động trên web (menu Khách sạn).
-   * Chỉ trả về khach_san có trang_thai = hoat_dong (đối tác đăng ký + admin duyệt).
-   * Mỗi item = 1 khách sạn, kèm gia_tu (giá thấp nhất trong các loại phòng đang bán).
-   */
   listHotels: async ({ ma_dia_diem } = {}) => {
     const where = { trang_thai: 'hoat_dong' };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
