@@ -6,6 +6,7 @@ import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import DetailTable from '../../../components/booking/DetailTable';
 import BookingSectionTable from '../../../components/booking/BookingSectionTable';
+import BookingCancelNotice from '../../../components/booking/BookingCancelNotice';
 import {
   fetchBookingDetail,
   checkInBooking,
@@ -17,6 +18,7 @@ import {
   TRANG_THAI,
   PHUONG_THUC,
   getPaymentDisplay,
+  getRefundBadgeMeta,
   formatCurrency,
   formatDate,
   formatOrderTime,
@@ -138,6 +140,7 @@ export default function PartnerBookingDetailPage() {
   const showCheckOutAction = detail.trang_thai === 'da_checkin';
   const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail.thong_tin_hoan_tien;
+  const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -186,29 +189,29 @@ export default function PartnerBookingDetailPage() {
           <div className="booking-detail-status-left">
             <span className={`badge ${bookingStatus.cls}`}>{bookingStatus.label}</span>
           </div>
-          {showCheckInAction && (
-            <TableActions style={{ justifyContent: 'flex-end' }}>
-              <ActionButton variant="confirm" onClick={handleCheckIn} disabled={actionLoading}>
-                {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-in'}
-              </ActionButton>
-            </TableActions>
-          )}
-          {showCheckOutAction && (
-            <TableActions style={{ justifyContent: 'flex-end' }}>
-              <ActionButton variant="confirm" onClick={handleCheckOut} disabled={actionLoading}>
-                {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-out'}
-              </ActionButton>
-            </TableActions>
-          )}
+          <div className="booking-detail-status-right">
+            {isCancelled && refundBadge && (
+              <span className={`badge ${refundBadge.cls}`}>{refundBadge.label}</span>
+            )}
+            {showCheckInAction && (
+              <TableActions style={{ justifyContent: 'flex-end' }}>
+                <ActionButton variant="confirm" onClick={handleCheckIn} disabled={actionLoading}>
+                  {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-in'}
+                </ActionButton>
+              </TableActions>
+            )}
+            {showCheckOutAction && (
+              <TableActions style={{ justifyContent: 'flex-end' }}>
+                <ActionButton variant="confirm" onClick={handleCheckOut} disabled={actionLoading}>
+                  {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-out'}
+                </ActionButton>
+              </TableActions>
+            )}
+          </div>
         </div>
 
         {isCancelled && refundInfo && (
-          <div className="booking-detail-inline-notice booking-detail-inline-notice--cancel">
-            <span className="badge badge-danger">Đã hủy</span>
-            <span>
-              Lý do: {refundInfo.ly_do_huy}. {refundInfo.tom_tat_chinh_sach}
-            </span>
-          </div>
+          <BookingCancelNotice refundInfo={refundInfo} />
         )}
 
         <div className="booking-detail-grid">

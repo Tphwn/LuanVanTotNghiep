@@ -10,9 +10,11 @@ import {
   clearDetail,
   clearMsg,
 } from '../../../store/slices/adminBookingSlice';
+import { approveRefund } from '../../../store/slices/adminFinanceSlice';
 
 import DetailTable from '../../../components/booking/DetailTable';
 import BookingSectionTable from '../../../components/booking/BookingSectionTable';
+import BookingCancelNotice from '../../../components/booking/BookingCancelNotice';
 import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
@@ -20,6 +22,7 @@ import {
   TRANG_THAI,
   PHUONG_THUC,
   getPaymentDisplay,
+  getRefundBadgeMeta,
   formatCurrency,
   formatDate,
   formatStayDateTime,
@@ -27,7 +30,7 @@ import {
   diffDays,
 } from '../../../utils/bookingDisplay';
 
-const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi'];
+const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'];
 
 const getPriceTypeLabel = (type) => {
   const labels = {
@@ -64,6 +67,7 @@ export default function BookingDetailPage() {
 
   const [cancelMode, setCancelMode] = useState(false);
   const [lyDo, setLyDo] = useState('');
+  const [refundLoading, setRefundLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -140,6 +144,20 @@ export default function BookingDetailPage() {
     setLyDo('');
   };
 
+  const handleCompleteRefund = async () => {
+    if (!detail?.hoan_tien?.ma_hoan_tien) return;
+
+    setRefundLoading(true);
+    const result = await dispatch(approveRefund(detail.hoan_tien.ma_hoan_tien));
+    setRefundLoading(false);
+
+    if (approveRefund.fulfilled.match(result)) {
+      dispatch(fetchAdminBookingDetail(id));
+    }
+  };
+
+  const refundPending = ['cho_xu_ly', 'dang_xu_ly'].includes(detail?.hoan_tien?.trang_thai);
+
   const handleCancelBooking = async () => {
     if (!detail) return;
 
@@ -184,6 +202,7 @@ export default function BookingDetailPage() {
 
   const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail.thong_tin_hoan_tien;
+  const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -238,15 +257,32 @@ export default function BookingDetailPage() {
             </span>
           </div>
 
-          {canCancel && !cancelMode && (
-            <button
-              type="button"
-              className="btn btn-danger btn-sm"
-              onClick={() => setCancelMode(true)}
-            >
-              Hủy đơn
-            </button>
-          )}
+          <div className="booking-detail-status-right">
+            {isCancelled && refundBadge && (
+              <span className={`badge ${refundBadge.cls}`}>{refundBadge.label}</span>
+            )}
+
+            {canCancel && !cancelMode && (
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => setCancelMode(true)}
+              >
+                Hủy đơn
+              </button>
+            )}
+
+            {refundPending && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={refundLoading}
+                onClick={handleCompleteRefund}
+              >
+                {refundLoading ? 'Đang xử lý...' : 'Hoàn tất'}
+              </button>
+            )}
+          </div>
         </div>
 
         {cancelMode && (
@@ -290,12 +326,7 @@ export default function BookingDetailPage() {
         )}
 
         {isCancelled && refundInfo && (
-          <div className="booking-detail-inline-notice booking-detail-inline-notice--cancel">
-            <span className="badge badge-danger">Đã hủy</span>
-            <span>
-              Lý do: {refundInfo.ly_do_huy}. {refundInfo.tom_tat_chinh_sach}
-            </span>
-          </div>
+          <BookingCancelNotice refundInfo={refundInfo} />
         )}
 
         <div className="booking-detail-grid">

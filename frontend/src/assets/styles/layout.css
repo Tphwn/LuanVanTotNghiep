@@ -1559,6 +1559,33 @@ body {
   color: #7f1d1d;
 }
 
+.booking-cancel-notice {
+  margin-bottom: 14px;
+}
+
+.booking-cancel-notice-body {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1a2e28;
+}
+
+.booking-detail-status-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.booking-detail-status-bar--page:has(+ .booking-cancel-notice) {
+  margin-bottom: 10px;
+}
+
 .booking-detail-error-box {
   margin-top: 4px;
   padding: 16px 18px;
@@ -3191,6 +3218,45 @@ body {
 
 .partner-hotel-detail-amenities {
   margin-top: 16px;
+}
+
+.partner-hotel-detail-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.partner-hotel-detail-subsection {
+  margin-top: 14px;
+}
+
+.partner-hotel-detail-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c7363;
+  margin-bottom: 8px;
+}
+
+.partner-hotel-detail-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+  font-style: italic;
+}
+
+.partner-hotel-policy-table {
+  margin-top: 8px;
+}
+
+.partner-form-success-banner {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #e8f5f1;
+  border: 1px solid #b8dfd4;
+  border-radius: 8px;
+  color: #1a5c4a;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .partner-hotel-amenity-tags {

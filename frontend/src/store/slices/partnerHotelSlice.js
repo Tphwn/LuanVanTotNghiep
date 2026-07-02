@@ -18,12 +18,35 @@ const buildHotelFormData = (data) => {
     }
   });
 
-  if (data.tien_nghi_ids) {
+  if (data.tien_nghi_ids !== undefined) {
     formData.append('tien_nghi_ids', JSON.stringify(data.tien_nghi_ids));
   }
   if (data.chinh_sach_huy) {
     formData.append('chinh_sach_huy', JSON.stringify(data.chinh_sach_huy));
   }
+
+  if (data.giay_to_bat_buoc !== undefined) {
+    formData.append('giay_to_bat_buoc', JSON.stringify(data.giay_to_bat_buoc || []));
+  }
+  ['cho_phep_hut_thuoc', 'cho_phep_to_chuc_tiec', 'cho_phep_thu_cung'].forEach((key) => {
+    if (data[key] !== undefined) {
+      formData.append(key, data[key] ? 'true' : 'false');
+    }
+  });
+  ['phu_thu_thu_cung', 'tuoi_toi_da_mien_phi', 'phu_thu_tre_em'].forEach((key) => {
+    if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+      formData.append(key, data[key]);
+    }
+  });
+  ['hoan_khi_benh', 'hoan_cong_viec_dot_xuat', 'yeu_cau_minh_chung_huy'].forEach((key) => {
+    if (data[key] !== undefined) {
+      formData.append(key, data[key] ? 'true' : 'false');
+    }
+  });
+  if (data.mo_ta_chinh_sach_huy !== undefined && data.mo_ta_chinh_sach_huy !== null) {
+    formData.append('mo_ta_chinh_sach_huy', data.mo_ta_chinh_sach_huy);
+  }
+
   if (data.removedImageIds?.length) {
     formData.append('removedImageIds', JSON.stringify(data.removedImageIds));
   }
@@ -120,6 +143,18 @@ export const updateHotel = createAsyncThunk('partnerHotel/update', async ({ id, 
   }
 });
 
+export const deleteHotel = createAsyncThunk('partnerHotel/delete', async (id, { rejectWithValue }) => {
+  try {
+    const res = await api.delete(`${BASE}/${id}`);
+    if (res.data?.success) {
+      return Number(id);
+    }
+    return rejectWithValue(res.data?.message || 'Xóa khách sạn thất bại');
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || err.message || 'Lỗi xóa khách sạn');
+  }
+});
+
 export const fetchDiaDiem = createAsyncThunk('partnerHotel/diaDiem', async (_, { rejectWithValue }) => {
   try {
     const res = await api.get(`${BASE}/dia-diem`);
@@ -209,6 +244,16 @@ const partnerHotelSlice = createSlice({
         state.successMsg = 'Cập nhật thành công!';
       })
       .addCase(updateHotel.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteHotel.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(deleteHotel.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = state.list.filter((h) => h.ma_khach_san !== action.payload);
+        state.successMsg = 'Đã xóa khách sạn thành công';
+      })
+      .addCase(deleteHotel.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

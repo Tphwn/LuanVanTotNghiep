@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
 
 const ACTIVE_BOOKING = ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'];
+const PENDING_CHECKIN_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
+const AUTO_COMPLETE_MARKER = '[auto_hoan_thanh]';
 
 const formatDateKey = (d) => {
   const dt = new Date(d);
@@ -46,6 +48,26 @@ const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
   });
 };
 
+/** Đếm đơn đang giữ phòng (chưa hủy / chưa hoàn thành, chưa trả phòng). */
+const countActiveBookedRooms = async (maLoaiPhong) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return prisma.dat_phong.count({
+    where: {
+      ma_loai_phong: Number(maLoaiPhong),
+      trang_thai: { in: ACTIVE_BOOKING },
+      ngay_tra_phong: { gte: today },
+    },
+  });
+};
+
+const calcRoomAvailability = (room, daDat) => {
+  const tong = Number(room.so_luong_phong) || 0;
+  const moBan = Number(room.so_luong_mo_ban) || 0;
+  const phongConLai = Math.max(0, moBan - daDat);
+  return { phong_con_lai: phongConLai, da_dat: daDat, so_luong_phong: tong };
+};
+
 const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
   const base = Number(giaCoBan);
   if (!checkIn || !checkOut) {
@@ -81,10 +103,48 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
   };
 };
 
+const isAutoCompletedBooking = (booking) =>
+  Boolean(booking?.ghi_chu?.includes(AUTO_COMPLETE_MARKER));
+
+/** Đơn chờ check-in đã qua ngày nhận phòng → tự hoàn thành, không cho đánh giá. */
+const autoCompleteExpiredCheckIns = async (where = {}) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const expired = await prisma.dat_phong.findMany({
+    where: {
+      ...where,
+      trang_thai: { in: PENDING_CHECKIN_STATUS },
+      ngay_nhan_phong: { lt: today },
+    },
+  });
+
+  if (!expired.length) return 0;
+
+  await Promise.all(expired.map((booking) => {
+    const ghiChu = booking.ghi_chu?.includes(AUTO_COMPLETE_MARKER)
+      ? booking.ghi_chu
+      : (booking.ghi_chu ? `${booking.ghi_chu}\n${AUTO_COMPLETE_MARKER}` : AUTO_COMPLETE_MARKER);
+
+    return prisma.dat_phong.update({
+      where: { ma_dat_phong: booking.ma_dat_phong },
+      data: { trang_thai: 'hoan_thanh', ghi_chu: ghiChu },
+    });
+  }));
+
+  return expired.length;
+};
+
 module.exports = {
   ACTIVE_BOOKING,
+  PENDING_CHECKIN_STATUS,
+  AUTO_COMPLETE_MARKER,
   parseDate,
   getDatesInRange,
   countOverlappingBookings,
+  countActiveBookedRooms,
+  calcRoomAvailability,
   calcStayPrice,
+  isAutoCompletedBooking,
+  autoCompleteExpiredCheckIns,
 };

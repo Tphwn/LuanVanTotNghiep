@@ -134,10 +134,7 @@ const MonthCalendar = ({
                             {formatPriceShort(info.don_gia)}
                           </span>
                           <span className="price-inv-cell-inv">
-                            {info.mo_ban}/{info.tong_phong} Phòng
-                          </span>
-                          <span className="price-inv-cell-booked">
-                            {info.da_dat}: Đã đặt
+                            {info.con_lai}/{info.tong_phong} Phòng
                           </span>
                         </>
                       ) : (
@@ -458,7 +455,7 @@ const PricingPage = () => {
               </div>
               <div className="price-inv-legend-item">
                 <span className="price-inv-legend-dot-inline price-inv-legend-dot-inline--blue" />
-                Mở bán / tổng phòng
+                Còn lại / tổng phòng
               </div>
               <div className="price-inv-legend-item">
                 <span className="price-inv-legend-swatch price-inv-legend-swatch--sel" />

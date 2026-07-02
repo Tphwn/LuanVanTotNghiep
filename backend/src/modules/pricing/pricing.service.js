@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { ACTIVE_BOOKING } = require('../../utils/bookingHelpers');
 
 const formatDateKey = (d) => {
   const dt = new Date(d);
@@ -76,7 +77,7 @@ const pricingService = {
     const bookings = await prisma.dat_phong.findMany({
       where: {
         ma_loai_phong: roomId,
-        trang_thai: { in: ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin', 'hoan_thanh'] },
+        trang_thai: { in: ACTIVE_BOOKING },
         ngay_nhan_phong: { lte: end },
         ngay_tra_phong: { gt: start },
       },
@@ -108,6 +109,11 @@ const pricingService = {
         return nightStart >= checkIn && nightStart < checkOut;
       }).length;
 
+      const moBanDay = priceRow?.so_luong_ap_dung != null
+        ? Number(priceRow.so_luong_ap_dung)
+        : moBanBase;
+      const conLai = Math.max(moBanDay - daDat, 0);
+
       days.push({
         ngay: key,
         don_gia: donGia,
@@ -118,8 +124,8 @@ const pricingService = {
           ? Number(priceRow.so_luong_ap_dung)
           : null,
         tong_phong: tongPhong,
-        mo_ban: moBanBase,
-        con_lai: Math.max(moBanBase - daDat, 0),
+        mo_ban: moBanDay,
+        con_lai: conLai,
         da_dat: daDat,
       });
       cur.setDate(cur.getDate() + 1);

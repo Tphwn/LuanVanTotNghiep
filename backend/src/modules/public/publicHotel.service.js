@@ -103,7 +103,12 @@ const publicHotelService = {
       include: {
         _count: {
           select: {
-            khach_san: { where: { trang_thai: 'hoat_dong' } },
+            khach_san: {
+              where: {
+                trang_thai: 'hoat_dong',
+                loai_phong: { some: { trang_thai: 'hoat_dong' } },
+              },
+            },
           },
         },
       },
@@ -141,7 +146,10 @@ const publicHotelService = {
     });
   },
   listHotels: async ({ ma_dia_diem } = {}) => {
-    const where = { trang_thai: 'hoat_dong' };
+    const where = {
+      trang_thai: 'hoat_dong',
+      loai_phong: { some: { trang_thai: 'hoat_dong' } },
+    };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
 
     const hotels = await prisma.khach_san.findMany({
@@ -164,22 +172,20 @@ const publicHotelService = {
       orderBy: [{ so_sao: 'desc' }, { ten: 'asc' }],
     });
 
-    const mapped = hotels
-      .filter((h) => h.loai_phong.length > 0)
-      .map((hotel) => {
-        const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
-        return {
-          ma_khach_san: hotel.ma_khach_san,
-          ten: hotel.ten,
-          dia_chi: hotel.dia_chi,
-          mo_ta: hotel.mo_ta,
-          so_sao: hotel.so_sao,
-          dia_diem: hotel.dia_diem,
-          so_loai_phong: hotel._count.loai_phong,
-          gia_tu: prices.length ? Math.min(...prices) : null,
-          tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
-        };
-      });
+    const mapped = hotels.map((hotel) => {
+      const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
+      return {
+        ma_khach_san: hotel.ma_khach_san,
+        ten: hotel.ten,
+        dia_chi: hotel.dia_chi,
+        mo_ta: hotel.mo_ta,
+        so_sao: hotel.so_sao,
+        dia_diem: hotel.dia_diem,
+        so_loai_phong: hotel._count.loai_phong,
+        gia_tu: prices.length ? Math.min(...prices) : null,
+        tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+      };
+    });
 
     const withImages = await attachHotelImages(mapped);
     const reviewMap = await getHotelReviewStatsMap(withImages.map((h) => h.ma_khach_san));
@@ -200,7 +206,10 @@ const publicHotelService = {
       return publicHotelService.listHotels({ ma_dia_diem });
     }
 
-    const where = { trang_thai: 'hoat_dong' };
+    const where = {
+      trang_thai: 'hoat_dong',
+      loai_phong: { some: { trang_thai: 'hoat_dong' } },
+    };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
 
     const hotels = await prisma.khach_san.findMany({
@@ -282,6 +291,10 @@ const publicHotelService = {
       where: { ma_khach_san: Number(hotelId), trang_thai: 'hoat_dong' },
       include: {
         dia_diem: true,
+        chinh_sach_huy: {
+          where: { trang_thai: 'hoat_dong' },
+          orderBy: { so_ngay_truoc: 'desc' },
+        },
         khach_san_tien_nghi: {
           include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
         },
@@ -348,6 +361,23 @@ const publicHotelService = {
       gio_tra_phong: hotel.gio_tra_phong,
       dia_diem: hotel.dia_diem,
       tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+      giay_to_bat_buoc: hotel.giay_to_bat_buoc,
+      cho_phep_hut_thuoc: hotel.cho_phep_hut_thuoc,
+      cho_phep_to_chuc_tiec: hotel.cho_phep_to_chuc_tiec,
+      cho_phep_thu_cung: hotel.cho_phep_thu_cung,
+      phu_thu_thu_cung: hotel.phu_thu_thu_cung != null ? Number(hotel.phu_thu_thu_cung) : null,
+      tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi,
+      phu_thu_tre_em: hotel.phu_thu_tre_em != null ? Number(hotel.phu_thu_tre_em) : null,
+      hoan_khi_benh: hotel.hoan_khi_benh,
+      hoan_cong_viec_dot_xuat: hotel.hoan_cong_viec_dot_xuat,
+      yeu_cau_minh_chung_huy: hotel.yeu_cau_minh_chung_huy,
+      mo_ta_chinh_sach_huy: hotel.mo_ta_chinh_sach_huy,
+      chinh_sach_huy: hotel.chinh_sach_huy.map((p) => ({
+        ma_chinh_sach: p.ma_chinh_sach,
+        so_ngay_truoc: p.so_ngay_truoc,
+        phan_tram_hoan: Number(p.phan_tram_hoan),
+        trang_thai: p.trang_thai,
+      })),
     }]);
 
     const reviewData = await getRoomTypeReviewData(roomId);

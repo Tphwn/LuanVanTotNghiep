@@ -3,13 +3,31 @@ import api from '../../../services/api';
 import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
 import { HotelAmenityPicker } from './components/HotelAmenityGroups';
+import {
+  REQUIRED_DOC_LABELS,
+  parseGiayToBatBuoc,
+  toMoneyString,
+} from './hotelPolicyUtils';
 
 const INIT_FORM = {
   ten: '', dia_chi: '', mo_ta: '',
   so_sao: 3, gio_nhan_phong: '14:00',
   gio_tra_phong: '12:00', ma_dia_diem: '',
   tien_nghi_ids: [],
+  giay_to_bat_buoc: [],
+  cho_phep_hut_thuoc: false,
+  cho_phep_to_chuc_tiec: false,
+  cho_phep_thu_cung: false,
+  phu_thu_thu_cung: '',
+  tuoi_toi_da_mien_phi: 6,
+  phu_thu_tre_em: '',
+  hoan_khi_benh: false,
+  hoan_cong_viec_dot_xuat: false,
+  yeu_cau_minh_chung_huy: true,
+  mo_ta_chinh_sach_huy: '',
 };
+
+const REQUIRED_DOC_OPTIONS = Object.entries(REQUIRED_DOC_LABELS).map(([id, label]) => ({ id, label }));
 
 const formatTimeValue = (value) => {
   if (!value) return '14:00';
@@ -42,6 +60,17 @@ const HotelFormContent = ({
       gio_tra_phong: formatTimeValue(hotel.gio_tra_phong),
       ma_dia_diem: hotel.ma_dia_diem || '',
       tien_nghi_ids: hotel.khach_san_tien_nghi?.map((x) => x.ma_tien_nghi) || [],
+      giay_to_bat_buoc: parseGiayToBatBuoc(hotel.giay_to_bat_buoc),
+      cho_phep_hut_thuoc: !!hotel.cho_phep_hut_thuoc,
+      cho_phep_to_chuc_tiec: !!hotel.cho_phep_to_chuc_tiec,
+      cho_phep_thu_cung: !!hotel.cho_phep_thu_cung,
+      phu_thu_thu_cung: toMoneyString(hotel.phu_thu_thu_cung),
+      tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi ?? 6,
+      phu_thu_tre_em: toMoneyString(hotel.phu_thu_tre_em),
+      hoan_khi_benh: !!hotel.hoan_khi_benh,
+      hoan_cong_viec_dot_xuat: !!hotel.hoan_cong_viec_dot_xuat,
+      yeu_cau_minh_chung_huy: hotel.yeu_cau_minh_chung_huy !== false,
+      mo_ta_chinh_sach_huy: hotel.mo_ta_chinh_sach_huy || '',
     } : { ...INIT_FORM }
   );
 
@@ -71,6 +100,19 @@ const HotelFormContent = ({
         ? prev.tien_nghi_ids.filter((x) => x !== id)
         : [...prev.tien_nghi_ids, id],
     }));
+  };
+
+  const toggleRequiredDoc = (docId) => {
+    setForm((prev) => ({
+      ...prev,
+      giay_to_bat_buoc: prev.giay_to_bat_buoc.includes(docId)
+        ? prev.giay_to_bat_buoc.filter((x) => x !== docId)
+        : [...prev.giay_to_bat_buoc, docId],
+    }));
+  };
+
+  const setRuleFlag = (key, checked) => {
+    setForm((prev) => ({ ...prev, [key]: checked }));
   };
 
   const handlePropose = async () => {
@@ -161,7 +203,7 @@ const HotelFormContent = ({
   const tabs = [
     { key: 'info', label: 'Thông tin & Tiện nghi'},
     { key:'images', label: `Hình ảnh${hotelImages.length ? ` (${hotelImages.length})` : '*'}` },
-    { key: 'policies', label: 'Chính sách hủy'},
+    { key: 'policies', label: 'Chính sách & Nội quy'},
   ];
 
   return (
@@ -341,6 +383,105 @@ const HotelFormContent = ({
                 </div>
               </div>
 
+              <div style={{
+                padding: 14, background: '#fff', borderRadius: 8,
+                border: '1px solid #d4ede6', marginBottom: 16,
+              }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: 14, color: '#1a2e28' }}>Nội quy khách sạn</h4>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 8, color: '#1a2e28' }}>
+                    Giấy tờ bắt buộc khi nhận phòng
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px' }}>
+                    {REQUIRED_DOC_OPTIONS.map((opt) => (
+                      <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={form.giay_to_bat_buoc.includes(opt.id)}
+                          onChange={() => toggleRequiredDoc(opt.id)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: 14 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.cho_phep_hut_thuoc}
+                      onChange={(e) => setRuleFlag('cho_phep_hut_thuoc', e.target.checked)}
+                    />
+                    Cho phép hút thuốc
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.cho_phep_to_chuc_tiec}
+                      onChange={(e) => setRuleFlag('cho_phep_to_chuc_tiec', e.target.checked)}
+                    />
+                    Cho phép tổ chức tiệc / sự kiện
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.cho_phep_thu_cung}
+                      onChange={(e) => setRuleFlag('cho_phep_thu_cung', e.target.checked)}
+                    />
+                    Cho phép mang thú cưng
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
+                      Phụ thu thú cưng (VNĐ/đêm)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="search-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      value={form.phu_thu_thu_cung}
+                      onChange={(e) => setForm({ ...form, phu_thu_thu_cung: e.target.value })}
+                      placeholder="VD: 200000"
+                      disabled={!form.cho_phep_thu_cung}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
+                      Tuổi trẻ em miễn phí (tối đa)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="17"
+                      className="search-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      value={form.tuoi_toi_da_mien_phi}
+                      onChange={(e) => setForm({ ...form, tuoi_toi_da_mien_phi: e.target.value })}
+                      placeholder="VD: 6"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
+                      Phụ thu trẻ em (VNĐ/đêm)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="search-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      value={form.phu_thu_tre_em}
+                      onChange={(e) => setForm({ ...form, phu_thu_tre_em: e.target.value })}
+                      placeholder="VD: 150000"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h4 style={{ margin: 0, fontSize: 14, color: '#1a2e28'}}>Quy định hoàn tiền khi hủy phòng</h4>
                 <div style={{ display:'flex', gap: 8 }}>
@@ -395,6 +536,78 @@ const HotelFormContent = ({
                   ))}
                 </tbody>
               </table>
+
+              <div style={{
+                marginTop: 16, padding: 14, background: '#f8fdfb',
+                borderRadius: 8, border: '1px solid #d4ede6',
+              }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 14, color: '#1a2e28' }}>
+                  Mô tả chính sách hủy đặc biệt
+                </h4>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: '#666', lineHeight: 1.5 }}>
+                  Áp dụng khi khách hủy ngoài các mốc hoàn tiền ở trên. Khách cần gửi minh chứng để được xem xét hoàn tiền.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: 3 }}
+                      checked={form.hoan_khi_benh}
+                      onChange={(e) => setRuleFlag('hoan_khi_benh', e.target.checked)}
+                    />
+                    <span>
+                      <strong>Bị bệnh</strong>
+                      <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
+                        Chấp nhận hoàn tiền khi khách bị bệnh (giấy xác nhận y tế)
+                      </span>
+                    </span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: 3 }}
+                      checked={form.hoan_cong_viec_dot_xuat}
+                      onChange={(e) => setRuleFlag('hoan_cong_viec_dot_xuat', e.target.checked)}
+                    />
+                    <span>
+                      <strong>Công việc đột xuất</strong>
+                      <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
+                        Chấp nhận hoàn tiền khi có việc công tác / công việc khẩn cấp
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
+                  <input
+                    type="checkbox"
+                    style={{ marginTop: 3 }}
+                    checked={form.yeu_cau_minh_chung_huy}
+                    onChange={(e) => setRuleFlag('yeu_cau_minh_chung_huy', e.target.checked)}
+                  />
+                  <span>
+                    <strong>Yêu cầu hình ảnh minh chứng</strong>
+                    <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
+                      Khách phải đính kèm ảnh minh chứng (đơn thuốc, giấy bác sĩ, thư công ty...) khi yêu cầu hoàn tiền
+                    </span>
+                  </span>
+                </label>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
+                    Ghi chú bổ sung
+                  </label>
+                  <textarea
+                    className="search-input"
+                    rows={3}
+                    style={{ resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
+                    value={form.mo_ta_chinh_sach_huy}
+                    onChange={(e) => setForm({ ...form, mo_ta_chinh_sach_huy: e.target.value })}
+                    placeholder="VD: Khách gửi minh chứng trong vòng 24h sau khi hủy. Khách sạn xem xét và phản hồi trong 3 ngày làm việc."
+                  />
+                </div>
+              </div>
             </div>
           )}
 

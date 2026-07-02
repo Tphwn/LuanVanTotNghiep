@@ -1,27 +1,107 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import customerBookingService from '../../services/customerBookingService';
-import { resolveUploadUrl } from '../../utils/media';
+import RoomSpecs from '../../components/customer/RoomSpecs';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
+import { resolveBookingQuery } from '../../utils/bookingNavigation';
+import { formatHotelTime } from '../../utils/bookingDisplay';
+import {
+  buildAccommodationPolicyGroups,
+  buildCancellationPolicyItems,
+} from '../../utils/hotelPolicyUtils';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+
+const fmtShortDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  const day = String(dt.getDate()).padStart(2, '0');
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${day}-${month}`;
+};
+
+const PolicyList = ({ items, variant }) => {
+  if (!items?.length) return null;
+  return (
+    <ul className={`booking-confirm-policy-list booking-confirm-policy-list--${variant}`}>
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+};
+
+const AccommodationPolicyDisplay = ({ groups }) => {
+  if (!groups?.hasContent) return null;
+
+  return (
+    <div className="booking-confirm-accommodation">
+      {groups.requirements.length > 0 && (
+        <div className="booking-confirm-policy-requirements">
+          <h4 className="booking-confirm-policy-subtitle">Yêu cầu khi nhận phòng</h4>
+          <PolicyList items={groups.requirements} variant="neutral" />
+        </div>
+      )}
+
+      <div className="booking-confirm-policy-cols">
+        <div className="booking-confirm-policy-col booking-confirm-policy-col--allowed">
+          <h4 className="booking-confirm-policy-subtitle">Được</h4>
+          {groups.allowed.length > 0 ? (
+            <PolicyList items={groups.allowed} variant="allowed" />
+          ) : (
+            <p className="booking-confirm-policy-none">Không có quy định đặc biệt</p>
+          )}
+        </div>
+
+        <div className="booking-confirm-policy-col booking-confirm-policy-col--denied">
+          <h4 className="booking-confirm-policy-subtitle">Không được</h4>
+          {groups.notAllowed.length > 0 ? (
+            <PolicyList items={groups.notAllowed} variant="denied" />
+          ) : (
+            <p className="booking-confirm-policy-none">Không có hạn chế</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PolicyBox = ({ title, children, emptyText }) => (
+  <div className="booking-confirm-policy-block">
+    <h3 className="booking-confirm-section-title">{title}</h3>
+    <div className="booking-confirm-policy-box">
+      {children || (
+        <p className="booking-confirm-policy-empty">{emptyText}</p>
+      )}
+    </div>
+  </div>
+);
 
 const CustomerBookingPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, token } = useSelector((state) => state.auth);
 
-  const maKhachSan = searchParams.get('ma_khach_san') || '';
-  const maLoaiPhong = searchParams.get('ma_loai_phong') || '';
-  const ngayNhan = searchParams.get('ngay_nhan') || '';
-  const ngayTra = searchParams.get('ngay_tra') || '';
-  const soKhach = searchParams.get('so_khach') || '2';
+  const bookingParams = useMemo(() => resolveBookingQuery({
+    ma_khach_san: searchParams.get('ma_khach_san') || '',
+    ma_loai_phong: searchParams.get('ma_loai_phong') || '',
+    ngay_nhan: searchParams.get('ngay_nhan') || '',
+    ngay_tra: searchParams.get('ngay_tra') || '',
+    so_khach: searchParams.get('so_khach') || '',
+    ma_dia_diem: searchParams.get('ma_dia_diem') || '',
+  }), [searchParams]);
+
+  const maKhachSan = bookingParams.ma_khach_san;
+  const maLoaiPhong = bookingParams.ma_loai_phong;
+  const ngayNhan = bookingParams.ngay_nhan;
+  const ngayTra = bookingParams.ngay_tra;
+  const soKhach = bookingParams.so_khach;
 
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +112,7 @@ const CustomerBookingPage = () => {
   const [form, setForm] = useState({
     ten_nguoi_nhan: '',
     sdt_nguoi_nhan: '',
+    email: '',
     phuong_thuc_tt: 'truc_tuyen',
     ghi_chu: '',
   });
@@ -53,11 +134,32 @@ const CustomerBookingPage = () => {
   }, [maKhachSan, maLoaiPhong, ngayNhan, ngayTra, soKhach, searchParams]);
 
   const nights = useMemo(() => {
+    if (room?.so_dem) return room.so_dem;
     if (!ngayNhan || !ngayTra) return 1;
     const a = new Date(ngayNhan);
     const b = new Date(ngayTra);
     return Math.max(Math.round((b - a) / (1000 * 60 * 60 * 24)), 1);
-  }, [ngayNhan, ngayTra]);
+  }, [ngayNhan, ngayTra, room?.so_dem]);
+
+  const hotel = room?.khach_san;
+
+  const accommodationPolicies = useMemo(
+    () => buildAccommodationPolicyGroups(hotel),
+    [hotel],
+  );
+
+  const cancellationPolicies = useMemo(
+    () => buildCancellationPolicyItems(hotel),
+    [hotel],
+  );
+
+  const priceBreakdown = useMemo(() => {
+    const total = Number(room?.tong_gia) || 0;
+    const taxFees = Math.round(total - total / 1.1);
+    const roomSubtotal = total - taxFees;
+    const avgNight = room?.gia_hien_thi || (nights ? Math.round(roomSubtotal / nights) : roomSubtotal);
+    return { total, taxFees, roomSubtotal, avgNight };
+  }, [room, nights]);
 
   useEffect(() => {
     if (!token) {
@@ -70,9 +172,9 @@ const CustomerBookingPage = () => {
   }, [token, user, navigate, searchParams]);
 
   useEffect(() => {
-    if (!maKhachSan || !maLoaiPhong || !ngayNhan || !ngayTra) {
+    if (!maKhachSan || !maLoaiPhong) {
       setLoading(false);
-      setError('Thiếu thông tin đặt phòng. Vui lòng chọn lại phòng từ trang tìm kiếm.');
+      setError('Thiếu thông tin phòng. Vui lòng chọn lại phòng.');
       return;
     }
 
@@ -98,6 +200,7 @@ const CustomerBookingPage = () => {
         ...prev,
         ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || '',
         sdt_nguoi_nhan: prev.sdt_nguoi_nhan || user.so_dien_thoai || '',
+        email: prev.email || user.email || '',
       }));
     }
   }, [user]);
@@ -132,127 +235,199 @@ const CustomerBookingPage = () => {
 
   if (loading) {
     return (
-      <div className="booking-page">
-        <div className="content-card"style={{ textAlign: 'center', padding: 64, color: '#5a7a72'}}>
-           Đang tải thông tin đặt phòng...
-        </div>
+      <div className="booking-confirm-page">
+        <div className="booking-confirm-loading">Đang tải thông tin đặt phòng...</div>
       </div>
     );
   }
 
   if (error && !room) {
     return (
-      <div className="booking-page">
-        <div className="content-card"style={{ textAlign:'center', padding: 48 }}>
-          <p style={{ color: '#e05c5c', marginBottom: 16 }}> {error}</p>
+      <div className="booking-confirm-page">
+        <div className="booking-confirm-error-card">
+          <p>{error}</p>
           <BackButton to={ROUTES.CUSTOMER.HOTELS} variant="outline" />
         </div>
       </div>
     );
   }
 
-  const hotel = room?.khach_san;
-  const roomImg = room?.hinh_anh?.find((i) => i.la_anh_chinh) || room?.hinh_anh?.[0];
+  const checkInTime = formatHotelTime(hotel?.gio_nhan_phong, '14:00');
+  const checkOutTime = formatHotelTime(hotel?.gio_tra_phong, '12:00');
+  const hasCancelRules = cancellationPolicies.rules.length > 0 || cancellationPolicies.notes.length > 0;
 
   return (
-    <div className="booking-page">
-      <BackButton to={backUrl} className="page-back-btn--standalone" />
+    <div className="booking-confirm-page">
+      <div className="booking-confirm-header">
+        <BackButton to={backUrl} className="booking-confirm-back" />
+        <h1 className="booking-confirm-title">Xác nhận đặt phòng</h1>
+      </div>
 
-      <h1 className="booking-page-title">Xác nhận đặt phòng</h1>
+      <div className="booking-confirm-layout">
+        <form id="booking-confirm-form" className="booking-confirm-main" onSubmit={handleSubmit}>
+          <div className="booking-confirm-card">
+            <h2 className="booking-confirm-section-title">Thông tin khách hàng</h2>
 
-      <div className="booking-layout">
-        <form className="booking-form content-card"onSubmit={handleSubmit}>
-          <h3 className="content-card-title">Thông tin người nhận phòng</h3>
-
-          <div className="booking-field">
-            <label className="booking-label"htmlFor="ten_nguoi_nhan">Họ và tên *</label>
-            <input
-              id="ten_nguoi_nhan"className="booking-input"value={form.ten_nguoi_nhan}
-              onChange={(e) => setForm((p) => ({ ...p, ten_nguoi_nhan: e.target.value }))}
-              required
-              maxLength={100}
-            />
-          </div>
-
-          <div className="booking-field">
-            <label className="booking-label"htmlFor="sdt_nguoi_nhan">Số điện thoại *</label>
-            <input
-              id="sdt_nguoi_nhan"className="booking-input"value={form.sdt_nguoi_nhan}
-              onChange={(e) => setForm((p) => ({ ...p, sdt_nguoi_nhan: e.target.value }))}
-              required
-              maxLength={15}
-            />
-          </div>
-
-          <div className="booking-field">
-            <span className="booking-label">Phương thức thanh toán *</span>
-            <div className="booking-radio-group">
-              <label className="booking-radio">
-                <input
-                  type="radio"name="phuong_thuc_tt"value="truc_tuyen"checked={form.phuong_thuc_tt === 'truc_tuyen'}
-                  onChange={(e) => setForm((p) => ({ ...p, phuong_thuc_tt: e.target.value }))}
-                />
-                Thanh toán trực tuyến
+            <div className="booking-confirm-field">
+              <label className="booking-confirm-label" htmlFor="ten_nguoi_nhan">
+                Họ tên <span className="booking-confirm-required">*</span>
               </label>
-              <label className="booking-radio">
-                <input
-                  type="radio"name="phuong_thuc_tt"value="tai_khach_san"checked={form.phuong_thuc_tt === 'tai_khach_san'}
-                  onChange={(e) => setForm((p) => ({ ...p, phuong_thuc_tt: e.target.value }))}
-                />
-                Thanh toán tại khách sạn
-              </label>
+              <input
+                id="ten_nguoi_nhan"
+                className="booking-confirm-input"
+                value={form.ten_nguoi_nhan}
+                onChange={(e) => setForm((p) => ({ ...p, ten_nguoi_nhan: e.target.value }))}
+                required
+                maxLength={100}
+              />
             </div>
+
+            <div className="booking-confirm-field-row">
+              <div className="booking-confirm-field">
+                <label className="booking-confirm-label" htmlFor="sdt_nguoi_nhan">
+                  Số điện thoại <span className="booking-confirm-required">*</span>
+                </label>
+                <input
+                  id="sdt_nguoi_nhan"
+                  className="booking-confirm-input"
+                  value={form.sdt_nguoi_nhan}
+                  onChange={(e) => setForm((p) => ({ ...p, sdt_nguoi_nhan: e.target.value }))}
+                  required
+                  maxLength={15}
+                />
+              </div>
+              <div className="booking-confirm-field">
+                <label className="booking-confirm-label" htmlFor="email">
+                  Email <span className="booking-confirm-required">*</span>
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className="booking-confirm-input"
+                  value={form.email}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  required
+                  maxLength={120}
+                />
+              </div>
+            </div>
+
+            
+
           </div>
 
-          <div className="booking-field">
-            <label className="booking-label"htmlFor="ghi_chu">Ghi chú (tuỳ chọn)</label>
-            <textarea
-              id="ghi_chu"className="booking-textarea"rows={3}
-              value={form.ghi_chu}
-              onChange={(e) => setForm((p) => ({ ...p, ghi_chu: e.target.value }))}
-              placeholder="Yêu cầu đặc biệt, giờ đến sớm..."/>
-          </div>
+          <PolicyBox
+            title="Chính sách chỗ ở"
+            emptyText="Khách sạn chưa cập nhật chính sách chỗ ở."
+          >
+            <AccommodationPolicyDisplay groups={accommodationPolicies} />
+          </PolicyBox>
+
+          <PolicyBox
+            title="Chính sách hủy"
+            emptyText="Khách sạn chưa cấu hình chính sách hủy — hủy đặt phòng có thể mất 100% tiền cọc."
+          >
+            {hasCancelRules && (
+              <div className="booking-confirm-cancel-wrap">
+                {cancellationPolicies.rules.length > 0 && (
+                  <ul className="booking-confirm-policy-list">
+                    {cancellationPolicies.rules.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+                {cancellationPolicies.notes.length > 0 && (
+                  <ul className="booking-confirm-policy-notes">
+                    {cancellationPolicies.notes.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </PolicyBox>
 
           {error && room && (
-            <p className="booking-error"> {error}</p>
+            <p className="booking-confirm-error">{error}</p>
           )}
           {success && (
-            <p className="booking-success"> {success}</p>
+            <p className="booking-confirm-success">{success}</p>
           )}
-
-          <button type="submit"className="btn btn-primary"disabled={submitting || !!success} style={{ width: '100%', marginTop: 8 }}>
-            {submitting ? 'Đang xử lý...':'Xác nhận đặt phòng'}
-          </button>
         </form>
 
-        <aside className="booking-summary content-card">
-          <h3 className="content-card-title">Tóm tắt đặt phòng</h3>
+        <aside className="booking-confirm-aside">
+          <div className="booking-confirm-card booking-confirm-summary">
+            <h2 className="booking-confirm-section-title">Tóm tắt đặt phòng</h2>
 
-          {roomImg && (
-            <img src={resolveUploadUrl(roomImg.url)} alt={room?.ten_loai} className="booking-summary-img"/>
-          )}
+            <p className="booking-confirm-hotel-name">
+              Khách sạn: <strong>{hotel?.ten}</strong>
+            </p>
+            <p className="booking-confirm-room-name">
+              Loại phòng: <strong>{room?.ten_loai}</strong>
+            </p>
 
-          <p className="booking-summary-hotel">{hotel?.ten}</p>
-          <p className="booking-summary-room">{room?.ten_loai}</p>
-          <p className="booking-summary-location"> {hotel?.dia_diem?.ten_dia_diem}</p>
+            {hotel?.dia_chi && (
+              <p className="booking-confirm-address">
+                <MapPin size={14} strokeWidth={2} aria-hidden />
+                <span>{hotel.dia_chi}</span>
+              </p>
+            )}
 
-          <div className="booking-summary-dates">
-            <div>
-              <span className="booking-summary-label">Nhận phòng</span>
-              <strong>{fmtDate(ngayNhan)}</strong>
+            <div className="booking-confirm-stay-dates">
+              <div className="booking-confirm-stay-col">
+                <span className="booking-confirm-stay-label">NHẬN PHÒNG</span>
+                <strong className="booking-confirm-stay-date">{fmtShortDate(ngayNhan)}</strong>
+                <span className="booking-confirm-stay-time">Từ: {checkInTime}</span>
+              </div>
+              <div className="booking-confirm-stay-col">
+                <span className="booking-confirm-stay-label">TRẢ PHÒNG</span>
+                <strong className="booking-confirm-stay-date">{fmtShortDate(ngayTra)}</strong>
+                <span className="booking-confirm-stay-time">Trước: {checkOutTime}</span>
+              </div>
             </div>
-            <span>→</span>
-            <div>
-              <span className="booking-summary-label">Trả phòng</span>
-              <strong>{fmtDate(ngayTra)}</strong>
-            </div>
+
+            <RoomSpecs
+              sucChua={room?.suc_chua}
+              dienTich={room?.dien_tich}
+              soGiuong={room?.so_giuong}
+            />
           </div>
 
-          <p className="booking-summary-meta">{nights} đêm · {soKhach} khách</p>
+          <div className="booking-confirm-card booking-confirm-price">
+            <h2 className="booking-confirm-section-title">Chi tiết giá</h2>
 
-          <div className="booking-summary-total">
-            <span>Tổng thanh toán</span>
-            <strong>{fmt(room?.tong_gia)} ₫</strong>
+            <div className="booking-confirm-price-row">
+              <span>Giá phòng</span>
+              <strong>{fmt(priceBreakdown.avgNight)} VNĐ</strong>
+            </div>
+            <div className="booking-confirm-price-sub">
+              <span>1 phòng {room?.ten_loai}</span>
+              <span>{nights} đêm</span>
+            </div>
+
+            <div className="booking-confirm-price-row">
+              <span>Thuế và phí</span>
+              <strong>{fmt(priceBreakdown.taxFees)} VNĐ</strong>
+            </div>
+
+            <div className="booking-confirm-price-total">
+              <div>
+                <span className="booking-confirm-price-total-label">Tổng cộng</span>
+                <span className="booking-confirm-price-total-sub">/ 1 phòng, {nights} đêm</span>
+              </div>
+              <strong className="booking-confirm-price-total-value">
+                {fmt(priceBreakdown.total)} VNĐ
+              </strong>
+            </div>
+
+            <button
+              type="submit"
+              form="booking-confirm-form"
+              className="booking-confirm-submit"
+              disabled={submitting || !!success}
+            >
+              {submitting ? 'Đang xử lý...' : 'Đặt Phòng'}
+            </button>
           </div>
         </aside>
       </div>

@@ -4,14 +4,19 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import BackButton from '../../components/common/BackButton';
 import RoomSpecs from '../../components/customer/RoomSpecs';
+import CustomerButton from '../../components/customer/CustomerButton';
+import CustomerAmenityTag from '../../components/customer/CustomerAmenityTag';
+import CustomerPrice from '../../components/customer/CustomerPrice';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
+import { buildCustomerBookingUrl } from '../../utils/bookingNavigation';
+import { resolveSearchForm } from '../../utils/hotelSearchStorage';
 import { ROOM_CATEGORY_GROUPS } from '../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../admin/amenities/utils';
+import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
-const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
 const buildQueryString = (query) => {
@@ -20,16 +25,7 @@ const buildQueryString = (query) => {
   return params.toString();
 };
 
-const buildBookingUrl = (hId, roomId, query) => {
-  const params = new URLSearchParams();
-  params.set('ma_khach_san', String(hId));
-  params.set('ma_loai_phong', String(roomId));
-  if (query.ngay_nhan) params.set('ngay_nhan', query.ngay_nhan);
-  if (query.ngay_tra) params.set('ngay_tra', query.ngay_tra);
-  if (query.so_khach) params.set('so_khach', query.so_khach);
-  if (query.ma_dia_diem) params.set('ma_dia_diem', query.ma_dia_diem);
-  return `${ROUTES.CUSTOMER.BOOKING}?${params.toString()}`;
-};
+const buildBookingUrl = (hId, roomId, query) => buildCustomerBookingUrl(hId, roomId, query);
 
 const CustomerRoomDetailPage = () => {
   const navigate = useNavigate();
@@ -41,12 +37,20 @@ const CustomerRoomDetailPage = () => {
   const [error, setError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
 
-  const query = useMemo(() => ({
-    ma_dia_diem: searchParams.get('ma_dia_diem') || '',
-    ngay_nhan: searchParams.get('ngay_nhan') || '',
-    ngay_tra: searchParams.get('ngay_tra') || '',
-    so_khach: searchParams.get('so_khach') || '2',
-  }), [searchParams]);
+  const query = useMemo(() => {
+    const resolved = resolveSearchForm({
+      ma_dia_diem: searchParams.get('ma_dia_diem') || '',
+      ngay_nhan: searchParams.get('ngay_nhan') || '',
+      ngay_tra: searchParams.get('ngay_tra') || '',
+      so_khach: searchParams.get('so_khach') || '',
+    });
+    return {
+      ma_dia_diem: resolved.ma_dia_diem,
+      ngay_nhan: resolved.ngay_nhan,
+      ngay_tra: resolved.ngay_tra,
+      so_khach: String(resolved.so_khach),
+    };
+  }, [searchParams]);
 
   const backUrl = useMemo(() => {
     const qs = buildQueryString(query);
@@ -203,11 +207,11 @@ const CustomerRoomDetailPage = () => {
               {amenityGroups.map((group) => (
                 <div key={group.id} className="room-detail-amenity-group">
                   <h3 className="room-detail-amenity-group-title">{group.label}</h3>
-                  <div className="room-detail-amenity-tags">
+                  <div className="room-detail-amenity-tags customer-amenity-tags">
                     {group.items.map((item) => (
-                      <span key={item.ma_tien_nghi || item.ten} className="room-detail-amenity-tag">
+                      <CustomerAmenityTag key={item.ma_tien_nghi || item.ten}>
                         {item.ten}
-                      </span>
+                      </CustomerAmenityTag>
                     ))}
                   </div>
                 </div>
@@ -218,14 +222,14 @@ const CustomerRoomDetailPage = () => {
           <div className="room-detail-booking">
             <div className="room-detail-price-row">
               <span className="room-detail-price-label">Giá:</span>
-              <span className="room-detail-price-value">{fmt(room.gia_hien_thi)} VNĐ</span>
+              <CustomerPrice amount={room.gia_hien_thi} className="room-detail-price-value" />
             </div>
             {nights > 1 && room.tong_gia && (
-              <p className="room-detail-total">Tổng {nights} đêm: {fmt(room.tong_gia)} VNĐ</p>
+              <p className="room-detail-total">Tổng {nights} đêm: {formatCurrency(room.tong_gia)} VNĐ</p>
             )}
-            <button type="button" className="btn btn-primary room-detail-book-btn" onClick={handleBook}>
+            <CustomerButton className="room-detail-book-btn" fullWidth onClick={handleBook}>
               Đặt phòng ngay
-            </button>
+            </CustomerButton>
           </div>
         </aside>
       </div>

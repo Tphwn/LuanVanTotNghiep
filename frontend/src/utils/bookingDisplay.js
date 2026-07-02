@@ -21,6 +21,66 @@ export const PHUONG_THUC = {
   tai_khach_san: 'Tại khách sạn',
 };
 
+export const REFUND_TRANG_THAI = {
+  cho_xu_ly: { label: 'Chờ xử lý', cls: 'badge-warning' },
+  dang_xu_ly: { label: 'Chờ xử lý', cls: 'badge-warning' },
+  da_hoan: { label: 'Đã hoàn', cls: 'badge-success' },
+  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
+};
+
+export const REFUND_BADGE = {
+  cho_xu_ly: { label: 'Chờ xử lý hoàn tiền', cls: 'badge-warning' },
+  dang_xu_ly: { label: 'Chờ xử lý hoàn tiền', cls: 'badge-warning' },
+  da_hoan: { label: 'Đã hoàn tiền', cls: 'badge-success' },
+  tu_choi: { label: 'Từ chối hoàn tiền', cls: 'badge-danger' },
+};
+
+export const getRefundBadgeMeta = (trangThaiHoan) => {
+  if (!trangThaiHoan) return null;
+  return REFUND_BADGE[trangThaiHoan] || { label: trangThaiHoan, cls: 'badge-default' };
+};
+
+export const getRefundDisplay = (booking) => {
+  const status = booking?.hoan_tien?.trang_thai
+    || booking?.thong_tin_hoan_tien?.trang_thai_hoan;
+  if (!status) return null;
+  return REFUND_TRANG_THAI[status] || { label: status, cls: 'badge-default' };
+};
+
+export const buildCancelNoticeContent = (refundInfo) => {
+  if (!refundInfo) return null;
+
+  const {
+    phan_tram_hoan: phanTram,
+    so_tien_hoan: soTienHoan,
+    da_thanh_toan_online: paid,
+    trang_thai_hoan: trangThaiHoan,
+  } = refundInfo;
+
+  let policyLine = '';
+  if (paid && Number(soTienHoan) > 0) {
+    policyLine = `Theo chính sách: khách được hoàn lại ${phanTram}% số tiền (tương đương ${Number(soTienHoan).toLocaleString('vi-VN')}đ).`;
+  } else if (paid) {
+    policyLine = 'Theo chính sách hủy, khách không được hoàn tiền cho đơn này.';
+  } else {
+    policyLine = 'Khách chưa thanh toán online nên không phát sinh hoàn tiền.';
+  }
+
+  let statusLine = null;
+
+  if (trangThaiHoan === 'cho_xu_ly' || trangThaiHoan === 'dang_xu_ly') {
+    statusLine = 'Yêu cầu hoàn tiền đang chờ xử lý.';
+  } else if (trangThaiHoan === 'da_hoan') {
+    statusLine = 'Admin đã hoàn tiền cho khách.';
+  } else if (trangThaiHoan === 'tu_choi') {
+    statusLine = 'Yêu cầu hoàn tiền đã bị từ chối.';
+  }
+
+  const summaryText = statusLine ? `${policyLine} ${statusLine}` : policyLine;
+
+  return { policyLine, statusLine, summaryText, refundBadge: getRefundBadgeMeta(trangThaiHoan) };
+};
+
 export const isCancelledBooking = (booking) =>
   ['da_huy', 'tu_choi'].includes(booking?.trang_thai);
 
@@ -42,29 +102,54 @@ export const getPaymentDisplay = (booking) => {
     const hasRefundAmount = Number(refundInfo?.so_tien_hoan || booking?.hoan_tien?.so_tien_hoan) > 0;
 
     if (refundStatus === 'da_hoan') {
+      const meta = REFUND_BADGE.da_hoan;
       return {
-        shortLabel: '✓ Đã hoàn',
-        label: 'Đã hoàn tiền',
+        shortLabel: 'Đã hoàn',
+        label: meta.label,
         cls: 'mgmt-status-text--active',
-        badge: 'badge-success',
+        badge: meta.cls,
       };
     }
 
-    if (['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus) || (hasRefundAmount && !refundStatus)) {
+    if (['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus)) {
+      const meta = REFUND_BADGE.cho_xu_ly;
       return {
-        shortLabel: '⏳ Đang hoàn',
-        label: 'Đang hoàn tiền',
+        shortLabel: 'Chờ xử lý',
+        label: meta.label,
         cls: 'mgmt-status-text--pending',
-        badge: 'badge-warning',
+        badge: meta.cls,
+      };
+    }
+
+    if (hasRefundAmount && !refundStatus) {
+      const meta = REFUND_BADGE.cho_xu_ly;
+      return {
+        shortLabel: 'Chờ xử lý',
+        label: meta.label,
+        cls: 'mgmt-status-text--pending',
+        badge: meta.cls,
       };
     }
 
     if (refundStatus === 'tu_choi') {
+      const meta = REFUND_BADGE.tu_choi;
       return {
         shortLabel: 'Không hoàn',
-        label: 'Từ chối hoàn tiền',
+        label: meta.label,
         cls: 'mgmt-status-text--danger',
-        badge: 'badge-danger',
+        badge: meta.cls,
+      };
+    }
+
+    const paidOnline = booking?.phuong_thuc_tt === 'truc_tuyen'
+      || booking?.thanh_toan?.trang_thai === 'thanh_cong';
+    if (paidOnline) {
+      const meta = REFUND_BADGE.cho_xu_ly;
+      return {
+        shortLabel: 'Chờ xử lý',
+        label: meta.label,
+        cls: 'mgmt-status-text--pending',
+        badge: meta.cls,
       };
     }
 
@@ -78,7 +163,7 @@ export const getPaymentDisplay = (booking) => {
 
   if (isOnlinePaid(booking)) {
     return {
-      shortLabel: 'Đã TT',
+      shortLabel: 'Đã thanh toán',
       label: 'Đã thanh toán',
       cls: 'mgmt-status-text--active',
       badge: 'badge-success',

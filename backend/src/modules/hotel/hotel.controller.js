@@ -2,6 +2,7 @@ const prisma = require('../../config/prisma');
 const { attachHotelImages } = require('../../utils/images');
 const { getUserId } = require('../../utils/user');
 const { parseJsonField } = require('../../utils/parseJson');
+const { parseHotelRulesInput } = require('../../utils/hotelRules');
 
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
@@ -111,6 +112,7 @@ exports.createHotel = async (req, res) => {
     const { ten, dia_chi, mo_ta, so_sao, gio_nhan_phong, gio_tra_phong, ma_dia_diem } = req.body;
     const tien_nghi_ids = parseJsonField(req.body.tien_nghi_ids, []);
     const chinh_sach_huy = parseJsonField(req.body.chinh_sach_huy, []);
+    const hotelRules = parseHotelRulesInput(req.body);
     const userId = getUserId(req.user);
 
     if (!req.files?.length) {
@@ -137,6 +139,7 @@ exports.createHotel = async (req, res) => {
           gio_nhan_phong: new Date(`1970-01-01T${gio_nhan_phong}:00.000Z`),
           gio_tra_phong: new Date(`1970-01-01T${gio_tra_phong}:00.000Z`),
           trang_thai: 'cho_duyet',
+          ...hotelRules,
         },
       });
 
@@ -279,6 +282,7 @@ exports.updateHotel = async (req, res) => {
     const chinh_sach_huy = req.body.chinh_sach_huy !== undefined
       ? parseJsonField(req.body.chinh_sach_huy, [])
       : undefined;
+    const hotelRules = parseHotelRulesInput(req.body);
     const removedImageIds = parseJsonField(req.body.removedImageIds, []);
 
     const updateData = {};
@@ -292,8 +296,11 @@ exports.updateHotel = async (req, res) => {
     if (gio_tra_phong !== undefined) {
       updateData.gio_tra_phong = new Date(`1970-01-01T${gio_tra_phong}:00.000Z`);
     }
-    if (ma_dia_diem !== undefined) updateData.ma_dia_diem = parseInt(ma_dia_diem);
+    if (ma_dia_diem !== undefined) {
+      updateData.dia_diem = { connect: { ma_dia_diem: parseInt(ma_dia_diem, 10) } };
+    }
     if (trang_thai !== undefined) updateData.trang_thai = trang_thai;
+    Object.assign(updateData, hotelRules);
 
     await prisma.$transaction(async (tx) => {
       if (Object.keys(updateData).length > 0) {
@@ -363,5 +370,79 @@ exports.updateHotel = async (req, res) => {
   } catch (error) {
     console.error('Lỗi cập nhật khách sạn:', error);
     res.status(500).json({ success: false, message: 'Lỗi server khi cập nhật khách sạn' });
+  }
+};
+
+exports.deleteHotel = async (req, res) => {
+  try {
+    const userId = getUserId(req.user);
+    const hotelId = parseInt(req.params.id, 10);
+
+    if (isNaN(userId) || isNaN(hotelId)) {
+      return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
+    }
+
+    const doiTac = await prisma.doi_tac.findUnique({
+      where: { ma_nguoi_dung: userId },
+    });
+
+    if (!doiTac) {
+      return res.status(403).json({ success: false, message: 'Không tìm thấy hồ sơ đối tác của bạn!' });
+    }
+
+    const hotel = await prisma.khach_san.findFirst({
+      where: { ma_khach_san: hotelId, ma_doi_tac: doiTac.ma_doi_tac },
+    });
+
+    if (!hotel) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khách sạn' });
+    }
+
+    if (hotel.trang_thai !== 'cho_duyet') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể xóa khách sạn đang chờ admin duyệt',
+      });
+    }
+
+    const bookingCount = await prisma.dat_phong.count({
+      where: { loai_phong: { ma_khach_san: hotelId } },
+    });
+
+    if (bookingCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xóa khách sạn đã có đơn đặt phòng',
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const roomTypes = await tx.loai_phong.findMany({
+        where: { ma_khach_san: hotelId },
+        select: { ma_loai_phong: true },
+      });
+      const roomIds = roomTypes.map((r) => r.ma_loai_phong);
+
+      if (roomIds.length > 0) {
+        await tx.bang_gia_phong.deleteMany({ where: { ma_loai_phong: { in: roomIds } } });
+        await tx.loai_phong_tien_nghi.deleteMany({ where: { ma_loai_phong: { in: roomIds } } });
+        await tx.hinh_anh.deleteMany({
+          where: { loai_doi_tuong: 'loai_phong', ma_doi_tuong: { in: roomIds } },
+        });
+        await tx.loai_phong.deleteMany({ where: { ma_khach_san: hotelId } });
+      }
+
+      await tx.chinh_sach_huy.deleteMany({ where: { ma_khach_san: hotelId } });
+      await tx.khach_san_tien_nghi.deleteMany({ where: { ma_khach_san: hotelId } });
+      await tx.hinh_anh.deleteMany({
+        where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+      });
+      await tx.khach_san.delete({ where: { ma_khach_san: hotelId } });
+    });
+
+    res.json({ success: true, message: 'Đã xóa khách sạn thành công' });
+  } catch (error) {
+    console.error('Lỗi xóa khách sạn:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi xóa khách sạn' });
   }
 };

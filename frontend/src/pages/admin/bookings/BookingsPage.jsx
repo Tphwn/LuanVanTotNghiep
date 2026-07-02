@@ -5,6 +5,7 @@ import {
   fetchAdminBookings,
   fetchBookingStats,
   fetchHotelsForFilter,
+  fetchPartnersForFilter,
   clearMsg,
 } from '../../../store/slices/adminBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
@@ -14,13 +15,14 @@ import BookingTable from '../../../components/booking/BookingTable';
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { list, stats, hotels, loading, error, successMsg } = useSelector(
+  const { list, stats, hotels, partners, loading, error, successMsg } = useSelector(
     (s) => s.adminBooking || {},
   );
 
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [partnerFilter, setPartnerFilter] = useState('all');
   const [hotelFilter, setHotelFilter] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
@@ -28,6 +30,7 @@ const AdminBookingsPage = () => {
   useEffect(() => {
     dispatch(fetchBookingStats());
     dispatch(fetchHotelsForFilter());
+    dispatch(fetchPartnersForFilter());
   }, [dispatch]);
 
   useEffect(() => {
@@ -39,11 +42,29 @@ const AdminBookingsPage = () => {
     dispatch(fetchAdminBookings({
       keyword: debouncedKeyword,
       trang_thai: statusFilter,
+      ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
       ks_id: hotelFilter !== 'all' ? hotelFilter : '',
       tu_ngay: tuNgay,
       den_ngay: denNgay,
     }));
-  }, [dispatch, debouncedKeyword, statusFilter, hotelFilter, tuNgay, denNgay]);
+  }, [dispatch, debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+
+  const filteredHotels = useMemo(() => {
+    if (partnerFilter === 'all') return hotels;
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(partnerFilter));
+  }, [hotels, partnerFilter]);
+
+  const handlePartnerChange = (value) => {
+    setPartnerFilter(value);
+    if (value === 'all') return;
+    const hotelStillValid = hotels.some(
+      (h) => String(h.ma_khach_san) === String(hotelFilter)
+        && String(h.ma_doi_tac) === String(value),
+    );
+    if (hotelFilter !== 'all' && !hotelStillValid) {
+      setHotelFilter('all');
+    }
+  };
 
   useEffect(() => {
     if (successMsg || error) {
@@ -88,12 +109,23 @@ const AdminBookingsPage = () => {
       <div className="mgmt-toolbar">
         <select
           className="mgmt-select-inline"
+          value={partnerFilter}
+          onChange={(e) => handlePartnerChange(e.target.value)}
+          aria-label="Lọc theo đối tác"
+        >
+          <option value="all">Tất cả đối tác</option>
+          {partners.map((p) => (
+            <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+          ))}
+        </select>
+        <select
+          className="mgmt-select-inline"
           value={hotelFilter}
           onChange={(e) => setHotelFilter(e.target.value)}
           aria-label="Lọc theo khách sạn"
         >
           <option value="all">Tất cả khách sạn</option>
-          {hotels.map((h) => (
+          {filteredHotels.map((h) => (
             <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
           ))}
         </select>

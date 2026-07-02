@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { countActiveBookedRooms, calcRoomAvailability } = require('../../utils/bookingHelpers');
 const prisma = new PrismaClient();
 
 // ===== HÀM BỔ TRỢ =====
@@ -64,13 +65,21 @@ exports.getMyRooms = async (req, res) => {
     const roomsWithDetails = await Promise.all(rooms.map(async (room) => {
       const tienNghi = await prisma.loai_phong_tien_nghi.findMany({
         where: { ma_loai_phong: room.ma_loai_phong },
-        include: { tien_nghi: true }
+        include: { tien_nghi: true },
       });
       const hinhAnh = await prisma.hinh_anh.findMany({
         where: { loai_doi_tuong: 'loai_phong', ma_doi_tuong: room.ma_loai_phong },
-        orderBy: { thu_tu: 'asc' }
+        orderBy: { thu_tu: 'asc' },
       });
-      return { ...room, loai_phong_tien_nghi: tienNghi, hinh_anh: hinhAnh };
+      const daDat = await countActiveBookedRooms(room.ma_loai_phong);
+      const availability = calcRoomAvailability(room, daDat);
+
+      return {
+        ...room,
+        ...availability,
+        loai_phong_tien_nghi: tienNghi,
+        hinh_anh: hinhAnh,
+      };
     }));
 
     res.status(200).json({ success: true, data: roomsWithDetails });

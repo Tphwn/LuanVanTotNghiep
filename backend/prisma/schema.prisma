@@ -223,6 +223,17 @@ model khach_san {
   ngay_tao            DateTime              @default(now()) @db.DateTime(0)
   ngay_duyet          DateTime?             @db.DateTime(0)
   phan_tram_hoa_hong  Decimal?              @db.Decimal(5, 2)
+  giay_to_bat_buoc      String?               @db.Text
+  cho_phep_hut_thuoc    Boolean               @default(false)
+  cho_phep_to_chuc_tiec Boolean               @default(false)
+  cho_phep_thu_cung     Boolean               @default(false)
+  phu_thu_thu_cung      Decimal?              @db.Decimal(12, 0)
+  tuoi_toi_da_mien_phi  Int?                  @db.TinyInt
+  phu_thu_tre_em        Decimal?              @db.Decimal(12, 0)
+  hoan_khi_benh           Boolean               @default(false)
+  hoan_cong_viec_dot_xuat Boolean               @default(false)
+  yeu_cau_minh_chung_huy  Boolean               @default(true)
+  mo_ta_chinh_sach_huy    String?               @db.Text
   chinh_sach_huy      chinh_sach_huy[]
   nguoi_dung          nguoi_dung?           @relation(fields: [duyet_boi_admin_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ks_admin")
   dia_diem            dia_diem              @relation(fields: [ma_dia_diem], references: [ma_dia_diem], onUpdate: Restrict, map: "fk_ks_diadiem")

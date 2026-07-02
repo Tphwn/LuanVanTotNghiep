@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
 import DateRangePicker from './DateRangePicker';
 import GuestBedPicker from './GuestBedPicker';
+import CustomerSearchButton from '../CustomerSearchButton';
 import { saveSearchForm, resolveSearchForm } from '../../../utils/hotelSearchStorage';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -119,10 +119,9 @@ const HotelSearchBar = ({
         </div>
 
         <div className="home-search-btn-wrap">
-          <button type="button" className="home-search-btn" onClick={handleSubmit}>
-            {!isHero && <Search size={18} strokeWidth={2.5} aria-hidden />}
+          <CustomerSearchButton onClick={handleSubmit} showIcon={!isHero}>
             {btnLabel}
-          </button>
+          </CustomerSearchButton>
         </div>
       </div>
 

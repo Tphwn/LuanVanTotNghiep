@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
-const { calcRefundFromPolicy, wasBookingPaid } = require('../../utils/refundHelpers');
+const { processRefundOnCancel } = require('../../utils/refundHelpers');
+const { autoCompleteExpiredCheckIns } = require('../../utils/bookingHelpers');
 
 const ADMIN_HOTEL_LIST_SELECT = {
   select: {
@@ -59,6 +60,8 @@ const bookingService = {
       select: { ma_loai_phong: true },
     });
     const roomIds = rooms.map(r => r.ma_loai_phong);
+
+    await autoCompleteExpiredCheckIns({ ma_loai_phong: { in: roomIds } });
 
     const where = {
       ma_loai_phong: { in: roomIds },
@@ -185,7 +188,7 @@ const bookingService = {
 
   // ── Admin ────────────────────────────────────────────────
   getAllForAdmin: async (filters = {}) => {
-    const { trang_thai, keyword, ks_id, tu_ngay, den_ngay } = filters;
+    const { trang_thai, keyword, ks_id, ma_doi_tac, tu_ngay, den_ngay } = filters;
     const where = {};
 
     if (trang_thai === 'da_xac_nhan') {
@@ -195,7 +198,13 @@ const bookingService = {
     } else if (trang_thai && trang_thai !== 'all') {
       where.trang_thai = trang_thai;
     }
-    if (ks_id) where.loai_phong = { ma_khach_san: Number(ks_id) };
+
+    const roomWhere = {};
+    if (ks_id) roomWhere.ma_khach_san = Number(ks_id);
+    if (ma_doi_tac) {
+      roomWhere.khach_san = { ...(roomWhere.khach_san || {}), ma_doi_tac: Number(ma_doi_tac) };
+    }
+    if (Object.keys(roomWhere).length) where.loai_phong = roomWhere;
 
     if (tu_ngay && den_ngay) {
       where.ngay_nhan_phong = { gte: new Date(tu_ngay) };
@@ -272,8 +281,8 @@ const bookingService = {
       where: { ma_dat_phong: Number(id) },
     });
     if (!booking) throw new Error('Không tìm thấy đơn đặt phòng');
-    if (['hoan_thanh', 'da_huy'].includes(booking.trang_thai)) {
-      throw new Error('Không thể hủy đơn đã hoàn thành hoặc đã hủy');
+    if (['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'].includes(booking.trang_thai)) {
+      throw new Error('Không thể hủy đơn đã check-in, đã hoàn thành hoặc đã hủy');
     }
 
     await prisma.$transaction(async (tx) => {
@@ -300,8 +309,18 @@ const bookingService = {
   getHotelsForAdminFilter: async () => {
     return prisma.khach_san.findMany({
       where: { trang_thai: 'hoat_dong' },
-      select: { ma_khach_san: true, ten: true },
+      select: { ma_khach_san: true, ten: true, ma_doi_tac: true },
       orderBy: { ten: 'asc' },
+    });
+  },
+
+  getPartnersForAdminFilter: async () => {
+    return prisma.doi_tac.findMany({
+      where: {
+        khach_san: { some: { trang_thai: 'hoat_dong' } },
+      },
+      select: { ma_doi_tac: true, ten_cong_ty: true },
+      orderBy: { ten_cong_ty: 'asc' },
     });
   },
 
@@ -341,52 +360,6 @@ const bookingService = {
       doanh_thu_thang: revenue._sum.thanh_toan_cuoi || 0,
     };
   },
-};
-
-const processRefundOnCancel = async (tx, bookingId, lyDo) => {
-  const booking = await tx.dat_phong.findUnique({
-    where: { ma_dat_phong: Number(bookingId) },
-    include: {
-      thanh_toan: true,
-      hoan_tien: true,
-      loai_phong: {
-        include: {
-          khach_san: {
-            include: {
-              chinh_sach_huy: {
-                where: { trang_thai: 'hoat_dong' },
-                orderBy: { so_ngay_truoc: 'desc' },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!booking?.thanh_toan || booking.hoan_tien) return;
-  if (!wasBookingPaid(booking)) return;
-
-  const cancelDate = new Date();
-  const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
-  const { so_tien_hoan: soTienHoan } = calcRefundFromPolicy(
-    policies,
-    booking.ngay_nhan_phong,
-    cancelDate,
-    booking.thanh_toan_cuoi,
-  );
-
-  if (soTienHoan <= 0) return;
-
-  await tx.hoan_tien.create({
-    data: {
-      ma_dat_phong: booking.ma_dat_phong,
-      ma_thanh_toan: booking.thanh_toan.ma_thanh_toan,
-      so_tien_hoan: soTienHoan,
-      ly_do: lyDo || 'Hủy đơn đặt phòng',
-      trang_thai: 'cho_xu_ly',
-    },
-  });
 };
 
 // Helper: kiểm tra đơn có thuộc KS của đối tác không

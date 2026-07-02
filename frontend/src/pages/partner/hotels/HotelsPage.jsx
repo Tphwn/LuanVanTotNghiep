@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   fetchMyHotels, fetchDiaDiem, fetchAmenitiesForHotel,
-  updateHotel, clearMsg,
+  updateHotel, deleteHotel, clearMsg,
 } from '../../../store/slices/partnerHotelSlice';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
@@ -78,6 +78,14 @@ const HotelsPage = () => {
   };
 
   const canToggle = (status) => status === 'hoat_dong' || status === 'bi_khoa';
+  const canDelete = (status) => status === 'cho_duyet';
+
+  const handleDelete = (hotel) => {
+    const confirmMsg = `Bạn có chắc chắn muốn xóa khách sạn "${hotel.ten}"?`;
+    if (window.confirm(confirmMsg)) {
+      dispatch(deleteHotel(hotel.ma_khach_san));
+    }
+  };
 
   return (
     <div className="mgmt-page">
@@ -131,7 +139,7 @@ const HotelsPage = () => {
                   <th>Địa chỉ</th>
                   <th style={{ width: 90 }}>Sao</th>
                   <th style={{ width: 150 }}>Trạng thái</th>
-                  <th style={{ width: 100 }}>Thao tác</th>
+                  <th style={{ width: 130 }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -187,6 +195,15 @@ const HotelsPage = () => {
                           title="Sửa"
                           onClick={() => navigate(`/partner/hotels/${hotel.ma_khach_san}/edit`)}
                         />
+                        {canDelete(hotel.trang_thai) && (
+                          <ActionButton
+                            variant="delete"
+                            iconOnly
+                            icon={Trash2}
+                            title="Xóa"
+                            onClick={() => handleDelete(hotel)}
+                          />
+                        )}
                       </ActionCell>
                     </tr>
                   );

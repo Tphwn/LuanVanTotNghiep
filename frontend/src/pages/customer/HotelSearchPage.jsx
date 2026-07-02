@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Building2, MapPin } from 'lucide-react';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
 import PriceRangeSlider from '../../components/customer/search/PriceRangeSlider';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
+import CustomerButton from '../../components/customer/CustomerButton';
+import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
+import CustomerPrice from '../../components/customer/CustomerPrice';
 import { groupHotelAmenities } from '../../utils/hotelAmenityFilters';
 import { searchFormToParams } from '../../utils/hotelSearchStorage';
 import '../../assets/styles/home.css';
@@ -482,9 +485,9 @@ const HotelSearchPage = () => {
                   ? 'Không tìm thấy khách sạn phù hợp. Hãy thử đổi địa điểm hoặc ngày.'
                   : 'Chưa có khách sạn nào đang hoạt động tại địa điểm này.'}
               </p>
-              <Link to={ROUTES.HOME} className="btn btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>
+              <CustomerButton to={ROUTES.HOME} style={{ marginTop: 16, display: 'inline-flex' }}>
                 Về trang chủ
-              </Link>
+              </CustomerButton>
             </div>
           )}
 
@@ -503,8 +506,6 @@ const HotelSearchPage = () => {
                 const img = getHotelImage(hotel);
                 const amenityNames = (hotel.tien_nghi || []).map((t) => t.ten || t);
                 const detailUrl = buildHotelDetailUrl(hotel.ma_khach_san, filters);
-                const visibleAmenities = amenityNames.slice(0, MAX_VISIBLE_AMENITIES);
-                const hasMoreAmenities = amenityNames.length > MAX_VISIBLE_AMENITIES;
                 const addressLine = hotel.dia_chi
                   || [hotel.dia_diem?.ten_dia_diem].filter(Boolean).join('');
 
@@ -539,18 +540,14 @@ const HotelSearchPage = () => {
                           </p>
                         )}
 
-                        {amenityNames.length > 0 && (
-                          <div className="hotel-result-amenities">
-                            {visibleAmenities.map((t) => (
-                              <span key={t} className="hotel-result-amenity-tag">{t}</span>
-                            ))}
-                            {hasMoreAmenities && (
-                              <Link to={detailUrl} className="hotel-result-amenity-tag hotel-result-amenity-more" title="Xem thêm tiện nghi">
-                                Xem thêm tiện nghi
-                              </Link>
-                            )}
-                          </div>
-                        )}
+                        <CustomerAmenityTags
+                          items={amenityNames}
+                          max={MAX_VISIBLE_AMENITIES}
+                          moreTo={detailUrl}
+                          moreLabel="Xem thêm tiện nghi"
+                          moreTitle="Xem thêm tiện nghi"
+                          className="hotel-result-amenities customer-amenity-tags"
+                        />
                       </div>
 
                       <div className="hotel-result-aside">
@@ -558,16 +555,17 @@ const HotelSearchPage = () => {
                         <div className="hotel-result-price-block">
                           <span className="hotel-result-price-label">
                             Giá từ:{' '}
-                            <span className="hotel-result-price-value">{fmt(hotel.gia_tu)} ₫</span>
+                            <CustomerPrice amount={hotel.gia_tu} unit="₫" className="hotel-result-price-value" />
                           </span>
                           <span className="hotel-result-price-unit">/ phòng / đêm</span>
                         </div>
-                        <Link
+                        <CustomerButton
                           to={detailUrl}
-                          className="btn btn-primary hotel-result-cta"
+                          className="hotel-result-cta"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           Chọn phòng
-                        </Link>
+                        </CustomerButton>
                       </div>
                     </div>
                   </article>

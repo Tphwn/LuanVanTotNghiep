@@ -50,6 +50,14 @@ export const fetchHotelsForFilter = createAsyncThunk(
   }
 );
 
+export const fetchPartnersForFilter = createAsyncThunk(
+  'adminBooking/partners',
+  async () => {
+    const res = await api.get(`${BASE}/partners`);
+    return res.data.data;
+  }
+);
+
 const adminBookingSlice = createSlice({
   name: 'adminBooking',
   initialState: {
@@ -57,6 +65,7 @@ const adminBookingSlice = createSlice({
     detail: null,
     stats: null,
     hotels: [],
+    partners: [],
     loading: false,
     detailLoading: false,
     error: null,
@@ -91,6 +100,10 @@ const adminBookingSlice = createSlice({
 
       .addCase(fetchHotelsForFilter.fulfilled, (state, action) => {
         state.hotels = action.payload;
+      })
+
+      .addCase(fetchPartnersForFilter.fulfilled, (state, action) => {
+        state.partners = action.payload;
       })
 
       .addCase(cancelAdminBooking.fulfilled, (state, action) => {

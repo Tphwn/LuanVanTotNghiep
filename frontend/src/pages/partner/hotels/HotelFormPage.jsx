@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -7,6 +7,7 @@ import {
   fetchAmenitiesForHotel,
   createHotel,
   updateHotel,
+  clearMsg,
 } from '../../../store/slices/partnerHotelSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import BackButton from '../../../components/common/BackButton';
@@ -23,7 +24,11 @@ export default function HotelFormPage() {
     amenities = [],
     defaultCancelPolicies = [],
     loading,
+    successMsg,
   } = useSelector((s) => s.partnerHotel || {});
+
+  const [localSuccess, setLocalSuccess] = useState('');
+  const [formVersion, setFormVersion] = useState(0);
 
   const hotel = isEdit ? list.find((h) => String(h.ma_khach_san) === String(id)) : null;
 
@@ -33,13 +38,29 @@ export default function HotelFormPage() {
     if (list.length === 0) dispatch(fetchMyHotels());
   }, [dispatch, list.length]);
 
+  useEffect(() => {
+    if (successMsg) {
+      setLocalSuccess(successMsg);
+      dispatch(clearMsg());
+    }
+  }, [successMsg, dispatch]);
+
   const handleSubmit = async (formData) => {
     if (!isEdit) {
       const res = await dispatch(createHotel(formData));
-      if (!res.error) navigate('/partner/hotels');
+      if (res.error) {
+        alert(res.payload || 'Không thể tạo khách sạn');
+        return;
+      }
+      navigate('/partner/hotels');
     } else {
       const res = await dispatch(updateHotel({ id: hotel.ma_khach_san, data: formData }));
-      if (!res.error) navigate(`/partner/hotels/${id}`);
+      if (res.error) {
+        alert(res.payload || 'Không thể cập nhật khách sạn');
+        return;
+      }
+      setLocalSuccess('Cập nhật thành công!');
+      setFormVersion((v) => v + 1);
     }
   };
 
@@ -65,8 +86,11 @@ export default function HotelFormPage() {
       />
 
       <div className="content-card">
+        {localSuccess && (
+          <div className="partner-form-success-banner">{localSuccess}</div>
+        )}
         <HotelFormContent
-          key={hotel?.ma_khach_san || 'new'}
+          key={isEdit ? `${hotel?.ma_khach_san}-${formVersion}` : 'new'}
           hotel={hotel}
           diaDiem={diaDiem}
           amenities={amenities}

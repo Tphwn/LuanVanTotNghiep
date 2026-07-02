@@ -27,7 +27,7 @@ export default function BookingDetailModal({ booking, onClose, onCancel, loading
 
   const st = TRANG_THAI[booking.trang_thai] || { label: booking.trang_thai, cls: 'badge-default' };
   const nights = diffDays(booking.ngay_nhan_phong, booking.ngay_tra_phong);
-  const canCancel = !['hoan_thanh', 'da_huy', 'tu_choi'].includes(booking.trang_thai);
+  const canCancel = !['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'].includes(booking.trang_thai);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

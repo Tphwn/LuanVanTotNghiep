@@ -42,10 +42,18 @@ const wasBookingPaid = (booking) =>
   booking?.phuong_thuc_tt === 'truc_tuyen'
   || booking?.thanh_toan?.trang_thai === 'thanh_cong';
 
+const getRefundStatusLabel = (refundStatus) => {
+  if (refundStatus === 'da_hoan') return 'Đã hoàn';
+  if (refundStatus === 'cho_xu_ly' || refundStatus === 'dang_xu_ly') return 'Chờ xử lý';
+  if (refundStatus === 'tu_choi') return 'Từ chối';
+  return null;
+};
+
 const buildRefundStatusMessage = (refundStatus) => {
   if (refundStatus === 'da_hoan') return 'Admin đã hoàn tiền cho khách.';
-  if (refundStatus === 'dang_xu_ly') return 'Admin đang xử lý hoàn tiền cho khách.';
-  if (refundStatus === 'cho_xu_ly') return 'Admin đang xử lý hoàn tiền cho khách.';
+  if (refundStatus === 'cho_xu_ly' || refundStatus === 'dang_xu_ly') {
+    return 'Yêu cầu hoàn tiền đang chờ xử lý.';
+  }
   if (refundStatus === 'tu_choi') return 'Yêu cầu hoàn tiền đã bị từ chối.';
   return null;
 };
@@ -68,8 +76,7 @@ const buildPartnerRefundInfo = (booking) => {
   const hoanTien = booking.hoan_tien;
   const soTienHoan = hoanTien ? Number(hoanTien.so_tien_hoan) : calc.so_tien_hoan;
   const phanTram = calc.phan_tram_hoan;
-  const trangThaiHoan = hoanTien?.trang_thai
-    || (paid && calc.so_tien_hoan > 0 ? 'cho_xu_ly' : null);
+  const trangThaiHoan = hoanTien?.trang_thai || (paid ? 'cho_xu_ly' : null);
 
   const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
   const trangThaiMsg = buildRefundStatusMessage(trangThaiHoan);
@@ -80,6 +87,7 @@ const buildPartnerRefundInfo = (booking) => {
     if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
   } else if (paid) {
     tomTat = 'Theo chính sách hủy, khách không được hoàn tiền cho đơn này.';
+    if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
   } else {
     tomTat = 'Khách chưa thanh toán online nên không phát sinh hoàn tiền.';
   }
@@ -91,8 +99,52 @@ const buildPartnerRefundInfo = (booking) => {
     trang_thai_hoan: trangThaiHoan,
     da_thanh_toan_online: paid,
     tom_tat_chinh_sach: tomTat,
-    trang_thai_hoan_label: trangThaiMsg,
+    trang_thai_hoan_label: getRefundStatusLabel(trangThaiHoan),
   };
+};
+
+const processRefundOnCancel = async (tx, bookingId, lyDo) => {
+  const booking = await tx.dat_phong.findUnique({
+    where: { ma_dat_phong: Number(bookingId) },
+    include: {
+      thanh_toan: true,
+      hoan_tien: true,
+      loai_phong: {
+        include: {
+          khach_san: {
+            include: {
+              chinh_sach_huy: {
+                where: { trang_thai: 'hoat_dong' },
+                orderBy: { so_ngay_truoc: 'desc' },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!booking?.thanh_toan || booking.hoan_tien) return;
+  if (!wasBookingPaid(booking)) return;
+
+  const cancelDate = new Date();
+  const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
+  const { so_tien_hoan: soTienHoan } = calcRefundFromPolicy(
+    policies,
+    booking.ngay_nhan_phong,
+    cancelDate,
+    booking.thanh_toan_cuoi,
+  );
+
+  await tx.hoan_tien.create({
+    data: {
+      ma_dat_phong: booking.ma_dat_phong,
+      ma_thanh_toan: booking.thanh_toan.ma_thanh_toan,
+      so_tien_hoan: soTienHoan,
+      ly_do: lyDo || 'Hủy đơn đặt phòng',
+      trang_thai: 'cho_xu_ly',
+    },
+  });
 };
 
 module.exports = {
@@ -101,5 +153,7 @@ module.exports = {
   calcRefundFromPolicy,
   extractCancelReason,
   wasBookingPaid,
+  getRefundStatusLabel,
   buildPartnerRefundInfo,
+  processRefundOnCancel,
 };

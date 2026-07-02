@@ -1,12 +1,8 @@
 const prisma = require('../../config/prisma');
-
-const ACTIVE_BOOKING_STATUS = ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'];
-
-const getToday = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+const {
+  countActiveBookedRooms,
+  calcRoomAvailability,
+} = require('../../utils/bookingHelpers');
 
 const assertRoomOwnership = async (maLoaiPhong, doiTacId) => {
   const room = await prisma.loai_phong.findFirst({
@@ -20,22 +16,12 @@ const assertRoomOwnership = async (maLoaiPhong, doiTacId) => {
   return room;
 };
 
-const countBookedRooms = async (maLoaiPhong) => {
-  const today = getToday();
-  return prisma.dat_phong.count({
-    where: {
-      ma_loai_phong: Number(maLoaiPhong),
-      trang_thai: { in: ACTIVE_BOOKING_STATUS },
-      ngay_tra_phong: { gte: today },
-    },
-  });
-};
+const countBookedRooms = countActiveBookedRooms;
 
 const mapInventoryRow = async (room) => {
-  const tongPhong = Number(room.so_luong_phong);
-  const moBan = Number(room.so_luong_mo_ban ?? 0);
   const daDat = await countBookedRooms(room.ma_loai_phong);
-  const conLai = Math.max(moBan - daDat, 0);
+  const { phong_con_lai: conLai, so_luong_phong: tongPhong } = calcRoomAvailability(room, daDat);
+  const moBan = Number(room.so_luong_mo_ban ?? 0);
 
   let trang_thai_hien_thi = 'dang_ban';
   if (room.trang_thai === 'an') {

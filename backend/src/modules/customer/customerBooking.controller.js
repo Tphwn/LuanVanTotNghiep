@@ -31,4 +31,24 @@ const createReview = async (req, res, next) => {
   }
 };
 
-module.exports = { getMyBookings, createBooking, createReview };
+const cancelBooking = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.cancelBooking(userId, req.params.id, req.body?.ly_do);
+    return success(res, data, 'Đã hủy đơn đặt phòng');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getCancelPreview = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getCancelPreview(userId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getMyBookings, createBooking, createReview, cancelBooking, getCancelPreview };

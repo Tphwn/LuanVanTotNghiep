@@ -39,6 +39,15 @@ exports.getAllHotels = async (req, res) => {
   }
 };
 
+exports.getAllPartners = async (req, res) => {
+  try {
+    const data = await bookingService.getPartnersForAdminFilter();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.getStats = async (req, res) => {
   try {
     const data = await bookingService.getStatsForAdmin();
