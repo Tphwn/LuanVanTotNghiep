@@ -4,11 +4,14 @@ const { notifyAmenityApproved, notifyAmenityRejected } = require('../../utils/pa
 
 const mapRequestRow = (row) => {
   if (!row) return null;
+  const firstHotel = row.doi_tac?.khach_san?.[0] || null;
   return {
     ...row,
     doi_tac: row.doi_tac
       ? {
           ten_cong_ty: row.doi_tac.ten_cong_ty,
+          ten_khach_san: firstHotel?.ten || null,
+          ma_khach_san: firstHotel?.ma_khach_san || null,
           email: row.doi_tac.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.email,
           so_dien_thoai: row.doi_tac.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.so_dien_thoai,
         }
@@ -20,6 +23,11 @@ const requestInclude = {
   doi_tac: {
     select: {
       ten_cong_ty: true,
+      khach_san: {
+        select: { ma_khach_san: true, ten: true },
+        orderBy: { ma_khach_san: 'asc' },
+        take: 1,
+      },
       nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
         select: { email: true, so_dien_thoai: true },
       },

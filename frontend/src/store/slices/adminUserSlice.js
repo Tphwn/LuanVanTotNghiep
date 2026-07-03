@@ -129,36 +129,40 @@ const adminUserSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(lockUser.fulfilled, (state, action) => {
-        const user = state.users.find(
-          (u) => u.ma_nguoi_dung === action.payload
-        );
+        const id = Number(action.payload);
+        const user = state.users.find((u) => Number(u.ma_nguoi_dung) === id);
 
         if (user) {
-          user.trang_thai ='bi_khoa';
+          user.trang_thai = 'bi_khoa';
         }
 
-        if (
-          state.selectedUser &&
-          state.selectedUser.ma_nguoi_dung === action.payload
-        ) {
-          state.selectedUser.trang_thai ='bi_khoa';
+        if (state.selectedUser && Number(state.selectedUser.ma_nguoi_dung) === id) {
+          state.selectedUser.trang_thai = 'bi_khoa';
         }
+
+        state.successMsg = 'Đã khóa tài khoản';
+        state.error = null;
+      })
+      .addCase(lockUser.rejected, (state, action) => {
+        state.error = action.payload;
       })
       .addCase(unlockUser.fulfilled, (state, action) => {
-        const user = state.users.find(
-          (u) => u.ma_nguoi_dung === action.payload
-        );
+        const id = Number(action.payload);
+        const user = state.users.find((u) => Number(u.ma_nguoi_dung) === id);
 
         if (user) {
-          user.trang_thai ='hoat_dong';
+          user.trang_thai = 'hoat_dong';
         }
 
-        if (
-          state.selectedUser &&
-          state.selectedUser.ma_nguoi_dung === action.payload
-        ) {
-          state.selectedUser.trang_thai ='hoat_dong';
+        if (state.selectedUser && Number(state.selectedUser.ma_nguoi_dung) === id) {
+          state.selectedUser.trang_thai = 'hoat_dong';
         }
+
+        state.successMsg = 'Đã mở khóa tài khoản';
+        state.error = null;
+      })
+      .addCase(unlockUser.rejected, (state, action) => {
+        state.error = action.payload;
       })
       .addCase(createPartner.pending, (state) => {
         state.creating = true;

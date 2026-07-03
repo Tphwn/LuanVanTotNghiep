@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   fetchAdminBookings,
   fetchBookingStats,
@@ -11,6 +12,8 @@ import {
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import BookingTable from '../../../components/booking/BookingTable';
+
+const PAGE_SIZE = 10;
 
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
@@ -26,6 +29,7 @@ const AdminBookingsPage = () => {
   const [hotelFilter, setHotelFilter] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     dispatch(fetchBookingStats());
@@ -73,6 +77,31 @@ const AdminBookingsPage = () => {
     }
   }, [successMsg, error, dispatch]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
+  const pagedBookings = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return list.slice(start, start + PAGE_SIZE);
+  }, [list, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const pages = [];
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    for (let i = start; i <= end; i += 1) pages.push(i);
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const rangeFrom = list.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(currentPage * PAGE_SIZE, list.length);
+
   const handleViewDetail = (id) => {
     navigate(`/admin/bookings/${id}`);
   };
@@ -86,10 +115,9 @@ const AdminBookingsPage = () => {
   ], [stats, list.length]);
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page mgmt-list-page">
       <ManagementHeader
         title="Quản Lý Đặt Phòng"
-        subtitle="Tất cả đơn đặt phòng trên hệ thống"
       />
 
       {(successMsg || error) && (
@@ -156,28 +184,68 @@ const AdminBookingsPage = () => {
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
         ) : (
-          <div className="mgmt-table-scroll">
-            <table className="data-table data-table-grid">
-              <thead>
-                <tr>
-                  <th style={{ width: 140 }}>Mã đơn</th>
-                  <th>Khách hàng</th>
-                  <th>Khách sạn</th>
-                  <th>Loại phòng</th>
-                  <th style={{ width: 108 }}>Check-in</th>
-                  <th style={{ width: 108 }}>Check-out</th>
-                  <th style={{ width: 120 }}>Tổng tiền</th>
-                  <th style={{ width: 100 }}>Thanh toán</th>
-                  <th style={{ width: 120 }}>Trạng thái</th>
-                  <th style={{ width: 72 }}>Thao tác</th>
-                </tr>
-              </thead>
-              <BookingTable
-                bookings={list}
-                onViewDetail={handleViewDetail}
-              />
-            </table>
-          </div>
+          <>
+            <div className="mgmt-table-scroll">
+              <table className="data-table data-table-grid mgmt-list-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 140 }}>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Khách sạn</th>
+                    <th>Loại phòng</th>
+                    <th style={{ width: 108 }}>Check-in</th>
+                    <th style={{ width: 108 }}>Check-out</th>
+                    <th style={{ width: 120 }}>Tổng tiền</th>
+                    <th style={{ width: 100 }}>Thanh toán</th>
+                    <th style={{ width: 120 }}>Trạng thái</th>
+                    <th style={{ width: 72 }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <BookingTable
+                  bookings={pagedBookings}
+                  onViewDetail={handleViewDetail}
+                />
+              </table>
+            </div>
+
+            {list.length > PAGE_SIZE && (
+              <div className="mgmt-list-pagination">
+                <span className="mgmt-list-pagination-info">
+                  Hiển thị {rangeFrom}–{rangeTo} / {list.length}
+                </span>
+                <div className="mgmt-list-pagination-controls">
+                  <button
+                    type="button"
+                    className="mgmt-page-btn"
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {pageNumbers.map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      className={`mgmt-page-btn${num === currentPage ? ' is-active' : ''}`}
+                      onClick={() => setPage(num)}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="mgmt-page-btn"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

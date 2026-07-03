@@ -1,4 +1,12 @@
-import { RequestCard } from './RequestCard';
+import { Check, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
+import { inferLoaiDeXuat } from '../utils';
+
+const LOAI_TABS = [
+  { id: 'khach_san', label: 'Khách sạn' },
+  { id: 'phong', label: 'Loại phòng' },
+];
 
 const REQUEST_FILTERS = [
   { id: 'cho_xu_ly', label: 'Đang chờ', countKey: 'pendingCount' },
@@ -8,6 +16,8 @@ const REQUEST_FILTERS = [
 ];
 
 export const RequestsSection = ({
+  requestLoaiFilter,
+  onLoaiFilterChange,
   requestFilter,
   onFilterChange,
   pendingCount,
@@ -18,13 +28,19 @@ export const RequestsSection = ({
   onApprove,
   onReject,
 }) => (
-  <div className="content-card" style={{ marginBottom: 0 }}>
-    <div className="request-section-header">
-      <div>
-        <div className="request-section-title">Yêu cầu thêm tiện nghi từ đối tác</div>
-        <div className="request-section-sub">
-          Duyệt hoặc từ chối để thông báo đối tác — thêm tiện nghi thủ công ở tab Khách sạn / Loại phòng.
-        </div>
+  <div className="mgmt-table-card mgmt-table-card--grid amenity-requests-card">
+    <div className="amenity-requests-toolbar">
+      <div className="amenity-request-loai-tabs">
+        {LOAI_TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            className={`amenity-request-loai-tab${requestLoaiFilter === id ? ' active' : ''}`}
+            onClick={() => onLoaiFilterChange(id)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       <div className="request-subtabs">
         {REQUEST_FILTERS.map(({ id, label, countKey }) => {
@@ -45,21 +61,69 @@ export const RequestsSection = ({
       </div>
     </div>
 
-    <div className="request-list">
-      {filteredRequests.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>
-          Không có yêu cầu nào
-        </div>
-      ) : (
-        filteredRequests.map((req) => (
-          <RequestCard
-            key={req.ma_yeu_cau}
-            req={req}
-            onApprove={onApprove}
-            onReject={onReject}
-          />
-        ))
-      )}
-    </div>
+    {filteredRequests.length === 0 ? (
+      <div className="empty-state">
+        <p className="empty-state-text">Không có yêu cầu nào</p>
+      </div>
+    ) : (
+      <div className="mgmt-table-scroll">
+        <table className="data-table data-table-grid mgmt-list-table amenity-requests-table">
+          <thead>
+            <tr>
+              <th style={{ width: 160 }}>Đối tác</th>
+              <th style={{ width: 180 }}>Khách sạn</th>
+              <th>Mô tả yêu cầu</th>
+              <th style={{ width: 100 }}>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRequests.map((req) => {
+              const isPending = req.trang_thai === 'cho_xu_ly';
+              const hotelId = req.doi_tac?.ma_khach_san;
+              const hotelName = req.doi_tac?.ten_khach_san;
+              const description = req.mo_ta || req.ten_de_xuat || '—';
+
+              return (
+                <tr key={req.ma_yeu_cau}>
+                  <td>
+                    <div className="mgmt-cell-name">{req.doi_tac?.ten_cong_ty || '—'}</div>
+                  </td>
+                  <td>
+                    {hotelId && hotelName ? (
+                      <Link to={`/admin/hotels/${hotelId}`} className="amenity-request-hotel-link">
+                        {hotelName}
+                      </Link>
+                    ) : (
+                      <span className="mgmt-cell-sub">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="amenity-request-desc">{description}</div>
+                  </td>
+                  <ActionCell>
+                    <ActionButton
+                      variant="reject"
+                      iconOnly
+                      icon={X}
+                      title="Từ chối"
+                      disabled={!isPending}
+                      onClick={() => isPending && onReject(req.ma_yeu_cau)}
+                    />
+                    <ActionButton
+                      variant="approve"
+                      iconOnly
+                      icon={Check}
+                      title="Duyệt"
+                      disabled={!isPending}
+                      onClick={() => isPending && onApprove(req)}
+                    />
+                  </ActionCell>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
   </div>
 );

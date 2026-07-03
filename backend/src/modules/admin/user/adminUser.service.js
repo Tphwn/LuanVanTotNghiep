@@ -1,5 +1,6 @@
 const prisma = require('../../../config/prisma');
 const { hash } = require('../../../utils/hashPassword');
+const { lockPartnerResources, unlockPartnerResources } = require('../../../utils/partnerLockHelpers');
 
 const getUsers = async () => {
   return prisma.nguoi_dung.findMany({
@@ -19,9 +20,10 @@ const getUsers = async () => {
       },
     },
 
-    orderBy: {
-      ma_nguoi_dung: 'desc',
-    },
+    orderBy: [
+      { ngay_tao: 'asc' },
+      { ma_nguoi_dung: 'asc' },
+    ],
   });
 };
 
@@ -97,24 +99,64 @@ const getUserById = async (id) => {
   });
 };
 const lockUser = async (id) => {
-  return prisma.nguoi_dung.update({
-    where: {
-      ma_nguoi_dung: Number(id),
-    },
-    data: {
-      trang_thai: 'bi_khoa',
-    },
+  const userId = Number(id);
+
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.nguoi_dung.findUnique({
+      where: { ma_nguoi_dung: userId },
+      include: {
+        doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: {
+          select: { ma_doi_tac: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw { statusCode: 404, message: 'Không tìm thấy người dùng' };
+    }
+
+    const updatedUser = await tx.nguoi_dung.update({
+      where: { ma_nguoi_dung: userId },
+      data: { trang_thai: 'bi_khoa' },
+    });
+
+    const partner = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
+    if (partner) {
+      await lockPartnerResources(tx, partner.ma_doi_tac);
+    }
+
+    return updatedUser;
   });
 };
 
 const unlockUser = async (id) => {
-  return prisma.nguoi_dung.update({
-    where: {
-      ma_nguoi_dung: Number(id),
-    },
-    data: {
-      trang_thai: 'hoat_dong',
-    },
+  const userId = Number(id);
+
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.nguoi_dung.findUnique({
+      where: { ma_nguoi_dung: userId },
+      include: {
+        doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: {
+          select: { ma_doi_tac: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw { statusCode: 404, message: 'Không tìm thấy người dùng' };
+    }
+
+    const updatedUser = await tx.nguoi_dung.update({
+      where: { ma_nguoi_dung: userId },
+      data: { trang_thai: 'hoat_dong' },
+    });
+
+    const partner = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
+    if (partner) {
+      await unlockPartnerResources(tx, partner.ma_doi_tac);
+    }
+
+    return updatedUser;
   });
 };
 

@@ -138,9 +138,13 @@ const RoomTypesPage = () => {
               </thead>
               <tbody>
                 {rooms.map((room) => {
-                  const st = getAdminRoomTypeStatus(room.trang_thai);
+                  const st = getAdminRoomTypeStatus(room.trang_thai, {
+                    hotelStatus: room.khach_san?.trang_thai,
+                  });
                   const thumb = getMainImage(room);
                   const isHidden = room.trang_thai === "an";
+                  const partnerUserLocked = room.khach_san?.doi_tac?.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.trang_thai === "bi_khoa";
+                  const partnerLocked = room.khach_san?.trang_thai === "bi_khoa" && partnerUserLocked;
                   return (
                     <tr key={room.ma_loai_phong}>
                       <td>
@@ -181,7 +185,8 @@ const RoomTypesPage = () => {
                           variant={isHidden ? "unlock" : "lock"}
                           iconOnly
                           icon={isHidden ? Unlock : Lock}
-                          title={isHidden ? "Mở bán" : "Ẩn phòng"}
+                          title={partnerLocked ? "Bị khóa do đối tác" : (isHidden ? "Mở bán" : "Ẩn phòng")}
+                          disabled={partnerLocked}
                           onClick={() => handleToggleStatus(room)}
                         />
                       </ActionCell>

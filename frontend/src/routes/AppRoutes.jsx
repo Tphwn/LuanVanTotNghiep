@@ -45,7 +45,6 @@ import PricingPage from '../pages/partner/pricing/PricingPage';
 import PartnerPromotionsPage from '../pages/partner/promotions/PromotionsPage';
 
 import PartnerRequestsPage from '../pages/admin/partnerRequests/PartnerRequestsPage';
-import PartnerRequestDetailPage from '../pages/admin/partnerRequests/PartnerRequestDetailPage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
@@ -164,7 +163,9 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="users/create-partner" element={<CreatePartnerPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="hotels" element={<AdminHotelsPage />} />
+          <Route path="hotels/:id" element={<HotelDetailPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
           <Route path="bookings/:id" element={<BookingDetailPage />} />
           <Route path="payments" element={<Navigate to="/admin/finance" replace />} />
@@ -179,10 +180,8 @@ const AppRoutes = () => {
           <Route path="finance/refunds/:id" element={<RefundDetailPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="partner-requests" element={<PartnerRequestsPage />} />
-          <Route path="partner-requests/:id" element={<PartnerRequestDetailPage />} />
+          <Route path="partner-requests/:id" element={<PartnerRequestsPage />} />
           <Route path="partners" element={<PartnersPage />} />
-          <Route path="users/:id" element={<UserDetailPage />} />
-          <Route path="hotels/:id" element={<HotelDetailPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />

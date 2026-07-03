@@ -1,30 +1,91 @@
-import { AmenityGroupCard } from './AmenityGroupCard';
+import { Pencil, Trash2 } from 'lucide-react';
+import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
+import { getAmenityLucideIcon } from '../../../../utils/amenityIcons';
 
 export const AmenityListSection = ({
   loading,
-  groups,
+  panelTitle,
+  panelIcon: PanelIcon,
+  availableGroups,
+  categoryFilter,
+  onCategoryChange,
+  amenities,
   onEdit,
   onDelete,
 }) => (
-  <>
+  <div className="mgmt-table-card amenity-list-card">
+    <div className="amenity-list-toolbar">
+      <div className="amenity-panel-title">
+        {PanelIcon && <PanelIcon size={16} strokeWidth={1.8} />}
+        <span>{panelTitle}</span>
+      </div>
+      {availableGroups.length > 0 && (
+        <select
+          className="mgmt-select-inline amenity-category-select"
+          value={categoryFilter}
+          onChange={(e) => onCategoryChange(e.target.value)}
+          aria-label={`Lọc ${panelTitle}`}
+        >
+          {availableGroups.map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+
     {loading ? (
-      <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
+      <div className="amenity-list-empty">Đang tải...</div>
+    ) : amenities.length === 0 ? (
+      <div className="amenity-list-empty">
+        {availableGroups.length === 0 ? 'Chưa có tiện nghi nào' : 'Không có tiện nghi trong danh mục này'}
+      </div>
     ) : (
-      <div className="amenity-grid">
-        {groups.map((group) => (
-          <AmenityGroupCard
-            key={group.id}
-            group={group}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-        {groups.length === 0 && (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: '#5a7a72' }}>
-            Chưa có tiện nghi nào
-          </div>
-        )}
+      <div className="mgmt-table-scroll">
+        <table className="data-table data-table-grid mgmt-list-table amenity-list-table">
+          <thead>
+            <tr>
+              <th>Icon</th>
+              <th className="amenity-name-head">Tên tiện nghi</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {amenities.map((item) => {
+              const ItemIcon = getAmenityLucideIcon(item.bieu_tuong || item.ten);
+              return (
+                <tr key={item.ma_tien_nghi}>
+                  <td>
+                    <div className="amenity-table-icon">
+                      <ItemIcon size={15} strokeWidth={1.6} />
+                    </div>
+                  </td>
+                  <td className="amenity-name-cell">
+                    <span className="amenity-name-text">{item.ten}</span>
+                  </td>
+                  <ActionCell>
+                    <ActionButton
+                      variant="edit"
+                      iconOnly
+                      icon={Pencil}
+                      title="Sửa"
+                      onClick={() => onEdit(item)}
+                    />
+                    <ActionButton
+                      variant="delete"
+                      iconOnly
+                      icon={Trash2}
+                      title="Xóa"
+                      onClick={() => onDelete(item.ma_tien_nghi)}
+                    />
+                  </ActionCell>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     )}
-  </>
+  </div>
 );

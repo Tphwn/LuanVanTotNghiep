@@ -4,18 +4,8 @@ import {
   PARTNER_TRANG_THAI,
   getPaymentDisplay,
   formatCurrency,
-  formatStayDateTime,
+  formatDate,
 } from '../../utils/bookingDisplay';
-
-const StayDateCell = ({ date, hotelTime, fallbackTime }) => {
-  const { date: dateLabel, time } = formatStayDateTime(date, hotelTime, fallbackTime);
-  return (
-    <div className="mgmt-stay-datetime">
-      <div>{dateLabel}</div>
-      <div className="mgmt-stay-time">{time}</div>
-    </div>
-  );
-};
 
 export default function BookingTable({ bookings, onViewDetail }) {
   return (
@@ -40,20 +30,8 @@ export default function BookingTable({ bookings, onViewDetail }) {
             <td>
               <div className="mgmt-cell-sub">{b.loai_phong?.ten_loai || '—'}</div>
             </td>
-            <td>
-              <StayDateCell
-                date={b.ngay_nhan_phong}
-                hotelTime={hotel?.gio_nhan_phong}
-                fallbackTime="14:00"
-              />
-            </td>
-            <td>
-              <StayDateCell
-                date={b.ngay_tra_phong}
-                hotelTime={hotel?.gio_tra_phong}
-                fallbackTime="12:00"
-              />
-            </td>
+            <td>{formatDate(b.ngay_nhan_phong)}</td>
+            <td>{formatDate(b.ngay_tra_phong)}</td>
             <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{formatCurrency(b.thanh_toan_cuoi)}</td>
             <td>
               <span className={`mgmt-status-text ${pay.cls}`}>{pay.shortLabel}</span>

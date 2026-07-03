@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const { attachHotelImages } = require('../../utils/images');
+const { getHotelPartnerLockState, isLockedByPartner } = require('../../utils/partnerLockHelpers');
 
 const hotelService = {
   // ── Partner ──────────────────────────────────────────────
@@ -102,15 +103,22 @@ const hotelService = {
     });
   },
 
-  // ── Admin ────────────────────────────────────────────────
   getAllForAdmin: async () => {
     const hotels = await prisma.khach_san.findMany({
       include: {
         dia_diem: true,
-        doi_tac: { select: { ten_cong_ty: true, ma_doi_tac: true } },
+        doi_tac: {
+          select: {
+            ten_cong_ty: true,
+            ma_doi_tac: true,
+            nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
+              select: { trang_thai: true },
+            },
+          },
+        },
         _count: { select: { loai_phong: true } },
       },
-      orderBy: { ngay_tao: 'desc' },
+      orderBy: [{ ngay_tao: 'asc' }, { ma_khach_san: 'asc' }],
     });
     return attachHotelImages(hotels);
   },
@@ -238,9 +246,32 @@ const hotelService = {
   },
 
   unlockHotel: async (id) => {
-    return prisma.khach_san.update({
-      where: { ma_khach_san: Number(id) },
-      data: { trang_thai: 'hoat_dong' },
+    const hotelId = Number(id);
+    const hotel = await prisma.khach_san.findUnique({
+      where: { ma_khach_san: hotelId },
+      select: { ma_khach_san: true },
+    });
+
+    if (!hotel) {
+      throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
+    }
+
+    const lockState = await getHotelPartnerLockState(prisma, hotelId);
+    if (isLockedByPartner(lockState)) {
+      throw {
+        statusCode: 400,
+        message: 'Khách sạn đang bị khóa do tài khoản đối tác. Vui lòng mở khóa đối tác trước.',
+      };
+    }
+
+    await prisma.$executeRaw`
+      UPDATE khach_san
+      SET trang_thai = 'hoat_dong', khoa_do_doi_tac = false
+      WHERE ma_khach_san = ${hotelId}
+    `;
+
+    return prisma.khach_san.findUnique({
+      where: { ma_khach_san: hotelId },
     });
   },
 };

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Eye, Check, X, Lock, Unlock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Check, X, Lock, Unlock } from "lucide-react";
 import {
   fetchHotels,
   approveHotel,
@@ -15,6 +15,8 @@ import ManagementToolbar from "../../../components/common/management/ManagementT
 import StarRating from "../../../components/common/management/StarRating";
 import HotelThumb from "../../../components/common/management/HotelThumb";
 
+const PAGE_SIZE = 10;
+
 const HOTEL_STATUS = {
   cho_duyet: { label: "Chờ duyệt", cls: "mgmt-status-text--pending" },
   hoat_dong: { label: "Đang hoạt động", cls: "mgmt-status-text--active" },
@@ -23,8 +25,6 @@ const HOTEL_STATUS = {
   yeu_cau_sua: { label: "Yêu cầu sửa", cls: "mgmt-status-text--pending" },
   da_duyet: { label: "Đã duyệt", cls: "mgmt-status-text--active" },
 };
-
-const getLoaiHinh = () => "Khách sạn";
 
 const TAB_STATUS_MAP = {
   all: null,
@@ -44,6 +44,8 @@ const HotelsPage = () => {
   const [starFilter, setStarFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -53,6 +55,10 @@ const HotelsPage = () => {
   useEffect(() => {
     dispatch(fetchHotels());
   }, [dispatch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, starFilter, partnerFilter, locationFilter, debouncedKeyword]);
 
   const stats = useMemo(() => ({
     total: hotels.length,
@@ -120,12 +126,30 @@ const HotelsPage = () => {
     });
   }, [hotels, activeTab, starFilter, partnerFilter, locationFilter, debouncedKeyword]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredHotels.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
+  const pagedHotels = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredHotels.slice(start, start + PAGE_SIZE);
+  }, [filteredHotels, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const pages = [];
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    for (let i = start; i <= end; i += 1) pages.push(i);
+    return pages;
+  }, [currentPage, totalPages]);
+
   const handleApprove = async (hotel, e) => {
     e?.stopPropagation();
     if (!window.confirm(`Duyệt khách sạn "${hotel.ten}" hoạt động trên sàn?`)) return;
     const result = await dispatch(approveHotel(hotel.ma_khach_san));
     if (approveHotel.rejected.match(result)) {
-      alert(result.payload || 'Duyệt khách sạn thất bại');
+      alert(result.payload || "Duyệt khách sạn thất bại");
     }
   };
 
@@ -135,34 +159,38 @@ const HotelsPage = () => {
     if (!reason?.trim()) return;
     const result = await dispatch(rejectHotel({ id: hotel.ma_khach_san, lyDo: reason.trim() }));
     if (rejectHotel.rejected.match(result)) {
-      alert(result.payload || 'Từ chối khách sạn thất bại');
+      alert(result.payload || "Từ chối khách sạn thất bại");
     }
   };
 
   const handleToggleActive = async (hotel) => {
-    if (hotel.trang_thai === 'hoat_dong') {
+    if (hotel.trang_thai === "hoat_dong") {
       if (!window.confirm(`Khóa khách sạn "${hotel.ten}"?`)) return;
+      setToggleLoadingId(hotel.ma_khach_san);
       const result = await dispatch(lockHotel(hotel.ma_khach_san));
+      setToggleLoadingId(null);
       if (lockHotel.rejected.match(result)) {
-        alert(result.payload || 'Khóa khách sạn thất bại');
+        alert(result.payload || "Khóa khách sạn thất bại");
       }
-    } else if (hotel.trang_thai === 'bi_khoa') {
+    } else if (hotel.trang_thai === "bi_khoa") {
       if (!window.confirm(`Mở khóa khách sạn "${hotel.ten}"?`)) return;
+      setToggleLoadingId(hotel.ma_khach_san);
       const result = await dispatch(unlockHotel(hotel.ma_khach_san));
+      setToggleLoadingId(null);
       if (unlockHotel.rejected.match(result)) {
-        alert(result.payload || 'Mở khóa khách sạn thất bại');
+        alert(result.payload || "Mở khóa khách sạn thất bại");
       }
     }
   };
 
   const canToggle = (status) => status === "hoat_dong" || status === "bi_khoa";
 
+  const rangeFrom = filteredHotels.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredHotels.length);
+
   return (
-    <div className="mgmt-page">
-      <ManagementHeader
-        title="Quản Lý Khách Sạn"
-        subtitle="Duyệt, kiểm tra và quản lý các cơ sở lưu trú trên hệ thống"
-      />
+    <div className="mgmt-page mgmt-list-page">
+      <ManagementHeader title="Quản Lý Khách Sạn" />
 
       <ManagementToolbar
         searchValue={keyword}
@@ -212,6 +240,7 @@ const HotelsPage = () => {
           ))}
         </select>
       </div>
+
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>
@@ -220,87 +249,128 @@ const HotelsPage = () => {
             <p className="empty-state-text">Không tìm thấy khách sạn phù hợp</p>
           </div>
         ) : (
-          <div className="mgmt-table-scroll">
-            <table className="data-table data-table-grid">
-              <thead>
-                <tr>
-                  <th style={{ width: 72 }}>ID</th>
-                  <th style={{ width: 72 }}>Ảnh</th>
-                  <th>Tên khách sạn</th>
-                  <th>Đối tác</th>
-                  <th>Địa chỉ</th>
-                  <th style={{ width: 110 }}>Loại hình</th>
-                  <th style={{ width: 90 }}>Sao</th>
-                  <th style={{ width: 130 }}>Trạng thái</th>
-                  <th style={{ width: 140 }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredHotels.map((hotel) => {
-                  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "" };
-                  const isActive = hotel.trang_thai === "hoat_dong";
-                  return (
-                    <tr key={hotel.ma_khach_san}>
-                      <td style={{ color: "#64748b", fontWeight: 500 }}>{hotel.ma_khach_san}</td>
-                      <td><HotelThumb hotel={hotel} /></td>
-                      <td>
-                        <div className="mgmt-cell-name">{hotel.ten}</div>
-                      </td>
-                      <td style={{ fontSize: 13, color: "#64748b" }}>
-                        {hotel.doi_tac?.ten_cong_ty || "—"}
-                      </td>
-                      <td>
-                        <div className="mgmt-cell-address" title={hotel.dia_chi}>
-                          {hotel.dia_chi || "—"}
-                        </div>
-                      </td>
-                      <td><span className="mgmt-type-tag">{getLoaiHinh()}</span></td>
-                      <td><StarRating value={hotel.so_sao} /></td>
-                      <td>
-                        <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
-                      </td>
-                      <ActionCell>
-                        <ActionButton
-                          variant="view"
-                          iconOnly
-                          icon={Eye}
-                          title="Chi tiết"
-                          onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`)}
-                        />
-                        {hotel.trang_thai === "cho_duyet" && (
-                          <>
-                            <ActionButton
-                              variant="approve"
-                              iconOnly
-                              icon={Check}
-                              title="Duyệt"
-                              onClick={(e) => handleApprove(hotel, e)}
-                            />
-                            <ActionButton
-                              variant="reject"
-                              iconOnly
-                              icon={X}
-                              title="Từ chối"
-                              onClick={(e) => handleReject(hotel, e)}
-                            />
-                          </>
-                        )}
-                        {canToggle(hotel.trang_thai) && (
+          <>
+            <div className="mgmt-table-scroll">
+              <table className="data-table data-table-grid mgmt-list-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 64 }}>Mã</th>
+                    <th style={{ width: 80 }}>Ảnh đại diện</th>
+                    <th style={{ width: 180 }}>Tên khách sạn</th>
+                    <th style={{ width: 120 }}>Đối tác</th>
+                    <th>Địa chỉ</th>
+                    <th style={{ width: 150 }}>Sao</th>
+                    <th style={{ width: 160 }}>Trạng Thái</th>
+                    <th style={{ width: 88 }}>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedHotels.map((hotel) => {
+                    const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "" };
+                    const isActive = hotel.trang_thai === "hoat_dong";
+                  const partnerUserLocked = hotel.doi_tac?.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.trang_thai === "bi_khoa";
+                  const partnerLockedHotel = hotel.trang_thai === "bi_khoa" && partnerUserLocked;
+                    return (
+                      <tr key={hotel.ma_khach_san}>
+                        <td style={{ color: "#64748b", fontWeight: 500 }}>{hotel.ma_khach_san}</td>
+                        <td><HotelThumb hotel={hotel} /></td>
+                        <td>
+                          <div className="mgmt-cell-name">{hotel.ten}</div>
+                        </td>
+                        <td className="hotels-partner-cell">
+                          {hotel.doi_tac?.ten_cong_ty || "—"}
+                        </td>
+                        <td className="hotels-address-cell">
+                          <div className="mgmt-cell-address hotels-address-full">
+                            {hotel.dia_chi || "—"}
+                          </div>
+                        </td>
+                        <td><StarRating value={hotel.so_sao} /></td>
+                        <td>
+                          <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                        </td>
+                        <ActionCell>
                           <ActionButton
-                            variant={isActive ? "lock" : "unlock"}
+                            variant="view"
                             iconOnly
-                            icon={isActive ? Lock : Unlock}
-                            title={isActive ? "Khóa khách sạn" : "Mở khóa"}
-                            onClick={() => handleToggleActive(hotel)}
+                            icon={Eye}
+                            title="Chi tiết"
+                            onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`)}
                           />
-                        )}
-                      </ActionCell>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          {hotel.trang_thai === "cho_duyet" && (
+                            <>
+                              <ActionButton
+                                variant="approve"
+                                iconOnly
+                                icon={Check}
+                                title="Duyệt"
+                                onClick={(e) => handleApprove(hotel, e)}
+                              />
+                              <ActionButton
+                                variant="reject"
+                                iconOnly
+                                icon={X}
+                                title="Từ chối"
+                                onClick={(e) => handleReject(hotel, e)}
+                              />
+                            </>
+                          )}
+                          {canToggle(hotel.trang_thai) && (
+                            <ActionButton
+                              variant={isActive ? "lock" : "unlock"}
+                              iconOnly
+                              icon={isActive ? Lock : Unlock}
+                              title={partnerLockedHotel ? "Bị khóa do đối tác" : (isActive ? "Khóa khách sạn" : "Mở khóa")}
+                              onClick={() => handleToggleActive(hotel)}
+                              disabled={toggleLoadingId === hotel.ma_khach_san || partnerLockedHotel}
+                            />
+                          )}
+                        </ActionCell>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredHotels.length > PAGE_SIZE && (
+              <div className="mgmt-list-pagination">
+                <span className="mgmt-list-pagination-info">
+                  Hiển thị {rangeFrom}–{rangeTo} / {filteredHotels.length}
+                </span>
+                <div className="mgmt-list-pagination-controls">
+                  <button
+                    type="button"
+                    className="mgmt-page-btn"
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {pageNumbers.map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      className={`mgmt-page-btn${num === currentPage ? " is-active" : ""}`}
+                      onClick={() => setPage(num)}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="mgmt-page-btn"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

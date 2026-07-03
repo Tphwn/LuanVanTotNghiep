@@ -309,7 +309,9 @@ const HotelDetailPage = () => {
                 </thead>
                 <tbody>
                   {rooms.map((room) => {
-                    const rst = getAdminRoomTypeStatus(room.trang_thai);
+                    const rst = getAdminRoomTypeStatus(room.trang_thai, {
+                      hotelStatus: hotel?.trang_thai,
+                    });
                     return (
                       <tr key={room.ma_loai_phong}>
                         <td style={{ fontWeight: 500 }}>{room.ten_loai}</td>

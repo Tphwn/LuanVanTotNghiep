@@ -1,7 +1,8 @@
 const prisma = require('../../../config/prisma');
 const { attachRoomImages } = require('../../../utils/images');
+const { getRoomPartnerLockState, isLockedByPartner } = require('../../../utils/partnerLockHelpers');
 
-const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet'];
+const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet', 'bi_khoa'];
 
 const buildApprovedHotelWhere = (filters = {}) => {
   const hotelWhere = { trang_thai: { in: APPROVED_HOTEL_STATUSES } };
@@ -41,6 +42,11 @@ const getLoaiGiuongLabel = (soGiuong, sucChua) => {
 const computeInventory = (room) => {
   const tong = Number(room.so_luong_phong);
   const moBan = Number(room.so_luong_mo_ban ?? 0);
+  const hotelLocked = room.khach_san?.trang_thai === 'bi_khoa';
+
+  if (hotelLocked) {
+    return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong };
+  }
   if (room.trang_thai === 'an') {
     return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong };
   }
@@ -85,7 +91,15 @@ const getRoomTypes = async (filters = {}) => {
           ten: true,
           trang_thai: true,
           dia_diem: { select: { ma_dia_diem: true, ten_dia_diem: true } },
-          doi_tac: { select: { ma_doi_tac: true, ten_cong_ty: true } },
+          doi_tac: {
+            select: {
+              ma_doi_tac: true,
+              ten_cong_ty: true,
+              nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
+                select: { trang_thai: true },
+              },
+            },
+          },
         },
       },
     },
@@ -218,6 +232,11 @@ const hideRoomType = async (id) => {
     where: { ma_loai_phong: Number(id) },
   });
   if (!room) return null;
+
+  const lockState = await getRoomPartnerLockState(prisma, id);
+  if (isLockedByPartner(lockState)) {
+    throw { statusCode: 400, message: 'Loại phòng đang bị khóa do tài khoản đối tác. Vui lòng mở khóa đối tác trước.' };
+  }
   if (room.trang_thai === 'an') return room;
 
   return prisma.loai_phong.update({
@@ -231,6 +250,11 @@ const showRoomType = async (id) => {
     where: { ma_loai_phong: Number(id) },
   });
   if (!room) return null;
+
+  const lockState = await getRoomPartnerLockState(prisma, id);
+  if (isLockedByPartner(lockState)) {
+    throw { statusCode: 400, message: 'Loại phòng đang bị khóa do tài khoản đối tác. Vui lòng mở khóa đối tác trước.' };
+  }
   if (room.trang_thai === 'hoat_dong') return room;
 
   const moBan = room.so_luong_mo_ban > 0 ? room.so_luong_mo_ban : room.so_luong_phong;

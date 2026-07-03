@@ -1,6 +1,7 @@
 const prisma = require('../../config/prisma');
 const { Prisma } = require('@prisma/client');
 const { attachHotelImages, attachRoomImages } = require('../../utils/images');
+const { activePartnerFilter } = require('../../utils/partnerLockHelpers');
 const {
   parseDate,
   calcStayPrice,
@@ -107,6 +108,7 @@ const publicHotelService = {
               where: {
                 trang_thai: 'hoat_dong',
                 loai_phong: { some: { trang_thai: 'hoat_dong' } },
+                ...activePartnerFilter,
               },
             },
           },
@@ -149,6 +151,7 @@ const publicHotelService = {
     const where = {
       trang_thai: 'hoat_dong',
       loai_phong: { some: { trang_thai: 'hoat_dong' } },
+      ...activePartnerFilter,
     };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
 
@@ -209,6 +212,7 @@ const publicHotelService = {
     const where = {
       trang_thai: 'hoat_dong',
       loai_phong: { some: { trang_thai: 'hoat_dong' } },
+      ...activePartnerFilter,
     };
     if (ma_dia_diem) where.ma_dia_diem = Number(ma_dia_diem);
 
@@ -288,7 +292,11 @@ const publicHotelService = {
     const guests = Math.max(Number(so_khach) || 0, 0);
 
     const hotel = await prisma.khach_san.findFirst({
-      where: { ma_khach_san: Number(hotelId), trang_thai: 'hoat_dong' },
+      where: {
+        ma_khach_san: Number(hotelId),
+        trang_thai: 'hoat_dong',
+        ...activePartnerFilter,
+      },
       include: {
         dia_diem: true,
         chinh_sach_huy: {
@@ -396,7 +404,11 @@ const publicHotelService = {
     const guests = Math.max(Number(so_khach) || 0, 0);
 
     const hotel = await prisma.khach_san.findFirst({
-      where: { ma_khach_san: Number(id), trang_thai: 'hoat_dong' },
+      where: {
+        ma_khach_san: Number(id),
+        trang_thai: 'hoat_dong',
+        ...activePartnerFilter,
+      },
       include: {
         dia_diem: true,
         khach_san_tien_nghi: {
