@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Baby, DoorOpen } from 'lucide-react';
 
-const CounterRow = ({ label, value, min, max, onDecrease, onIncrease }) => (
+const CounterRow = ({ icon: Icon, label, value, min, max, onDecrease, onIncrease }) => (
   <div className="guest-bed-row">
-    <span className="guest-bed-row-label">{label}</span>
+    <div className="guest-bed-row-leading">
+      {Icon && <Icon size={20} strokeWidth={1.75} className="guest-bed-row-icon" aria-hidden />}
+      <span className="guest-bed-row-label">{label}</span>
+    </div>
     <div className="home-guest-control">
       <button
         type="button"
@@ -29,7 +32,7 @@ const CounterRow = ({ label, value, min, max, onDecrease, onIncrease }) => (
 const GuestBedPicker = ({
   soKhach,
   treEm,
-  soGiuong,
+  soPhong,
   open,
   onOpenChange,
   onChange,
@@ -52,20 +55,20 @@ const GuestBedPicker = ({
     onOpenChange(!open);
   };
 
-  
   return (
     <div className="search-picker" ref={ref}>
       <button type="button" className="search-picker-trigger" onClick={handleToggle}>
         <Users size={18} className="search-picker-icon" />
-            <span className="search-picker-label">
-      <span>{soKhach} người lớn, {treEm} trẻ em</span>
-      <span>{soGiuong} giường</span>
-      </span>
+        <span className="search-picker-label">
+          <span>{soKhach} người lớn, {treEm} trẻ em</span>
+          <span>{soPhong} phòng</span>
+        </span>
       </button>
 
       {open && (
         <div className="guest-bed-dropdown">
           <CounterRow
+            icon={Users}
             label="Người lớn"
             value={soKhach}
             min={1}
@@ -74,6 +77,7 @@ const GuestBedPicker = ({
             onIncrease={() => onChange({ so_khach: Math.min(10, soKhach + 1) })}
           />
           <CounterRow
+            icon={Baby}
             label="Trẻ em"
             value={treEm}
             min={0}
@@ -82,13 +86,19 @@ const GuestBedPicker = ({
             onIncrease={() => onChange({ tre_em: Math.min(6, treEm + 1) })}
           />
           <CounterRow
-            label="Số giường"
-            value={soGiuong}
+            icon={DoorOpen}
+            label="Phòng"
+            value={soPhong}
             min={1}
             max={5}
-            onDecrease={() => onChange({ so_giuong: Math.max(1, soGiuong - 1) })}
-            onIncrease={() => onChange({ so_giuong: Math.min(5, soGiuong + 1) })}
+            onDecrease={() => onChange({ so_phong: Math.max(1, soPhong - 1) })}
+            onIncrease={() => onChange({ so_phong: Math.min(5, soPhong + 1) })}
           />
+          <div className="guest-bed-dropdown-footer">
+            <button type="button" className="guest-bed-done-btn" onClick={() => onOpenChange(false)}>
+              Xong
+            </button>
+          </div>
         </div>
       )}
     </div>

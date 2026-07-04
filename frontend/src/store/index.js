@@ -4,7 +4,6 @@ import adminUserReducer from './slices/adminUserSlice';
 import adminHotelReducer from './slices/adminHotelSlice';
 import amenityReducer from './slices/amenitySlice';
 import partnerHotelReducer from './slices/partnerHotelSlice';
-import partnerRoomReducer from './slices/partnerRoomSlice';
 import partnerBookingReducer from './slices/partnerBookingSlice';
 import adminBookingReducer from './slices/adminBookingSlice';
 import adminFinanceReducer from './slices/adminFinanceSlice';
@@ -16,7 +15,6 @@ const store = configureStore({
     adminHotels: adminHotelReducer,
     amenities: amenityReducer,
     partnerHotel: partnerHotelReducer,
-    partnerRooms: partnerRoomReducer,
     partnerBooking: partnerBookingReducer,
     adminBooking: adminBookingReducer,
     adminFinance: adminFinanceReducer,

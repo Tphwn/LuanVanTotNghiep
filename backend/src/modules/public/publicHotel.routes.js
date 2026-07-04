@@ -10,5 +10,4 @@ router.get('/hotels/search', ctrl.searchHotels);
 router.get('/hotels', ctrl.listHotels);
 router.get('/hotels/:hotelId/rooms/:roomId', ctrl.getRoomById);
 router.get('/hotels/:id', ctrl.getHotelById);
-router.get('/hotels/:hotelId/rooms/:roomId', ctrl.getRoomById);
 module.exports = router;

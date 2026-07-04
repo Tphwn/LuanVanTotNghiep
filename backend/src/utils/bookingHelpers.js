@@ -106,7 +106,6 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
 const isAutoCompletedBooking = (booking) =>
   Boolean(booking?.ghi_chu?.includes(AUTO_COMPLETE_MARKER));
 
-/** Đơn chờ check-in đã qua ngày nhận phòng → tự hoàn thành, không cho đánh giá. */
 const autoCompleteExpiredCheckIns = async (where = {}) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

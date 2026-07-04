@@ -56,7 +56,7 @@ model danh_gia {
   noi_dung         String?             @db.Text
   phan_hoi_doi_tac String?             @db.Text
   ngay_phan_hoi    DateTime?           @db.DateTime(0)
-  trang_thai       danh_gia_trang_thai @default(cho_duyet)
+  trang_thai       danh_gia_trang_thai @default(hien_thi)
   ngay_danh_gia    DateTime            @default(now()) @db.DateTime(0)
   ngay_duyet       DateTime?           @db.DateTime(0)
   nguoi_dung       nguoi_dung?         @relation(fields: [duyet_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_dg_admin")

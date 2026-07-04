@@ -23,9 +23,9 @@ import ContactPage from '../pages/customer/ContactPage';
 import BookingGuidePage from '../pages/customer/BookingGuidePage';
 import PartnerContactPage from '../pages/customer/PartnerContactPage';
 import ProfilePage from '../pages/customer/ProfilePage';
-import PointsPage from '../pages/customer/PointsPage';
-import TransactionsPage from '../pages/customer/TransactionsPage';
 import RefundsPage from '../pages/customer/RefundsPage';
+import CustomerBookingDetailPage from '../pages/customer/CustomerBookingDetailPage';
+import CustomerBookingReviewPage from '../pages/customer/CustomerBookingReviewPage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
@@ -45,6 +45,7 @@ import PricingPage from '../pages/partner/pricing/PricingPage';
 import PartnerPromotionsPage from '../pages/partner/promotions/PromotionsPage';
 
 import PartnerRequestsPage from '../pages/admin/partnerRequests/PartnerRequestsPage';
+import PartnerRequestDetailPage from '../pages/admin/partnerRequests/PartnerRequestDetailPage';
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
@@ -117,11 +118,13 @@ const AppRoutes = () => {
           }
         >
           <Route path={ROUTES.CUSTOMER.PROFILE} element={<ProfilePage />} />
-          <Route path={ROUTES.CUSTOMER.POINTS} element={<PointsPage />} />
           <Route path={ROUTES.CUSTOMER.MY_BOOKINGS} element={<MyBookingsPage />} />
-          <Route path={ROUTES.CUSTOMER.TRANSACTIONS} element={<TransactionsPage />} />
+          <Route path={ROUTES.CUSTOMER.MY_BOOKING_REVIEW_VIEW} element={<CustomerBookingReviewPage viewMode />} />
+          <Route path={ROUTES.CUSTOMER.MY_BOOKING_REVIEW} element={<CustomerBookingReviewPage />} />
+          <Route path={ROUTES.CUSTOMER.MY_BOOKING_DETAIL} element={<CustomerBookingDetailPage />} />
           <Route path={ROUTES.CUSTOMER.REFUNDS} element={<RefundsPage />} />
         </Route>
+
         {/* Partner */}
         <Route path="/partner" element={
           <RoleRoute allowedRoles={[ROLES.DOI_TAC, ROLES.ADMIN]}>
@@ -180,7 +183,7 @@ const AppRoutes = () => {
           <Route path="finance/refunds/:id" element={<RefundDetailPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="partner-requests" element={<PartnerRequestsPage />} />
-          <Route path="partner-requests/:id" element={<PartnerRequestsPage />} />
+          <Route path="partner-requests/:id" element={<PartnerRequestDetailPage />} />
           <Route path="partners" element={<PartnersPage />} />
         </Route>
 

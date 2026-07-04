@@ -9,8 +9,8 @@ import CancelBookingModal from '../../components/customer/CancelBookingModal';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { TRANG_THAI } from '../../utils/bookingDisplay';
+import { Link } from 'react-router-dom';
 import '../../assets/styles/home.css';
-
 const fmtDateCard = (d) => {
   if (!d) return '—';
   const dt = new Date(d);
@@ -205,15 +205,12 @@ const MyBookingsPage = () => {
                       <div className="my-booking-date-value">{fmtDateCard(b.ngay_tra_phong)}</div>
                     </div>
                   </div>
-
-                  <div className="my-booking-footer">
-                    <span className="my-booking-order-code">
-                      Mã đơn : <strong>{b.ma_don_hang}</strong>
-                    </span>
-                    <span className="my-booking-detail-link" aria-disabled="true">
-                      Chi tiết đơn
-                    </span>
-                  </div>
+                  <Link
+                    to={ROUTES.CUSTOMER.MY_BOOKING_DETAIL.replace(':id', b.ma_dat_phong)}
+                    className="my-booking-detail-link"
+                  >
+                    Chi tiết đơn
+                  </Link>
                 </div>
 
                 <div className="my-booking-aside">
@@ -242,10 +239,17 @@ const MyBookingsPage = () => {
                   {b.co_the_danh_gia && (
                     <CustomerButton
                       className="my-booking-review-btn"
-                      disabled
-                      aria-label="Đánh giá (sắp có)"
+                      to={ROUTES.CUSTOMER.MY_BOOKING_REVIEW.replace(':id', b.ma_dat_phong)}
                     >
                       Đánh giá
+                    </CustomerButton>
+                  )}
+                  {b.da_danh_gia && (
+                    <CustomerButton
+                      className="my-booking-review-btn my-booking-review-btn--view"
+                      to={ROUTES.CUSTOMER.MY_BOOKING_REVIEW_VIEW.replace(':id', b.ma_dat_phong)}
+                    >
+                      Xem lại đánh giá
                     </CustomerButton>
                   )}
                 </div>

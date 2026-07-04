@@ -50,5 +50,32 @@ const getCancelPreview = async (req, res, next) => {
     next(err);
   }
 };
+const getBookingById = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getBookingById(userId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
 
-module.exports = { getMyBookings, createBooking, createReview, cancelBooking, getCancelPreview };
+const getReviewByBookingId = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getReviewByBookingId(userId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getMyBookings,
+  getBookingById,
+  getReviewByBookingId,
+  createBooking,
+  createReview,
+  cancelBooking,
+  getCancelPreview,
+};

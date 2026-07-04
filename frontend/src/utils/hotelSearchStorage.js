@@ -12,11 +12,18 @@ export const getDefaultSearchForm = () => {
     ngay_nhan: addDays(new Date(), 1),
     ngay_tra: addDays(new Date(), 2),
     so_khach: 2,
-    so_giuong: 1,
     tre_em: 0,
     so_phong: 1,
   };
 };
+
+export const getTotalGuests = (form) => {
+  const adults = Math.max(1, Number(form?.so_khach) || 1);
+  const children = Math.max(0, Number(form?.tre_em) || 0);
+  return adults + children;
+};
+
+export const getRoomCount = (form) => Math.max(1, Number(form?.so_phong) || 1);
 
 export const loadSearchForm = () => {
   try {
@@ -50,7 +57,10 @@ export const resolveSearchForm = (fromUrl = {}) => {
     Object.entries(fromUrl).filter(([, v]) => v !== undefined && v !== '' && v !== null),
   );
 
-  return { ...base, ...patch };
+  const merged = { ...base, ...patch };
+  delete merged.so_giuong;
+
+  return merged;
 };
 
 export const searchFormToParams = (form) => {
@@ -59,9 +69,8 @@ export const searchFormToParams = (form) => {
   if (form.ngay_nhan) params.set('ngay_nhan', form.ngay_nhan);
   if (form.ngay_tra) params.set('ngay_tra', form.ngay_tra);
   params.set('so_khach', String(Math.max(1, Number(form.so_khach) || 1)));
-  params.set('so_giuong', String(Math.max(1, Number(form.so_giuong) || 1)));
   if (form.tre_em) params.set('tre_em', String(form.tre_em));
-  if (form.so_phong) params.set('so_phong', String(form.so_phong));
+  params.set('so_phong', String(Math.max(1, Number(form.so_phong) || 1)));
   return params;
 };
 
@@ -72,7 +81,6 @@ export const isDefaultSearchForm = (form) => {
     && form.ngay_nhan === defaults.ngay_nhan
     && form.ngay_tra === defaults.ngay_tra
     && Number(form.so_khach) === defaults.so_khach
-    && Number(form.so_giuong) === defaults.so_giuong
     && Number(form.tre_em) === defaults.tre_em
     && Number(form.so_phong) === defaults.so_phong
   );

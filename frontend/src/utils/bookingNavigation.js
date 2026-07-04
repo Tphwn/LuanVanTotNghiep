@@ -7,6 +7,8 @@ export const resolveBookingQuery = (partial = {}) => {
     ngay_nhan: partial.ngay_nhan,
     ngay_tra: partial.ngay_tra,
     so_khach: partial.so_khach,
+    tre_em: partial.tre_em,
+    so_phong: partial.so_phong,
   });
 
   return {
@@ -16,6 +18,8 @@ export const resolveBookingQuery = (partial = {}) => {
     ngay_nhan: partial.ngay_nhan || resolved.ngay_nhan,
     ngay_tra: partial.ngay_tra || resolved.ngay_tra,
     so_khach: String(partial.so_khach || resolved.so_khach || 2),
+    tre_em: String(partial.tre_em ?? resolved.tre_em ?? 0),
+    so_phong: String(partial.so_phong || resolved.so_phong || 1),
   };
 };
 
@@ -32,6 +36,8 @@ export const buildCustomerBookingUrl = (hotelId, roomId, query = {}) => {
   params.set('ngay_nhan', q.ngay_nhan);
   params.set('ngay_tra', q.ngay_tra);
   params.set('so_khach', q.so_khach);
+  if (q.tre_em && q.tre_em !== '0') params.set('tre_em', q.tre_em);
+  params.set('so_phong', q.so_phong);
   if (q.ma_dia_diem) params.set('ma_dia_diem', q.ma_dia_diem);
 
   return `${ROUTES.CUSTOMER.BOOKING}?${params.toString()}`;

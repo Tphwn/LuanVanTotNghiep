@@ -25,7 +25,6 @@ const HotelSearchBar = ({
     initialValues.ngay_nhan,
     initialValues.ngay_tra,
     initialValues.so_khach,
-    initialValues.so_giuong,
     initialValues.tre_em,
     initialValues.so_phong,
   ]);
@@ -48,7 +47,6 @@ const HotelSearchBar = ({
     ngay_nhan: data.ngay_nhan,
     ngay_tra: data.ngay_tra,
     so_khach: Math.max(1, Number(data.so_khach) || 1),
-    so_giuong: Math.max(1, Number(data.so_giuong) || 1),
     tre_em: Math.max(0, Number(data.tre_em) || 0),
     so_phong: Math.max(1, Number(data.so_phong) || 1),
   });
@@ -106,11 +104,11 @@ const HotelSearchBar = ({
         </div>
 
         <div className="home-search-field home-search-field--guests">
-          <span className="home-search-label">{isHero ? 'Khách & giường' : 'Khách & phòng'}</span>
+          <span className="home-search-label">Khách & phòng</span>
           <GuestBedPicker
             soKhach={form.so_khach}
             treEm={form.tre_em}
-            soGiuong={form.so_giuong}
+            soPhong={form.so_phong}
             open={guestOpen}
             onOpenChange={setGuestOpen}
             onChange={(patch) => updateForm(patch)}

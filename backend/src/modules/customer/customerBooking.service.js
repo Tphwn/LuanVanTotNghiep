@@ -1,4 +1,5 @@
 const prisma = require('../../config/prisma');
+const { attachHotelImages } = require('../../utils/images');
 const {
   processRefundOnCancel,
   calcRefundFromPolicy,
@@ -26,6 +27,56 @@ const BOOKING_STATUS = {
 
 const CANCELLABLE_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
 
+const REVIEW_STATUS_LABEL = {
+  hien_thi: 'Hiển thị',
+  an: 'Đã ẩn',
+};
+
+const mapCustomerReview = (dg) => {
+  if (!dg) return null;
+  return {
+    ma_danh_gia: dg.ma_danh_gia,
+    so_sao: dg.so_sao,
+    diem_sach_se: dg.diem_sach_se,
+    diem_dich_vu: dg.diem_dich_vu,
+    diem_vi_tri: dg.diem_vi_tri,
+    diem_tien_nghi: dg.diem_tien_nghi,
+    noi_dung: dg.noi_dung,
+    trang_thai: dg.trang_thai,
+    trang_thai_label: REVIEW_STATUS_LABEL[dg.trang_thai] || dg.trang_thai,
+    ngay_danh_gia: dg.ngay_danh_gia,
+    phan_hoi_doi_tac: dg.phan_hoi_doi_tac || null,
+    ngay_phan_hoi: dg.ngay_phan_hoi || null,
+  };
+};
+
+const validateStarScore = (value, label) => {
+  const score = Number(value);
+  if (!Number.isInteger(score) || score < 1 || score > 5) {
+    throw { statusCode: 400, message: `${label} phải từ 1 đến 5 sao` };
+  }
+  return score;
+};
+
+const canCustomerReviewBooking = (booking) => {
+  if (!booking) {
+    return { ok: false, message: 'Không tìm thấy đơn đặt phòng' };
+  }
+  if (booking.trang_thai === 'da_huy' || booking.trang_thai === 'tu_choi') {
+    return { ok: false, message: 'Không thể đánh giá đơn đã hủy' };
+  }
+  if (booking.trang_thai !== 'hoan_thanh') {
+    return { ok: false, message: 'Chỉ đánh giá được sau khi đơn hoàn thành (đã check-out)' };
+  }
+  if (booking.danh_gia) {
+    return { ok: false, message: 'Đơn này đã được đánh giá' };
+  }
+  if (isAutoCompletedBooking(booking)) {
+    return { ok: false, message: 'Không thể đánh giá đơn chưa check-in và check-out' };
+  }
+  return { ok: true };
+};
+
 const mapCustomerBooking = (b) => ({
   ma_dat_phong: b.ma_dat_phong,
   ma_don_hang: b.ma_don_hang,
@@ -35,7 +86,9 @@ const mapCustomerBooking = (b) => ({
   thanh_toan_cuoi: Number(b.thanh_toan_cuoi),
   trang_thai: b.trang_thai,
   trang_thai_label: BOOKING_STATUS[b.trang_thai] || b.trang_thai,
-  co_the_danh_gia: b.trang_thai === 'hoan_thanh' && !b.danh_gia && !isAutoCompletedBooking(b),
+  co_the_danh_gia: canCustomerReviewBooking(b).ok,
+  da_danh_gia: !!b.danh_gia,
+  danh_gia: mapCustomerReview(b.danh_gia),
   co_the_huy: CANCELLABLE_STATUS.includes(b.trang_thai),
   khach_san: b.loai_phong?.khach_san,
   ten_loai_phong: b.loai_phong?.ten_loai,
@@ -48,7 +101,97 @@ const mapCustomerBooking = (b) => ({
     }
     : null,
 });
-
+const toDateStr =(d) => {
+  if (!d) return null;
+  return new Date(d).toISOString().slice(0, 10);
+}
+const getLoaiGiuongLabel = (soGiuong, sucChua) => {
+  const n = Number(soGiuong) || 1;
+  const sc = Number(sucChua) || 1;
+  if (n === 1) {
+    if (sc >= 4) return '1 giường đôi lớn + sofa';
+    if (sc >= 2) return '1 giường đôi';
+    return '1 giường đơn';
+  }
+  return `${n} giường đơn`;
+};
+const mapPaymentStatus = (ttStatus, bookingStatus) => {
+  if (ttStatus === 'thanh_cong') return 'da_thanh_toan';
+  if (ttStatus === 'that_bai') return 'that_bai';
+  if (bookingStatus === 'da_huy' || bookingStatus === 'tu_choi') return 'da_huy';
+  return 'cho_thanh_toan';
+};
+const mapPaymentMethod = (phuongThucTt) => (
+  phuongThucTt === 'truc_tuyen' ? 'online' : 'tai_khach_san'
+);
+// Lấy ảnh đại diện KS từ mảng hinh_anh (sau attachHotelImages)
+const pickHotelAvatar = (hinhAnh = []) => {
+  const main = hinhAnh.find((i) => i.la_anh_chinh) || hinhAnh[0];
+  return main?.url || null;
+};
+const mapCustomerBookingDetail = (booking) => {
+  const hotel = booking.loai_phong?.khach_san;
+  const room = booking.loai_phong;
+  const nights = booking.chi_tiet_dat_phong || [];
+  const soDem = nights.length || 0;
+  // Giá mỗi đêm: trung bình (hoặc đêm đầu nếu bạn thích)
+  const giaMoiDem = soDem > 0
+    ? Math.round(nights.reduce((s, n) => s + Number(n.don_gia), 0) / soDem)
+    : Number(booking.tong_tien_goc);
+  return {
+    ma_dat_phong: booking.ma_dat_phong,
+    ma_don: booking.ma_don_hang,
+    trang_thai: booking.trang_thai,
+    trang_thai_label: BOOKING_STATUS[booking.trang_thai] || booking.trang_thai,
+    co_the_huy: CANCELLABLE_STATUS.includes(booking.trang_thai),
+    co_the_danh_gia: canCustomerReviewBooking(booking).ok,
+    da_danh_gia: !!booking.danh_gia,
+    danh_gia: mapCustomerReview(booking.danh_gia),
+    ngay_dat: booking.ngay_dat,
+    khach_san: {
+      ma_khach_san: hotel?.ma_khach_san,
+      ten: hotel?.ten,
+      dia_chi: hotel?.dia_chi,
+      anh_dai_dien: pickHotelAvatar(hotel?.hinh_anh),
+    },
+    loai_phong: {
+      ma_loai_phong: room?.ma_loai_phong,
+      ten_loai: room?.ten_loai,
+      suc_chua: room?.suc_chua,
+      loai_giuong: getLoaiGiuongLabel(room?.so_giuong, room?.suc_chua),
+      dien_tich: room?.dien_tich != null ? Number(room.dien_tich) : null,
+    },
+    luu_tru: {
+      ngay_nhan: toDateStr(booking.ngay_nhan_phong),
+      ngay_tra: toDateStr(booking.ngay_tra_phong),
+      so_dem: soDem,
+      so_phong: 1,              // chưa lưu DB — mặc định 1
+      so_nguoi_lon: booking.so_khach,
+      so_tre_em: 0,             // chưa lưu DB — mặc định 0
+    },
+    nguoi_dat: {
+      ho_ten: booking.ten_nguoi_nhan,
+      so_dien_thoai: booking.sdt_nguoi_nhan,
+      email: booking.khach_hang?.nguoi_dung?.email || null,
+      ghi_chu: booking.ghi_chu,
+    },
+    thanh_toan: {
+      gia_moi_dem: giaMoiDem,
+      tam_tinh: Number(booking.tong_tien_goc),
+      giam_gia: Number(booking.tien_giam),
+      tong_tien: Number(booking.thanh_toan_cuoi),
+      trang_thai: mapPaymentStatus(booking.thanh_toan?.trang_thai, booking.trang_thai),
+      phuong_thuc: mapPaymentMethod(booking.phuong_thuc_tt),
+      ma_giao_dich: booking.thanh_toan?.ma_giao_dich || null,
+    },
+    // Tuỳ chọn: chi tiết từng đêm cho UI breakdown
+    chi_tiet_dem: nights.map((n) => ({
+      ngay: toDateStr(n.ngay),
+      don_gia: Number(n.don_gia),
+      loai_gia: n.loai_gia,
+    })),
+  };
+};
 const generateOrderCode = () => {
   const now = Date.now().toString().slice(-8);
   const rand = Math.floor(Math.random() * 900 + 100);
@@ -110,7 +253,21 @@ const customerBookingService = {
             so_tien_hoan: true,
           },
         },
-        danh_gia: { select: { ma_danh_gia: true } },
+        danh_gia: {
+          select: {
+            ma_danh_gia: true,
+            so_sao: true,
+            diem_sach_se: true,
+            diem_dich_vu: true,
+            diem_vi_tri: true,
+            diem_tien_nghi: true,
+            noi_dung: true,
+            trang_thai: true,
+            ngay_danh_gia: true,
+            phan_hoi_doi_tac: true,
+            ngay_phan_hoi: true,
+          },
+        },
       },
       orderBy: { ngay_dat: 'desc' },
     });
@@ -191,7 +348,86 @@ const customerBookingService = {
         : 'Bạn thanh toán tại khách sạn nên không phát sinh hoàn tiền.',
     };
   },
-
+  getBookingById: async (userId, maDatPhong) => {
+    const id = parseInt(maDatPhong, 10);
+    if (Number.isNaN(id)) {
+      throw { statusCode: 400, message: 'ID không hợp lệ' };
+    }
+  
+    // 1) Tìm hồ sơ khách từ JWT
+    const khachHang = await prisma.khach_hang.findUnique({
+      where: { ma_nguoi_dung: Number(userId) },
+      select: {
+        ma_khach_hang: true,
+        nguoi_dung: { select: { email: true } },
+      },
+    });
+    if (!khachHang) {
+      throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
+    }
+  
+    // 2) Query đơn — BẮT BUỘC lọc ma_khach_hang (chỉ xem đơn của mình)
+    const booking = await prisma.dat_phong.findFirst({
+      where: {
+        ma_dat_phong: id,
+        ma_khach_hang: khachHang.ma_khach_hang,
+      },
+      include: {
+        khach_hang: {
+          select: {
+            nguoi_dung: { select: { email: true } },
+          },
+        },
+        loai_phong: {
+          select: {
+            ma_loai_phong: true,
+            ten_loai: true,
+            suc_chua: true,
+            dien_tich: true,
+            so_giuong: true,
+            khach_san: {
+              select: {
+                ma_khach_san: true,
+                ten: true,
+                dia_chi: true,
+              },
+            },
+          },
+        },
+        chi_tiet_dat_phong: { orderBy: { ngay: 'asc' } },
+        thanh_toan: true,
+        danh_gia: {
+          select: {
+            ma_danh_gia: true,
+            so_sao: true,
+            diem_sach_se: true,
+            diem_dich_vu: true,
+            diem_vi_tri: true,
+            diem_tien_nghi: true,
+            noi_dung: true,
+            trang_thai: true,
+            ngay_danh_gia: true,
+            phan_hoi_doi_tac: true,
+            ngay_phan_hoi: true,
+          },
+        },
+      },
+    });
+  
+    if (!booking) {
+      throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
+    }
+  
+    // 3) Gắn ảnh khách sạn (bảng hinh_anh)
+    const hotel = booking.loai_phong?.khach_san;
+    if (hotel?.ma_khach_san) {
+      const [withImg] = await attachHotelImages([hotel]);
+      booking.loai_phong.khach_san = withImg;
+    }
+  
+    // 4) Map sang JSON FE
+    return mapCustomerBookingDetail(booking);
+  },
   createBooking: async (userId, data) => {
     const {
       ma_loai_phong,
@@ -367,15 +603,47 @@ const customerBookingService = {
     }
     return updated;
   },
-
+  
   createReview: async (userId, maDatPhong, payload) => {
-    const { so_sao, noi_dung, diem_sach_se, diem_dich_vu, diem_vi_tri, diem_tien_nghi } = payload;
-    const rating = Number(so_sao);
-
-    if (!rating || rating < 1 || rating > 5) {
-      throw { statusCode: 400, message: 'Điểm đánh giá phải từ 1 đến 5 sao' };
+    const id = parseInt(maDatPhong, 10);
+    if (Number.isNaN(id)) {
+      throw { statusCode: 400, message: 'ID không hợp lệ' };
     }
+    const { so_sao, noi_dung, diem_sach_se, diem_dich_vu, diem_vi_tri, diem_tien_nghi } = payload;
+    const khachHang = await prisma.khach_hang.findUnique({
+      where: { ma_nguoi_dung: Number(userId) },
+    });
+    if (!khachHang) {
+      throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
+    }
+    const booking = await prisma.dat_phong.findFirst({
+      where: {
+        ma_dat_phong: id,
+        ma_khach_hang: khachHang.ma_khach_hang,
+      },
+      include: { danh_gia: true },
+    });
+    const eligibility = canCustomerReviewBooking(booking);
+    if (!eligibility.ok) {
+      throw { statusCode: 400, message: eligibility.message };
+    }
+    const review = await prisma.danh_gia.create({
+      data: {
+        ma_dat_phong: booking.ma_dat_phong,
+        ma_khach_hang: khachHang.ma_khach_hang,
+        so_sao: validateStarScore(so_sao, 'Điểm tổng thể'),
+        diem_sach_se: validateStarScore(diem_sach_se, 'Sạch sẽ'),
+        diem_dich_vu: validateStarScore(diem_dich_vu, 'Dịch vụ'),
+        diem_vi_tri: validateStarScore(diem_vi_tri, 'Vị trí'),
+        diem_tien_nghi: validateStarScore(diem_tien_nghi, 'Tiện nghi'),
+        noi_dung: noi_dung?.trim() || null,
+        trang_thai: 'hien_thi',
+      },
+    });
+    return mapCustomerReview(review);
+  },
 
+  getReviewByBookingId: async (userId, maDatPhong) => {
     const khachHang = await prisma.khach_hang.findUnique({
       where: { ma_nguoi_dung: Number(userId) },
     });
@@ -388,35 +656,19 @@ const customerBookingService = {
         ma_dat_phong: Number(maDatPhong),
         ma_khach_hang: khachHang.ma_khach_hang,
       },
-      include: { danh_gia: true },
+      include: {
+        danh_gia: true,
+      },
     });
 
     if (!booking) {
       throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
     }
-    if (booking.trang_thai !== 'hoan_thanh') {
-      throw { statusCode: 400, message: 'Chỉ đánh giá được sau khi đơn hoàn thành' };
-    }
-    if (booking.danh_gia) {
-      throw { statusCode: 400, message: 'Đơn này đã được đánh giá' };
-    }
-    if (isAutoCompletedBooking(booking)) {
-      throw { statusCode: 400, message: 'Không thể đánh giá đơn chưa check-in' };
+    if (!booking.danh_gia) {
+      throw { statusCode: 404, message: 'Đơn này chưa có đánh giá' };
     }
 
-    return prisma.danh_gia.create({
-      data: {
-        ma_dat_phong: booking.ma_dat_phong,
-        ma_khach_hang: khachHang.ma_khach_hang,
-        so_sao: rating,
-        noi_dung: noi_dung?.trim() || null,
-        diem_sach_se: diem_sach_se != null ? Number(diem_sach_se) : null,
-        diem_dich_vu: diem_dich_vu != null ? Number(diem_dich_vu) : null,
-        diem_vi_tri: diem_vi_tri != null ? Number(diem_vi_tri) : null,
-        diem_tien_nghi: diem_tien_nghi != null ? Number(diem_tien_nghi) : null,
-        trang_thai: 'cho_duyet',
-      },
-    });
+    return mapCustomerReview(booking.danh_gia);
   },
 };
 

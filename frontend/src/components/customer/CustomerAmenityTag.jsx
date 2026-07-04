@@ -22,6 +22,14 @@ const CustomerAmenityTag = ({
     );
   }
 
+  if (onClick) {
+    return (
+      <button type="button" className={classes} title={title} onClick={onClick}>
+        {children}
+      </button>
+    );
+  }
+
   return (
     <span className={classes} title={title} onClick={onClick}>
       {children}

@@ -83,21 +83,20 @@ const CustomerHotelDetailPage = () => {
       ngay_nhan: searchParams.get('ngay_nhan') || '',
       ngay_tra: searchParams.get('ngay_tra') || '',
       so_khach: searchParams.get('so_khach') || '',
+      tre_em: searchParams.get('tre_em') || '',
+      so_phong: searchParams.get('so_phong') || '',
     });
     return {
       ma_dia_diem: resolved.ma_dia_diem,
       ngay_nhan: resolved.ngay_nhan,
       ngay_tra: resolved.ngay_tra,
       so_khach: String(resolved.so_khach),
+      tre_em: String(resolved.tre_em || 0),
+      so_phong: String(resolved.so_phong || 1),
     };
   }, [searchParams]);
 
   const isSearchMode = Boolean(query.ngay_nhan && query.ngay_tra);
-
-  const buildRoomUrl = (roomId) => {
-    const qs = buildQueryString(query);
-    return `/hotels/${id}/rooms/${roomId}${qs ? `?${qs}` : ''}`;
-  };
 
   const backUrl = useMemo(() => {
     const qs = buildQueryString(query);
@@ -135,6 +134,9 @@ const CustomerHotelDetailPage = () => {
   };
 
   const handleBookRoom = (roomId) => {
+    const room = hotel?.loai_phong?.find((r) => r.ma_loai_phong === roomId);
+    if (!room || (room.phong_con_lai ?? 0) < Number(query.so_phong || 1)) return;
+
     const bookingUrl = buildBookingUrl(id, roomId, query);
     if (!token) {
       navigate(ROUTES.LOGIN, { state: { from: bookingUrl } });
@@ -167,6 +169,7 @@ const CustomerHotelDetailPage = () => {
   const images = hotel.hinh_anh || [];
   const mainImg = images[activeImg] || images[0];
   const sideImages = images.slice(1, 5);
+  const reviews = hotel.danh_gia || [];
   const addressLine = [
     hotel.dia_diem?.ten_dia_diem,
     hotel.dia_chi,
@@ -280,7 +283,10 @@ const CustomerHotelDetailPage = () => {
 
         {!hotel.loai_phong?.length ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không có phòng trống cho khoảng thời gian đã chọn</p>
+            <p className="empty-state-text">
+              Không có loại phòng phù hợp cho {Number(query.so_phong || 1)} phòng, {Number(query.so_khach) + Number(query.tre_em || 0)} người
+              {isSearchMode ? ' trong khoảng thời gian đã chọn' : ''}
+            </p>
           </div>
         ) : (
           <div className="hotel-detail-room-list">
@@ -288,9 +294,39 @@ const CustomerHotelDetailPage = () => {
               <RoomOfferCard
                 key={room.ma_loai_phong}
                 room={room}
-                buildRoomUrl={buildRoomUrl}
+                soPhong={Number(query.so_phong) || 1}
                 onBook={handleBookRoom}
               />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="hotel-detail-reviews-section">
+        <div className="hotel-detail-reviews-header">
+          <h2 className="hotel-detail-block-title">
+            Đánh giá {hotel.so_danh_gia > 0 ? `(${hotel.so_danh_gia})` : ''}
+          </h2>
+          {hotel.so_danh_gia > 0 && (
+            <span className="hotel-detail-reviews-score">{hotel.diem_trung_binh}/5</span>
+          )}
+        </div>
+        {reviews.length === 0 ? (
+          <p className="hotel-detail-reviews-empty">Chưa có đánh giá cho khách sạn này</p>
+        ) : (
+          <div className="hotel-review-list">
+            {reviews.map((rv) => (
+              <article key={rv.ma_danh_gia} className="hotel-review-item">
+                <div className="hotel-review-head">
+                  <span className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</span>
+                  <span className="hotel-review-score">{rv.so_sao}/5</span>
+                </div>
+                {rv.ten_loai_phong && (
+                  <p className="hotel-review-room-type">Loại phòng: {rv.ten_loai_phong}</p>
+                )}
+                {rv.noi_dung && <p className="hotel-review-content">{rv.noi_dung}</p>}
+                <div className="hotel-review-date">{fmtDate(rv.ngay_danh_gia)}</div>
+              </article>
             ))}
           </div>
         )}

@@ -10,9 +10,8 @@ const StarDisplay = ({ value }) => (
 );
 
 const REVIEW_STATUS = {
-  cho_duyet: { label:"Chờ duyệt", cls: "badge-warning"},
-  hien_thi:  { label:"Hiển thị", cls: "badge-success"},
-  an:        { label:"Đã ẩn", cls: "badge-default"},
+  hien_thi: { label: 'Hiển thị', cls: 'badge-success' },
+  an: { label: 'Đã ẩn', cls: 'badge-default' },
 };
 
 const TIME_PRESETS = [
@@ -77,8 +76,7 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
           <InfoRow label="Khách sạn"value={review.ten_khach_san} />
           <InfoRow label="Loại phòng"value={review.ten_loai} />
           <InfoRow label="Mã đơn hàng"value={review.ma_don_hang} />
-          <InfoRow label="Ngày đánh giá"value={formatDateTime(review.ngay_danh_gia)} />
-          {review.ngay_duyet && <InfoRow label="Ngày duyệt"value={formatDateTime(review.ngay_duyet)} />}
+          <InfoRow label="Ngày đánh giá" value={formatDateTime(review.ngay_danh_gia)} />
           {(review.diem_sach_se || review.diem_dich_vu || review.diem_vi_tri) && (
             <div style={{ display:"flex", gap: 14, paddingTop: 10, fontSize: 13, color: "#5a7a72", flexWrap: "wrap"}}>
               {review.diem_sach_se && <span> Sạch sẽ: <strong>{review.diem_sach_se}/5</strong></span>}
@@ -117,7 +115,7 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
           )}
         </div>
 
-        <TableActions style={{ justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
           <ActionButton
             variant={isHidden ? 'unlock' : 'lock'}
@@ -126,7 +124,7 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
           >
             {actionLoading ? 'Đang xử lý...' : isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá'}
           </ActionButton>
-        </TableActions>
+        </div>
       </div>
     </div>
   );
@@ -135,7 +133,7 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
 const ReviewsPage = () => {
   const [hotels, setHotels] = useState([]);
   const [stats, setStats] = useState({
-    diem_trung_binh: 0, tong_danh_gia: 0, cho_duyet: 0, hien_thi: 0, an: 0, phan_bo_sao: [], theo_khach_san: [],
+    diem_trung_binh: 0, tong_danh_gia: 0, hien_thi: 0, an: 0, phan_bo_sao: [], theo_khach_san: [],
   });
   const [danhSach, setDanhSach] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -209,7 +207,7 @@ const ReviewsPage = () => {
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Quản Lý Đánh Giá</h1>
-          <p className="page-subtitle">Kiểm duyệt, ẩn & hiện đánh giá, theo dõi chất lượng dịch vụ</p>
+          <p className="page-subtitle">Xem chi tiết và ẩn/hiện đánh giá, theo dõi chất lượng dịch vụ</p>
         </div>
       </div>
 
@@ -244,7 +242,6 @@ const ReviewsPage = () => {
             <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
             <select className="search-input"style={{ width:"100%"}} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">Tất cả trạng thái</option>
-              <option value="cho_duyet">Chờ duyệt</option>
               <option value="hien_thi">Hiển thị</option>
               <option value="an">Đã ẩn</option>
             </select>

@@ -43,6 +43,8 @@ const buildHotelDetailUrl = (hotelId, filters) => {
   if (filters.ngay_nhan) params.set('ngay_nhan', filters.ngay_nhan);
   if (filters.ngay_tra) params.set('ngay_tra', filters.ngay_tra);
   if (filters.so_khach) params.set('so_khach', filters.so_khach);
+  if (filters.tre_em) params.set('tre_em', filters.tre_em);
+  if (filters.so_phong) params.set('so_phong', filters.so_phong);
   const qs = params.toString();
   return `/hotels/${hotelId}${qs ? `?${qs}` : ''}`;
 };
@@ -183,7 +185,6 @@ const HotelSearchPage = () => {
     ngay_nhan: searchParams.get('ngay_nhan') || '',
     ngay_tra: searchParams.get('ngay_tra') || '',
     so_khach: searchParams.get('so_khach') || '2',
-    so_giuong: searchParams.get('so_giuong') || '1',
     tre_em: searchParams.get('tre_em') || '0',
     so_phong: searchParams.get('so_phong') || '1',
   }), [searchParams]);
@@ -194,7 +195,6 @@ const HotelSearchPage = () => {
   const searchBarInitial = useMemo(() => {
     const init = {
       so_khach: Number(filters.so_khach) || 2,
-      so_giuong: Number(filters.so_giuong) || 1,
       tre_em: Number(filters.tre_em) || 0,
       so_phong: Number(filters.so_phong) || 1,
     };
@@ -240,6 +240,8 @@ const HotelSearchPage = () => {
           ngay_nhan: filters.ngay_nhan || undefined,
           ngay_tra: filters.ngay_tra || undefined,
           so_khach: filters.so_khach,
+          tre_em: filters.tre_em,
+          so_phong: filters.so_phong,
         };
 
         const res = (isSearchRoute && hasDateSearch)
@@ -260,6 +262,8 @@ const HotelSearchPage = () => {
     filters.ngay_nhan,
     filters.ngay_tra,
     filters.so_khach,
+    filters.tre_em,
+    filters.so_phong,
     isSearchRoute,
     hasDateSearch,
   ]);
@@ -508,6 +512,9 @@ const HotelSearchPage = () => {
                 const detailUrl = buildHotelDetailUrl(hotel.ma_khach_san, filters);
                 const addressLine = hotel.dia_chi
                   || [hotel.dia_diem?.ten_dia_diem].filter(Boolean).join('');
+                const roomsNeeded = Number(filters.so_phong) || 1;
+                const roomsLeft = hotel.so_phong_trong;
+                const isSoldOut = roomsLeft == null || roomsLeft < roomsNeeded;
 
                 return (
                   <article key={hotel.ma_khach_san} className="hotel-result-card hotel-browse-card">
@@ -552,6 +559,11 @@ const HotelSearchPage = () => {
 
                       <div className="hotel-result-aside">
                         <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
+                        {roomsLeft != null && (
+                          <span className={`hotel-result-stock-badge${isSoldOut ? ' hotel-result-stock-badge--sold-out' : ''}`}>
+                            {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng trống`}
+                          </span>
+                        )}
                         <div className="hotel-result-price-block">
                           <span className="hotel-result-price-label">
                             Giá từ:{' '}
@@ -560,11 +572,12 @@ const HotelSearchPage = () => {
                           <span className="hotel-result-price-unit">/ phòng / đêm</span>
                         </div>
                         <CustomerButton
-                          to={detailUrl}
+                          to={isSoldOut ? undefined : detailUrl}
                           className="hotel-result-cta"
+                          disabled={isSoldOut}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Chọn phòng
+                          {isSoldOut ? 'Hết phòng' : 'Chọn phòng'}
                         </CustomerButton>
                       </div>
                     </div>

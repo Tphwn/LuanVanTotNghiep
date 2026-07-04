@@ -46,7 +46,20 @@ export const getRefundDisplay = (booking) => {
   if (!status) return null;
   return REFUND_TRANG_THAI[status] || { label: status, cls: 'badge-default' };
 };
-
+export const CUSTOMER_PAYMENT_STATUS = {
+  cho_thanh_toan: 'Chờ thanh toán',
+  da_thanh_toan: 'Đã thanh toán',
+  that_bai: 'Thanh toán thất bại',
+  da_huy: 'Đã hủy',
+};
+export const CUSTOMER_PAYMENT_METHOD = {
+  online: 'Thanh toán trực tuyến',
+  tai_khach_san: 'Thanh toán tại khách sạn',
+};
+export const formatBookingDate = (d) => {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('vi-VN');
+};
 export const buildCancelNoticeContent = (refundInfo) => {
   if (!refundInfo) return null;
 

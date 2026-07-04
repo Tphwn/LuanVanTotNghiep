@@ -13,6 +13,7 @@ const CustomerAmenityTags = ({
   items = [],
   max,
   moreTo,
+  moreOnClick,
   moreLabel = 'Xem thêm',
   moreTitle,
   className = 'customer-amenity-tags',
@@ -30,8 +31,13 @@ const CustomerAmenityTags = ({
           {getItemLabel(item)}
         </CustomerAmenityTag>
       ))}
-      {hasMore && moreTo && (
-        <CustomerAmenityTag to={moreTo} more title={moreTitle}>
+      {hasMore && (moreTo || moreOnClick) && (
+        <CustomerAmenityTag
+          to={moreOnClick ? undefined : moreTo}
+          more
+          title={moreTitle}
+          onClick={moreOnClick}
+        >
           {moreLabel}
         </CustomerAmenityTag>
       )}

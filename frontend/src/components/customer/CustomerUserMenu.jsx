@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Star,
   User,
   Calendar,
-  Receipt,
   RotateCcw,
   ChevronDown,
   LogOut,
@@ -13,10 +11,8 @@ import ROUTES from '../../constants/routes';
 import { getGivenName, resolveHoTen } from '../../utils/userDisplay';
 
 const menuItems = [
-  { label: '0 Điểm', path: ROUTES.CUSTOMER.POINTS, icon: Star },
   { label: 'Chỉnh sửa hồ sơ', path: ROUTES.CUSTOMER.PROFILE, icon: User },
   { label: 'Đặt chỗ của tôi', path: ROUTES.CUSTOMER.MY_BOOKINGS, icon: Calendar },
-  { label: 'Danh sách giao dịch', path: ROUTES.CUSTOMER.TRANSACTIONS, icon: Receipt },
   { label: 'Hoàn tiền', path: ROUTES.CUSTOMER.REFUNDS, icon: RotateCcw },
 ];
 
@@ -57,7 +53,6 @@ const CustomerUserMenu = ({ user, onLogout }) => {
       >
         <span className="customer-user-avatar">{avatarLetter}</span>
         <span className="customer-user-trigger-name">{shortName}</span>
-        <span className="customer-user-trigger-points">0 Điểm</span>
         <ChevronDown size={16} className={open ? 'customer-user-chevron-open' : ''} />
       </button>
 

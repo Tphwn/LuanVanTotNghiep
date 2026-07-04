@@ -8,29 +8,66 @@ const {
   countOverlappingBookings,
 } = require('../../utils/bookingHelpers');
 
-const getAvailableRooms = async (rooms, checkIn, checkOut, soKhach) => {
+const resolveGuestCount = (soKhach, treEm) => {
+  const adults = Math.max(Number(soKhach) || 0, 0);
+  const children = Math.max(Number(treEm) || 0, 0);
+  return Math.max(adults + children, 1);
+};
+
+const resolveRoomCount = (soPhong) => Math.max(Number(soPhong) || 1, 1);
+
+const resolveGuestsPerRoom = (soKhach, treEm, soPhong) => {
+  const total = resolveGuestCount(soKhach, treEm);
+  const rooms = resolveRoomCount(soPhong);
+  return Math.ceil(total / rooms);
+};
+
+const buildSearchContext = (soKhach, treEm, soPhong = 1) => ({
+  guestsPerRoom: resolveGuestsPerRoom(soKhach, treEm, soPhong),
+  roomCount: resolveRoomCount(soPhong),
+});
+
+const calcRoomAvailability = async (room, checkIn, checkOut) => {
+  if (!checkIn || !checkOut) {
+    return {
+      gia_hien_thi: Number(room.gia_co_ban),
+      phong_con_lai: Number(room.so_luong_mo_ban) || 0,
+    };
+  }
+
+  const booked = await countOverlappingBookings(room.ma_loai_phong, checkIn, checkOut);
+  const conLai = Math.max(0, Number(room.so_luong_mo_ban) - booked);
+  return {
+    gia_hien_thi: Number(room.gia_co_ban),
+    phong_con_lai: conLai,
+  };
+};
+
+const getRoomsWithAvailability = async (rooms, checkIn, checkOut, searchCtx, { onlyAvailable = false } = {}) => {
+  const { guestsPerRoom, roomCount } = searchCtx;
+
   const eligible = rooms.filter(
-    (r) => r.trang_thai === 'hoat_dong' && r.suc_chua >= soKhach && Number(r.so_luong_mo_ban) > 0
+    (r) => r.trang_thai === 'hoat_dong' && r.suc_chua >= guestsPerRoom,
   );
 
-  if (!checkIn || !checkOut) {
-    return eligible.map((r) => ({
-      ...r,
-      gia_hien_thi: Number(r.gia_co_ban),
-      phong_con_lai: Number(r.so_luong_mo_ban),
-    }));
-  }
-
-  const available = [];
+  const result = [];
   for (const room of eligible) {
-    const booked = await countOverlappingBookings(room.ma_loai_phong, checkIn, checkOut);
-    const conLai = Number(room.so_luong_mo_ban) - booked;
-    if (conLai > 0) {
-      available.push({ ...room, gia_hien_thi: Number(room.gia_co_ban), phong_con_lai: conLai });
-    }
+    const availability = await calcRoomAvailability(room, checkIn, checkOut);
+    const duPhong = availability.phong_con_lai >= roomCount;
+    if (onlyAvailable && !duPhong) continue;
+    result.push({ ...room, ...availability, so_phong_dat: roomCount });
   }
-  return available;
+  return result;
 };
+
+const getAvailableRooms = async (rooms, checkIn, checkOut, soKhach, treEm, soPhong) =>
+  getRoomsWithAvailability(
+    rooms,
+    checkIn,
+    checkOut,
+    buildSearchContext(soKhach, treEm, soPhong),
+    { onlyAvailable: true },
+  );
 
 const getHotelReviewStatsMap = async (hotelIds) => {
   if (!hotelIds.length) return {};
@@ -56,23 +93,27 @@ const getHotelReviewStatsMap = async (hotelIds) => {
   }, {});
 };
 
-const getRoomTypeReviewData = async (roomTypeId) => {
+const getHotelReviewData = async (hotelId) => {
   const [statsRow] = await prisma.$queryRaw`
     SELECT COUNT(dg.ma_danh_gia) AS so_danh_gia,
            AVG(dg.so_sao) AS diem_trung_binh
     FROM danh_gia dg
     INNER JOIN dat_phong dp ON dp.ma_dat_phong = dg.ma_dat_phong
-    WHERE dp.ma_loai_phong = ${Number(roomTypeId)}
+    INNER JOIN loai_phong lp ON lp.ma_loai_phong = dp.ma_loai_phong
+    WHERE lp.ma_khach_san = ${Number(hotelId)}
       AND dg.trang_thai = 'hien_thi'
   `;
 
   const danh_gia = await prisma.danh_gia.findMany({
     where: {
       trang_thai: 'hien_thi',
-      dat_phong: { ma_loai_phong: Number(roomTypeId) },
+      dat_phong: { loai_phong: { ma_khach_san: Number(hotelId) } },
     },
     include: {
       khach_hang: { select: { ho_ten: true, anh_dai_dien: true } },
+      dat_phong: {
+        select: { loai_phong: { select: { ten_loai: true } } },
+      },
     },
     orderBy: { ngay_danh_gia: 'desc' },
     take: 15,
@@ -93,6 +134,7 @@ const getRoomTypeReviewData = async (roomTypeId) => {
       diem_tien_nghi: dg.diem_tien_nghi,
       ngay_danh_gia: dg.ngay_danh_gia,
       khach_hang: dg.khach_hang,
+      ten_loai_phong: dg.dat_phong?.loai_phong?.ten_loai || null,
     })),
   };
 };
@@ -164,7 +206,7 @@ const publicHotelService = {
         },
         loai_phong: {
           where: { trang_thai: 'hoat_dong', so_luong_mo_ban: { gt: 0 } },
-          select: { gia_co_ban: true },
+          select: { gia_co_ban: true, so_luong_mo_ban: true },
         },
         _count: {
           select: {
@@ -177,6 +219,10 @@ const publicHotelService = {
 
     const mapped = hotels.map((hotel) => {
       const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
+      const soPhongTrong = hotel.loai_phong.reduce(
+        (sum, r) => sum + (Number(r.so_luong_mo_ban) || 0),
+        0,
+      );
       return {
         ma_khach_san: hotel.ma_khach_san,
         ten: hotel.ten,
@@ -185,6 +231,7 @@ const publicHotelService = {
         so_sao: hotel.so_sao,
         dia_diem: hotel.dia_diem,
         so_loai_phong: hotel._count.loai_phong,
+        so_phong_trong: soPhongTrong,
         gia_tu: prices.length ? Math.min(...prices) : null,
         tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
       };
@@ -200,10 +247,10 @@ const publicHotelService = {
     }));
   },
 
-  searchHotels: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2 }) => {
+  searchHotels: async ({ ma_dia_diem, ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1 }) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
-    const guests = Math.max(Number(so_khach) || 0, 0);
+    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
 
     if (!checkIn || !checkOut) {
       return publicHotelService.listHotels({ ma_dia_diem });
@@ -247,7 +294,14 @@ const publicHotelService = {
     const hotelResults = [];
 
     for (const hotel of hotels) {
-      const availableRooms = await getAvailableRooms(hotel.loai_phong, checkIn, checkOut, guests);
+      const availableRooms = await getAvailableRooms(
+        hotel.loai_phong,
+        checkIn,
+        checkOut,
+        so_khach,
+        tre_em,
+        so_phong,
+      );
       if (!availableRooms.length) continue;
 
       const nightlyPrices = await Promise.all(
@@ -286,10 +340,12 @@ const publicHotelService = {
   /** @deprecated Dùng searchHotels — giữ để tương thích API cũ */
   searchRooms: async (params) => publicHotelService.searchHotels(params),
 
-  getRoomById: async (hotelId, roomId, { ngay_nhan, ngay_tra, so_khach = 2 } = {}) => {
+  getRoomById: async (hotelId, roomId, {
+    ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1,
+  } = {}) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
-    const guests = Math.max(Number(so_khach) || 0, 0);
+    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
 
     const hotel = await prisma.khach_san.findFirst({
       where: {
@@ -329,8 +385,13 @@ const publicHotelService = {
 
     if (!hotel) return null;
 
-    const availableRooms = await getAvailableRooms(hotel.loai_phong, checkIn, checkOut, guests);
-    const target = availableRooms.find((r) => r.ma_loai_phong === Number(roomId));
+    const roomsWithAvailability = await getRoomsWithAvailability(
+      hotel.loai_phong,
+      checkIn,
+      checkOut,
+      searchCtx,
+    );
+    const target = roomsWithAvailability.find((r) => r.ma_loai_phong === Number(roomId));
     if (!target) return null;
 
     const pricing = await calcStayPrice(target.ma_loai_phong, target.gia_co_ban, checkIn, checkOut);
@@ -344,8 +405,8 @@ const publicHotelService = {
     }]);
 
     const otherRooms = await Promise.all(
-      availableRooms
-        .filter((r) => r.ma_loai_phong !== Number(roomId))
+      roomsWithAvailability
+        .filter((r) => r.ma_loai_phong !== Number(roomId) && r.phong_con_lai >= searchCtx.roomCount)
         .map(async (room) => {
           const p = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
           return {
@@ -388,20 +449,17 @@ const publicHotelService = {
       })),
     }]);
 
-    const reviewData = await getRoomTypeReviewData(roomId);
-
     return {
       ...roomWithImages,
       khach_san: hotelWithImages,
       loai_phong_khac: otherWithImages,
-      ...reviewData,
     };
   },
 
-  getHotelById: async (id, { ngay_nhan, ngay_tra, so_khach = 2 } = {}) => {
+  getHotelById: async (id, { ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1 } = {}) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
-    const guests = Math.max(Number(so_khach) || 0, 0);
+    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
 
     const hotel = await prisma.khach_san.findFirst({
       where: {
@@ -437,9 +495,14 @@ const publicHotelService = {
 
     if (!hotel) return null;
 
-    const availableRooms = await getAvailableRooms(hotel.loai_phong, checkIn, checkOut, guests);
+    const roomsWithAvailability = await getRoomsWithAvailability(
+      hotel.loai_phong,
+      checkIn,
+      checkOut,
+      searchCtx,
+    );
     const roomsWithPrice = await Promise.all(
-      availableRooms.map(async (room) => {
+      roomsWithAvailability.map(async (room) => {
         const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
         return {
           ...room,
@@ -453,6 +516,13 @@ const publicHotelService = {
     );
 
     const roomsWithImages = await attachRoomImages(roomsWithPrice);
+    const sortedRooms = [...roomsWithImages].sort((a, b) => {
+      const aAvail = (a.phong_con_lai || 0) >= searchCtx.roomCount ? 1 : 0;
+      const bAvail = (b.phong_con_lai || 0) >= searchCtx.roomCount ? 1 : 0;
+      if (bAvail !== aAvail) return bAvail - aAvail;
+      return (a.gia_hien_thi || 0) - (b.gia_hien_thi || 0);
+    });
+    const soPhongTrong = sortedRooms.reduce((sum, r) => sum + (r.phong_con_lai || 0), 0);
     const [hotelWithImages] = await attachHotelImages([{
       ma_khach_san: hotel.ma_khach_san,
       ten: hotel.ten,
@@ -463,18 +533,20 @@ const publicHotelService = {
       gio_tra_phong: hotel.gio_tra_phong,
       dia_diem: hotel.dia_diem,
       tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
-      loai_phong: roomsWithImages,
-      gia_tu: roomsWithImages.length
-        ? Math.min(...roomsWithImages.map((r) => r.gia_hien_thi))
-        : null,
+      loai_phong: sortedRooms,
+      so_phong_trong: soPhongTrong,
+      gia_tu: sortedRooms.some((r) => (r.phong_con_lai || 0) >= searchCtx.roomCount)
+        ? Math.min(...sortedRooms.filter((r) => (r.phong_con_lai || 0) >= searchCtx.roomCount).map((r) => r.gia_hien_thi))
+        : (sortedRooms.length ? Math.min(...sortedRooms.map((r) => r.gia_hien_thi)) : null),
     }]);
 
-    const reviewMap = await getHotelReviewStatsMap([hotel.ma_khach_san]);
+    const reviewData = await getHotelReviewData(hotel.ma_khach_san);
 
     return {
       ...hotelWithImages,
-      so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
-      diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
+      so_danh_gia: reviewData.so_danh_gia,
+      diem_trung_binh: reviewData.diem_trung_binh,
+      danh_gia: reviewData.danh_gia,
     };
   },
 };

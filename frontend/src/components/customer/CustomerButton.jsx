@@ -20,6 +20,14 @@ const CustomerButton = ({
     className,
   ].filter(Boolean).join(' ');
 
+  if (to && disabled) {
+    return (
+      <span className={`${classes} customer-cta--disabled`} aria-disabled="true" {...rest}>
+        {children}
+      </span>
+    );
+  }
+
   if (to) {
     return (
       <Link to={to} className={classes} onClick={onClick} {...rest}>

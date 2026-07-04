@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useSelector } from 'react-redux';
 import BackButton from '../../components/common/BackButton';
 import RoomSpecs from '../../components/customer/RoomSpecs';
-import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTag from '../../components/customer/CustomerAmenityTag';
 import CustomerPrice from '../../components/customer/CustomerPrice';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
-import ROUTES from '../../constants/routes';
-import { buildCustomerBookingUrl } from '../../utils/bookingNavigation';
 import { resolveSearchForm } from '../../utils/hotelSearchStorage';
 import { ROOM_CATEGORY_GROUPS } from '../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../admin/amenities/utils';
@@ -25,13 +21,9 @@ const buildQueryString = (query) => {
   return params.toString();
 };
 
-const buildBookingUrl = (hId, roomId, query) => buildCustomerBookingUrl(hId, roomId, query);
-
 const CustomerRoomDetailPage = () => {
-  const navigate = useNavigate();
   const { hotelId, roomId } = useParams();
   const [searchParams] = useSearchParams();
-  const { token } = useSelector((state) => state.auth);
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,12 +35,16 @@ const CustomerRoomDetailPage = () => {
       ngay_nhan: searchParams.get('ngay_nhan') || '',
       ngay_tra: searchParams.get('ngay_tra') || '',
       so_khach: searchParams.get('so_khach') || '',
+      tre_em: searchParams.get('tre_em') || '',
+      so_phong: searchParams.get('so_phong') || '',
     });
     return {
       ma_dia_diem: resolved.ma_dia_diem,
       ngay_nhan: resolved.ngay_nhan,
       ngay_tra: resolved.ngay_tra,
       so_khach: String(resolved.so_khach),
+      tre_em: String(resolved.tre_em || 0),
+      so_phong: String(resolved.so_phong || 1),
     };
   }, [searchParams]);
 
@@ -82,15 +78,6 @@ const CustomerRoomDetailPage = () => {
     load();
   }, [hotelId, roomId, query]);
 
-  const handleBook = () => {
-    const bookingUrl = buildBookingUrl(hotelId, roomId, query);
-    if (!token) {
-      navigate(ROUTES.LOGIN, { state: { from: bookingUrl } });
-      return;
-    }
-    navigate(bookingUrl);
-  };
-
   if (loading) {
     return (
       <div className="room-detail-page">
@@ -113,9 +100,9 @@ const CustomerRoomDetailPage = () => {
   }
 
   const hotel = room.khach_san;
+  const isSoldOut = (room.phong_con_lai ?? 0) < Number(query.so_phong || 1);
   const images = room.hinh_anh?.length ? room.hinh_anh : [];
   const currentImg = images[activeImg] || images[0];
-  const reviews = room.danh_gia || [];
   const amenityGroups = room.tien_nghi?.length
     ? groupAmenitiesByCategory(room.tien_nghi, ROOM_CATEGORY_GROUPS).filter((g) => g.items.length > 0)
     : [];
@@ -188,9 +175,9 @@ const CustomerRoomDetailPage = () => {
               dienTich={room.dien_tich}
               soGiuong={room.so_giuong}
             />
-            {room.phong_con_lai != null && room.so_luong_phong != null && (
-              <p className="room-detail-stock">
-                Còn {room.phong_con_lai}/{room.so_luong_phong} phòng
+            {room.phong_con_lai != null && (
+              <p className={`room-detail-stock${isSoldOut ? ' room-detail-stock--sold-out' : ''}`}>
+                {isSoldOut ? 'Hết phòng' : `Còn ${room.phong_con_lai} phòng`}
               </p>
             )}
             {query.ngay_nhan && query.ngay_tra && (
@@ -219,17 +206,14 @@ const CustomerRoomDetailPage = () => {
             </section>
           )}
 
-          <div className="room-detail-booking">
+          <div className="room-detail-booking room-detail-booking--view-only">
             <div className="room-detail-price-row">
-              <span className="room-detail-price-label">Giá:</span>
+              <span className="room-detail-price-label">Giá tham khảo:</span>
               <CustomerPrice amount={room.gia_hien_thi} className="room-detail-price-value" />
             </div>
             {nights > 1 && room.tong_gia && (
               <p className="room-detail-total">Tổng {nights} đêm: {formatCurrency(room.tong_gia)} VNĐ</p>
             )}
-            <CustomerButton className="room-detail-book-btn" fullWidth onClick={handleBook}>
-              Đặt phòng ngay
-            </CustomerButton>
           </div>
         </aside>
       </div>
@@ -241,27 +225,6 @@ const CustomerRoomDetailPage = () => {
         </section>
       )}
 
-      <section className="room-detail-section-below">
-        <h2 className="room-detail-block-title">
-          Đánh giá {room.so_danh_gia > 0 ? `(${room.so_danh_gia})` : ''}
-        </h2>
-        {reviews.length === 0 ? (
-          <p className="room-detail-empty">Chưa có đánh giá cho loại phòng này</p>
-        ) : (
-          <div className="hotel-review-list">
-            {reviews.map((rv) => (
-              <article key={rv.ma_danh_gia} className="hotel-review-item">
-                <div className="hotel-review-head">
-                  <span className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</span>
-                  <span className="hotel-review-score">{rv.so_sao}/5</span>
-                </div>
-                {rv.noi_dung && <p className="hotel-review-content">{rv.noi_dung}</p>}
-                <div className="hotel-review-date">{fmtDate(rv.ngay_danh_gia)}</div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 };

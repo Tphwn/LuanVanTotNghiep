@@ -37,13 +37,13 @@ exports.hideReview = async (req, res, next) => {
   }
 };
 
-exports.showReview = async (req, res, next) => {
+exports.unhideReview = async (req, res, next) => {
   try {
-    const data = await service.showReview(req.params.id, req.user?.id);
+    const data = await service.unhideReview(req.params.id);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
     }
-    res.json({ success: true, data, message: 'Đã hiện đánh giá' });
+    res.json({ success: true, data, message: 'Đã hiện lại đánh giá' });
   } catch (err) {
     next(err);
   }

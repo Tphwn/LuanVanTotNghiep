@@ -103,7 +103,6 @@ const buildStats = (mapped) => {
   return {
     diem_trung_binh: diemTB,
     tong_danh_gia: tong,
-    cho_duyet: mapped.filter((r) => r.trang_thai === 'cho_duyet').length,
     hien_thi: mapped.filter((r) => r.trang_thai === 'hien_thi').length,
     an: mapped.filter((r) => r.trang_thai === 'an').length,
     chua_phan_hoi: mapped.filter((r) => !r.da_phan_hoi).length,
@@ -174,7 +173,7 @@ const hideReview = async (id) => {
   }).then(mapReview);
 };
 
-const showReview = async (id, adminId) => {
+const unhideReview = async (id) => {
   const review = await prisma.danh_gia.findUnique({
     where: { ma_danh_gia: Number(id) },
   });
@@ -182,11 +181,7 @@ const showReview = async (id, adminId) => {
 
   return prisma.danh_gia.update({
     where: { ma_danh_gia: Number(id) },
-    data: {
-      trang_thai: 'hien_thi',
-      duyet_boi_id: adminId ? Number(adminId) : undefined,
-      ngay_duyet: new Date(),
-    },
+    data: { trang_thai: 'hien_thi' },
     include: reviewInclude,
   }).then(mapReview);
 };
@@ -196,5 +191,5 @@ module.exports = {
   getReviewById,
   getFilterHotels,
   hideReview,
-  showReview,
+  unhideReview,
 };
