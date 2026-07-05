@@ -85,6 +85,12 @@ const PartnerPromotionsPage = () => {
     hidden: items.filter((i) => i.trang_thai === 'an').length,
   }), [items]);
 
+  const hasActiveFilter = Boolean(hotelFilter);
+
+  const clearFilters = () => {
+    setHotelFilter('');
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm({
@@ -204,6 +210,11 @@ const PartnerPromotionsPage = () => {
             <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
           ))}
         </select>
+        {hasActiveFilter && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        )}
         <span style={{ fontSize: 13, color: '#5a7a72', marginLeft: 'auto' }}>
           {stats.active} đang hoạt động / {stats.total} mã
         </span>

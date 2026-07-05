@@ -188,6 +188,22 @@ const HotelsPage = () => {
   const rangeFrom = filteredHotels.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredHotels.length);
 
+  const hasActiveFilter = Boolean(
+    keyword.trim()
+    || activeTab !== 'all'
+    || partnerFilter !== 'all'
+    || locationFilter !== 'all'
+    || starFilter !== 'all',
+  );
+
+  const clearFilters = () => {
+    setKeyword('');
+    setActiveTab('all');
+    setPartnerFilter('all');
+    setLocationFilter('all');
+    setStarFilter('all');
+  };
+
   return (
     <div className="mgmt-page mgmt-list-page">
       <ManagementHeader title="Quản Lý Khách Sạn" />
@@ -239,6 +255,11 @@ const HotelsPage = () => {
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
+        {hasActiveFilter && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -268,8 +289,7 @@ const HotelsPage = () => {
                   {pagedHotels.map((hotel) => {
                     const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "" };
                     const isActive = hotel.trang_thai === "hoat_dong";
-                  const partnerUserLocked = hotel.doi_tac?.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.trang_thai === "bi_khoa";
-                  const partnerLockedHotel = hotel.trang_thai === "bi_khoa" && partnerUserLocked;
+                  const partnerLockedHotel = Boolean(hotel.khoa_do_doi_tac);
                     return (
                       <tr key={hotel.ma_khach_san}>
                         <td style={{ color: "#64748b", fontWeight: 500 }}>{hotel.ma_khach_san}</td>

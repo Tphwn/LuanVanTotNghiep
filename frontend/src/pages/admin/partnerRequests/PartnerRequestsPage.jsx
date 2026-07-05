@@ -69,6 +69,13 @@ const PartnerRequestsPage = () => {
     { id: 'tu_choi', label: 'Từ chối', count: stats?.tu_choi ?? 0 },
   ], [stats, items.length]);
 
+  const hasActiveFilter = Boolean(keyword.trim() || statusFilter !== 'all');
+
+  const clearFilters = () => {
+    setKeyword('');
+    setStatusFilter('all');
+  };
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -88,6 +95,14 @@ const PartnerRequestsPage = () => {
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
       />
+
+      {hasActiveFilter && (
+        <div className="mgmt-filter-clear-row">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        </div>
+      )}
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (

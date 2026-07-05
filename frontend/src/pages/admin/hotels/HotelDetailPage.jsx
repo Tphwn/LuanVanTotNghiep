@@ -1,55 +1,45 @@
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import adminHotelService from "../../../services/adminHotelService";
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import adminHotelService from '../../../services/adminHotelService';
 import {
   approveHotel, rejectHotel, lockHotel, unlockHotel,
-} from "../../../store/slices/adminHotelSlice";
-import { resolveUploadUrl } from "../../../utils/media";
-import { Eye } from "lucide-react";
-import ActionButton, { ActionCell, TableActions } from "../../../components/common/ActionButton";
-import BackButton from "../../../components/common/BackButton";
-import ManagementHeader from "../../../components/common/management/ManagementHeader";
-import { getAdminRoomTypeStatus } from "../../../constants/statuses";
+} from '../../../store/slices/adminHotelSlice';
+import { resolveUploadUrl } from '../../../utils/media';
+import ActionButton, { TableActions } from '../../../components/common/ActionButton';
+import BackButton from '../../../components/common/BackButton';
+import { HOTEL_CATEGORY_GROUPS } from '../amenities/constants';
+import { groupAmenitiesByCategory } from '../amenities/utils';
 
 const HOTEL_STATUS = {
-  cho_duyet: { label: "Chờ duyệt", cls: "badge-warning"},
-  hoat_dong: { label:"Hoạt động", cls: "badge-success"},
-  tu_choi: { label:"Từ chối", cls: "badge-danger"},
-  bi_khoa: { label:"Bị khóa", cls: "badge-danger"},
-  yeu_cau_sua: { label:"Yêu cầu sửa", cls: "badge-info"},
-  da_duyet: { label:"Đã duyệt", cls: "badge-info"},
+  cho_duyet: { label: 'Chờ duyệt', cls: 'admin-hotel-detail-status--pending' },
+  hoat_dong: { label: 'Hoạt động', cls: 'admin-hotel-detail-status--active' },
+  tu_choi: { label: 'Từ chối', cls: 'admin-hotel-detail-status--inactive' },
+  bi_khoa: { label: 'Bị khóa', cls: 'admin-hotel-detail-status--inactive' },
+  yeu_cau_sua: { label: 'Yêu cầu sửa', cls: 'admin-hotel-detail-status--pending' },
+  da_duyet: { label: 'Đã duyệt', cls: 'admin-hotel-detail-status--active' },
 };
 
 const PARTNER_STATUS = {
-  hoat_dong: { label:"Đang hợp tác", cls: "badge-success"},
-  bi_khoa: { label:"Ngưng hợp tác", cls: "badge-danger"},
+  hoat_dong: 'Đang hợp tác',
+  bi_khoa: 'Ngưng hợp tác',
 };
 
-const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("vi-VN") : "—");
-const formatDateTime = (d) => (d ? new Date(d).toLocaleString("vi-VN") : "—");
-const formatTime = (d) => {
-  if (!d) return "—";
-  const date = new Date(d);
-  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit"});
-};
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
-const InfoRow = ({ label, value }) => (
-  <div style={{ padding:"10px 0", borderBottom: "1px solid #f0f4f3"}}>
-    <div style={{ fontSize: 12, color:"#5a7a72", marginBottom: 4 }}>{label}</div>
-    <div style={{ fontSize: 14, fontWeight: 500, color: "#1a2e28", lineHeight: 1.5 }}>{value ?? "—"}</div>
+const GridItem = ({ label, value, fullWidth }) => (
+  <div className={`admin-hotel-detail-grid-item${fullWidth ? ' admin-hotel-detail-grid-item--full' : ''}`}>
+    <span className="admin-hotel-detail-grid-label">{label}:</span>{' '}
+    <span className="admin-hotel-detail-grid-value">{value ?? '—'}</span>
   </div>
 );
 
-const StatMini = ({ label, value, color, icon }) => (
-  <div style={{
-    textAlign: "center", padding: "16px 12px", borderRadius: 12,
-    background: `${color}08`, border: `1px solid ${color}33`,
-  }}>
-    <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
-    <div style={{ fontSize: 12, color: "#5a7a72", marginTop: 4 }}>{label}</div>
-  </div>
+const PartnerLine = ({ label, value }) => (
+  <p className="admin-hotel-detail-partner-line">
+    <span>{label}:</span>{' '}
+    <strong>{value ?? '—'}</strong>
+  </p>
 );
 
 const HotelDetailPage = () => {
@@ -59,9 +49,8 @@ const HotelDetailPage = () => {
 
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("info");
   const [actionLoading, setActionLoading] = useState(false);
-  const [lightbox, setLightbox] = useState(null);
+  const [activeImg, setActiveImg] = useState(0);
 
   const loadHotel = useCallback(async () => {
     if (!id) return;
@@ -69,6 +58,7 @@ const HotelDetailPage = () => {
       setLoading(true);
       const res = await adminHotelService.getById(id);
       setHotel(res.data.data || res.data);
+      setActiveImg(0);
     } catch {
       setHotel(null);
     } finally {
@@ -77,6 +67,17 @@ const HotelDetailPage = () => {
   }, [id]);
 
   useEffect(() => { loadHotel(); }, [loadHotel]);
+
+  const amenityGroups = useMemo(() => {
+    if (!hotel) return [];
+    const items = (hotel.khach_san_tien_nghi || []).map((tn) => ({
+      ma_tien_nghi: tn.ma_tien_nghi || tn.tien_nghi?.ma_tien_nghi,
+      ten: tn.tien_nghi?.ten,
+      danh_muc: tn.tien_nghi?.danh_muc,
+      bieu_tuong: tn.tien_nghi?.bieu_tuong,
+    })).filter((item) => item.ten);
+    return groupAmenitiesByCategory(items, HOTEL_CATEGORY_GROUPS).filter((g) => g.items.length > 0);
+  }, [hotel]);
 
   const handleAction = async (actionType) => {
     let actionPromise;
@@ -107,283 +108,185 @@ const HotelDetailPage = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: "center", padding: 80, color: "#5a7a72"}}> Đang tải...</div>;
+    return <div style={{ textAlign: 'center', padding: 80, color: '#5a7a72' }}>Đang tải...</div>;
   }
 
   if (!hotel) {
     return (
-      <div className="content-card"style={{ textAlign:"center", padding: 48 }}>
-        <p style={{ color: "#e05c5c", marginBottom: 16 }}>Không tìm thấy khách sạn</p>
-        <BackButton variant="outline" onClick={() => navigate("/admin/hotels")} />
+      <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
+        <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy khách sạn</p>
+        <BackButton variant="outline" onClick={() => navigate('/admin/hotels')} />
       </div>
     );
   }
 
-  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "badge-default"};
+  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'admin-hotel-detail-status--inactive' };
+  const partnerLocked = Boolean(hotel.khoa_do_doi_tac);
   const partner = hotel.doi_tac;
   const partnerUser = partner?.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung;
-  const amenities = hotel.khach_san_tien_nghi || [];
-  const rooms = hotel.loai_phong || [];
-  const mainImg = hotel.hinh_anh?.find((i) => i.la_anh_chinh) || hotel.hinh_anh?.[0];
+  const images = hotel.hinh_anh?.length ? hotel.hinh_anh : [];
+  const currentImg = images[activeImg] || images[0];
+  const roomCount = hotel.loai_phong?.length ?? hotel._count?.loai_phong ?? 0;
 
-  const tabs = [
-    { id:"info", label: "Thông tin" },
-    { id: "amenities", label: "Tiện nghi", count: amenities.length },
-    { id: "rooms", label: "Loại phòng", count: rooms.length },
-    { id: "images", label: "Hình ảnh", count: hotel.hinh_anh?.length || 0 },
-  ];
+  const prevImg = () => {
+    if (!images.length) return;
+    setActiveImg((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const nextImg = () => {
+    if (!images.length) return;
+    setActiveImg((i) => (i + 1) % images.length);
+  };
 
   return (
-    <div className="mgmt-page">
-      <ManagementHeader
-        title="Chi tiết khách sạn"
-        onBack={() => navigate("/admin/hotels")}
-      />
+    <div className="mgmt-page admin-hotel-detail-page">
+      <BackButton to="/admin/hotels" className="page-back-btn--standalone" />
+      <h1 className="admin-hotel-detail-page-title">Chi tiết khách sạn</h1>
 
-      <div className="content-card"style={{ padding: 0, overflow:"hidden", marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: mainImg ? "280px 1fr":"1fr", minHeight: 200 }}>
-          {mainImg && (
-            <img
-              src={resolveUploadUrl(mainImg.url)}
-              alt=""style={{ width:"100%", height: "100%", minHeight: 200, objectFit: "cover"}}
-            />
-          )}
-          <div style={{ padding:"24px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: mainImg ? 200 : undefined }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display:"flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                  <h1 className="page-title"style={{ margin: 0, fontSize: 24 }}>{hotel.ten}</h1>
-                  <span className={`badge ${st.cls}`}>{st.label}</span>
-                  {hotel.so_sao > 0 && (
-                    <span style={{ color:"#b36b00", fontSize: 14 }}>{"".repeat(hotel.so_sao)}</span>
-                  )}
-                </div>
-                <p style={{ margin: "0 0 4px", color: "#5a7a72", fontSize: 14 }}>
-                  <>Mã Khách sạn: </>{hotel.ma_khach_san} <br /> <> Địa điểm: </>{hotel.dia_diem?.ten_dia_diem} <br /> <> Đối tác: </>{partner?.ten_cong_ty}
-                </p>
-                <p style={{ margin: 0, fontSize: 13, color: "#888"}}> <> Địa chỉ: </>{hotel.dia_chi}</p>
-                {hotel.ly_do_tu_choi && (hotel.trang_thai ==="tu_choi"|| hotel.trang_thai ==="yeu_cau_sua") && (
-                  <div style={{
-                    marginTop: 12, padding: "10px 14px", background: "#fff8f0",
-                    borderRadius: 8, border: "1px solid #ffe0b0", fontSize: 13, color: "#b36b00",
-                  }}>
-                     {hotel.trang_thai === "tu_choi"?"Lý do từ chối":"Yêu cầu bổ sung"}: {hotel.ly_do_tu_choi}
-                  </div>
-                )}
+      <div className="admin-hotel-detail-card">
+        <div className="admin-hotel-detail-left">
+          <section className="admin-hotel-detail-section">
+            <div className="admin-hotel-detail-section-top">
+              <div className="admin-hotel-detail-section-title-row">
+                <h2 className="admin-hotel-detail-section-title">
+                  Thông tin khách sạn: <span>{hotel.ten}</span>
+                </h2>
+                <span className={`admin-hotel-detail-status ${st.cls}`}>{st.label}</span>
               </div>
-
-              <TableActions style={{ flexShrink: 0, justifyContent: "flex-end" }}>
-                {hotel.trang_thai === "cho_duyet" && (
+              <TableActions className="admin-hotel-detail-actions">
+                {hotel.trang_thai === 'cho_duyet' && (
                   <>
-                    <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction("approve")}>
-                      {actionLoading ? "..." : "Duyệt"}
+                    <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction('approve')}>
+                      {actionLoading ? '...' : 'Duyệt'}
                     </ActionButton>
-                    <ActionButton variant="reject" disabled={actionLoading} onClick={() => handleAction("reject")}>
+                    <ActionButton variant="reject" disabled={actionLoading} onClick={() => handleAction('reject')}>
                       Từ chối
                     </ActionButton>
                   </>
                 )}
-                {hotel.trang_thai === "hoat_dong" && (
-                  <ActionButton variant="lock" disabled={actionLoading} onClick={() => handleAction("lock")}>
-                    Khóa khách sạn
+                {hotel.trang_thai === 'hoat_dong' && (
+                  <ActionButton variant="lock" disabled={actionLoading} onClick={() => handleAction('lock')}>
+                    Khóa
                   </ActionButton>
                 )}
-                {hotel.trang_thai === "bi_khoa" && (
-                  <ActionButton variant="unlock" disabled={actionLoading} onClick={() => handleAction("unlock")}>
+                {hotel.trang_thai === 'bi_khoa' && (
+                  <ActionButton
+                    variant="unlock"
+                    disabled={actionLoading || partnerLocked}
+                    title={partnerLocked ? 'Bị khóa do đối tác' : undefined}
+                    onClick={() => handleAction('unlock')}
+                  >
                     Mở khóa
                   </ActionButton>
                 )}
               </TableActions>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div style={{ display:"flex", gap: 8, marginBottom: 16, flexWrap: "wrap"}}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"className={`btn btn-sm ${activeTab === tab.id ?"btn-primary":"btn-ghost"}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-            {tab.count != null && (
-              <span style={{
-                marginLeft: 6, background: activeTab === tab.id ? "rgba(255,255,255,0.3)":"#e8f5f1",
-                borderRadius: 10, padding: "1px 7px", fontSize: 11,
-              }}>
-                {tab.count}
-              </span>
+            {hotel.ly_do_tu_choi && (hotel.trang_thai === 'tu_choi' || hotel.trang_thai === 'yeu_cau_sua') && (
+              <div className="admin-hotel-detail-notice">
+                {hotel.trang_thai === 'tu_choi' ? 'Lý do từ chối' : 'Yêu cầu bổ sung'}: {hotel.ly_do_tu_choi}
+              </div>
             )}
-          </button>
-        ))}
-      </div>
 
-      {/* Tab: Info */}
-      {activeTab === "info"&& (
-        <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div className="content-card">
-            <h3 className="content-card-title"style={{ marginBottom: 12 }}> Thông tin khách sạn</h3>
-            <InfoRow label="Tên khách sạn"value={hotel.ten} />
-            <InfoRow label="Địa điểm"value={hotel.dia_diem?.ten_dia_diem} />
-            <InfoRow label="Địa chỉ"value={hotel.dia_chi} />
-            <InfoRow label="Hạng sao"value={hotel.so_sao ? `${hotel.so_sao} sao` :"Chưa xếp hạng"} />
-            <InfoRow label="Giờ nhận phòng"value={formatTime(hotel.gio_nhan_phong)} />
-            <InfoRow label="Giờ trả phòng"value={formatTime(hotel.gio_tra_phong)} />
-            <InfoRow label="Ngày đăng ký"value={formatDateTime(hotel.ngay_tao)} />
-            <InfoRow label="Ngày duyệt"value={formatDateTime(hotel.ngay_duyet)} />
-            {hotel.mo_ta && (
-              <div style={{ marginTop: 14, padding: 12, background:"#f8fdfb", borderRadius: 8, fontSize: 14, color: "#5a7a72", lineHeight: 1.6 }}>
-                {hotel.mo_ta}
+            <div className="admin-hotel-detail-grid">
+              <GridItem label="Mã Khách sạn" value={hotel.ma_khach_san} />
+              <GridItem label="Địa điểm" value={hotel.dia_diem?.ten_dia_diem} />
+              <GridItem label="Đối tác" value={partner?.ten_cong_ty} />
+              <GridItem label="Địa chỉ" value={hotel.dia_chi} />
+              <GridItem label="Hạng sao" value={hotel.so_sao || '—'} />
+              <GridItem label="Số loại phòng" value={roomCount} />
+              <GridItem label="Mô tả" value={hotel.mo_ta || '—'} fullWidth />
+              <GridItem label="Ngày đăng ký" value={formatDate(hotel.ngay_tao)} />
+              <GridItem label="Ngày duyệt" value={formatDate(hotel.ngay_duyet)} />
+            </div>
+          </section>
+
+          <section className="admin-hotel-detail-section admin-hotel-detail-section--partner">
+            <h3 className="admin-hotel-detail-partner-title">Thông tin đối tác</h3>
+            <PartnerLine label="Tên công ty" value={partner?.ten_cong_ty} />
+            <PartnerLine label="Mã đối tác" value={partner?.ma_doi_tac} />
+            <PartnerLine label="Email" value={partner?.email_lien_he || partnerUser?.email} />
+            <PartnerLine label="Số điện thoại" value={partner?.so_dien_thoai || partnerUser?.so_dien_thoai} />
+            <PartnerLine label="Địa chỉ công ty" value={partner?.dia_chi} />
+            <PartnerLine
+              label="Trạng thái hợp tác"
+              value={PARTNER_STATUS[partner?.trang_thai] || partner?.trang_thai}
+            />
+          </section>
+        </div>
+
+        <div className="admin-hotel-detail-right">
+          <div className="admin-hotel-detail-gallery">
+            <div className="admin-hotel-detail-main-view">
+              {currentImg ? (
+                <img src={resolveUploadUrl(currentImg.url)} alt={hotel.ten} />
+              ) : (
+                <div className="admin-hotel-detail-main-view--empty">Chưa có ảnh</div>
+              )}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="admin-hotel-detail-nav admin-hotel-detail-nav--prev"
+                    onClick={prevImg}
+                    aria-label="Ảnh trước"
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-hotel-detail-nav admin-hotel-detail-nav--next"
+                    onClick={nextImg}
+                    aria-label="Ảnh sau"
+                  >
+                    <ChevronRight size={22} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {images.length > 0 && (
+              <div className="admin-hotel-detail-thumb-row">
+                {images.map((img, i) => (
+                  <button
+                    key={img.ma_hinh_anh || i}
+                    type="button"
+                    className={`admin-hotel-detail-thumb${i === activeImg ? ' active' : ''}`}
+                    onClick={() => setActiveImg(i)}
+                  >
+                    <img src={resolveUploadUrl(img.url)} alt="" />
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          <div className="content-card">
-            <h3 className="content-card-title"style={{ marginBottom: 12 }}> Đối tác quản lý</h3>
-            <InfoRow label="Tên công ty"value={partner?.ten_cong_ty} />
-            <InfoRow label="Mã đối tác"value={partner ? `${partner.ma_doi_tac}` :"—"} />
-            <InfoRow label="Email đăng nhập"value={partnerUser?.email} />
-            <InfoRow label="Email liên hệ"value={partner?.email_lien_he || partnerUser?.email} />
-            <InfoRow label="SĐT"value={partner?.so_dien_thoai || partnerUser?.so_dien_thoai} />
-            <InfoRow label="Địa chỉ công ty"value={partner?.dia_chi} />
-            <InfoRow
-              label="Trạng thái hợp tác"value={PARTNER_STATUS[partner?.trang_thai]?.label || partner?.trang_thai}
-            />
+          <div className="admin-hotel-detail-amenities">
+            <div className="partner-room-detail-block-title">
+              <Sparkles size={15} strokeWidth={1.75} />
+              Tiện nghi
+            </div>
+            {amenityGroups.length === 0 ? (
+              <p className="admin-hotel-detail-amenities-empty">Chưa có tiện nghi</p>
+            ) : (
+              <div className="partner-room-detail-amenity-groups">
+                {amenityGroups.map((group) => (
+                  <div key={group.id} className="partner-room-detail-amenity-group">
+                    <h4 className="partner-room-detail-amenity-group-title">{group.label}</h4>
+                    <div className="partner-room-detail-amenity-list">
+                      {group.items.map((item) => (
+                        <span key={item.ma_tien_nghi} className="partner-room-detail-amenity-tag">
+                          {item.ten}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* Tab: Amenities */}
-      {activeTab ==="amenities"&& (
-        <div className="content-card">
-          {amenities.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-text">Chưa có tiện nghi nào</p>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-              {amenities.map((tn) => (
-                <div
-                  key={tn.ma_ks_tien_nghi}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 14px", borderRadius: 10,
-                    background: "#f8fdfb", border: "1px solid #d4ede6",
-                  }}
-                >
-                  <span style={{
-                    width: 36, height: 36, borderRadius: 8, background: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 18, border: "1px solid #e8f5f1",
-                  }}>
-                    </span>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{tn.tien_nghi?.ten}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Rooms */}
-      {activeTab === "rooms"&& (
-        <div className="content-card">
-          {rooms.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-text">Chưa có loại phòng nào</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto"}}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Loại phòng</th>
-                    <th>Giá cơ bản</th>
-                    <th>Sức chứa</th>
-                    <th>Số phòng</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rooms.map((room) => {
-                    const rst = getAdminRoomTypeStatus(room.trang_thai, {
-                      hotelStatus: hotel?.trang_thai,
-                    });
-                    return (
-                      <tr key={room.ma_loai_phong}>
-                        <td style={{ fontWeight: 500 }}>{room.ten_loai}</td>
-                        <td style={{ fontWeight: 600, color:"#b36b00"}}>{fmt(room.gia_co_ban)} ₫</td>
-                        <td>{room.suc_chua} khách</td>
-                        <td>{room.so_luong_phong} phòng</td>
-                        <td><span className={`badge ${rst.badgeCls}`}>{rst.label}</span></td>
-                        <ActionCell>
-                          <ActionButton
-                            variant="view"
-                            iconOnly
-                            icon={Eye}
-                            title="Chi tiết"
-                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`, {
-                              state: { backTo: `/admin/hotels/${id}` },
-                            })}
-                          />
-                        </ActionCell>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Images */}
-      {activeTab ==="images"&& (
-        <div className="content-card">
-          {!hotel.hinh_anh?.length ? (
-            <div className="empty-state">
-              <p className="empty-state-text">Chưa có hình ảnh</p>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
-              {hotel.hinh_anh.map((img) => (
-                <div
-                  key={img.ma_hinh_anh}
-                  role="button"tabIndex={0}
-                  onClick={() => setLightbox(resolveUploadUrl(img.url))}
-                  onKeyDown={(e) => e.key ==="Enter"&& setLightbox(resolveUploadUrl(img.url))}
-                  style={{
-                    borderRadius: 12, overflow:"hidden", border: "1px solid #d4ede6",
-                    position: "relative", cursor: "pointer",
-                  }}
-                >
-                  <img src={resolveUploadUrl(img.url)} alt=""style={{ width:"100%", height: 150, objectFit: "cover", display: "block"}} />
-                  {img.la_anh_chinh && (
-                    <span className="badge badge-success"style={{ position:"absolute", top: 8, left: 8, fontSize: 11 }}>Ảnh chính</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {lightbox && (
-        <div
-          role="button"tabIndex={0}
-          onClick={() => setLightbox(null)}
-          onKeyDown={(e) => e.key ==="Escape"&& setLightbox(null)}
-          style={{
-            position:"fixed", inset: 0, background: "rgba(0,0,0,0.85)",
-            zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
-          }}
-        >
-          <img src={lightbox} alt=""style={{ maxWidth:"90vw", maxHeight: "90vh", borderRadius: 8, objectFit: "contain" }} />
-        </div>
-      )}
+      </div>
     </div>
   );
 };

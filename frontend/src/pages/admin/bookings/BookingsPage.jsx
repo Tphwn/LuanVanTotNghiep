@@ -114,6 +114,24 @@ const AdminBookingsPage = () => {
     { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0 },
   ], [stats, list.length]);
 
+  const hasActiveFilter = Boolean(
+    keyword.trim()
+    || statusFilter !== 'all'
+    || partnerFilter !== 'all'
+    || hotelFilter !== 'all'
+    || tuNgay
+    || denNgay,
+  );
+
+  const clearFilters = () => {
+    setKeyword('');
+    setStatusFilter('all');
+    setPartnerFilter('all');
+    setHotelFilter('all');
+    setTuNgay('');
+    setDenNgay('');
+  };
+
   return (
     <div className="mgmt-page mgmt-list-page">
       <ManagementHeader
@@ -174,6 +192,11 @@ const AdminBookingsPage = () => {
           onChange={(e) => setDenNgay(e.target.value)}
           aria-label="Ngày trả"
         />
+        {hasActiveFilter && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

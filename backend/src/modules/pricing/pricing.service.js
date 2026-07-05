@@ -2,16 +2,31 @@ const prisma = require('../../config/prisma');
 const { ACTIVE_BOOKING } = require('../../utils/bookingHelpers');
 
 const formatDateKey = (d) => {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const part = d.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
+  }
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dt.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
 
 const parseLocalDate = (str) => {
-  const [y, m, d] = String(str).slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, d);
+  const part = String(str).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(part)) {
+    throw new Error(`Ngày không hợp lệ: ${str}`);
+  }
+  return new Date(`${part}T00:00:00.000Z`);
+};
+
+const nextDateKey = (key) => {
+  const cur = parseLocalDate(key);
+  return formatDateKey(
+    new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), cur.getUTCDate() + 1)),
+  );
 };
 
 const getDefaultLoaiGia = (dateStr) => {
@@ -61,10 +76,10 @@ const pricingService = {
     });
     if (!room) throw new Error('Không tìm thấy loại phòng');
 
-    const start = parseLocalDate(tuNgay);
-    const end = parseLocalDate(denNgay);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
+    const startKey = String(tuNgay).slice(0, 10);
+    const endKey = String(denNgay).slice(0, 10);
+    const start = parseLocalDate(startKey);
+    const end = parseLocalDate(endKey);
 
     const priceRows = await prisma.bang_gia_phong.findMany({
       where: {
@@ -89,23 +104,15 @@ const pricingService = {
     const giaCoBan = Number(room.gia_co_ban);
 
     const days = [];
-    const cur = new Date(start);
-    cur.setHours(0, 0, 0, 0);
-    const endDay = new Date(end);
-    endDay.setHours(0, 0, 0, 0);
-
-    while (cur <= endDay) {
-      const key = formatDateKey(cur);
+    let key = startKey;
+    while (key <= endKey) {
       const priceRow = priceMap.get(key);
       const donGia = priceRow ? Number(priceRow.don_gia) : giaCoBan;
 
-      const nightStart = new Date(cur);
-      nightStart.setHours(0, 0, 0, 0);
+      const nightStart = parseLocalDate(key);
       const daDat = bookings.filter((b) => {
-        const checkIn = new Date(b.ngay_nhan_phong);
-        const checkOut = new Date(b.ngay_tra_phong);
-        checkIn.setHours(0, 0, 0, 0);
-        checkOut.setHours(0, 0, 0, 0);
+        const checkIn = parseLocalDate(formatDateKey(b.ngay_nhan_phong));
+        const checkOut = parseLocalDate(formatDateKey(b.ngay_tra_phong));
         return nightStart >= checkIn && nightStart < checkOut;
       }).length;
 
@@ -128,7 +135,7 @@ const pricingService = {
         con_lai: conLai,
         da_dat: daDat,
       });
-      cur.setDate(cur.getDate() + 1);
+      key = nextDateKey(key);
     }
 
     return {
@@ -160,42 +167,59 @@ const pricingService = {
 
   // Lưu giá hàng loạt cho nhiều loại phòng + nhiều ngày
   savePrices: async (entries) => {
-    const results = [];
+    return prisma.$transaction(async (tx) => {
+      const results = [];
+      const seen = new Set();
 
-    for (const entry of entries) {
-      const { ma_loai_phong, ngay, don_gia, loai_gia, so_luong_ap_dung } = entry;
-      if (!ma_loai_phong || !ngay) {
-        throw new Error('Mỗi bản ghi giá cần có ma_loai_phong và ngay');
-      }
+      for (const entry of entries) {
+        const { ma_loai_phong, ngay, don_gia, loai_gia, so_luong_ap_dung } = entry;
+        if (!ma_loai_phong || !ngay) {
+          throw new Error('Mỗi bản ghi giá cần có ma_loai_phong và ngay');
+        }
 
-      const ngayDate = parseLocalDate(ngay);
-      const apDung = so_luong_ap_dung != null && so_luong_ap_dung !== ''
-        ? Number(so_luong_ap_dung)
-        : null;
+        const ngayKey = String(ngay).slice(0, 10);
+        const maLoai = Number(ma_loai_phong);
+        const dedupeKey = `${maLoai}:${ngayKey}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
 
-      const result = await prisma.bang_gia_phong.upsert({
-        where: {
-          ma_loai_phong_ngay: {
-            ma_loai_phong: Number(ma_loai_phong),
-            ngay: ngayDate,
-          },
-        },
-        update: {
+        const ngayDate = parseLocalDate(ngayKey);
+        const apDung = so_luong_ap_dung != null && so_luong_ap_dung !== ''
+          ? Number(so_luong_ap_dung)
+          : null;
+        const payload = {
           don_gia: Number(don_gia),
           loai_gia,
           so_luong_ap_dung: apDung,
-        },
-        create: {
-          ma_loai_phong: Number(ma_loai_phong),
           ngay: ngayDate,
-          don_gia: Number(don_gia),
-          loai_gia,
-          so_luong_ap_dung: apDung,
-        },
-      });
-      results.push(result);
-    }
-    return results;
+        };
+
+        const existingRows = await tx.$queryRaw`
+          SELECT ma_bang_gia
+          FROM bang_gia_phong
+          WHERE ma_loai_phong = ${maLoai}
+            AND ngay = ${ngayKey}
+          LIMIT 1
+        `;
+
+        let result;
+        if (existingRows.length > 0) {
+          result = await tx.bang_gia_phong.update({
+            where: { ma_bang_gia: Number(existingRows[0].ma_bang_gia) },
+            data: payload,
+          });
+        } else {
+          result = await tx.bang_gia_phong.create({
+            data: {
+              ma_loai_phong: maLoai,
+              ...payload,
+            },
+          });
+        }
+        results.push(result);
+      }
+      return results;
+    });
   },
 
   deletePrice: async (maLoaiPhong, ngay) => {
@@ -207,32 +231,35 @@ const pricingService = {
       throw new Error('ngay không hợp lệ');
     }
 
-    return prisma.bang_gia_phong.deleteMany({
-      where: {
-        ma_loai_phong: roomId,
-        ngay: parseLocalDate(ngay),
-      },
-    });
+    const ngayKey = String(ngay).slice(0, 10);
+    const deleted = await prisma.$executeRaw`
+      DELETE FROM bang_gia_phong
+      WHERE ma_loai_phong = ${roomId}
+        AND ngay = ${ngayKey}
+    `;
+    return { count: Number(deleted) || 0 };
   },
 
   deletePricesBulk: async (items = []) => {
     const conditions = items
       .map((item) => ({
         ma_loai_phong: Number(item.maLoaiPhong ?? item.ma_loai_phong),
-        ngay: item.ngay,
+        ngay: String(item.ngay).slice(0, 10),
       }))
       .filter((item) => item.ma_loai_phong && !Number.isNaN(item.ma_loai_phong) && item.ngay);
 
     if (!conditions.length) return { count: 0 };
 
-    return prisma.bang_gia_phong.deleteMany({
-      where: {
-        OR: conditions.map((item) => ({
-          ma_loai_phong: item.ma_loai_phong,
-          ngay: parseLocalDate(item.ngay),
-        })),
-      },
-    });
+    let total = 0;
+    for (const item of conditions) {
+      const deleted = await prisma.$executeRaw`
+        DELETE FROM bang_gia_phong
+        WHERE ma_loai_phong = ${item.ma_loai_phong}
+          AND ngay = ${item.ngay}
+      `;
+      total += Number(deleted) || 0;
+    }
+    return { count: total };
   },
 };
 

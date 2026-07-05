@@ -8,9 +8,9 @@ import PriceRangeSlider from '../../components/customer/search/PriceRangeSlider'
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
-import CustomerPrice from '../../components/customer/CustomerPrice';
+import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import { groupHotelAmenities } from '../../utils/hotelAmenityFilters';
-import { searchFormToParams } from '../../utils/hotelSearchStorage';
+import { searchFormToParams, normalizeSearchGuests } from '../../utils/hotelSearchStorage';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
@@ -149,17 +149,22 @@ const FilterSidebar = ({
   </aside>
 );
 
+const formatReviewScore = (score) => {
+  const n = Number(score) || 0;
+  return Number.isInteger(n) ? n : n.toFixed(1);
+};
+
 const HotelRatingBadge = ({ score, count }) => {
   if (!count) {
     return <span className="hotel-result-rating-none">Chưa có đánh giá</span>;
   }
   return (
     <div className="hotel-result-rating">
-      <span className="hotel-result-rating-score">{score}</span>
-      <div className="hotel-result-rating-text">
+      <div className="hotel-result-rating-top">
+        <span className="hotel-result-rating-score">{formatReviewScore(score)}/5</span>
         <span className="hotel-result-rating-label">{ratingLabel(score)}</span>
-        <span className="hotel-result-rating-count">({count} đánh giá)</span>
       </div>
+      <span className="hotel-result-rating-count">({count} đánh giá)</span>
     </div>
   );
 };
@@ -180,14 +185,21 @@ const HotelSearchPage = () => {
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedAmenities, setSelectedAmenities] = useState([]);
 
-  const filters = useMemo(() => ({
-    ma_dia_diem: searchParams.get('ma_dia_diem') || '',
-    ngay_nhan: searchParams.get('ngay_nhan') || '',
-    ngay_tra: searchParams.get('ngay_tra') || '',
-    so_khach: searchParams.get('so_khach') || '2',
-    tre_em: searchParams.get('tre_em') || '0',
-    so_phong: searchParams.get('so_phong') || '1',
-  }), [searchParams]);
+  const filters = useMemo(() => {
+    const guests = normalizeSearchGuests({
+      so_khach: searchParams.get('so_khach') || 2,
+      tre_em: searchParams.get('tre_em') || 0,
+      so_phong: searchParams.get('so_phong') || 1,
+    });
+    return {
+      ma_dia_diem: searchParams.get('ma_dia_diem') || '',
+      ngay_nhan: searchParams.get('ngay_nhan') || '',
+      ngay_tra: searchParams.get('ngay_tra') || '',
+      so_khach: String(guests.so_khach),
+      tre_em: String(guests.tre_em),
+      so_phong: String(guests.so_phong),
+    };
+  }, [searchParams]);
 
   const hasDateSearch = Boolean(filters.ngay_nhan && filters.ngay_tra);
   const isSearchRoute = location.pathname === ROUTES.CUSTOMER.ROOM_SEARCH;
@@ -559,26 +571,30 @@ const HotelSearchPage = () => {
 
                       <div className="hotel-result-aside">
                         <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
-                        {roomsLeft != null && (
-                          <span className={`hotel-result-stock-badge${isSoldOut ? ' hotel-result-stock-badge--sold-out' : ''}`}>
-                            {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng trống`}
-                          </span>
-                        )}
-                        <div className="hotel-result-price-block">
-                          <span className="hotel-result-price-label">
-                            Giá từ:{' '}
-                            <CustomerPrice amount={hotel.gia_tu} unit="₫" className="hotel-result-price-value" />
-                          </span>
-                          <span className="hotel-result-price-unit">/ phòng / đêm</span>
+                        <div className="hotel-result-aside-bottom">
+                          {roomsLeft != null && (
+                            <span className={`hotel-result-stock-badge${isSoldOut ? ' hotel-result-stock-badge--sold-out' : ''}`}>
+                              {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng trống`}
+                            </span>
+                          )}
+                          {hotel.gia_tu != null && (
+                            <CustomerPriceOffer
+                              amount={hotel.gia_tu}
+                              originalAmount={hotel.gia_goc}
+                              valueUnit="₫"
+                              suffix="/ phòng / đêm"
+                              className="hotel-result-price-block"
+                            />
+                          )}
+                          <CustomerButton
+                            to={isSoldOut ? undefined : detailUrl}
+                            className="hotel-result-cta"
+                            disabled={isSoldOut}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isSoldOut ? 'Hết phòng' : 'Chọn phòng'}
+                          </CustomerButton>
                         </div>
-                        <CustomerButton
-                          to={isSoldOut ? undefined : detailUrl}
-                          className="hotel-result-cta"
-                          disabled={isSoldOut}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {isSoldOut ? 'Hết phòng' : 'Chọn phòng'}
-                        </CustomerButton>
                       </div>
                     </div>
                   </article>

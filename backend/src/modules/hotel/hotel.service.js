@@ -1,6 +1,9 @@
 const prisma = require('../../config/prisma');
 const { attachHotelImages } = require('../../utils/images');
-const { getHotelPartnerLockState, isLockedByPartner } = require('../../utils/partnerLockHelpers');
+const {
+  getHotelLockState,
+  isLockedByPartner,
+} = require('../../utils/partnerLockHelpers');
 
 const hotelService = {
   // ── Partner ──────────────────────────────────────────────
@@ -239,39 +242,46 @@ const hotelService = {
   },
 
   lockHotel: async (id) => {
-    return prisma.khach_san.update({
-      where: { ma_khach_san: Number(id) },
-      data: { trang_thai: 'bi_khoa' },
-    });
-  },
-
-  unlockHotel: async (id) => {
     const hotelId = Number(id);
     const hotel = await prisma.khach_san.findUnique({
       where: { ma_khach_san: hotelId },
-      select: { ma_khach_san: true },
+      select: { khoa_do_doi_tac: true },
     });
 
     if (!hotel) {
       throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
     }
 
-    const lockState = await getHotelPartnerLockState(prisma, hotelId);
-    if (isLockedByPartner(lockState)) {
+    return prisma.khach_san.update({
+      where: { ma_khach_san: hotelId },
+      data: {
+        trang_thai: 'bi_khoa',
+        ...(hotel.khoa_do_doi_tac ? {} : { khoa_do_doi_tac: false }),
+      },
+    });
+  },
+
+  unlockHotel: async (id) => {
+    const hotelId = Number(id);
+    const hotel = await getHotelLockState(prisma, hotelId);
+
+    if (!hotel) {
+      throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
+    }
+
+    if (isLockedByPartner(hotel)) {
       throw {
         statusCode: 400,
-        message: 'Khách sạn đang bị khóa do tài khoản đối tác. Vui lòng mở khóa đối tác trước.',
+        message: 'Khách sạn đang bị đối tác khóa. Bạn không thể mở khóa.',
       };
     }
 
-    await prisma.$executeRaw`
-      UPDATE khach_san
-      SET trang_thai = 'hoat_dong', khoa_do_doi_tac = false
-      WHERE ma_khach_san = ${hotelId}
-    `;
-
-    return prisma.khach_san.findUnique({
+    return prisma.khach_san.update({
       where: { ma_khach_san: hotelId },
+      data: {
+        trang_thai: 'hoat_dong',
+        khoa_do_doi_tac: false,
+      },
     });
   },
 };

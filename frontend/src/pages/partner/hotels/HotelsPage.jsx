@@ -80,6 +80,18 @@ const HotelsPage = () => {
   const canToggle = (status) => status === 'hoat_dong' || status === 'bi_khoa';
   const canDelete = (status) => status === 'cho_duyet';
 
+  const hasActiveFilter = Boolean(
+    keyword.trim()
+    || activeTab !== 'all'
+    || diaDiemFilter !== 'all',
+  );
+
+  const clearFilters = () => {
+    setKeyword('');
+    setActiveTab('all');
+    setDiaDiemFilter('all');
+  };
+
   const handleDelete = (hotel) => {
     const confirmMsg = `Bạn có chắc chắn muốn xóa khách sạn "${hotel.ten}"?`;
     if (window.confirm(confirmMsg)) {
@@ -118,6 +130,11 @@ const HotelsPage = () => {
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
         </select>
+        {hasActiveFilter && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        )}
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -146,6 +163,7 @@ const HotelsPage = () => {
                 {filteredList.map((hotel) => {
                   const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: '' };
                   const isActive = hotel.trang_thai === 'hoat_dong';
+                  const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
                   return (
                     <tr key={hotel.ma_khach_san} style={{ opacity: hotel.trang_thai === 'bi_khoa' ? 0.85 : 1 }}>
                       <td><HotelThumb hotel={hotel} /></td>
@@ -172,9 +190,10 @@ const HotelsPage = () => {
                           <ToggleSwitch
                             compact
                             checked={isActive}
+                            disabled={adminLocked}
                             onChange={() => handleToggleStatus(hotel)}
                             labelOn="Đang hoạt động"
-                            labelOff="Tạm ngừng"
+                            labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}
                           />
                         ) : (
                           <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>

@@ -17,13 +17,25 @@ export const getDefaultSearchForm = () => {
   };
 };
 
-export const getTotalGuests = (form) => {
-  const adults = Math.max(1, Number(form?.so_khach) || 1);
-  const children = Math.max(0, Number(form?.tre_em) || 0);
-  return adults + children;
+export const normalizeSearchGuests = (form = {}) => {
+  const so_khach = Math.max(1, Number(form.so_khach) || 1);
+  const tre_em = Math.max(0, Number(form.tre_em) || 0);
+  let so_phong = Math.max(1, Number(form.so_phong) || 1);
+  so_phong = Math.min(so_phong, so_khach);
+  return { so_khach, tre_em, so_phong };
 };
 
-export const getRoomCount = (form) => Math.max(1, Number(form?.so_phong) || 1);
+export const getTotalGuests = (form) => {
+  const { so_khach, tre_em } = normalizeSearchGuests(form);
+  return so_khach + tre_em;
+};
+
+export const getRoomCount = (form) => normalizeSearchGuests(form).so_phong;
+
+export const getRequiredCapacity = (form) => {
+  const { so_khach, tre_em, so_phong } = normalizeSearchGuests(form);
+  return Math.ceil((so_khach + tre_em) / so_phong);
+};
 
 export const loadSearchForm = () => {
   try {
@@ -46,8 +58,6 @@ export const clearSearchForm = () => {
 };
 
 export const hasSavedSearch = () => Boolean(loadSearchForm());
-
-/** URL params ưu tiên hơn session; không có thì dùng session; không có nữa thì default */
 export const resolveSearchForm = (fromUrl = {}) => {
   const defaults = getDefaultSearchForm();
   const saved = loadSearchForm();
@@ -60,17 +70,18 @@ export const resolveSearchForm = (fromUrl = {}) => {
   const merged = { ...base, ...patch };
   delete merged.so_giuong;
 
-  return merged;
+  return { ...merged, ...normalizeSearchGuests(merged) };
 };
 
 export const searchFormToParams = (form) => {
+  const { so_khach, tre_em, so_phong } = normalizeSearchGuests(form);
   const params = new URLSearchParams();
   if (form.ma_dia_diem) params.set('ma_dia_diem', String(form.ma_dia_diem));
   if (form.ngay_nhan) params.set('ngay_nhan', form.ngay_nhan);
   if (form.ngay_tra) params.set('ngay_tra', form.ngay_tra);
-  params.set('so_khach', String(Math.max(1, Number(form.so_khach) || 1)));
-  if (form.tre_em) params.set('tre_em', String(form.tre_em));
-  params.set('so_phong', String(Math.max(1, Number(form.so_phong) || 1)));
+  params.set('so_khach', String(so_khach));
+  if (tre_em) params.set('tre_em', String(tre_em));
+  params.set('so_phong', String(so_phong));
   return params;
 };
 

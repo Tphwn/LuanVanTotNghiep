@@ -1,25 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
-import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import HotelPickerSection from './components/HotelPickerSection';
-import HotelBanner from './components/HotelBanner';
+import BackButton from '../../../components/common/BackButton';
+import HotelListSection from './components/HotelListSection';
 import RoomListSection from './components/RoomListSection';
+import RoomDetailModal from './components/RoomDetailModal';
+
+const isHotelActive = (hotel) => hotel.trang_thai === 'hoat_dong';
 
 const RoomTypePage = () => {
   const { hotelId: urlHotelId } = useParams();
   const navigate = useNavigate();
 
-  const [hotels, setHotels]             = useState([]);
-  const [hotelStats, setHotelStats]     = useState({});
+  const [hotels, setHotels] = useState([]);
+  const [hotelStats, setHotelStats] = useState({});
   const [loadingHotels, setLoadingHotels] = useState(true);
-  const [selectedHotel, setSelected]    = useState(urlHotelId || '');
-  const [rooms, setRooms]               = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [toast, setToast]               = useState(null);
-  const [refreshKey, setRefreshKey]     = useState(0);
-  const [keyword, setKeyword]           = useState('');
+  const [selectedHotel, setSelected] = useState(urlHotelId || '');
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [roomTypeFilter, setRoomTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [hotelNameFilter, setHotelNameFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [hotelStatusFilter, setHotelStatusFilter] = useState('all');
+  const [detailRoom, setDetailRoom] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -29,7 +35,7 @@ const RoomTypePage = () => {
   const selectHotel = (id) => {
     const val = String(id);
     setSelected(val);
-    setKeyword('');
+    setRoomTypeFilter('');
     setStatusFilter('all');
     navigate(id ? `/partner/hotels/${id}/rooms` : '/partner/rooms');
   };
@@ -47,7 +53,7 @@ const RoomTypePage = () => {
         } catch {
           return [h.ma_khach_san, { total: 0, active: 0 }];
         }
-      })
+      }),
     );
     setHotelStats(Object.fromEntries(entries));
   };
@@ -63,8 +69,6 @@ const RoomTypePage = () => {
 
         if (urlHotelId) {
           setSelected(urlHotelId);
-        } else if (hotelList.length === 1) {
-          selectHotel(hotelList[0].ma_khach_san);
         }
       } catch {
         showToast('Không tải được danh sách khách sạn', 'error');
@@ -77,7 +81,7 @@ const RoomTypePage = () => {
   }, []);
 
   useEffect(() => {
-    if (urlHotelId) setSelected(urlHotelId);
+    setSelected(urlHotelId || '');
   }, [urlHotelId]);
 
   useEffect(() => {
@@ -110,88 +114,161 @@ const RoomTypePage = () => {
       await api.patch(`/partner/rooms/${room.ma_loai_phong}/toggle-status`);
       showToast(`Đã ${action} loại phòng!`);
       triggerReloadRooms();
-    } catch {
-      showToast('Lỗi thao tác', 'error');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Lỗi thao tác', 'error');
     }
   };
 
   const currentHotel = hotels.find((h) => h.ma_khach_san === Number(selectedHotel));
-  const activeCount  = rooms.filter((r) => r.trang_thai === 'hoat_dong').length;
 
-  const filteredRooms = useMemo(() => {
-    const text = keyword.trim().toLowerCase();
-    return rooms.filter((room) => {
-      const matchStatus  = statusFilter === 'all' || room.trang_thai === statusFilter;
-      const matchKeyword = !text || room.ten_loai?.toLowerCase().includes(text);
-      return matchStatus && matchKeyword;
+  const locationOptions = useMemo(() => {
+    const map = new Map();
+    hotels.forEach((hotel) => {
+      const id = hotel.dia_diem?.ma_dia_diem;
+      const name = hotel.dia_diem?.ten_dia_diem;
+      if (id && name) map.set(id, name);
     });
-  }, [rooms, keyword, statusFilter]);
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [hotels]);
 
-  const filterTabs = [
-    { id: 'all',       label: 'Tất cả',      count: rooms.length },
-    { id: 'hoat_dong', label: 'Đang bán',    count: activeCount },
-    { id: 'an',        label: 'Đã ẩn',       count: rooms.length - activeCount },
-  ];
+  const filteredHotels = useMemo(() => hotels.filter((hotel) => {
+    const matchName = !hotelNameFilter || String(hotel.ma_khach_san) === hotelNameFilter;
+    const matchLoc = !locationFilter || String(hotel.dia_diem?.ma_dia_diem) === locationFilter;
+    const matchStatus = hotelStatusFilter === 'all'
+      || (hotelStatusFilter === 'hoat_dong' && isHotelActive(hotel))
+      || (hotelStatusFilter === 'inactive' && !isHotelActive(hotel));
+    return matchName && matchLoc && matchStatus;
+  }), [hotels, hotelNameFilter, locationFilter, hotelStatusFilter]);
+
+  const hotelFilterTabs = useMemo(() => {
+    const activeCount = hotels.filter(isHotelActive).length;
+    return [
+      { id: 'all', label: 'Tất cả', count: hotels.length },
+      { id: 'hoat_dong', label: 'Hoạt động', count: activeCount },
+      { id: 'inactive', label: 'Ngưng HĐ', count: hotels.length - activeCount },
+    ];
+  }, [hotels]);
+
+  const filteredRooms = useMemo(() => rooms.filter((room) => {
+    const matchType = !roomTypeFilter || String(room.ma_loai_phong) === roomTypeFilter;
+    const matchStatus = statusFilter === 'all' || room.trang_thai === statusFilter;
+    return matchType && matchStatus;
+  }), [rooms, roomTypeFilter, statusFilter]);
+
+  const hasHotelListFilter = Boolean(
+    hotelNameFilter
+    || locationFilter
+    || hotelStatusFilter !== 'all',
+  );
+
+  const hasRoomListFilter = Boolean(
+    roomTypeFilter
+    || statusFilter !== 'all',
+  );
+
+  const clearHotelListFilters = () => {
+    setHotelNameFilter('');
+    setLocationFilter('');
+    setHotelStatusFilter('all');
+  };
+
+  const clearRoomListFilters = () => {
+    setRoomTypeFilter('');
+    setStatusFilter('all');
+  };
 
   if (loadingHotels) {
     return <div style={{ textAlign: 'center', padding: 60, color: '#5a7a72' }}>Đang tải dữ liệu...</div>;
   }
 
   return (
-    <div>
-      <ManagementHeader
-        title="Quản Lý Loại Phòng"
-        subtitle={
-          currentHotel
-            ? `Trang quản lý khách sạn: ${currentHotel.ten}`
-            : 'Quản lý loại phòng của từng khách sạn'
-        }
-        actionLabel={selectedHotel ? '+ Thêm loại phòng' : undefined}
-        onAction={selectedHotel ? () => navigate(`/partner/hotels/${selectedHotel}/rooms/create`) : undefined}
-      />
-
+    <div className="mgmt-page partner-room-mgmt">
       {toast && (
         <div className={`mgmt-toast ${toast.type}`} style={{ marginBottom: 16 }}>
           {toast.msg}
         </div>
       )}
 
-      {!selectedHotel && (
-        <HotelPickerSection
-          hotels={hotels}
-          hotelStats={hotelStats}
-          selectedHotel={selectedHotel}
-          onSelectHotel={selectHotel}
-          onNavigateToHotels={() => navigate('/partner/hotels')}
-        />
-      )}
-
-      {selectedHotel && currentHotel && (
+      {!selectedHotel ? (
         <>
-          <HotelBanner
-            hotel={currentHotel}
-            hotelsCount={hotels.length}
-            onChangeHotel={() => selectHotel('')}
+          <h1 className="partner-room-page-title">Quản lý loại phòng</h1>
+
+          {hotels.length === 0 ? (
+            <div className="content-card">
+              <div className="empty-state">
+                <p className="empty-state-text" style={{ marginBottom: 16 }}>
+                  Bạn chưa có khách sạn nào. Hãy thêm khách sạn trước khi tạo loại phòng.
+                </p>
+                <button type="button" className="btn btn-primary" onClick={() => navigate('/partner/hotels')}>
+                  + Thêm khách sạn
+                </button>
+              </div>
+            </div>
+          ) : (
+            <HotelListSection
+              hotels={hotels}
+              hotelStats={hotelStats}
+              hotelNameFilter={hotelNameFilter}
+              onHotelNameFilterChange={setHotelNameFilter}
+              locationFilter={locationFilter}
+              onLocationFilterChange={setLocationFilter}
+              locationOptions={locationOptions}
+              statusFilter={hotelStatusFilter}
+              onStatusFilterChange={setHotelStatusFilter}
+              filterTabs={hotelFilterTabs}
+              filteredHotels={filteredHotels}
+              onViewHotel={selectHotel}
+              hasActiveFilter={hasHotelListFilter}
+              onClearFilters={clearHotelListFilters}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <BackButton
+            onClick={() => selectHotel('')}
+            className="page-back-btn--standalone"
           />
+
+          <div className="partner-room-mgmt-head">
+            <h1 className="partner-room-page-title">Quản Lý Loại Phòng</h1>
+            <button
+              type="button"
+              className="btn btn-primary partner-room-add-btn"
+              onClick={() => navigate(`/partner/hotels/${selectedHotel}/rooms/create`)}
+            >
+              Thêm loại phòng
+            </button>
+          </div>
+
+          {currentHotel && (
+            <div className="partner-room-hotel-info">
+              <p><strong>Khách sạn:</strong> {currentHotel.ten}</p>
+              <p>
+                <strong>Địa điểm:</strong>{' '}
+                {[currentHotel.dia_chi, currentHotel.dia_diem?.ten_dia_diem].filter(Boolean).join(', ') || '—'}
+              </p>
+            </div>
+          )}
 
           <RoomListSection
             rooms={rooms}
-            activeCount={activeCount}
             loading={loading}
-            keyword={keyword}
-            onKeywordChange={(e) => setKeyword(e.target.value)}
-            hotels={hotels}
-            selectedHotel={selectedHotel}
-            onSelectHotel={selectHotel}
+            roomTypeFilter={roomTypeFilter}
+            onRoomTypeFilterChange={setRoomTypeFilter}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            filterTabs={filterTabs}
             filteredRooms={filteredRooms}
-            onAddRoom={() => navigate(`/partner/hotels/${selectedHotel}/rooms/create`)}
+            onViewRoom={setDetailRoom}
             onEditRoom={(room) => navigate(`/partner/hotels/${selectedHotel}/rooms/${room.ma_loai_phong}/edit`)}
             onToggleRoom={handleToggle}
-            onManageImages={(room) => navigate(`/partner/rooms/${room.ma_loai_phong}/images`)}
+            hasActiveFilter={hasRoomListFilter}
+            onClearFilters={clearRoomListFilters}
           />
+
+          {detailRoom && (
+            <RoomDetailModal room={detailRoom} onClose={() => setDetailRoom(null)} />
+          )}
         </>
       )}
     </div>

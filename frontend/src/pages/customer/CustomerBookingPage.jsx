@@ -195,14 +195,14 @@ const CustomerBookingPage = () => {
   }, [maKhachSan, maLoaiPhong, ngayNhan, ngayTra, roomQuery]);
 
   useEffect(() => {
-    if (user) {
-      setForm((prev) => ({
-        ...prev,
-        ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || '',
-        sdt_nguoi_nhan: prev.sdt_nguoi_nhan || user.so_dien_thoai || '',
-        email: prev.email || user.email || '',
-      }));
-    }
+    if (!user) return;
+
+    setForm((prev) => ({
+      ...prev,
+      ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || user.khach_hang?.ho_ten || '',
+      sdt_nguoi_nhan: prev.sdt_nguoi_nhan || user.so_dien_thoai || '',
+      email: user.email || prev.email || '',
+    }));
   }, [user]);
 
   const handleSubmit = async (e) => {
@@ -259,7 +259,7 @@ const CustomerBookingPage = () => {
   return (
     <div className="booking-confirm-page">
       <div className="booking-confirm-header">
-        <BackButton to={backUrl} className="booking-confirm-back" />
+        <BackButton to={backUrl} className="booking-confirm-back page-back-btn--standalone" />
         <h1 className="booking-confirm-title">Xác nhận đặt phòng</h1>
       </div>
 
@@ -303,11 +303,12 @@ const CustomerBookingPage = () => {
                 <input
                   id="email"
                   type="email"
-                  className="booking-confirm-input"
+                  className="booking-confirm-input booking-confirm-input--readonly"
                   value={form.email}
-                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  readOnly
                   required
                   maxLength={120}
+                  aria-readonly="true"
                 />
               </div>
             </div>

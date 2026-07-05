@@ -5,10 +5,15 @@ const PENDING_CHECKIN_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
 const AUTO_COMPLETE_MARKER = '[auto_hoan_thanh]';
 
 const formatDateKey = (d) => {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const part = d.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
+  }
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(dt.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
 
@@ -16,23 +21,26 @@ const parseDate = (value) => {
   if (!value) return null;
   const part = String(value).slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(part)) {
-    const [y, m, d] = part.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    return new Date(`${part}T00:00:00.000Z`);
   }
   const d = new Date(value);
-  d.setHours(0, 0, 0, 0);
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
 const getDatesInRange = (checkIn, checkOut) => {
+  const startKey = formatDateKey(checkIn);
+  const endKey = formatDateKey(checkOut);
+  if (!startKey || !endKey || startKey >= endKey) return [];
+
   const dates = [];
-  const cur = new Date(checkIn);
-  const end = new Date(checkOut);
-  cur.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-  while (cur < end) {
-    dates.push(formatDateKey(cur));
-    cur.setDate(cur.getDate() + 1);
+  let key = startKey;
+  while (key < endKey) {
+    dates.push(key);
+    const cur = parseDate(key);
+    const next = new Date(
+      Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), cur.getUTCDate() + 1),
+    );
+    key = formatDateKey(next);
   }
   return dates;
 };
@@ -71,20 +79,36 @@ const calcRoomAvailability = (room, daDat) => {
 const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
   const base = Number(giaCoBan);
   if (!checkIn || !checkOut) {
-    return { gia_tu_dem: base, tong_luong_tru: base, so_dem: 1 };
+    return {
+      gia_tu_dem: base,
+      gia_goc_dem: base,
+      co_giam_gia: false,
+      tong_luong_tru: base,
+      tong_goc: base,
+      so_dem: 1,
+    };
   }
 
   const dates = getDatesInRange(checkIn, checkOut);
   if (!dates.length) {
-    return { gia_tu_dem: base, tong_luong_tru: base, so_dem: 1 };
+    return {
+      gia_tu_dem: base,
+      gia_goc_dem: base,
+      co_giam_gia: false,
+      tong_luong_tru: base,
+      tong_goc: base,
+      so_dem: 1,
+    };
   }
 
-  const customPrices = await prisma.bang_gia_phong.findMany({
-    where: {
-      ma_loai_phong: maLoaiPhong,
-      ngay: { gte: checkIn, lt: checkOut },
-    },
-  });
+  const customPrices = dates.length
+    ? await prisma.bang_gia_phong.findMany({
+      where: {
+        ma_loai_phong: Number(maLoaiPhong),
+        ngay: { in: dates.map((date) => parseDate(date)) },
+      },
+    })
+    : [];
 
   const priceMap = customPrices.reduce((acc, row) => {
     acc[formatDateKey(row.ngay)] = Number(row.don_gia);
@@ -92,13 +116,18 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
   }, {});
 
   let total = 0;
+  let totalBase = 0;
   for (const date of dates) {
     total += priceMap[date] ?? base;
+    totalBase += base;
   }
 
   return {
     gia_tu_dem: Math.round(total / dates.length),
+    gia_goc_dem: Math.round(totalBase / dates.length),
+    co_giam_gia: total < totalBase,
     tong_luong_tru: total,
+    tong_goc: totalBase,
     so_dem: dates.length,
   };
 };

@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { countActiveBookedRooms, calcRoomAvailability } = require('../../utils/bookingHelpers');
+const { isLockedByAdminRoom } = require('../../utils/partnerLockHelpers');
 const prisma = new PrismaClient();
 
 // ===== HÀM BỔ TRỢ =====
@@ -243,15 +244,37 @@ exports.toggleRoomStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy loại phòng' });
     }
 
-    const newStatus = room.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong';
+    if (room.trang_thai === 'hoat_dong') {
+      const updated = await prisma.loai_phong.update({
+        where: { ma_loai_phong: roomId },
+        data: {
+          trang_thai: 'an',
+          khoa_do_doi_tac: true,
+          so_luong_mo_ban_truoc_khoa: room.so_luong_mo_ban,
+          so_luong_mo_ban: 0,
+        },
+      });
+      return res.status(200).json({ success: true, data: updated });
+    }
+
+    if (isLockedByAdminRoom(room)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Loại phòng đang bị admin khóa. Bạn không thể mở khóa.',
+      });
+    }
+
+    const moBan = Number(room.so_luong_mo_ban_truoc_khoa) > 0
+      ? room.so_luong_mo_ban_truoc_khoa
+      : (Number(room.so_luong_mo_ban) > 0 ? room.so_luong_mo_ban : room.so_luong_phong);
 
     const updated = await prisma.loai_phong.update({
       where: { ma_loai_phong: roomId },
       data: {
-        trang_thai: newStatus,
-        so_luong_mo_ban: newStatus === 'hoat_dong'
-          ? (Number(room.so_luong_mo_ban) > 0 ? room.so_luong_mo_ban : room.so_luong_phong)
-          : 0,
+        trang_thai: 'hoat_dong',
+        khoa_do_doi_tac: false,
+        so_luong_mo_ban: moBan,
+        so_luong_mo_ban_truoc_khoa: null,
       },
     });
 

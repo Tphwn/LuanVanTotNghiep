@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, Lock, Unlock } from "lucide-react";
 import {
   fetchUsers,
@@ -13,6 +13,7 @@ import ActionButton, { ActionCell } from "../../../components/common/ActionButto
 import { resolveUploadUrl } from "../../../utils/media";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
+import UserDetailModal from "./components/UserDetailModal";
 
 const PAGE_SIZE = 10;
 
@@ -58,6 +59,7 @@ const ROLE_FILTER = {
 const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { users = [], loading, error, successMsg } = useSelector((state) => state.adminUsers);
 
   const [keyword, setKeyword] = useState("");
@@ -66,6 +68,7 @@ const UsersPage = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
+  const [detailUserId, setDetailUserId] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -75,6 +78,14 @@ const UsersPage = () => {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  useEffect(() => {
+    const id = location.state?.detailUserId;
+    if (id) {
+      setDetailUserId(Number(id));
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -167,6 +178,18 @@ const UsersPage = () => {
   const rangeFrom = filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredUsers.length);
 
+  const hasActiveFilter = Boolean(
+    keyword.trim()
+    || activeTab !== 'all'
+    || roleFilter !== 'all',
+  );
+
+  const clearFilters = () => {
+    setKeyword('');
+    setActiveTab('all');
+    setRoleFilter('all');
+  };
+
   return (
     <div className="mgmt-page mgmt-list-page">
       <ManagementHeader
@@ -202,6 +225,11 @@ const UsersPage = () => {
           <option value="khach_hang">Khách hàng</option>
           <option value="doi_tac">Đối tác</option>
         </select>
+        {hasActiveFilter && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        )}
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -257,7 +285,7 @@ const UsersPage = () => {
                             iconOnly
                             icon={Eye}
                             title="Chi tiết"
-                            onClick={() => navigate(`/admin/users/${user.ma_nguoi_dung}`)}
+                            onClick={() => setDetailUserId(user.ma_nguoi_dung)}
                           />
                           <ActionButton
                             variant={isActive ? "lock" : "unlock"}
@@ -315,6 +343,13 @@ const UsersPage = () => {
           </>
         )}
       </div>
+
+      {detailUserId && (
+        <UserDetailModal
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
+        />
+      )}
     </div>
   );
 };

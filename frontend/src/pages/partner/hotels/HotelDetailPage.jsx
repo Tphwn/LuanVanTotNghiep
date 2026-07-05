@@ -60,6 +60,7 @@ export default function HotelDetailPage() {
   }
 
   const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'badge-default' };
+  const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
   const mainImg = hotel.hinh_anh?.find((i) => i.la_anh_chinh === 1) || hotel.hinh_anh?.[0];
   const requiredDocs = parseGiayToBatBuoc(hotel.giay_to_bat_buoc)
     .map((docId) => REQUIRED_DOC_LABELS[docId] || docId);
@@ -88,9 +89,10 @@ export default function HotelDetailPage() {
             {['hoat_dong', 'bi_khoa'].includes(hotel.trang_thai) && (
               <ToggleSwitch
                 checked={hotel.trang_thai === 'hoat_dong'}
+                disabled={adminLocked}
                 onChange={handleToggleStatus}
                 labelOn="Đang hoạt động"
-                labelOff="Tạm ngừng"
+                labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}
               />
             )}
           </div>

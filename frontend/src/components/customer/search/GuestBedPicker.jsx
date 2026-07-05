@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Users, Baby, DoorOpen } from 'lucide-react';
+import { normalizeSearchGuests } from '../../../utils/hotelSearchStorage';
+
+const MAX_ADULTS = 10;
+const MAX_CHILDREN = 6;
+const MAX_ROOMS = 5;
 
 const CounterRow = ({ icon: Icon, label, value, min, max, onDecrease, onIncrease }) => (
   <div className="guest-bed-row">
@@ -55,6 +60,17 @@ const GuestBedPicker = ({
     onOpenChange(!open);
   };
 
+  const applyChange = (patch) => {
+    onChange(normalizeSearchGuests({
+      so_khach: soKhach,
+      tre_em: treEm,
+      so_phong: soPhong,
+      ...patch,
+    }));
+  };
+
+  const maxRooms = Math.min(MAX_ROOMS, soKhach);
+
   return (
     <div className="search-picker" ref={ref}>
       <button type="button" className="search-picker-trigger" onClick={handleToggle}>
@@ -72,27 +88,27 @@ const GuestBedPicker = ({
             label="Người lớn"
             value={soKhach}
             min={1}
-            max={10}
-            onDecrease={() => onChange({ so_khach: Math.max(1, soKhach - 1) })}
-            onIncrease={() => onChange({ so_khach: Math.min(10, soKhach + 1) })}
+            max={MAX_ADULTS}
+            onDecrease={() => applyChange({ so_khach: soKhach - 1 })}
+            onIncrease={() => applyChange({ so_khach: soKhach + 1 })}
           />
           <CounterRow
             icon={Baby}
             label="Trẻ em"
             value={treEm}
             min={0}
-            max={6}
-            onDecrease={() => onChange({ tre_em: Math.max(0, treEm - 1) })}
-            onIncrease={() => onChange({ tre_em: Math.min(6, treEm + 1) })}
+            max={MAX_CHILDREN}
+            onDecrease={() => applyChange({ tre_em: treEm - 1 })}
+            onIncrease={() => applyChange({ tre_em: treEm + 1 })}
           />
           <CounterRow
             icon={DoorOpen}
             label="Phòng"
             value={soPhong}
             min={1}
-            max={5}
-            onDecrease={() => onChange({ so_phong: Math.max(1, soPhong - 1) })}
-            onIncrease={() => onChange({ so_phong: Math.min(5, soPhong + 1) })}
+            max={maxRooms}
+            onDecrease={() => applyChange({ so_phong: soPhong - 1 })}
+            onIncrease={() => applyChange({ so_phong: soPhong + 1 })}
           />
           <div className="guest-bed-dropdown-footer">
             <button type="button" className="guest-bed-done-btn" onClick={() => onOpenChange(false)}>

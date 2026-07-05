@@ -44,6 +44,16 @@ const getDefaultLoaiGia = (dateStr) => {
   return day === 0 || day === 6 ? 'cuoi_tuan' : 'co_ban';
 };
 
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '—';
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString('vi-VN');
+};
+
+const getInclusiveDayCount = (from, to) => {
+  if (!from || !to) return 0;
+  return getDatesInRange(from, to).length;
+};
+
 const getDatesInRange = (from, to) => {
   const dates = [];
   const cur = new Date(`${from}T12:00:00`);
@@ -254,6 +264,27 @@ const PricingPage = () => {
     });
     return map;
   }, [calendarData.days]);
+
+  const selectedDayCount = useMemo(
+    () => getInclusiveDayCount(selectedFrom, selectedTo),
+    [selectedFrom, selectedTo],
+  );
+
+  const handleFromDateChange = (value) => {
+    setSelectedFrom(value);
+    setRangeAnchor(null);
+    if (value && selectedTo && value > selectedTo) {
+      setSelectedTo(value);
+    }
+  };
+
+  const handleToDateChange = (value) => {
+    setSelectedTo(value);
+    setRangeAnchor(null);
+    if (value && selectedFrom && value < selectedFrom) {
+      setSelectedFrom(value);
+    }
+  };
 
   const handleDayClick = (dateStr) => {
     if (!rangeAnchor) {
@@ -473,7 +504,7 @@ const PricingPage = () => {
                   type="date"
                   value={selectedFrom}
                   min={today}
-                  onChange={(e) => setSelectedFrom(e.target.value)}
+                  onChange={(e) => handleFromDateChange(e.target.value)}
                 />
               </div>
               <div className="price-inv-date-row">
@@ -482,9 +513,14 @@ const PricingPage = () => {
                   type="date"
                   value={selectedTo}
                   min={selectedFrom || today}
-                  onChange={(e) => setSelectedTo(e.target.value)}
+                  onChange={(e) => handleToDateChange(e.target.value)}
                 />
               </div>
+              {selectedFrom && selectedTo && (
+                <p className="price-inv-hint">
+                  Áp dụng cho {selectedDayCount} ngày (từ {formatDisplayDate(selectedFrom)} đến {formatDisplayDate(selectedTo)}, bao gồm cả hai ngày)
+                </p>
+              )}
             </div>
 
             <div className="price-inv-panel-section">
@@ -527,7 +563,7 @@ const PricingPage = () => {
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
               onClick={handleSave}
-              disabled={saving || !selectedFrom}
+              disabled={saving || !selectedFrom || !selectedTo}
             >
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>

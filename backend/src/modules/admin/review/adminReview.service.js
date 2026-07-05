@@ -53,6 +53,7 @@ const mapReview = (dg) => ({
   khach_hang: dg.khach_hang ? { ho_ten: dg.khach_hang.ho_ten, ma_khach_hang: dg.khach_hang.ma_khach_hang } : null,
   admin_duyet: dg.nguoi_dung ? { email: dg.nguoi_dung.email } : null,
   ma_don_hang: dg.dat_phong?.ma_don_hang,
+  ma_dat_phong: dg.ma_dat_phong,
   ngay_nhan_phong: dg.dat_phong?.ngay_nhan_phong,
   ngay_tra_phong: dg.dat_phong?.ngay_tra_phong,
   ma_loai_phong: dg.dat_phong?.loai_phong?.ma_loai_phong,
@@ -105,6 +106,7 @@ const buildStats = (mapped) => {
     tong_danh_gia: tong,
     hien_thi: mapped.filter((r) => r.trang_thai === 'hien_thi').length,
     an: mapped.filter((r) => r.trang_thai === 'an').length,
+    bi_bao_cao: 0,
     chua_phan_hoi: mapped.filter((r) => !r.da_phan_hoi).length,
     phan_bo_sao: phanBoSao,
     theo_khach_san,
@@ -112,7 +114,7 @@ const buildStats = (mapped) => {
 };
 
 const getReviews = async (query = {}) => {
-  const { ma_khach_san, so_sao, trang_thai, tu_ngay, den_ngay } = query;
+  const { ma_khach_san, ma_doi_tac, so_sao, trang_thai, tu_ngay, den_ngay } = query;
 
   const where = {};
 
@@ -129,6 +131,12 @@ const getReviews = async (query = {}) => {
     where.dat_phong = {
       loai_phong: { ma_khach_san: Number(ma_khach_san) },
     };
+  } else if (ma_doi_tac) {
+    where.dat_phong = {
+      loai_phong: {
+        khach_san: { ma_doi_tac: Number(ma_doi_tac) },
+      },
+    };
   }
 
   const reviews = await prisma.danh_gia.findMany({
@@ -138,8 +146,17 @@ const getReviews = async (query = {}) => {
   });
 
   const mapped = reviews.map(mapReview);
+
+  const bookingIds = [...new Set(mapped.map((r) => r.ma_dat_phong).filter(Boolean))];
+  const biBaoCao = bookingIds.length > 0
+    ? await prisma.bao_cao.count({ where: { ma_dat_phong: { in: bookingIds } } })
+    : 0;
+
+  const stats = buildStats(mapped);
+  stats.bi_bao_cao = biBaoCao;
+
   return {
-    stats: buildStats(mapped),
+    stats,
     danh_sach: mapped,
   };
 };
@@ -153,10 +170,28 @@ const getReviewById = async (id) => {
   return mapReview(review);
 };
 
+const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet', 'bi_khoa'];
+
 const getFilterHotels = async () => {
   return prisma.khach_san.findMany({
-    select: { ma_khach_san: true, ten: true },
+    where: { trang_thai: { in: APPROVED_HOTEL_STATUSES } },
+    select: { ma_khach_san: true, ten: true, ma_doi_tac: true },
     orderBy: { ten: 'asc' },
+  });
+};
+
+const getFilterPartners = async () => {
+  const rows = await prisma.khach_san.groupBy({
+    by: ['ma_doi_tac'],
+    where: { trang_thai: { in: APPROVED_HOTEL_STATUSES } },
+  });
+  const ids = rows.map((r) => r.ma_doi_tac);
+  if (!ids.length) return [];
+
+  return prisma.doi_tac.findMany({
+    where: { ma_doi_tac: { in: ids } },
+    select: { ma_doi_tac: true, ten_cong_ty: true },
+    orderBy: { ten_cong_ty: 'asc' },
   });
 };
 
@@ -190,6 +225,7 @@ module.exports = {
   getReviews,
   getReviewById,
   getFilterHotels,
+  getFilterPartners,
   hideReview,
   unhideReview,
 };

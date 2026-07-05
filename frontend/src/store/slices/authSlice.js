@@ -2,6 +2,15 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
 import { setToken, setUser, removeToken, removeUser, getToken, getUser } from '../../utils/storage';
 
+const mapAuthUser = (raw = {}) => ({
+  id: raw.ma_nguoi_dung ?? raw.id ?? null,
+  email: raw.email ?? null,
+  vai_tro: raw.vai_tro ?? null,
+  so_dien_thoai: raw.so_dien_thoai ?? null,
+  ho_ten: raw.khach_hang?.ho_ten || raw.ho_ten || null,
+  khach_hang: raw.khach_hang ?? null,
+});
+
 export const login = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
   try {
     const res = await authService.login(data);
@@ -59,9 +68,9 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.token;
-        state.user = action.payload.user;
+        state.user = mapAuthUser(action.payload.user);
         setToken(action.payload.token);
-        setUser(action.payload.user);
+        setUser(state.user);
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -74,23 +83,16 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.token;
-        state.user = action.payload.user;
+        state.user = mapAuthUser(action.payload.user);
         setToken(action.payload.token);
-        setUser(action.payload.user);
+        setUser(state.user);
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
       .addCase(getMe.fulfilled, (state, action) => {
-        const raw = action.payload;
-        const user = {
-          id: raw.ma_nguoi_dung ?? raw.id,
-          email: raw.email,
-          vai_tro: raw.vai_tro,
-          ho_ten: raw.khach_hang?.ho_ten || raw.ho_ten || null,
-          khach_hang: raw.khach_hang,
-        };
+        const user = mapAuthUser(action.payload);
         state.user = user;
         setUser(user);
       });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, BedDouble, Users } from 'lucide-react';
-import CustomerPrice from './CustomerPrice';
+import CustomerPriceOffer from './CustomerPriceOffer';
 import { resolveUploadUrl } from '../../utils/media';
 
 const getBedLabel = (soGiuong) => {
@@ -192,11 +192,18 @@ const RoomDetailModal = ({
               {room.gia_hien_thi != null && (
                 <div className="room-detail-modal-price-section">
                   <span className="room-detail-modal-price-label">Giá tham khảo</span>
-                  <div className="room-detail-modal-price-row">
-                    <CustomerPrice amount={room.gia_hien_thi} className="room-detail-modal-price-value" />
-                    <span className="room-detail-modal-price-unit">/ Phòng / đêm</span>
-                  </div>
-                  <p className="room-detail-modal-tax-note">(Chưa bao gồm thuế và phí)</p>
+                  <CustomerPriceOffer
+                    amount={room.gia_hien_thi}
+                    originalAmount={room.gia_goc}
+                    label=""
+                    suffix="/ Phòng / đêm"
+                    align="left"
+                    showTaxNote={!room.gia_goc}
+                    className="room-detail-modal-price-row"
+                  />
+                  {!room.gia_goc && (
+                    <p className="room-detail-modal-tax-note">(Chưa bao gồm thuế và phí)</p>
+                  )}
                 </div>
               )}
               <button type="button" className="room-detail-modal-close-btn" onClick={onClose}>

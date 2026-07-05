@@ -2,8 +2,8 @@ const service = require('./adminRoomType.service');
 
 exports.getRoomTypes = async (req, res, next) => {
   try {
-    const { ma_dia_diem, ma_doi_tac, trang_thai, keyword } = req.query;
-    const filters = { ma_dia_diem, ma_doi_tac, trang_thai, keyword };
+    const { ma_dia_diem, ma_doi_tac, ma_khach_san, trang_thai, keyword } = req.query;
+    const filters = { ma_dia_diem, ma_doi_tac, ma_khach_san, trang_thai, keyword };
     const [data, stats, locations, partners] = await Promise.all([
       service.getRoomTypes(filters),
       service.getStats(filters),

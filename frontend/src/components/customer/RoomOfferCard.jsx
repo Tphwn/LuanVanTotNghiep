@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import RoomSpecs from './RoomSpecs';
 import CustomerButton from './CustomerButton';
 import CustomerAmenityTags from './CustomerAmenityTags';
-import CustomerPrice from './CustomerPrice';
+import CustomerPriceOffer from './CustomerPriceOffer';
 import RoomDetailModal from './RoomDetailModal';
 import { resolveUploadUrl } from '../../utils/media';
 
@@ -79,8 +79,16 @@ const RoomOfferCard = ({
         </div>
 
         <div className="hotel-room-offer-aside">
-          <CustomerPrice amount={room.gia_hien_thi} className="hotel-room-offer-price" />
-          <p className="hotel-room-offer-tax-note">(Chưa bao gồm thuế và phí)</p>
+          <CustomerPriceOffer
+            amount={room.gia_hien_thi}
+            originalAmount={room.gia_goc}
+            label=""
+            suffix="/ phòng / đêm"
+            className="hotel-room-offer-price-wrap"
+          />
+          {!room.gia_goc && (
+            <p className="hotel-room-offer-tax-note">(Chưa bao gồm thuế và phí)</p>
+          )}
           {roomsLeft != null && (
             <p className={`hotel-room-offer-stock${isSoldOut ? ' hotel-room-offer-stock--sold-out' : ''}`}>
               {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng`}

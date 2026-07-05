@@ -69,6 +69,13 @@ const BookingManagePage = () => {
     { id: 'da_huy', label: 'Đã hủy', count: countByStatus('da_huy') + countByStatus('tu_choi') },
   ], [list]);
 
+  const hasActiveFilter = Boolean(keyword.trim() || statusFilter !== 'all');
+
+  const clearFilters = () => {
+    setKeyword('');
+    setStatusFilter('all');
+  };
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -87,6 +94,14 @@ const BookingManagePage = () => {
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
       />
+
+      {hasActiveFilter && (
+        <div className="mgmt-filter-clear-row">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+            Xóa bộ lọc
+          </button>
+        </div>
+      )}
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (

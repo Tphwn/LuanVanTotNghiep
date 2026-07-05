@@ -45,6 +45,7 @@ return {
     id: nguoiDung.ma_nguoi_dung,
     email: nguoiDung.email,
     vai_tro: nguoiDung.vai_tro,
+    so_dien_thoai: nguoiDung.so_dien_thoai,
     ho_ten,
   },
 };
@@ -79,6 +80,7 @@ const login = async ({ email, mat_khau }) => {
       id: nguoiDung.ma_nguoi_dung,
       email: nguoiDung.email,
       vai_tro: nguoiDung.vai_tro,
+      so_dien_thoai: nguoiDung.so_dien_thoai,
       ho_ten: nguoiDung.khach_hang?.ho_ten || null,
     },
   };

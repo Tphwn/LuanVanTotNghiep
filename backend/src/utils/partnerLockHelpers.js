@@ -1,31 +1,29 @@
-const isLockedByPartner = (row) =>
-  Boolean(Number(row?.khoa_do_doi_tac)) && row?.partner_user_status === 'bi_khoa';
+const isLockedByPartner = (row) => Boolean(row?.khoa_do_doi_tac);
 
-const ACTIVE_HOTEL_STATUSES = ['hoat_dong', 'da_duyet'];
+const isLockedByAdminHotel = (row) =>
+  row?.trang_thai === 'bi_khoa' && !row?.khoa_do_doi_tac;
 
-const getHotelPartnerLockState = async (tx, hotelId) => {
-  const rows = await tx.$queryRaw`
-    SELECT ks.khoa_do_doi_tac, nd.trang_thai AS partner_user_status
-    FROM khach_san ks
-    INNER JOIN doi_tac dt ON dt.ma_doi_tac = ks.ma_doi_tac
-    INNER JOIN nguoi_dung nd ON nd.ma_nguoi_dung = dt.ma_nguoi_dung
-    WHERE ks.ma_khach_san = ${Number(hotelId)}
-    LIMIT 1
-  `;
-  return rows[0] || null;
+const isLockedByAdminRoom = (row) =>
+  row?.trang_thai === 'an' && !row?.khoa_do_doi_tac;
+
+const getHotelLockState = async (tx, hotelId) => {
+  return tx.khach_san.findUnique({
+    where: { ma_khach_san: Number(hotelId) },
+    select: { trang_thai: true, khoa_do_doi_tac: true },
+  });
 };
 
-const getRoomPartnerLockState = async (tx, roomId) => {
-  const rows = await tx.$queryRaw`
-    SELECT lp.khoa_do_doi_tac, nd.trang_thai AS partner_user_status
-    FROM loai_phong lp
-    INNER JOIN khach_san ks ON ks.ma_khach_san = lp.ma_khach_san
-    INNER JOIN doi_tac dt ON dt.ma_doi_tac = ks.ma_doi_tac
-    INNER JOIN nguoi_dung nd ON nd.ma_nguoi_dung = dt.ma_nguoi_dung
-    WHERE lp.ma_loai_phong = ${Number(roomId)}
-    LIMIT 1
-  `;
-  return rows[0] || null;
+const getRoomLockState = async (tx, roomId) => {
+  return tx.loai_phong.findUnique({
+    where: { ma_loai_phong: Number(roomId) },
+    select: {
+      trang_thai: true,
+      khoa_do_doi_tac: true,
+      so_luong_mo_ban: true,
+      so_luong_phong: true,
+      so_luong_mo_ban_truoc_khoa: true,
+    },
+  });
 };
 
 const lockPartnerResources = async (tx, maDoiTac) => {
@@ -109,13 +107,19 @@ const activePartnerFilter = {
   },
 };
 
+const ACTIVE_HOTEL_STATUSES = ['hoat_dong', 'da_duyet'];
+
 module.exports = {
   lockPartnerResources,
   unlockPartnerResources,
   syncAllLockedPartners,
   isLockedByPartner,
-  getHotelPartnerLockState,
-  getRoomPartnerLockState,
+  isLockedByAdminHotel,
+  isLockedByAdminRoom,
+  getHotelLockState,
+  getRoomLockState,
+  getHotelPartnerLockState: getHotelLockState,
+  getRoomPartnerLockState: getRoomLockState,
   activePartnerFilter,
   ACTIVE_HOTEL_STATUSES,
 };

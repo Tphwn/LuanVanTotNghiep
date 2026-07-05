@@ -5,7 +5,7 @@ import { Images } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
-import CustomerPrice from '../../components/customer/CustomerPrice';
+import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import RoomOfferCard from '../../components/customer/RoomOfferCard';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
@@ -248,10 +248,13 @@ const CustomerHotelDetailPage = () => {
 
         <aside className="hotel-detail-booking-card">
           {hotel.gia_tu && (
-            <div className="hotel-detail-booking-price-row">
-              <span className="hotel-detail-booking-price-label">Giá từ:</span>
-              <CustomerPrice amount={hotel.gia_tu} className="hotel-detail-booking-price-value" />
-            </div>
+            <CustomerPriceOffer
+              amount={hotel.gia_tu}
+              originalAmount={hotel.gia_goc}
+              align="left"
+              showTaxNote={false}
+              className="hotel-detail-booking-price-row"
+            />
           )}
           {query.ngay_nhan && query.ngay_tra ? (
             <p className="hotel-detail-booking-sub">
@@ -303,29 +306,40 @@ const CustomerHotelDetailPage = () => {
       </section>
 
       <section className="hotel-detail-reviews-section">
-        <div className="hotel-detail-reviews-header">
-          <h2 className="hotel-detail-block-title">
-            Đánh giá {hotel.so_danh_gia > 0 ? `(${hotel.so_danh_gia})` : ''}
-          </h2>
-          {hotel.so_danh_gia > 0 && (
-            <span className="hotel-detail-reviews-score">{hotel.diem_trung_binh}/5</span>
-          )}
-        </div>
+        <h2 className="hotel-detail-block-title hotel-detail-reviews-title">
+          Đánh giá của khách hàng{hotel.so_danh_gia > 0 ? ` (${hotel.so_danh_gia})` : ''}
+        </h2>
         {reviews.length === 0 ? (
           <p className="hotel-detail-reviews-empty">Chưa có đánh giá cho khách sạn này</p>
         ) : (
           <div className="hotel-review-list">
             {reviews.map((rv) => (
               <article key={rv.ma_danh_gia} className="hotel-review-item">
-                <div className="hotel-review-head">
-                  <span className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</span>
-                  <span className="hotel-review-score">{rv.so_sao}/5</span>
+                <div className="hotel-review-grid">
+                  <div className="hotel-review-left">
+                    <div className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</div>
+                    {rv.ten_loai_phong && (
+                      <div className="hotel-review-room-block">
+                        <span className="hotel-review-room-label">Sử dụng loại phòng:</span>
+                        <span className="hotel-review-room-name">{rv.ten_loai_phong}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="hotel-review-right">
+                    <div className="hotel-review-meta">
+                      <span className="hotel-review-score">{rv.so_sao}/5</span>
+                      <span className="hotel-review-date">{fmtDate(rv.ngay_danh_gia)}</span>
+                    </div>
+                    {rv.noi_dung && (
+                      <p className="hotel-review-content">{rv.noi_dung}</p>
+                    )}
+                    {rv.phan_hoi_doi_tac && (
+                      <div className="hotel-review-partner-reply">
+                        {rv.phan_hoi_doi_tac}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {rv.ten_loai_phong && (
-                  <p className="hotel-review-room-type">Loại phòng: {rv.ten_loai_phong}</p>
-                )}
-                {rv.noi_dung && <p className="hotel-review-content">{rv.noi_dung}</p>}
-                <div className="hotel-review-date">{fmtDate(rv.ngay_danh_gia)}</div>
               </article>
             ))}
           </div>

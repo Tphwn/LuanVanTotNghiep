@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import DateRangePicker from './DateRangePicker';
 import GuestBedPicker from './GuestBedPicker';
 import CustomerSearchButton from '../CustomerSearchButton';
-import { saveSearchForm, resolveSearchForm } from '../../../utils/hotelSearchStorage';
+import { saveSearchForm, resolveSearchForm, normalizeSearchGuests } from '../../../utils/hotelSearchStorage';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -42,14 +42,15 @@ const HotelSearchBar = ({
     return true;
   };
 
-  const normalizeForm = (data) => ({
-    ma_dia_diem: data.ma_dia_diem || '',
-    ngay_nhan: data.ngay_nhan,
-    ngay_tra: data.ngay_tra,
-    so_khach: Math.max(1, Number(data.so_khach) || 1),
-    tre_em: Math.max(0, Number(data.tre_em) || 0),
-    so_phong: Math.max(1, Number(data.so_phong) || 1),
-  });
+  const normalizeForm = (data) => {
+    const guests = normalizeSearchGuests(data);
+    return {
+      ma_dia_diem: data.ma_dia_diem || '',
+      ngay_nhan: data.ngay_nhan,
+      ngay_tra: data.ngay_tra,
+      ...guests,
+    };
+  };
 
   const updateForm = (patch) => {
     setForm((prev) => {

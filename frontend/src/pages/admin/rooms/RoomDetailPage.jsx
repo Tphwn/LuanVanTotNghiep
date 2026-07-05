@@ -84,6 +84,7 @@ const RoomDetailPage = () => {
 
   const st = getAdminRoomTypeStatus(room.trang_thai);
   const isHidden = room.trang_thai ==="an";
+  const partnerLocked = Boolean(room.khoa_do_doi_tac);
   const mainImg = room.hinh_anh?.find((i) => i.la_anh_chinh) || room.hinh_anh?.[0];
   const amenities = room.loai_phong_tien_nghi || [];
   const inv = room.tinh_trang_phong || {};
@@ -135,7 +136,8 @@ const RoomDetailPage = () => {
                 <ActionButton
                   variant={isHidden ? "unlock" : "lock"}
                   onClick={handleToggleStatus}
-                  disabled={actionLoading}
+                  disabled={actionLoading || (isHidden && partnerLocked)}
+                  title={partnerLocked && isHidden ? 'Bị khóa do đối tác' : undefined}
                   style={{ flexShrink: 0 }}
                 >
                   {actionLoading ? "Đang xử lý..." : isHidden ? "Mở loại phòng" : "Ẩn loại phòng"}

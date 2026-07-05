@@ -35,7 +35,6 @@ import PartnerHotelFormPage from '../pages/partner/hotels/HotelFormPage';
 import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
 import PartnerRoomFormPage from '../pages/partner/rooms/RoomFormPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
-import PartnerReviewDetailPage from '../pages/partner/reviews/ReviewDetailPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
@@ -146,7 +145,6 @@ const AppRoutes = () => {
           <Route path="bookings" element={<PartnerBookingsPage />} />
           <Route path="bookings/:id" element={<PartnerBookingDetailPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
-          <Route path="reviews/:id" element={<PartnerReviewDetailPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />

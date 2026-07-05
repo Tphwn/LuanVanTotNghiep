@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import RoomSpecs from '../../components/customer/RoomSpecs';
 import CustomerAmenityTag from '../../components/customer/CustomerAmenityTag';
-import CustomerPrice from '../../components/customer/CustomerPrice';
+import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import { resolveSearchForm } from '../../utils/hotelSearchStorage';
@@ -207,10 +207,14 @@ const CustomerRoomDetailPage = () => {
           )}
 
           <div className="room-detail-booking room-detail-booking--view-only">
-            <div className="room-detail-price-row">
-              <span className="room-detail-price-label">Giá tham khảo:</span>
-              <CustomerPrice amount={room.gia_hien_thi} className="room-detail-price-value" />
-            </div>
+            <CustomerPriceOffer
+              amount={room.gia_hien_thi}
+              originalAmount={room.gia_goc}
+              label="Giá tham khảo:"
+              align="left"
+              showTaxNote={Boolean(room.gia_goc)}
+              className="room-detail-price-row"
+            />
             {nights > 1 && room.tong_gia && (
               <p className="room-detail-total">Tổng {nights} đêm: {formatCurrency(room.tong_gia)} VNĐ</p>
             )}

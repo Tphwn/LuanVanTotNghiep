@@ -3,6 +3,7 @@ const { attachHotelImages } = require('../../utils/images');
 const { getUserId } = require('../../utils/user');
 const { parseJsonField } = require('../../utils/parseJson');
 const { parseHotelRulesInput } = require('../../utils/hotelRules');
+const { isLockedByAdminHotel } = require('../../utils/partnerLockHelpers');
 
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
@@ -264,6 +265,11 @@ exports.updateHotel = async (req, res) => {
 
     const existing = await prisma.khach_san.findFirst({
       where: { ma_khach_san: hotelId, ma_doi_tac: doiTac.ma_doi_tac },
+      select: {
+        ma_khach_san: true,
+        trang_thai: true,
+        khoa_do_doi_tac: true,
+      },
     });
 
     if (!existing) {
@@ -299,7 +305,23 @@ exports.updateHotel = async (req, res) => {
     if (ma_dia_diem !== undefined) {
       updateData.dia_diem = { connect: { ma_dia_diem: parseInt(ma_dia_diem, 10) } };
     }
-    if (trang_thai !== undefined) updateData.trang_thai = trang_thai;
+    if (trang_thai !== undefined) {
+      if (trang_thai === 'bi_khoa') {
+        updateData.trang_thai = 'bi_khoa';
+        updateData.khoa_do_doi_tac = true;
+      } else if (trang_thai === 'hoat_dong') {
+        if (isLockedByAdminHotel(existing)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Khách sạn đang bị admin khóa. Bạn không thể mở khóa.',
+          });
+        }
+        updateData.trang_thai = 'hoat_dong';
+        updateData.khoa_do_doi_tac = false;
+      } else {
+        updateData.trang_thai = trang_thai;
+      }
+    }
     Object.assign(updateData, hotelRules);
 
     await prisma.$transaction(async (tx) => {

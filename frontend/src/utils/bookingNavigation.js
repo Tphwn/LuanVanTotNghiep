@@ -1,5 +1,5 @@
 import ROUTES from '../constants/routes';
-import { resolveSearchForm } from './hotelSearchStorage';
+import { resolveSearchForm, normalizeSearchGuests } from './hotelSearchStorage';
 
 export const resolveBookingQuery = (partial = {}) => {
   const resolved = resolveSearchForm({
@@ -11,15 +11,21 @@ export const resolveBookingQuery = (partial = {}) => {
     so_phong: partial.so_phong,
   });
 
+  const guests = normalizeSearchGuests({
+    so_khach: partial.so_khach || resolved.so_khach,
+    tre_em: partial.tre_em ?? resolved.tre_em,
+    so_phong: partial.so_phong || resolved.so_phong,
+  });
+
   return {
     ma_khach_san: partial.ma_khach_san || '',
     ma_loai_phong: partial.ma_loai_phong || '',
     ma_dia_diem: partial.ma_dia_diem || resolved.ma_dia_diem || '',
     ngay_nhan: partial.ngay_nhan || resolved.ngay_nhan,
     ngay_tra: partial.ngay_tra || resolved.ngay_tra,
-    so_khach: String(partial.so_khach || resolved.so_khach || 2),
-    tre_em: String(partial.tre_em ?? resolved.tre_em ?? 0),
-    so_phong: String(partial.so_phong || resolved.so_phong || 1),
+    so_khach: String(guests.so_khach),
+    tre_em: String(guests.tre_em),
+    so_phong: String(guests.so_phong),
   };
 };
 

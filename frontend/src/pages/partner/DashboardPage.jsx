@@ -17,8 +17,6 @@ const PartnerDashboardPage = () => {
       <ManagementHeader
         title="Tổng quan"
         subtitle="Quản lý khách sạn và đơn đặt phòng của bạn"
-        actionLabel="+ Thêm khách sạn"
-        onAction={() => navigate('/partner/hotels/create')}
       />
 
       <div className="mgmt-metric-grid mgmt-metric-grid--4">

@@ -309,7 +309,7 @@ const AdminFinancePage = () => {
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button className="btn btn-primary"onClick={() => dispatch(fetchTransactions(txFilter))}> Tìm</button>
-              <button className="btn btn-ghost"onClick={() => { setTxFilter({trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''}); dispatch(fetchTransactions()); }}>↺ Reset</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setTxFilter({trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''}); dispatch(fetchTransactions()); }}>Xóa bộ lọc</button>
             </div>
           </div>
 
@@ -415,7 +415,7 @@ const AdminFinancePage = () => {
               <button className="btn btn-ghost btn-sm" onClick={() => {
                 setRfFilter({ trang_thai:'all', tu_ngay:'', den_ngay:'', keyword:'' });
                 dispatch(fetchRefunds());
-              }}>↺ Reset</button>
+              }}>Xóa bộ lọc</button>
             </div>
           </div>
 
