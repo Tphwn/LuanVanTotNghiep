@@ -322,7 +322,7 @@ const AdminFinancePage = () => {
             ) : transactions.length === 0 ? (
               <div className="empty-state"><p className="empty-state-text">Chưa có giao dịch</p></div>
             ) : (
-              <table className="data-table data-table-grid">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th>Mã giao dịch</th>
@@ -429,7 +429,7 @@ const AdminFinancePage = () => {
             ) : refunds.length === 0 ? (
               <div className="empty-state"><p className="empty-state-text">Chưa có yêu cầu hoàn tiền</p></div>
             ) : (
-              <table className="data-table data-table-grid">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th>Mã hoàn</th>

@@ -209,7 +209,7 @@ const AdminBookingsPage = () => {
         ) : (
           <>
             <div className="mgmt-table-scroll">
-              <table className="data-table data-table-grid mgmt-list-table">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th style={{ width: 140 }}>Mã đơn</th>

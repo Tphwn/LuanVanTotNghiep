@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Lock, Unlock } from 'lucide-react';
+import { Eye, Lock, Unlock } from 'lucide-react';
 import api from '../../../services/api';
 import adminHotelService from '../../../services/adminHotelService';
 import { resolveUploadUrl } from '../../../utils/media';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import FilterTabs from '../../../components/common/management/FilterTabs';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import RoomDetailModal from '../../partner/rooms/components/RoomDetailModal';
 
 const PAGE_SIZE = 10;
@@ -34,7 +36,6 @@ const RoomTypesPage = () => {
   const [locationFilter, setLocationFilter] = useState('');
   const [hotelFilter, setHotelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [page, setPage] = useState(1);
   const [detailRoom, setDetailRoom] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -42,8 +43,6 @@ const RoomTypesPage = () => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
-
-  const hasScopeFilter = Boolean(partnerFilter || locationFilter || hotelFilter);
 
   useEffect(() => {
     const loadMeta = async () => {
@@ -69,11 +68,6 @@ const RoomTypesPage = () => {
   }, []);
 
   const loadRooms = useCallback(async () => {
-    if (!hasScopeFilter) {
-      setRooms([]);
-      setStats(null);
-      return;
-    }
     setLoadingRooms(true);
     try {
       const params = { trang_thai: statusFilter };
@@ -91,15 +85,11 @@ const RoomTypesPage = () => {
     } finally {
       setLoadingRooms(false);
     }
-  }, [hasScopeFilter, partnerFilter, locationFilter, hotelFilter, statusFilter]);
+  }, [partnerFilter, locationFilter, hotelFilter, statusFilter]);
 
   useEffect(() => {
     loadRooms();
   }, [loadRooms]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [partnerFilter, locationFilter, hotelFilter, statusFilter]);
 
   const hotelOptions = useMemo(() => hotels.filter((hotel) => {
     const matchPartner = !partnerFilter || String(hotel.doi_tac?.ma_doi_tac) === partnerFilter;
@@ -119,26 +109,16 @@ const RoomTypesPage = () => {
     { id: 'an', label: 'Đã ẩn', count: stats?.hidden ?? 0 },
   ], [stats, rooms.length]);
 
-  const totalPages = Math.max(1, Math.ceil(rooms.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-
-  const pagedRooms = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return rooms.slice(start, start + PAGE_SIZE);
-  }, [rooms, currentPage]);
-
-  const pageNumbers = useMemo(() => {
-    const pages = [];
-    const maxButtons = 5;
-    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-    let end = Math.min(totalPages, start + maxButtons - 1);
-    start = Math.max(1, end - maxButtons + 1);
-    for (let i = start; i <= end; i += 1) pages.push(i);
-    return pages;
-  }, [currentPage, totalPages]);
-
-  const rangeFrom = rooms.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const rangeTo = Math.min(currentPage * PAGE_SIZE, rooms.length);
+  const {
+    pagedItems: pagedRooms,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(rooms, PAGE_SIZE, [partnerFilter, locationFilter, hotelFilter, statusFilter]);
 
   const handleToggleStatus = async (room) => {
     const isHidden = room.trang_thai === 'an';
@@ -191,7 +171,7 @@ const RoomTypesPage = () => {
     <div className="mgmt-page partner-room-mgmt mgmt-list-page">
       <h1 className="partner-room-page-title">Quản lý loại phòng</h1>
       <p className="partner-room-page-subtitle">
-        Chọn đối tác, địa điểm hoặc khách sạn để xem danh sách loại phòng
+        Danh sách loại phòng của tất cả đối tác — dùng bộ lọc để thu hẹp kết quả
       </p>
 
       {toast && (
@@ -199,6 +179,8 @@ const RoomTypesPage = () => {
           {toast.msg}
         </div>
       )}
+
+      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={setStatusFilter} />
 
       <div className="partner-room-filters partner-room-filters--admin">
         <div className="partner-room-filter-field">
@@ -209,7 +191,7 @@ const RoomTypesPage = () => {
             value={partnerFilter}
             onChange={(e) => setPartnerFilter(e.target.value)}
           >
-            <option value="">Chọn đối tác</option>
+            <option value="">Tất cả đối tác</option>
             {partners.map((p) => (
               <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
             ))}
@@ -223,7 +205,7 @@ const RoomTypesPage = () => {
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
           >
-            <option value="">Chọn địa điểm</option>
+            <option value="">Tất cả địa điểm</option>
             {locations.map((loc) => (
               <option key={loc.ma_dia_diem} value={String(loc.ma_dia_diem)}>{loc.ten_dia_diem}</option>
             ))}
@@ -237,7 +219,7 @@ const RoomTypesPage = () => {
             value={hotelFilter}
             onChange={(e) => setHotelFilter(e.target.value)}
           >
-            <option value="">Chọn khách sạn</option>
+            <option value="">Tất cả khách sạn</option>
             {hotelOptions.map((hotel) => (
               <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>{hotel.ten}</option>
             ))}
@@ -255,20 +237,11 @@ const RoomTypesPage = () => {
       <div className="mgmt-table-card partner-room-table-card">
         <div className="mgmt-table-card-header partner-room-table-header">
           <h3 className="mgmt-table-card-title">
-            Danh sách loại phòng ({hasScopeFilter ? rooms.length : 0})
+            Danh sách loại phòng ({rooms.length})
           </h3>
-          {hasScopeFilter && (
-            <FilterTabs tabs={filterTabs} active={statusFilter} onChange={setStatusFilter} />
-          )}
         </div>
 
-        {!hasScopeFilter ? (
-          <div className="empty-state">
-            <p className="empty-state-text">
-              Vui lòng chọn đối tác, địa điểm hoặc khách sạn để hiển thị danh sách loại phòng
-            </p>
-          </div>
-        ) : loadingRooms ? (
+        {loadingRooms ? (
           <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : rooms.length === 0 ? (
           <div className="empty-state">
@@ -277,7 +250,7 @@ const RoomTypesPage = () => {
         ) : (
           <>
             <div className="mgmt-table-scroll">
-              <table className="data-table partner-room-table">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th>Ảnh đại diện</th>
@@ -311,9 +284,9 @@ const RoomTypesPage = () => {
                             )}
                           </div>
                         </td>
-                        <td className="partner-room-type-name">{room.ten_loai?.toUpperCase()}</td>
+                        <td className="partner-room-type-name admin-cell-name">{room.ten_loai?.toUpperCase()}</td>
                         <td>
-                          <div className="mgmt-cell-name">{room.khach_san?.ten}</div>
+                          <div className="admin-cell-name">{room.khach_san?.ten}</div>
                           <div className="mgmt-cell-sub">{room.khach_san?.doi_tac?.ten_cong_ty}</div>
                         </td>
                         <td>{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
@@ -347,42 +320,16 @@ const RoomTypesPage = () => {
               </table>
             </div>
 
-            {rooms.length > PAGE_SIZE && (
-              <div className="mgmt-list-pagination">
-                <span className="mgmt-list-pagination-info">
-                  Hiển thị {rangeFrom}–{rangeTo} / {rooms.length}
-                </span>
-                <div className="mgmt-list-pagination-controls">
-                  <button
-                    type="button"
-                    className="mgmt-page-btn"
-                    disabled={currentPage <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    aria-label="Trang trước"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  {pageNumbers.map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      className={`mgmt-page-btn${num === currentPage ? ' is-active' : ''}`}
-                      onClick={() => setPage(num)}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="mgmt-page-btn"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    aria-label="Trang sau"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
+            {showPagination && (
+              <ListPagination
+                total={rooms.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                rangeFrom={rangeFrom}
+                rangeTo={rangeTo}
+                pageNumbers={pageNumbers}
+                onPageChange={setPage}
+              />
             )}
           </>
         )}

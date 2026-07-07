@@ -272,7 +272,7 @@ const HotelsPage = () => {
         ) : (
           <>
             <div className="mgmt-table-scroll">
-              <table className="data-table data-table-grid mgmt-list-table">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th style={{ width: 64 }}>Mã</th>
@@ -292,10 +292,10 @@ const HotelsPage = () => {
                   const partnerLockedHotel = Boolean(hotel.khoa_do_doi_tac);
                     return (
                       <tr key={hotel.ma_khach_san}>
-                        <td style={{ color: "#64748b", fontWeight: 500 }}>{hotel.ma_khach_san}</td>
+                        <td className="admin-cell-id">#{hotel.ma_khach_san}</td>
                         <td><HotelThumb hotel={hotel} /></td>
                         <td>
-                          <div className="mgmt-cell-name">{hotel.ten}</div>
+                          <div className="admin-cell-name">{hotel.ten}</div>
                         </td>
                         <td className="hotels-partner-cell">
                           {hotel.doi_tac?.ten_cong_ty || "—"}

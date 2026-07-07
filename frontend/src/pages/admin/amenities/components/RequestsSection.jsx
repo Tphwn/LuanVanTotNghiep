@@ -67,7 +67,7 @@ export const RequestsSection = ({
       </div>
     ) : (
       <div className="mgmt-table-scroll">
-        <table className="data-table data-table-grid mgmt-list-table amenity-requests-table">
+        <table className="data-table data-table-grid admin-mgmt-table amenity-requests-table">
           <thead>
             <tr>
               <th style={{ width: 160 }}>Đối tác</th>

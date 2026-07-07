@@ -127,14 +127,20 @@ const hotelService = {
   },
 
   getDetailForAdmin: async (id) => {
+    const hotelId = Number(id);
     const hotel = await prisma.khach_san.findUnique({
-      where: { ma_khach_san: Number(id) },
+      where: { ma_khach_san: hotelId },
       include: {
         dia_diem: true,
         doi_tac: {
           include: {
             nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: {
-              select: { email: true, so_dien_thoai: true },
+              select: {
+                ma_nguoi_dung: true,
+                email: true,
+                so_dien_thoai: true,
+                trang_thai: true,
+              },
             },
           },
         },
@@ -146,7 +152,9 @@ const hotelService = {
             gia_co_ban: true,
             suc_chua: true,
             so_luong_phong: true,
+            so_luong_mo_ban: true,
             trang_thai: true,
+            ngay_tao: true,
           },
           orderBy: { ten_loai: 'asc' },
         },
@@ -155,12 +163,76 @@ const hotelService = {
     });
     if (!hotel) return null;
 
-    const hinh_anh = await prisma.hinh_anh.findMany({
-      where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotel.ma_khach_san },
-      orderBy: { thu_tu: 'asc' },
-    });
+    const [hinh_anh, dat_phong, danh_gia, bookingAgg, reviewAgg] = await Promise.all([
+      prisma.hinh_anh.findMany({
+        where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
+        orderBy: { thu_tu: 'asc' },
+      }),
+      prisma.dat_phong.findMany({
+        where: { loai_phong: { ma_khach_san: hotelId } },
+        select: {
+          ma_dat_phong: true,
+          ma_don_hang: true,
+          ngay_nhan_phong: true,
+          ngay_tra_phong: true,
+          thanh_toan_cuoi: true,
+          trang_thai: true,
+          ngay_dat: true,
+          khach_hang: { select: { ho_ten: true } },
+          loai_phong: { select: { ten_loai: true } },
+        },
+        orderBy: { ngay_dat: 'desc' },
+        take: 30,
+      }),
+      prisma.danh_gia.findMany({
+        where: { dat_phong: { loai_phong: { ma_khach_san: hotelId } } },
+        select: {
+          ma_danh_gia: true,
+          so_sao: true,
+          noi_dung: true,
+          ngay_danh_gia: true,
+          trang_thai: true,
+          phan_hoi_doi_tac: true,
+          khach_hang: { select: { ho_ten: true } },
+          dat_phong: {
+            select: {
+              ma_don_hang: true,
+              loai_phong: { select: { ten_loai: true } },
+            },
+          },
+        },
+        orderBy: { ngay_danh_gia: 'desc' },
+        take: 30,
+      }),
+      prisma.dat_phong.aggregate({
+        where: { loai_phong: { ma_khach_san: hotelId } },
+        _count: { ma_dat_phong: true },
+        _sum: { thanh_toan_cuoi: true },
+      }),
+      prisma.danh_gia.aggregate({
+        where: { dat_phong: { loai_phong: { ma_khach_san: hotelId } } },
+        _count: { ma_danh_gia: true },
+        _avg: { so_sao: true },
+      }),
+    ]);
 
-    return { ...hotel, hinh_anh };
+    const avgRating = reviewAgg._avg.so_sao
+      ? Math.round(Number(reviewAgg._avg.so_sao) * 10) / 10
+      : null;
+
+    return {
+      ...hotel,
+      hinh_anh,
+      dat_phong,
+      danh_gia,
+      thong_ke_nhanh: {
+        tong_loai_phong: hotel.loai_phong?.length || hotel._count?.loai_phong || 0,
+        tong_don_dat: bookingAgg._count.ma_dat_phong || 0,
+        tong_doanh_thu: Number(bookingAgg._sum.thanh_toan_cuoi || 0),
+        tong_danh_gia: reviewAgg._count.ma_danh_gia || 0,
+        diem_trung_binh: avgRating,
+      },
+    };
   },
 
   /**

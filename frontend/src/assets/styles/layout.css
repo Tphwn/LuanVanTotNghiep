@@ -1488,12 +1488,44 @@ body {
   gap: 16px;
 }
 
+.mgmt-stats-grid--filter {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 .mgmt-stat-card {
   background: #fff;
   border-radius: 12px;
   padding: 18px 20px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.mgmt-stat-card--filter {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mgmt-stat-card--filter:hover {
+  border-color: #b8ddd4;
+}
+
+.mgmt-stat-card--filter.is-active {
+  border-color: #3C7363;
+  box-shadow: 0 0 0 1px #3C7363;
+}
+
+.mgmt-toolbar-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.partner-room-mgmt > .mgmt-stats-grid--filter {
+  margin-bottom: 16px;
 }
 
 .mgmt-stat-label {
@@ -1644,6 +1676,69 @@ body {
 
 .mgmt-list-page .mgmt-list-table tbody tr:hover td {
   background: #f8fafc;
+}
+
+/* Admin management tables — full grid (reviews, users, hotels, bookings, ...) */
+.mgmt-list-page .admin-mgmt-table th,
+.mgmt-list-page .admin-mgmt-table td,
+.admin-mgmt-table th,
+.admin-mgmt-table td {
+  border: 1px solid #e5e7eb !important;
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.admin-mgmt-table thead th,
+.mgmt-list-page .admin-mgmt-table thead th {
+  background: #f8fafc !important;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.admin-mgmt-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.admin-mgmt-table td.table-action-cell {
+  width: 1%;
+  min-width: 72px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.admin-cell-id {
+  font-weight: 600;
+  color: #3C7363;
+  white-space: nowrap;
+}
+
+.admin-cell-name {
+  font-weight: 600;
+  color: #1a2e28;
+}
+
+.admin-cell-muted {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.mgmt-avatar-initial {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #3C7363;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
 }
 
 .mgmt-list-pagination {
@@ -3923,6 +4018,27 @@ body {
   max-width: 1200px;
 }
 
+.admin-hotel-detail-hero-address {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #5a7a72;
+  line-height: 1.5;
+}
+
+.admin-hotel-detail-status-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #eef5f2;
+}
+
+.admin-hotel-detail-row-link {
+  cursor: pointer;
+}
+
+.admin-hotel-detail-row-link:hover td {
+  background: #f8fcfb;
+}
+
 .admin-hotel-detail-page-title {
   margin: 0 0 20px;
   font-size: 24px;
@@ -4188,6 +4304,212 @@ body {
   }
 }
 
+/* ===== ADMIN USER DETAIL PAGE ===== */
+.admin-user-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-user-detail-top {
+  margin-bottom: 4px;
+}
+
+.admin-user-detail-section {
+  margin-bottom: 0;
+}
+
+.admin-user-detail-section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e28;
+}
+
+.admin-user-detail-section .mgmt-stats-grid {
+  margin-bottom: 0;
+}
+
+.admin-user-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+}
+
+.admin-user-detail-hero-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-user-detail-hero-body {
+  min-width: 0;
+}
+
+.admin-user-detail-hero-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-user-detail-hero-title-row .admin-user-detail-name {
+  margin: 0;
+  font-size: 22px;
+}
+
+.admin-user-detail-hero-title-row .admin-user-detail-role {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-user-detail-hero-meta {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-user-detail-hero-meta li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #5a7a72;
+}
+
+.admin-user-detail-hero-meta li svg {
+  flex-shrink: 0;
+  color: #7a9a92;
+}
+
+.admin-user-detail-hero-side {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 13px;
+  color: #5a7a72;
+  line-height: 1.7;
+}
+
+.admin-user-detail-hero-side p {
+  margin: 0;
+}
+
+.admin-user-detail-hero-side strong {
+  color: #1a2e28;
+  font-weight: 600;
+}
+
+.admin-user-detail-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-user-detail-stat-card {
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 88px;
+}
+
+.admin-user-detail-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.admin-user-detail-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-user-detail-stat-card--blue {
+  background: #e8f4fc;
+  color: #1d4ed8;
+}
+
+.admin-user-detail-stat-card--yellow {
+  background: #fef9e7;
+  color: #b45309;
+}
+
+.admin-user-detail-stat-card--grey {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.admin-user-detail-stat-card--green {
+  background: #e8f5f1;
+  color: #2d8a5e;
+}
+
+.admin-user-detail-stat-card--purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.admin-user-detail-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-user-detail-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #dce9e5;
+  padding: 0 20px;
+  overflow-x: auto;
+}
+
+.admin-user-detail-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 16px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5a7a72;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.admin-user-detail-tab:hover {
+  color: #1a2e28;
+}
+
+.admin-user-detail-tab.is-active {
+  color: #3C7363;
+  border-bottom-color: #3C7363;
+}
+
+.admin-user-detail-tab-panel {
+  padding: 20px;
+}
+
+.admin-user-detail-tab-panel .empty-state-text {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+}
+
 /* ===== ADMIN USER DETAIL MODAL ===== */
 .admin-user-detail-modal {
   max-width: 720px;
@@ -4225,24 +4547,15 @@ body {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  overflow: hidden;
   flex-shrink: 0;
-  background: #e8f5f1;
-  border: 2px solid #d4ede6;
-}
-
-.admin-user-detail-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.admin-user-detail-avatar-placeholder {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: #e8f5f1;
+  background: #3C7363;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
 }
 
 .admin-user-detail-profile-text {
@@ -4350,6 +4663,20 @@ body {
 }
 
 @media (max-width: 768px) {
+  .admin-user-detail-hero {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .admin-user-detail-hero-side {
+    text-align: left;
+    width: 100%;
+  }
+
+  .admin-user-detail-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-user-detail-grid {
     grid-template-columns: 1fr;
   }

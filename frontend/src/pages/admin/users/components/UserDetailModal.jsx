@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import adminUserService from '../../../../services/adminUserService';
-import { resolveUploadUrl } from '../../../../utils/media';
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount) || 0);
 
 const formatDate = (date) => (date ? new Date(date).toLocaleDateString('vi-VN') : '—');
-const formatDateTime = (date) => (date ? new Date(date).toLocaleString('vi-VN') : '—');
+
+const getNameInitial = (name) => {
+  if (!name || name === 'Chưa cập nhật') return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const word = parts[parts.length - 1] || parts[0];
+  return word[0]?.toUpperCase() || '?';
+};
 
 const ACCOUNT_STATUS = {
   hoat_dong: 'Hoạt động',
@@ -78,10 +83,6 @@ export default function UserDetailModal({ userId, onClose }) {
       ? partner?.ten_cong_ty
       : 'Admin';
 
-  const avatarUrl = isCustomer
-    ? resolveUploadUrl(customer?.anh_dai_dien)
-    : resolveUploadUrl(partner?.anh_dai_dien);
-
   const roleLabel = isCustomer ? 'Khách hàng' : isPartner ? 'Đối tác' : 'Admin';
   const roleCls = isCustomer ? 'admin-user-detail-role--customer' : 'admin-user-detail-role--partner';
 
@@ -103,12 +104,8 @@ export default function UserDetailModal({ userId, onClose }) {
         ) : (
           <>
             <div className="admin-user-detail-profile-card">
-              <div className="admin-user-detail-avatar">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" />
-                ) : (
-                  <span className="admin-user-detail-avatar-placeholder" />
-                )}
+              <div className="admin-user-detail-avatar" aria-hidden>
+                {getNameInitial(displayName)}
               </div>
               <div className="admin-user-detail-profile-text">
                 <div className="admin-user-detail-name">{displayName || 'Chưa cập nhật'}</div>

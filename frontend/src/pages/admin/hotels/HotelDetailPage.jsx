@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import {
+  Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Star,
+} from 'lucide-react';
 import adminHotelService from '../../../services/adminHotelService';
 import {
   approveHotel, rejectHotel, lockHotel, unlockHotel,
@@ -9,37 +11,75 @@ import {
 import { resolveUploadUrl } from '../../../utils/media';
 import ActionButton, { TableActions } from '../../../components/common/ActionButton';
 import BackButton from '../../../components/common/BackButton';
+import DetailTable from '../../../components/booking/DetailTable';
+import SummaryStats from '../../../components/common/management/SummaryStats';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import { HOTEL_CATEGORY_GROUPS } from '../amenities/constants';
 import { groupAmenitiesByCategory } from '../amenities/utils';
+import { getAdminRoomTypeStatus } from '../../../constants/statuses';
+import { TRANG_THAI, formatCurrency, formatDate } from '../../../utils/bookingDisplay';
+
+const PAGE_SIZE = 10;
 
 const HOTEL_STATUS = {
-  cho_duyet: { label: 'Chờ duyệt', cls: 'admin-hotel-detail-status--pending' },
-  hoat_dong: { label: 'Hoạt động', cls: 'admin-hotel-detail-status--active' },
-  tu_choi: { label: 'Từ chối', cls: 'admin-hotel-detail-status--inactive' },
-  bi_khoa: { label: 'Bị khóa', cls: 'admin-hotel-detail-status--inactive' },
-  yeu_cau_sua: { label: 'Yêu cầu sửa', cls: 'admin-hotel-detail-status--pending' },
-  da_duyet: { label: 'Đã duyệt', cls: 'admin-hotel-detail-status--active' },
+  cho_duyet: { label: 'Chờ duyệt', cls: 'badge-warning' },
+  hoat_dong: { label: 'Hoạt động', cls: 'badge-success' },
+  da_duyet: { label: 'Đã duyệt', cls: 'badge-success' },
+  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
+  bi_khoa: { label: 'Bị khóa', cls: 'badge-danger' },
+  yeu_cau_sua: { label: 'Yêu cầu sửa', cls: 'badge-warning' },
 };
 
-const PARTNER_STATUS = {
-  hoat_dong: 'Đang hợp tác',
-  bi_khoa: 'Ngưng hợp tác',
+const REVIEW_STATUS = {
+  hien_thi: { label: 'Hiển thị', cls: 'badge-success' },
+  an: { label: 'Đã ẩn', cls: 'badge-default' },
 };
 
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+const HOTEL_TABS = [
+  { id: 'overview', label: 'Tổng quan' },
+  { id: 'images', label: 'Hình ảnh' },
+  { id: 'rooms', label: 'Loại phòng' },
+  { id: 'amenities', label: 'Tiện nghi' },
+  { id: 'bookings', label: 'Đơn đặt phòng' },
+  { id: 'reviews', label: 'Đánh giá' },
+];
 
-const GridItem = ({ label, value, fullWidth }) => (
-  <div className={`admin-hotel-detail-grid-item${fullWidth ? ' admin-hotel-detail-grid-item--full' : ''}`}>
-    <span className="admin-hotel-detail-grid-label">{label}:</span>{' '}
-    <span className="admin-hotel-detail-grid-value">{value ?? '—'}</span>
+const formatDateTime = (date) => (date ? new Date(date).toLocaleString('vi-VN') : '—');
+
+const formatUpdateTime = (date) => {
+  if (!date) return '—';
+  const d = new Date(date);
+  const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${time} ${d.toLocaleDateString('vi-VN')}`;
+};
+
+const formatTime = (date) => {
+  if (!date) return '—';
+  return new Date(date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+const getNameInitial = (name) => {
+  if (!name) return '?';
+  const word = name.trim().split(/\s+/).filter(Boolean)[0];
+  return word?.[0]?.toUpperCase() || '?';
+};
+
+const DetailTabs = ({ tabs, activeTab, onChange }) => (
+  <div className="admin-user-detail-tabs" role="tablist">
+    {tabs.map((tab) => (
+      <button
+        key={tab.id}
+        type="button"
+        role="tab"
+        aria-selected={activeTab === tab.id}
+        className={`admin-user-detail-tab${activeTab === tab.id ? ' is-active' : ''}`}
+        onClick={() => onChange(tab.id)}
+      >
+        {tab.label}
+      </button>
+    ))}
   </div>
-);
-
-const PartnerLine = ({ label, value }) => (
-  <p className="admin-hotel-detail-partner-line">
-    <span>{label}:</span>{' '}
-    <strong>{value ?? '—'}</strong>
-  </p>
 );
 
 const HotelDetailPage = () => {
@@ -51,6 +91,7 @@ const HotelDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const loadHotel = useCallback(async () => {
     if (!id) return;
@@ -78,6 +119,45 @@ const HotelDetailPage = () => {
     })).filter((item) => item.ten);
     return groupAmenitiesByCategory(items, HOTEL_CATEGORY_GROUPS).filter((g) => g.items.length > 0);
   }, [hotel]);
+
+  const statItems = useMemo(() => {
+    const stats = hotel?.thong_ke_nhanh || {};
+    return [
+      { label: 'Loại phòng', value: stats.tong_loai_phong ?? 0 },
+      { label: 'Đơn đặt', value: stats.tong_don_dat ?? 0 },
+      {
+        label: 'Doanh thu',
+        value: stats.tong_doanh_thu ? formatCurrency(stats.tong_doanh_thu) : '0 ₫',
+      },
+      {
+        label: 'Đánh giá TB',
+        value: stats.diem_trung_binh != null ? `${stats.diem_trung_binh}/5` : '—',
+      },
+    ];
+  }, [hotel]);
+
+  const resolvedTab = hotel
+    ? (HOTEL_TABS.some((t) => t.id === activeTab) ? activeTab : 'overview')
+    : 'overview';
+
+  const activeTabList = useMemo(() => {
+    if (!hotel) return [];
+    if (resolvedTab === 'rooms') return hotel.loai_phong || [];
+    if (resolvedTab === 'bookings') return hotel.dat_phong || [];
+    if (resolvedTab === 'reviews') return hotel.danh_gia || [];
+    return [];
+  }, [hotel, resolvedTab]);
+
+  const {
+    pagedItems: pagedTabItems,
+    currentPage: tabPage,
+    totalPages: tabTotalPages,
+    setPage: setTabPage,
+    pageNumbers: tabPageNumbers,
+    rangeFrom: tabRangeFrom,
+    rangeTo: tabRangeTo,
+    showPagination: showTabPagination,
+  } = useListPagination(activeTabList, PAGE_SIZE, [resolvedTab, hotel?.ma_khach_san]);
 
   const handleAction = async (actionType) => {
     let actionPromise;
@@ -108,25 +188,30 @@ const HotelDetailPage = () => {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 80, color: '#5a7a72' }}>Đang tải...</div>;
-  }
-
-  if (!hotel) {
     return (
-      <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
-        <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy khách sạn</p>
-        <BackButton variant="outline" onClick={() => navigate('/admin/hotels')} />
+      <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page">
+        <div className="admin-user-detail-loading">Đang tải...</div>
       </div>
     );
   }
 
-  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'admin-hotel-detail-status--inactive' };
+  if (!hotel) {
+    return (
+      <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page">
+        <BackButton to="/admin/hotels" />
+        <div className="content-card admin-user-detail-section" style={{ marginTop: 16 }}>
+          <p className="empty-state-text">Không tìm thấy khách sạn</p>
+        </div>
+      </div>
+    );
+  }
+
+  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'badge-default' };
   const partnerLocked = Boolean(hotel.khoa_do_doi_tac);
   const partner = hotel.doi_tac;
-  const partnerUser = partner?.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung;
   const images = hotel.hinh_anh?.length ? hotel.hinh_anh : [];
   const currentImg = images[activeImg] || images[0];
-  const roomCount = hotel.loai_phong?.length ?? hotel._count?.loai_phong ?? 0;
+  const currentTab = resolvedTab;
 
   const prevImg = () => {
     if (!images.length) return;
@@ -139,21 +224,89 @@ const HotelDetailPage = () => {
   };
 
   return (
-    <div className="mgmt-page admin-hotel-detail-page">
-      <BackButton to="/admin/hotels" className="page-back-btn--standalone" />
-      <h1 className="admin-hotel-detail-page-title">Chi tiết khách sạn</h1>
+    <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page">
+      <div className="admin-user-detail-top">
+        <BackButton to="/admin/hotels" />
+      </div>
 
-      <div className="admin-hotel-detail-card">
-        <div className="admin-hotel-detail-left">
-          <section className="admin-hotel-detail-section">
-            <div className="admin-hotel-detail-section-top">
-              <div className="admin-hotel-detail-section-title-row">
-                <h2 className="admin-hotel-detail-section-title">
-                  Thông tin khách sạn: <span>{hotel.ten}</span>
-                </h2>
-                <span className={`admin-hotel-detail-status ${st.cls}`}>{st.label}</span>
-              </div>
-              <TableActions className="admin-hotel-detail-actions">
+      <div className="admin-user-detail-hero content-card">
+        <div className="admin-user-detail-hero-main">
+          <div className="admin-user-detail-avatar" aria-hidden>
+            {getNameInitial(hotel.ten)}
+          </div>
+          <div className="admin-user-detail-hero-body">
+            <div className="admin-user-detail-hero-title-row">
+              <h1 className="admin-user-detail-name">{hotel.ten}</h1>
+              <span className={`badge ${st.cls}`}>{st.label}</span>
+            </div>
+            <ul className="admin-user-detail-hero-meta">
+              <li><MapPin size={14} strokeWidth={2} /><span>{hotel.dia_diem?.ten_dia_diem || '—'}</span></li>
+              <li><Star size={14} strokeWidth={2} /><span>{hotel.so_sao ? `${hotel.so_sao} sao` : 'Chưa xếp hạng'}</span></li>
+              <li><Calendar size={14} strokeWidth={2} /><span>Đăng ký: {formatDate(hotel.ngay_tao)}</span></li>
+            </ul>
+            <p className="admin-hotel-detail-hero-address">{hotel.dia_chi || '—'}</p>
+          </div>
+        </div>
+        <div className="admin-user-detail-hero-side">
+          <p><span>Mã khách sạn:</span> <strong>#{hotel.ma_khach_san}</strong></p>
+          <p><span>Đối tác:</span> <strong>{partner?.ten_cong_ty || '—'}</strong></p>
+          <p><span>Ngày duyệt:</span> <strong>{formatUpdateTime(hotel.ngay_duyet)}</strong></p>
+        </div>
+      </div>
+
+      <SummaryStats items={statItems} />
+
+      <section className="content-card admin-user-detail-panel">
+        <DetailTabs tabs={HOTEL_TABS} activeTab={currentTab} onChange={setActiveTab} />
+
+        {currentTab === 'overview' && (
+          <div className="admin-user-detail-tab-panel">
+            <DetailTable
+              rows={[
+                { label: 'Mã khách sạn', value: `#${hotel.ma_khach_san}` },
+                { label: 'Tên khách sạn', value: hotel.ten },
+                { label: 'Địa điểm', value: hotel.dia_diem?.ten_dia_diem || '—' },
+                { label: 'Địa chỉ', value: hotel.dia_chi || '—' },
+                { label: 'Hạng sao', value: hotel.so_sao ? `${hotel.so_sao} sao` : '—' },
+                { label: 'Giờ nhận phòng', value: formatTime(hotel.gio_nhan_phong) },
+                { label: 'Giờ trả phòng', value: formatTime(hotel.gio_tra_phong) },
+                { label: 'Mô tả', value: hotel.mo_ta?.trim() || '—' },
+                { label: 'Ngày đăng ký', value: formatDateTime(hotel.ngay_tao) },
+                { label: 'Ngày duyệt', value: formatDateTime(hotel.ngay_duyet) },
+                {
+                  label: 'Hoa hồng',
+                  value: hotel.phan_tram_hoa_hong != null
+                    ? `${hotel.phan_tram_hoa_hong}%`
+                    : 'Mặc định hệ thống',
+                },
+              ]}
+            />
+          </div>
+        )}
+
+
+        {currentTab === 'status' && (
+          <div className="admin-user-detail-tab-panel">
+            <DetailTable
+              rows={[
+                {
+                  label: 'Trạng thái khách sạn',
+                  value: <span className={`badge ${st.cls}`}>{st.label}</span>,
+                },
+                {
+                  label: 'Khóa do đối tác',
+                  value: partnerLocked ? 'Có' : 'Không',
+                },
+                {
+                  label: 'Lý do từ chối / yêu cầu sửa',
+                  value: hotel.ly_do_tu_choi?.trim() || '—',
+                },
+                { label: 'Ngày duyệt', value: formatDateTime(hotel.ngay_duyet) },
+                { label: 'Ngày cập nhật gần nhất', value: formatDateTime(hotel.ngay_tao) },
+              ]}
+            />
+            <div className="admin-hotel-detail-status-actions">
+              <TableActions>
                 {hotel.trang_thai === 'cho_duyet' && (
                   <>
                     <ActionButton variant="approve" disabled={actionLoading} onClick={() => handleAction('approve')}>
@@ -181,112 +334,255 @@ const HotelDetailPage = () => {
                 )}
               </TableActions>
             </div>
-
-            {hotel.ly_do_tu_choi && (hotel.trang_thai === 'tu_choi' || hotel.trang_thai === 'yeu_cau_sua') && (
-              <div className="admin-hotel-detail-notice">
-                {hotel.trang_thai === 'tu_choi' ? 'Lý do từ chối' : 'Yêu cầu bổ sung'}: {hotel.ly_do_tu_choi}
-              </div>
-            )}
-
-            <div className="admin-hotel-detail-grid">
-              <GridItem label="Mã Khách sạn" value={hotel.ma_khach_san} />
-              <GridItem label="Địa điểm" value={hotel.dia_diem?.ten_dia_diem} />
-              <GridItem label="Đối tác" value={partner?.ten_cong_ty} />
-              <GridItem label="Địa chỉ" value={hotel.dia_chi} />
-              <GridItem label="Hạng sao" value={hotel.so_sao || '—'} />
-              <GridItem label="Số loại phòng" value={roomCount} />
-              <GridItem label="Mô tả" value={hotel.mo_ta || '—'} fullWidth />
-              <GridItem label="Ngày đăng ký" value={formatDate(hotel.ngay_tao)} />
-              <GridItem label="Ngày duyệt" value={formatDate(hotel.ngay_duyet)} />
-            </div>
-          </section>
-
-          <section className="admin-hotel-detail-section admin-hotel-detail-section--partner">
-            <h3 className="admin-hotel-detail-partner-title">Thông tin đối tác</h3>
-            <PartnerLine label="Tên công ty" value={partner?.ten_cong_ty} />
-            <PartnerLine label="Mã đối tác" value={partner?.ma_doi_tac} />
-            <PartnerLine label="Email" value={partner?.email_lien_he || partnerUser?.email} />
-            <PartnerLine label="Số điện thoại" value={partner?.so_dien_thoai || partnerUser?.so_dien_thoai} />
-            <PartnerLine label="Địa chỉ công ty" value={partner?.dia_chi} />
-            <PartnerLine
-              label="Trạng thái hợp tác"
-              value={PARTNER_STATUS[partner?.trang_thai] || partner?.trang_thai}
-            />
-          </section>
-        </div>
-
-        <div className="admin-hotel-detail-right">
-          <div className="admin-hotel-detail-gallery">
-            <div className="admin-hotel-detail-main-view">
-              {currentImg ? (
-                <img src={resolveUploadUrl(currentImg.url)} alt={hotel.ten} />
-              ) : (
-                <div className="admin-hotel-detail-main-view--empty">Chưa có ảnh</div>
-              )}
-              {images.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="admin-hotel-detail-nav admin-hotel-detail-nav--prev"
-                    onClick={prevImg}
-                    aria-label="Ảnh trước"
-                  >
-                    <ChevronLeft size={22} />
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-hotel-detail-nav admin-hotel-detail-nav--next"
-                    onClick={nextImg}
-                    aria-label="Ảnh sau"
-                  >
-                    <ChevronRight size={22} />
-                  </button>
-                </>
-              )}
-            </div>
-
-            {images.length > 0 && (
-              <div className="admin-hotel-detail-thumb-row">
-                {images.map((img, i) => (
-                  <button
-                    key={img.ma_hinh_anh || i}
-                    type="button"
-                    className={`admin-hotel-detail-thumb${i === activeImg ? ' active' : ''}`}
-                    onClick={() => setActiveImg(i)}
-                  >
-                    <img src={resolveUploadUrl(img.url)} alt="" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+        )}
 
-          <div className="admin-hotel-detail-amenities">
-            <div className="partner-room-detail-block-title">
-              <Sparkles size={15} strokeWidth={1.75} />
-              Tiện nghi
+        {currentTab === 'images' && (
+          <div className="admin-user-detail-tab-panel">
+            <div className="admin-hotel-detail-gallery">
+              <div className="admin-hotel-detail-main-view">
+                {currentImg ? (
+                  <img src={resolveUploadUrl(currentImg.url)} alt={hotel.ten} />
+                ) : (
+                  <div className="admin-hotel-detail-main-view--empty">Chưa có ảnh</div>
+                )}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-hotel-detail-nav admin-hotel-detail-nav--prev"
+                      onClick={prevImg}
+                      aria-label="Ảnh trước"
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-hotel-detail-nav admin-hotel-detail-nav--next"
+                      onClick={nextImg}
+                      aria-label="Ảnh sau"
+                    >
+                      <ChevronRight size={22} />
+                    </button>
+                  </>
+                )}
+              </div>
+              {images.length > 0 && (
+                <div className="admin-hotel-detail-thumb-row">
+                  {images.map((img, i) => (
+                    <button
+                      key={img.ma_hinh_anh || i}
+                      type="button"
+                      className={`admin-hotel-detail-thumb${i === activeImg ? ' active' : ''}`}
+                      onClick={() => setActiveImg(i)}
+                    >
+                      <img src={resolveUploadUrl(img.url)} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {amenityGroups.length === 0 ? (
-              <p className="admin-hotel-detail-amenities-empty">Chưa có tiện nghi</p>
+          </div>
+        )}
+
+        {currentTab === 'rooms' && (
+          <div className="admin-user-detail-tab-panel">
+            {!hotel.loai_phong?.length ? (
+              <p className="empty-state-text">Chưa có loại phòng</p>
             ) : (
-              <div className="partner-room-detail-amenity-groups">
-                {amenityGroups.map((group) => (
-                  <div key={group.id} className="partner-room-detail-amenity-group">
-                    <h4 className="partner-room-detail-amenity-group-title">{group.label}</h4>
-                    <div className="partner-room-detail-amenity-list">
-                      {group.items.map((item) => (
-                        <span key={item.ma_tien_nghi} className="partner-room-detail-amenity-tag">
-                          {item.ten}
-                        </span>
-                      ))}
+              <>
+                <div className="mgmt-table-scroll">
+                  <table className="data-table data-table-grid admin-mgmt-table">
+                    <thead>
+                      <tr>
+                        <th>Tên loại phòng</th>
+                        <th>Giá cơ bản</th>
+                        <th>Sức chứa</th>
+                        <th>Tổng phòng</th>
+                        <th>Đang mở bán</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedTabItems.map((room) => {
+                        const roomSt = getAdminRoomTypeStatus(room.trang_thai, { hotelStatus: hotel.trang_thai });
+                        return (
+                          <tr
+                            key={room.ma_loai_phong}
+                            className="admin-hotel-detail-row-link"
+                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`, {
+                              state: { backTo: `/admin/hotels/${hotel.ma_khach_san}` },
+                            })}
+                          >
+                            <td className="admin-cell-name">{room.ten_loai}</td>
+                            <td>{formatCurrency(room.gia_co_ban)}</td>
+                            <td>{room.suc_chua ?? '—'}</td>
+                            <td>{room.so_luong_phong ?? '—'}</td>
+                            <td>{room.so_luong_mo_ban ?? '—'}</td>
+                            <td><span className={`badge ${roomSt.badgeCls}`}>{roomSt.label}</span></td>
+                            <td>{formatDate(room.ngay_tao)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {showTabPagination && (
+                  <ListPagination
+                    total={activeTabList.length}
+                    currentPage={tabPage}
+                    totalPages={tabTotalPages}
+                    rangeFrom={tabRangeFrom}
+                    rangeTo={tabRangeTo}
+                    pageNumbers={tabPageNumbers}
+                    onPageChange={setTabPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {currentTab === 'amenities' && (
+          <div className="admin-user-detail-tab-panel">
+            {amenityGroups.length === 0 ? (
+              <p className="empty-state-text">Chưa có tiện nghi</p>
+            ) : (
+              <div className="admin-hotel-detail-amenities">
+                <div className="partner-room-detail-block-title">
+                  <Sparkles size={15} strokeWidth={1.75} />
+                  Tiện nghi khách sạn
+                </div>
+                <div className="partner-room-detail-amenity-groups">
+                  {amenityGroups.map((group) => (
+                    <div key={group.id} className="partner-room-detail-amenity-group">
+                      <h4 className="partner-room-detail-amenity-group-title">{group.label}</h4>
+                      <div className="partner-room-detail-amenity-list">
+                        {group.items.map((item) => (
+                          <span key={item.ma_tien_nghi} className="partner-room-detail-amenity-tag">
+                            {item.ten}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
+        )}
+
+        {currentTab === 'bookings' && (
+          <div className="admin-user-detail-tab-panel">
+            {!hotel.dat_phong?.length ? (
+              <p className="empty-state-text">Chưa có đơn đặt phòng</p>
+            ) : (
+              <>
+                <div className="mgmt-table-scroll">
+                  <table className="data-table data-table-grid admin-mgmt-table">
+                    <thead>
+                      <tr>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>Loại phòng</th>
+                        <th>Check-in</th>
+                        <th>Check-out</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedTabItems.map((booking) => {
+                        const bookingSt = TRANG_THAI[booking.trang_thai]
+                          || { label: booking.trang_thai, cls: 'badge-default' };
+                        return (
+                          <tr key={booking.ma_dat_phong}>
+                            <td className="admin-cell-id">{booking.ma_don_hang}</td>
+                            <td>{booking.khach_hang?.ho_ten || '—'}</td>
+                            <td>{booking.loai_phong?.ten_loai || '—'}</td>
+                            <td>{formatDate(booking.ngay_nhan_phong)}</td>
+                            <td>{formatDate(booking.ngay_tra_phong)}</td>
+                            <td style={{ fontWeight: 600 }}>{formatCurrency(booking.thanh_toan_cuoi)}</td>
+                            <td><span className={`badge ${bookingSt.cls}`}>{bookingSt.label}</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {showTabPagination && (
+                  <ListPagination
+                    total={activeTabList.length}
+                    currentPage={tabPage}
+                    totalPages={tabTotalPages}
+                    rangeFrom={tabRangeFrom}
+                    rangeTo={tabRangeTo}
+                    pageNumbers={tabPageNumbers}
+                    onPageChange={setTabPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {currentTab === 'reviews' && (
+          <div className="admin-user-detail-tab-panel">
+            {!hotel.danh_gia?.length ? (
+              <p className="empty-state-text">Chưa có đánh giá</p>
+            ) : (
+              <>
+                <div className="mgmt-table-scroll">
+                  <table className="data-table data-table-grid admin-mgmt-table">
+                    <thead>
+                      <tr>
+                        <th>Mã</th>
+                        <th>Khách hàng</th>
+                        <th>Loại phòng</th>
+                        <th>Điểm</th>
+                        <th>Nội dung</th>
+                        <th>Phản hồi ĐT</th>
+                        <th>Ngày ĐG</th>
+                        <th>TT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedTabItems.map((review) => {
+                        const reviewSt = REVIEW_STATUS[review.trang_thai]
+                          || { label: review.trang_thai, cls: 'badge-default' };
+                        return (
+                          <tr key={review.ma_danh_gia}>
+                            <td className="admin-cell-id">#{review.ma_danh_gia}</td>
+                            <td>{review.khach_hang?.ho_ten || '—'}</td>
+                            <td>{review.dat_phong?.loai_phong?.ten_loai || '—'}</td>
+                            <td><span className="admin-review-score">{review.so_sao}/5</span></td>
+                            <td className="admin-review-content">{review.noi_dung?.trim() || '—'}</td>
+                            <td className="admin-review-content">{review.phan_hoi_doi_tac?.trim() || '—'}</td>
+                            <td className="admin-review-date">{formatDate(review.ngay_danh_gia)}</td>
+                            <td><span className={`badge ${reviewSt.cls}`}>{reviewSt.label}</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {showTabPagination && (
+                  <ListPagination
+                    total={activeTabList.length}
+                    currentPage={tabPage}
+                    totalPages={tabTotalPages}
+                    rangeFrom={tabRangeFrom}
+                    rangeTo={tabRangeTo}
+                    pageNumbers={tabPageNumbers}
+                    onPageChange={setTabPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 };

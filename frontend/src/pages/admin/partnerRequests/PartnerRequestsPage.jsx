@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import ListPagination from '../../../components/common/management/ListPagination';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import adminPartnerRequestService from '../../../services/adminPartnerRequestService';
+import useListPagination from '../../../hooks/useListPagination';
 import ROUTES from '../../../constants/routes';
+
+const PAGE_SIZE = 10;
 
 const STATUS_MAP = {
   cho_xu_ly: { label: 'Chờ xử lý', cls: 'badge-warning' },
@@ -76,6 +80,17 @@ const PartnerRequestsPage = () => {
     setStatusFilter('all');
   };
 
+  const {
+    pagedItems,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(items, PAGE_SIZE, [statusFilter, debouncedKeyword]);
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -114,19 +129,20 @@ const PartnerRequestsPage = () => {
             <p className="empty-state-text">Chưa có yêu cầu hợp tác nào</p>
           </div>
         ) : (
-          <div className="mgmt-table-scroll">
-            <table className="data-table data-table-grid">
-              <thead>
-                <tr>
-                  <th style={{ width: 160 }}>Mã yêu cầu &amp; ngày gửi</th>
-                  <th>Tên &amp; số điện thoại</th>
-                  <th>Tên khách sạn</th>
-                  <th style={{ width: 130 }}>Trạng thái</th>
-                  <th style={{ width: 72 }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
+          <>
+            <div className="mgmt-table-scroll">
+              <table className="data-table data-table-grid admin-mgmt-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 160 }}>Mã yêu cầu &amp; ngày gửi</th>
+                    <th>Tên &amp; số điện thoại</th>
+                    <th>Tên khách sạn</th>
+                    <th style={{ width: 130 }}>Trạng thái</th>
+                    <th style={{ width: 72 }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedItems.map((item) => {
                   const st = STATUS_MAP[item.trang_thai] || {
                     label: item.trang_thai,
                     cls: 'badge-default',
@@ -166,7 +182,20 @@ const PartnerRequestsPage = () => {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {showPagination && (
+              <ListPagination
+                total={items.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                rangeFrom={rangeFrom}
+                rangeTo={rangeTo}
+                pageNumbers={pageNumbers}
+                onPageChange={setPage}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

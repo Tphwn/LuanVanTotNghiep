@@ -1,14 +1,14 @@
 const FilterTabs = ({ tabs, active, onChange }) => (
-  <div className="mgmt-filter-tabs">
+  <div className="mgmt-stats-grid mgmt-stats-grid--filter">
     {tabs.map((tab) => (
       <button
         key={tab.id}
         type="button"
-        className={`mgmt-filter-tab${active === tab.id ? ' active' : ''}`}
+        className={`mgmt-stat-card mgmt-stat-card--filter${active === tab.id ? ' is-active' : ''}`}
         onClick={() => onChange(tab.id)}
       >
-        {tab.label}
-        {tab.count != null && <span className="mgmt-filter-count">{tab.count}</span>}
+        <div className="mgmt-stat-label">{tab.label}</div>
+        <div className="mgmt-stat-value">{tab.count ?? '—'}</div>
       </button>
     ))}
   </div>

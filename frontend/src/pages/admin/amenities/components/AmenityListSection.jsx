@@ -43,7 +43,7 @@ export const AmenityListSection = ({
       </div>
     ) : (
       <div className="mgmt-table-scroll">
-        <table className="data-table data-table-grid mgmt-list-table amenity-list-table">
+        <table className="data-table data-table-grid admin-mgmt-table amenity-list-table">
           <thead>
             <tr>
               <th>Icon</th>

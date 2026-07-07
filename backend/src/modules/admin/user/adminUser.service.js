@@ -28,7 +28,7 @@ const getUsers = async () => {
 };
 
 const getUserById = async (id) => {
-  return prisma.nguoi_dung.findUnique({
+  const user = await prisma.nguoi_dung.findUnique({
     where: { ma_nguoi_dung: Number(id) },
     select: {
       ma_nguoi_dung: true,
@@ -39,11 +39,9 @@ const getUserById = async (id) => {
       ngay_tao: true,
       dang_nhap_cuoi: true,
 
-      // Khách hàng + lịch sử đặt phòng
       khach_hang: {
         select: {
           ho_ten: true,
-          anh_dai_dien: true,
           ngay_sinh: true,
           gioi_tinh: true,
           tong_lan_dat: true,
@@ -67,10 +65,31 @@ const getUserById = async (id) => {
             orderBy: { ngay_dat: 'desc' },
             take: 20,
           },
+          danh_gia: {
+            select: {
+              ma_danh_gia: true,
+              so_sao: true,
+              noi_dung: true,
+              ngay_danh_gia: true,
+              trang_thai: true,
+              dat_phong: {
+                select: {
+                  ma_don_hang: true,
+                  loai_phong: {
+                    select: {
+                      ten_loai: true,
+                      khach_san: { select: { ten: true } },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { ngay_danh_gia: 'desc' },
+            take: 20,
+          },
         },
       },
 
-      // Đối tác + danh sách khách sạn
       doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: {
         select: {
           ma_doi_tac: true,
@@ -78,7 +97,6 @@ const getUserById = async (id) => {
           ma_so_thue: true,
           so_dien_thoai: true,
           email_lien_he: true,
-          anh_dai_dien: true,
           dia_chi: true,
           trang_thai: true,
           phan_tram_hoa_hong: true,
@@ -91,12 +109,69 @@ const getUserById = async (id) => {
               so_sao: true,
               trang_thai: true,
               ngay_tao: true,
+              dia_diem: { select: { ten_dia_diem: true } },
             },
+            orderBy: { ngay_tao: 'desc' },
           },
         },
       },
     },
   });
+
+  if (!user) return null;
+
+  const partner = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
+  if (user.vai_tro === 'doi_tac' && partner) {
+    const [stats, partnerReviews] = await Promise.all([
+      prisma.dat_phong.aggregate({
+        where: {
+          loai_phong: { khach_san: { ma_doi_tac: partner.ma_doi_tac } },
+          trang_thai: { in: ['hoan_thanh', 'da_xac_nhan', 'da_checkin'] },
+        },
+        _count: { ma_dat_phong: true },
+        _sum: { thanh_toan_cuoi: true },
+      }),
+      prisma.danh_gia.findMany({
+        where: {
+          dat_phong: {
+            loai_phong: {
+              khach_san: { ma_doi_tac: partner.ma_doi_tac },
+            },
+          },
+        },
+        select: {
+          ma_danh_gia: true,
+          so_sao: true,
+          noi_dung: true,
+          ngay_danh_gia: true,
+          trang_thai: true,
+          phan_hoi_doi_tac: true,
+          khach_hang: { select: { ho_ten: true } },
+          dat_phong: {
+            select: {
+              ma_don_hang: true,
+              loai_phong: {
+                select: {
+                  ten_loai: true,
+                  khach_san: { select: { ten: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { ngay_danh_gia: 'desc' },
+        take: 50,
+      }),
+    ]);
+
+    user.thong_ke_doi_tac = {
+      tong_don_dat: stats._count.ma_dat_phong || 0,
+      tong_doanh_thu: Number(stats._sum.thanh_toan_cuoi || 0),
+    };
+    user.danh_gia_doi_tac = partnerReviews;
+  }
+
+  return user;
 };
 const lockUser = async (id) => {
   const userId = Number(id);

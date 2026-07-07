@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import customerAccountService from '../../services/customerAccountService';
-import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/account.css';
 import { CUSTOMER_PROFILE_UPDATED } from '../../components/customer/account/CustomerAccountSidebar';
 
@@ -9,8 +8,6 @@ const formatDate = (date) => {
 };
 
 function ProfilePage() {
-  const fileRef = useRef(null);
-
   const [activeTab, setActiveTab] = useState('info');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,9 +19,6 @@ function ProfilePage() {
   const [toast, setToast] = useState(null);
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
-
-  const [avatarPreview, setAvatarPreview] = useState(null);
-  const [avatarFile, setAvatarFile] = useState(null);
 
   const [infoForm, setInfoForm] = useState({
     ho_ten: '',
@@ -66,10 +60,6 @@ function ProfilePage() {
       setPhoneForm({
         so_dien_thoai: data.so_dien_thoai || '',
       });
-
-      setAvatarPreview(
-        data.anh_dai_dien ? resolveUploadUrl(data.anh_dai_dien) : null,
-      );
     } catch (err) {
       showToast(err.response?.data?.message || 'Không tải được thông tin tài khoản', 'error');
     } finally {
@@ -80,16 +70,6 @@ function ProfilePage() {
   useEffect(() => {
     loadProfile();
   }, []);
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-
-    if (!file) return;
-
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-    e.target.value = '';
-  };
 
   const handleSaveInfo = async (e) => {
     e.preventDefault();
@@ -102,19 +82,12 @@ function ProfilePage() {
     setSavingInfo(true);
 
     try {
-      const formData = new FormData();
-
-      formData.append('ho_ten', infoForm.ho_ten.trim());
-      formData.append('so_dien_thoai', infoForm.so_dien_thoai.trim());
-
-      if (avatarFile) {
-        formData.append('avatar', avatarFile);
-      }
-
-      const res = await customerAccountService.updateProfile(formData);
+      const res = await customerAccountService.updateProfile({
+        ho_ten: infoForm.ho_ten.trim(),
+        so_dien_thoai: infoForm.so_dien_thoai.trim(),
+      });
 
       setProfile(res.data.data);
-      setAvatarFile(null);
 
       setPhoneForm({
         so_dien_thoai: res.data.data.so_dien_thoai || '',
@@ -260,36 +233,6 @@ function ProfilePage() {
             <h3>Thông tin cá nhân</h3>
 
             <form onSubmit={handleSaveInfo}>
-              <div className="customer-form-group">
-                <label>Ảnh đại diện</label>
-
-                <div className="customer-avatar-row">
-                  <div className="customer-avatar-small">
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="" />
-                    ) : (
-                      <span>{profile?.ho_ten?.charAt(0)?.toUpperCase() || 'K'}</span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="customer-btn customer-btn-outline"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    Chọn ảnh
-                  </button>
-
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={handleAvatarChange}
-                  />
-                </div>
-              </div>
-
               <div className="customer-form-group">
                 <label>
                   Họ tên <span>*</span>

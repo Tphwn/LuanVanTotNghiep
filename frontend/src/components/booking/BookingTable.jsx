@@ -22,10 +22,10 @@ export default function BookingTable({ bookings, onViewDetail }) {
               <span className="mgmt-cell-code" title={b.ma_don_hang}>{b.ma_don_hang}</span>
             </td>
             <td>
-              <div className="mgmt-cell-name">{customerName}</div>
+              <div className="admin-cell-name">{customerName}</div>
             </td>
             <td>
-              <div className="mgmt-cell-name">{hotel?.ten || '—'}</div>
+              <div className="admin-cell-name">{hotel?.ten || '—'}</div>
             </td>
             <td>
               <div className="mgmt-cell-sub">{b.loai_phong?.ten_loai || '—'}</div>

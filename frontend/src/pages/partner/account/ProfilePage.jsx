@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { resolveUploadUrl } from '../../../utils/media';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 
 const formatDate = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
+
+const getNameInitial = (name) => {
+  if (!name) return 'Đ';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const word = parts[parts.length - 1] || parts[0];
+  return word[0]?.toUpperCase() || '?';
+};
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('info');
@@ -15,13 +21,10 @@ const ProfilePage = () => {
   const [toast, setToast] = useState(null);
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
-  const fileRef = useRef(null);
 
   const [infoForm, setInfoForm] = useState({
     ten_hien_thi: '', email_lien_he: '', so_dien_thoai: '',
   });
-  const [avatarPreview, setAvatarPreview] = useState(null);
-  const [avatarFile, setAvatarFile] = useState(null);
 
   const [pwdForm, setPwdForm] = useState({
     mat_khau_cu: '', mat_khau_moi: '', xac_nhan_mat_khau: '',
@@ -45,7 +48,6 @@ const ProfilePage = () => {
         so_dien_thoai: data.so_dien_thoai || '',
       });
       setPhoneForm({ so_dien_thoai: data.so_dien_thoai || ''});
-      setAvatarPreview(data.anh_dai_dien ? resolveUploadUrl(data.anh_dai_dien) : null);
     } catch (err) {
       showToast(err.response?.data?.message ||'Lỗi tải thông tin', 'error');
     } finally {
@@ -55,30 +57,19 @@ const ProfilePage = () => {
 
   useEffect(() => { loadProfile(); }, []);
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-    e.target.value = '';
-  };
-
   const handleSaveInfo = async (e) => {
     e.preventDefault();
     if (!infoForm.ten_hien_thi.trim()) return showToast('Tên hiển thị không được để trống', 'error');
 
     setSavingInfo(true);
     try {
-      const formData = new FormData();
-      formData.append('ten_hien_thi', infoForm.ten_hien_thi.trim());
-      formData.append('email_lien_he', infoForm.email_lien_he.trim());
-      formData.append('so_dien_thoai', infoForm.so_dien_thoai.trim());
-      if (avatarFile) formData.append('avatar', avatarFile);
-
-      const res = await api.put('/partner/account/profile', formData);
+      const res = await api.put('/partner/account/profile', {
+        ten_hien_thi: infoForm.ten_hien_thi.trim(),
+        email_lien_he: infoForm.email_lien_he.trim(),
+        so_dien_thoai: infoForm.so_dien_thoai.trim(),
+      });
       setProfile(res.data.data);
       setPhoneForm({ so_dien_thoai: res.data.data.so_dien_thoai });
-      setAvatarFile(null);
       showToast('Cập nhật thông tin thành công');
     } catch (err) {
       showToast(err.response?.data?.message || 'Cập nhật thất bại', 'error');
@@ -170,14 +161,12 @@ const ProfilePage = () => {
       {/* Profile header card */}
       <div className="content-card"style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{
-          width: 80, height: 80, borderRadius: '50%', overflow: 'hidden',
-          background: '#e8f5f1', flexShrink: 0,
+          width: 80, height: 80, borderRadius: '50%',
+          background: '#3C7363', color: '#fff', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 32, border: '3px solid #3C7363',
+          fontSize: 32, fontWeight: 700,
         }}>
-          {avatarPreview ? (
-            <img src={avatarPreview} alt="Avatar"style={{ width: '100%', height: '100%', objectFit: 'cover'}} />
-          ) :''}
+          {getNameInitial(profile?.ten_hien_thi)}
         </div>
         <div>
           <h2 style={{ margin: '0 0 4px', color: '#1a2e28', fontSize: 20 }}>
@@ -211,29 +200,6 @@ const ProfilePage = () => {
           <h3 style={{ margin:'0 0 20px', fontSize: 16, color: '#3C7363'}}>Thông tin tài khoản</h3>
 
           <form onSubmit={handleSaveInfo}>
-            {/* Avatar upload */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
-                Ảnh đại diện
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%', overflow: 'hidden',
-                  background: '#f0f7f5', border: '2px solid #d4ede6',
-                }}>
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt=""style={{ width: '100%', height: '100%', objectFit: 'cover'}} />
-                  ) : (
-                    <div style={{ width:'100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}></div>
-                  )}
-                </div>
-                <button type="button"className="btn btn-outline btn-sm"onClick={() => fileRef.current?.click()}>
-                  Chọn ảnh
-                </button>
-                <input ref={fileRef} type="file"accept="image/*"hidden onChange={handleAvatarChange} />
-              </div>
-            </div>
-
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
                 Tên hiển thị <span style={{ color: '#e05c5c'}}>*</span>
@@ -279,43 +245,7 @@ const ProfilePage = () => {
 
       {activeTab === 'settings'&& (
         <div style={{ display:'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 900 }}>
-          {/* Email đăng ký */}
-          <div className="content-card">
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#3C7363'}}>Email đăng ký</h3>
-            <p style={{ fontSize: 13, color:'#5a7a72', marginBottom: 12 }}>
-              Đây là email bạn dùng để đăng nhập hệ thống, không thể thay đổi.
-            </p>
-            <input
-              className="search-input"style={{ width: '100%', background: '#f5f5f5', color: '#666'}}
-              value={profile?.email_dang_ky ||''}
-              readOnly
-            />
-            <p style={{ fontSize: 11, color: '#888', marginTop: 8 }}>
-              Tạo tài khoản: {formatDate(profile?.ngay_tao)}
-            </p>
-          </div>
-
-          {/* Đổi SĐT */}
-          <div className="content-card">
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#3C7363'}}>Đổi số điện thoại</h3>
-            <form onSubmit={handleChangePhone}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
-                  Số điện thoại mới
-                </label>
-                <input
-                  type="tel"className="search-input"style={{ width: '100%'}}
-                  value={phoneForm.so_dien_thoai}
-                  onChange={(e) => setPhoneForm({ so_dien_thoai: e.target.value })}
-                  placeholder="09xxxxxxxx"/>
-              </div>
-              <button type="submit"className="btn btn-outline"disabled={savingPhone}>
-                {savingPhone ?'Đang cập nhật...':'Cập nhật số điện thoại'}
-              </button>
-            </form>
-          </div>
-
-          {/* Đổi mật khẩu */}
+          
           <div className="content-card"style={{ gridColumn: '1 / -1'}}>
             <h3 style={{ margin:'0 0 16px', fontSize: 16, color: '#3C7363'}}>Đổi mật khẩu</h3>
 

@@ -10,16 +10,18 @@ const ManagementToolbar = ({
   onTabChange,
   children,
 }) => (
-  <div className="mgmt-toolbar-row">
-    <SearchBar
-      value={searchValue}
-      onChange={onSearchChange}
-      placeholder={searchPlaceholder}
-    />
+  <div className="mgmt-toolbar-block">
     {tabs ? (
       <FilterTabs tabs={tabs} active={activeTab} onChange={onTabChange} />
     ) : null}
-    {children}
+    <div className="mgmt-toolbar-row">
+      <SearchBar
+        value={searchValue}
+        onChange={onSearchChange}
+        placeholder={searchPlaceholder}
+      />
+      {children}
+    </div>
   </div>
 );
 

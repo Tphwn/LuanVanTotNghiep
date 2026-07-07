@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, Lock, Unlock } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import SummaryStats from '../../../components/common/management/SummaryStats';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
+
+const PAGE_SIZE = 10;
 
 const EMPTY_STATS = {
   diem_trung_binh: 0,
@@ -55,14 +60,6 @@ const formatAvgScore = (score) => {
   const rounded = Number.isInteger(score) ? score : Number(score.toFixed(1));
   return `${rounded}/5`;
 };
-
-const StatCard = ({ title, value, subtitle }) => (
-  <div className="content-card admin-review-stat-card">
-    <div className="admin-review-stat-label">{title}</div>
-    <div className="admin-review-stat-value">{value}</div>
-    {subtitle && <div className="admin-review-stat-sub">{subtitle}</div>}
-  </div>
-);
 
 const InfoRow = ({ label, value }) => (
   <div className="admin-review-info-row">
@@ -161,8 +158,7 @@ const ReviewsPage = () => {
 
   const [detailReview, setDetailReview] = useState(null);
   const [toast, setToast] = useState(null);
-
-  const hasScopeFilter = Boolean(partnerFilter || hotelFilter);
+  const skipFilterReload = useRef(true);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -170,19 +166,34 @@ const ReviewsPage = () => {
   };
 
   useEffect(() => {
-    const loadMeta = async () => {
+    let isMounted = true;
+
+    const loadInitial = async () => {
       setLoadingMeta(true);
+      setLoading(true);
       try {
         const res = await api.get('/admin/reviews');
+        if (!isMounted) return;
         setHotels(res.data.hotels || []);
         setPartners(res.data.partners || []);
+        const payload = res.data.data || {};
+        setStats(payload.stats || EMPTY_STATS);
+        setDanhSach(payload.danh_sach || []);
       } catch (err) {
-        showToast(err.response?.data?.message || 'Không tải được dữ liệu bộ lọc', 'error');
+        if (isMounted) {
+          showToast(err.response?.data?.message || 'Không tải được dữ liệu đánh giá', 'error');
+        }
       } finally {
-        setLoadingMeta(false);
+        if (isMounted) {
+          setLoadingMeta(false);
+          setLoading(false);
+        }
       }
     };
-    loadMeta();
+
+    loadInitial();
+    return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hotelOptions = useMemo(() => hotels.filter((hotel) => {
@@ -191,11 +202,7 @@ const ReviewsPage = () => {
   }), [hotels, partnerFilter]);
 
   const loadReviews = useCallback(async () => {
-    if (!hasScopeFilter) {
-      setStats(EMPTY_STATS);
-      setDanhSach([]);
-      return;
-    }
+    if (loadingMeta) return;
 
     setLoading(true);
     try {
@@ -217,7 +224,6 @@ const ReviewsPage = () => {
       setLoading(false);
     }
   }, [
-    hasScopeFilter,
     partnerFilter,
     hotelFilter,
     starFilter,
@@ -225,11 +231,17 @@ const ReviewsPage = () => {
     timePreset,
     tuNgay,
     denNgay,
+    loadingMeta,
   ]);
 
   useEffect(() => {
+    if (loadingMeta) return;
+    if (skipFilterReload.current) {
+      skipFilterReload.current = false;
+      return;
+    }
     loadReviews();
-  }, [loadReviews]);
+  }, [loadReviews, loadingMeta]);
 
   const handlePartnerChange = (value) => {
     setPartnerFilter(value);
@@ -262,9 +274,13 @@ const ReviewsPage = () => {
     }
   };
 
-  const hasSecondaryFilter = starFilter !== 'all'
+  const hasActiveFilter = Boolean(
+    partnerFilter
+    || hotelFilter
+    || starFilter !== 'all'
     || statusFilter !== 'all'
-    || timePreset !== 'all';
+    || timePreset !== 'all',
+  );
 
   const clearFilters = () => {
     setPartnerFilter('');
@@ -275,6 +291,26 @@ const ReviewsPage = () => {
     setTuNgay('');
     setDenNgay('');
   };
+
+  const statItems = useMemo(() => [
+    { label: 'Tổng đánh giá', value: stats.tong_danh_gia ?? 0 },
+    { label: 'Điểm trung bình', value: formatAvgScore(stats.diem_trung_binh) },
+    { label: 'Đang hiển thị', value: stats.hien_thi ?? 0 },
+    { label: 'Đã ẩn', value: stats.an ?? 0 },
+  ], [stats]);
+
+  const {
+    pagedItems: pagedReviews,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(danhSach, PAGE_SIZE, [
+    partnerFilter, hotelFilter, starFilter, statusFilter, timePreset, tuNgay, denNgay,
+  ]);
 
   if (loadingMeta) {
     return (
@@ -288,7 +324,7 @@ const ReviewsPage = () => {
     <div className="mgmt-page admin-reviews-page">
       <ManagementHeader
         title="Quản lý đánh giá"
-        subtitle="Chọn đối tác hoặc khách sạn để xem danh sách đánh giá"
+        subtitle="Danh sách đánh giá của tất cả khách sạn — dùng bộ lọc để thu hẹp kết quả"
       />
 
       {toast && (
@@ -306,7 +342,7 @@ const ReviewsPage = () => {
             value={partnerFilter}
             onChange={(e) => handlePartnerChange(e.target.value)}
           >
-            <option value="">Chọn đối tác</option>
+            <option value="">Tất cả đối tác</option>
             {partners.map((p) => (
               <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
             ))}
@@ -321,7 +357,7 @@ const ReviewsPage = () => {
             value={hotelFilter}
             onChange={(e) => setHotelFilter(e.target.value)}
           >
-            <option value="">Chọn khách sạn</option>
+            <option value="">Tất cả khách sạn</option>
             {hotelOptions.map((h) => (
               <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
             ))}
@@ -335,7 +371,6 @@ const ReviewsPage = () => {
             className="mgmt-select-inline"
             value={starFilter}
             onChange={(e) => setStarFilter(e.target.value)}
-            disabled={!hasScopeFilter}
           >
             <option value="all">Tất cả sao</option>
             {[5, 4, 3, 2, 1].map((s) => (
@@ -351,7 +386,6 @@ const ReviewsPage = () => {
             className="mgmt-select-inline"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            disabled={!hasScopeFilter}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="hien_thi">Hiển thị</option>
@@ -366,7 +400,6 @@ const ReviewsPage = () => {
             className="mgmt-select-inline"
             value={timePreset}
             onChange={(e) => setTimePreset(e.target.value)}
-            disabled={!hasScopeFilter}
           >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -384,7 +417,6 @@ const ReviewsPage = () => {
                 className="mgmt-select-inline"
                 value={tuNgay}
                 onChange={(e) => setTuNgay(e.target.value)}
-                disabled={!hasScopeFilter}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -396,13 +428,12 @@ const ReviewsPage = () => {
                 value={denNgay}
                 min={tuNgay}
                 onChange={(e) => setDenNgay(e.target.value)}
-                disabled={!hasScopeFilter}
               />
             </div>
           </>
         )}
 
-        {(hasScopeFilter || hasSecondaryFilter) && (
+        {hasActiveFilter && (
           <div className="mgmt-filter-field mgmt-filter-field--action">
             <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
               Xóa bộ lọc
@@ -411,53 +442,40 @@ const ReviewsPage = () => {
         )}
       </div>
 
-      {hasScopeFilter && (
-        <div className="admin-reviews-stats">
-          <StatCard title="Tổng đánh giá" value={stats.tong_danh_gia ?? 0} />
-          <StatCard title="Điểm trung bình" value={formatAvgScore(stats.diem_trung_binh)} />
-          <StatCard title="Đang hiển thị" value={stats.hien_thi ?? 0} />
-          <StatCard title="Đã ẩn" value={stats.an ?? 0} />
-          <StatCard title="Bị báo cáo" value={stats.bi_bao_cao ?? 0} />
-        </div>
-      )}
+      <SummaryStats items={statItems} />
 
       <div className="content-card admin-reviews-table-card">
         <div className="content-card-header">
           <h3 className="content-card-title">
-            Danh sách đánh giá ({hasScopeFilter ? danhSach.length : 0})
+            Danh sách đánh giá ({danhSach.length})
           </h3>
         </div>
 
-        {!hasScopeFilter ? (
-          <div className="empty-state">
-            <p className="empty-state-text">
-              Vui lòng chọn đối tác hoặc khách sạn để hiển thị danh sách đánh giá
-            </p>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="admin-reviews-loading">Đang tải...</div>
         ) : danhSach.length === 0 ? (
           <div className="empty-state">
             <p className="empty-state-text">Không có đánh giá phù hợp bộ lọc</p>
           </div>
         ) : (
-          <div className="mgmt-table-scroll">
-            <table className="data-table data-table-grid admin-reviews-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 72 }}>Mã</th>
-                  <th>Khách hàng</th>
-                  <th>Khách sạn</th>
-                  <th>Loại phòng</th>
-                  <th style={{ width: 72 }}>Điểm</th>
-                  <th>Nội dung</th>
-                  <th style={{ width: 108 }}>Ngày ĐG</th>
-                  <th style={{ width: 100 }}>TT</th>
-                  <th style={{ width: 96 }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {danhSach.map((rv) => {
+          <>
+            <div className="mgmt-table-scroll">
+              <table className="data-table data-table-grid admin-mgmt-table admin-reviews-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 72 }}>Mã</th>
+                    <th>Khách hàng</th>
+                    <th>Khách sạn</th>
+                    <th>Loại phòng</th>
+                    <th style={{ width: 72 }}>Điểm</th>
+                    <th>Nội dung</th>
+                    <th style={{ width: 108 }}>Ngày ĐG</th>
+                    <th style={{ width: 100 }}>TT</th>
+                    <th style={{ width: 96 }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedReviews.map((rv) => {
                   const st = REVIEW_STATUS[rv.trang_thai] || { label: rv.trang_thai, cls: 'badge-default' };
                   return (
                     <tr key={rv.ma_danh_gia}>
@@ -492,7 +510,20 @@ const ReviewsPage = () => {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {showPagination && (
+              <ListPagination
+                total={danhSach.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                rangeFrom={rangeFrom}
+                rangeTo={rangeTo}
+                pageNumbers={pageNumbers}
+                onPageChange={setPage}
+              />
+            )}
+          </>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, Lock, Unlock } from "lucide-react";
 import {
   fetchUsers,
@@ -10,10 +10,8 @@ import {
 } from "../../../store/slices/adminUserSlice";
 import { fetchHotels } from "../../../store/slices/adminHotelSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
-import { resolveUploadUrl } from "../../../utils/media";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
-import UserDetailModal from "./components/UserDetailModal";
 
 const PAGE_SIZE = 10;
 
@@ -30,18 +28,11 @@ const getDisplayName = (user) => {
   return "Admin";
 };
 
-const getAvatar = (user) => {
-  if (user.vai_tro === "khach_hang" && user.khach_hang?.anh_dai_dien) {
-    return resolveUploadUrl(user.khach_hang.anh_dai_dien);
-  }
-  const partner = getPartner(user);
-  if (partner?.anh_dai_dien) return resolveUploadUrl(partner.anh_dai_dien);
-  return null;
-};
-
-const getInitials = (name) => {
+const getNameInitial = (name) => {
   if (!name || name === "Chưa cập nhật") return "?";
-  return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const word = parts[parts.length - 1] || parts[0];
+  return word[0]?.toUpperCase() || "?";
 };
 
 const TAB_FILTER = {
@@ -59,7 +50,6 @@ const ROLE_FILTER = {
 const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
   const { users = [], loading, error, successMsg } = useSelector((state) => state.adminUsers);
 
   const [keyword, setKeyword] = useState("");
@@ -68,7 +58,6 @@ const UsersPage = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
-  const [detailUserId, setDetailUserId] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -78,14 +67,6 @@ const UsersPage = () => {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
-
-  useEffect(() => {
-    const id = location.state?.detailUserId;
-    if (id) {
-      setDetailUserId(Number(id));
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -242,7 +223,7 @@ const UsersPage = () => {
         ) : (
           <>
             <div className="mgmt-table-scroll">
-              <table className="data-table data-table-grid mgmt-list-table">
+              <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
                     <th style={{ width: 72 }}>Mã</th>
@@ -257,21 +238,20 @@ const UsersPage = () => {
                 <tbody>
                   {pagedUsers.map((user) => {
                     const name = getDisplayName(user);
-                    const avatar = getAvatar(user);
                     const isActive = user.trang_thai === "hoat_dong";
                     const status = getStatusText(user.trang_thai);
                     return (
                       <tr key={user.ma_nguoi_dung}>
-                        <td style={{ color: "#64748b", fontWeight: 500 }}>{user.ma_nguoi_dung}</td>
+                        <td className="admin-cell-id">#{user.ma_nguoi_dung}</td>
                         <td>
                           <div className="mgmt-name-cell">
-                            <div className="mgmt-avatar-circle">
-                              {avatar ? <img src={avatar} alt="" /> : getInitials(name)}
-                            </div>
-                            <span className="mgmt-cell-name">{name}</span>
+                            <span className="mgmt-avatar-initial" aria-hidden>
+                              {getNameInitial(name)}
+                            </span>
+                            <span className="admin-cell-name">{name}</span>
                           </div>
                         </td>
-                        <td style={{ color: "#64748b", fontSize: 13 }}>{user.email}</td>
+                        <td className="admin-cell-muted">{user.email}</td>
                         <td style={{ whiteSpace: "nowrap" }}>{user.so_dien_thoai || "—"}</td>
                         <td style={{ fontSize: 13, color: "#475569" }}>
                           {ROLE_LABEL[user.vai_tro] || user.vai_tro}
@@ -285,7 +265,7 @@ const UsersPage = () => {
                             iconOnly
                             icon={Eye}
                             title="Chi tiết"
-                            onClick={() => setDetailUserId(user.ma_nguoi_dung)}
+                            onClick={() => navigate(`/admin/users/${user.ma_nguoi_dung}`)}
                           />
                           <ActionButton
                             variant={isActive ? "lock" : "unlock"}
@@ -343,13 +323,6 @@ const UsersPage = () => {
           </>
         )}
       </div>
-
-      {detailUserId && (
-        <UserDetailModal
-          userId={detailUserId}
-          onClose={() => setDetailUserId(null)}
-        />
-      )}
     </div>
   );
 };

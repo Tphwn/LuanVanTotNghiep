@@ -3,26 +3,9 @@ const service = require('./adminReview.service');
 exports.getReviews = async (req, res, next) => {
   try {
     const { ma_khach_san, ma_doi_tac, so_sao, trang_thai, tu_ngay, den_ngay } = req.query;
-    const hasScope = Boolean(ma_khach_san || ma_doi_tac);
-
-    const emptyData = {
-      stats: {
-        diem_trung_binh: 0,
-        tong_danh_gia: 0,
-        hien_thi: 0,
-        an: 0,
-        bi_bao_cao: 0,
-        chua_phan_hoi: 0,
-        phan_bo_sao: [],
-        theo_khach_san: [],
-      },
-      danh_sach: [],
-    };
 
     const [data, hotels, partners] = await Promise.all([
-      hasScope
-        ? service.getReviews({ ma_khach_san, ma_doi_tac, so_sao, trang_thai, tu_ngay, den_ngay })
-        : Promise.resolve(emptyData),
+      service.getReviews({ ma_khach_san, ma_doi_tac, so_sao, trang_thai, tu_ngay, den_ngay }),
       service.getFilterHotels(),
       service.getFilterPartners(),
     ]);
