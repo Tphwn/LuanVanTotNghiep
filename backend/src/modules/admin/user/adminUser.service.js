@@ -264,6 +264,7 @@ const createPartner = async (data, adminId) => {
         ma_nguoi_dung: user.ma_nguoi_dung,
         nguoi_cap_id: Number(adminId),
         ten_cong_ty: data.ten_cong_ty,
+        email_lien_he: data.email_lien_he || null,
         ma_so_thue: data.ma_so_thue,
         dia_chi: data.dia_chi,
         so_dien_thoai: data.so_dien_thoai,
