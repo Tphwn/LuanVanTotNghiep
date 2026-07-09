@@ -55,23 +55,22 @@ export default function HotelFormPage() {
     if (!isEdit) {
       const res = await dispatch(createHotel(formData));
       if (res.error) {
-        alert(res.payload || 'Không thể tạo khách sạn');
-        return;
+        throw new Error(res.payload || 'Không thể tạo khách sạn');
       }
       dispatch(clearMsg());
       navigate('/partner/hotels', {
         state: { toast: 'Thêm khách sạn thành công! Chờ admin duyệt.' },
       });
-    } else {
-      const res = await dispatch(updateHotel({ id: hotel.ma_khach_san, data: formData }));
-      if (res.error) {
-        alert(res.payload || 'Không thể cập nhật khách sạn');
-        return;
-      }
-      setLocalSuccess('Sửa khách sạn thành công!');
-      dispatch(clearMsg());
-      setFormVersion((v) => v + 1);
+      return;
     }
+
+    const res = await dispatch(updateHotel({ id: hotel.ma_khach_san, data: formData }));
+    if (res.error) {
+      throw new Error(res.payload || 'Không thể cập nhật khách sạn');
+    }
+    setLocalSuccess('Sửa khách sạn thành công!');
+    dispatch(clearMsg());
+    setFormVersion((v) => v + 1);
   };
 
   if (isEdit && !hotel && (loading || list.length === 0)) {

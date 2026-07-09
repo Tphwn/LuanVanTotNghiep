@@ -45,8 +45,9 @@ const mapCustomerReview = (dg) => {
     noi_dung: dg.noi_dung,
     trang_thai: dg.trang_thai,
     trang_thai_label: REVIEW_STATUS_LABEL[dg.trang_thai] || dg.trang_thai,
+    ly_do_an: dg.trang_thai === 'an' ? (dg.ly_do_an || null) : null,
     ngay_danh_gia: dg.ngay_danh_gia,
-    phan_hoi_doi_tac: dg.phan_hoi_doi_tac || null,
+    phan_hoi_doi_tac: (!dg.phan_hoi_bi_an && dg.phan_hoi_doi_tac) ? dg.phan_hoi_doi_tac : null,
     ngay_phan_hoi: dg.ngay_phan_hoi || null,
   };
 };
@@ -420,7 +421,12 @@ const customerBookingService = {
     if (!khachHang) {
       throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
     }
-  
+
+    await autoCompleteExpiredCheckIns({
+      ma_dat_phong: id,
+      ma_khach_hang: khachHang.ma_khach_hang,
+    });
+
     // 2) Query đơn — BẮT BUỘC lọc ma_khach_hang (chỉ xem đơn của mình)
     const booking = await prisma.dat_phong.findFirst({
       where: {
@@ -679,6 +685,10 @@ const customerBookingService = {
     if (!khachHang) {
       throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
     }
+    await autoCompleteExpiredCheckIns({
+      ma_dat_phong: id,
+      ma_khach_hang: khachHang.ma_khach_hang,
+    });
     const booking = await prisma.dat_phong.findFirst({
       where: {
         ma_dat_phong: id,

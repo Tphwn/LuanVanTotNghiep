@@ -29,11 +29,15 @@ exports.getReviewById = async (req, res, next) => {
 
 exports.hideReview = async (req, res, next) => {
   try {
-    const data = await service.hideReview(req.params.id);
+    const lyDo = req.body?.ly_do?.trim();
+    if (!lyDo) {
+      return res.status(400).json({ success: false, message: 'Phải kèm lý do ẩn đánh giá' });
+    }
+    const data = await service.hideReview(req.params.id, lyDo);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
     }
-    res.json({ success: true, data, message: 'Đã ẩn đánh giá' });
+    res.json({ success: true, data, message: 'Đã ẩn đánh giá.' });
   } catch (err) {
     next(err);
   }
@@ -45,7 +49,35 @@ exports.unhideReview = async (req, res, next) => {
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
     }
-    res.json({ success: true, data, message: 'Đã hiện lại đánh giá' });
+    res.json({ success: true, data, message: 'Đã hiện lại đánh giá. ' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.hidePartnerResponse = async (req, res, next) => {
+  try {
+    const lyDo = req.body?.ly_do?.trim();
+    if (!lyDo) {
+      return res.status(400).json({ success: false, message: 'Phải kèm lý do ẩn phản hồi' });
+    }
+    const data = await service.hidePartnerResponse(req.params.id, lyDo);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
+    }
+    res.json({ success: true, data, message: 'Đã ẩn phản hồi đối tác.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.unhidePartnerResponse = async (req, res, next) => {
+  try {
+    const data = await service.unhidePartnerResponse(req.params.id);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
+    }
+    res.json({ success: true, data, message: 'Đã hiện lại phản hồi đối tác' });
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, MessageSquare } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
@@ -130,14 +130,9 @@ const ReviewsPage = () => {
     setDetailReview(null);
   };
 
-  const openRespond = async (reviewId) => {
-    try {
-      const data = await fetchReviewDetail(reviewId);
-      setRespondReview(data);
-      setRespondOpen(true);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Không thể tải đánh giá', 'error');
-    }
+  const openRespond = (review) => {
+    setRespondReview(review);
+    setRespondOpen(true);
   };
 
   const handleRespond = async (text) => {
@@ -275,13 +270,6 @@ const ReviewsPage = () => {
                         title="Xem chi tiết"
                         onClick={() => openDetail(review.ma_danh_gia)}
                       />
-                      <ActionButton
-                        variant="reply"
-                        iconOnly
-                        icon={MessageSquare}
-                        title={review.da_phan_hoi ? 'Sửa phản hồi' : 'Phản hồi'}
-                        onClick={() => openRespond(review.ma_danh_gia)}
-                      />
                     </ActionCell>
                   </tr>
                 ))}
@@ -296,6 +284,8 @@ const ReviewsPage = () => {
           review={detailReview}
           loading={detailLoading}
           onClose={closeDetail}
+          onRespond={openRespond}
+          respondLoading={saving}
         />
       )}
 

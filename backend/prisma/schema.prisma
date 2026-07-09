@@ -56,6 +56,9 @@ model danh_gia {
   noi_dung         String?             @db.Text
   phan_hoi_doi_tac String?             @db.Text
   ngay_phan_hoi    DateTime?           @db.DateTime(0)
+  ly_do_an         String?             @db.Text
+  phan_hoi_bi_an   Boolean             @default(false)
+  ly_do_an_phan_hoi String?            @db.Text
   trang_thai       danh_gia_trang_thai @default(hien_thi)
   ngay_danh_gia    DateTime            @default(now()) @db.DateTime(0)
   ngay_duyet       DateTime?           @db.DateTime(0)

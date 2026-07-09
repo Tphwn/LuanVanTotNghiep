@@ -12,7 +12,55 @@ const buildDateFilter = (tu_ngay, den_ngay) => {
   return filter;
 };
 
-const mapReview = (dg) => ({
+const getPartnerActiveStatus = async (doiTacId) => {
+  const dt = await prisma.doi_tac.findUnique({
+    where: { ma_doi_tac: doiTacId },
+    select: {
+      trang_thai: true,
+      nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung: { select: { trang_thai: true } },
+    },
+  });
+  if (!dt) return false;
+  if (dt.trang_thai !== 'hoat_dong') return false;
+  const userStatus = dt.nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung?.trang_thai;
+  return userStatus === 'hoat_dong';
+};
+
+const buildRespondEligibility = (dg, doiTacId, partnerActive) => {
+  if (!partnerActive) {
+    return {
+      co_the_phan_hoi: false,
+      ly_do_khong_phan_hoi: 'Tài khoản đối tác không đang hoạt động',
+    };
+  }
+
+  const loaiPhong = dg.dat_phong?.loai_phong;
+  const khachSan = loaiPhong?.khach_san;
+  if (!loaiPhong || !khachSan || khachSan.ma_doi_tac !== doiTacId) {
+    return {
+      co_the_phan_hoi: false,
+      ly_do_khong_phan_hoi: 'Khách sạn hoặc loại phòng không còn thuộc quyền quản lý của bạn',
+    };
+  }
+
+  if (dg.trang_thai !== 'hien_thi') {
+    return {
+      co_the_phan_hoi: false,
+      ly_do_khong_phan_hoi: 'Đánh giá của khách hàng không còn hiển thị',
+    };
+  }
+
+  if (dg.phan_hoi_bi_an) {
+    return {
+      co_the_phan_hoi: false,
+      ly_do_khong_phan_hoi: 'Phản hồi của bạn đã bị quản trị viên ẩn',
+    };
+  }
+
+  return { co_the_phan_hoi: true, ly_do_khong_phan_hoi: null };
+};
+
+const mapReview = (dg, doiTacId, partnerActive) => ({
   ma_danh_gia: dg.ma_danh_gia,
   so_sao: dg.so_sao,
   diem_sach_se: dg.diem_sach_se,
@@ -21,6 +69,9 @@ const mapReview = (dg) => ({
   diem_tien_nghi: dg.diem_tien_nghi,
   noi_dung: dg.noi_dung,
   phan_hoi_doi_tac: dg.phan_hoi_doi_tac,
+  phan_hoi_bi_an: !!dg.phan_hoi_bi_an,
+  ly_do_an: dg.ly_do_an,
+  ly_do_an_phan_hoi: dg.ly_do_an_phan_hoi,
   ngay_danh_gia: dg.ngay_danh_gia,
   ngay_phan_hoi: dg.ngay_phan_hoi,
   trang_thai: dg.trang_thai,
@@ -34,6 +85,7 @@ const mapReview = (dg) => ({
   ten_loai: dg.dat_phong?.loai_phong?.ten_loai,
   ma_khach_san: dg.dat_phong?.loai_phong?.khach_san?.ma_khach_san,
   ten_khach_san: dg.dat_phong?.loai_phong?.khach_san?.ten,
+  ...buildRespondEligibility(dg, doiTacId, partnerActive),
 });
 
 const reviewInclude = {
@@ -48,7 +100,7 @@ const reviewInclude = {
         select: {
           ma_loai_phong: true,
           ten_loai: true,
-          khach_san: { select: { ma_khach_san: true, ten: true } },
+          khach_san: { select: { ma_khach_san: true, ten: true, ma_doi_tac: true } },
         },
       },
     },
@@ -93,7 +145,7 @@ const partnerReviewService = {
     }
 
     const where = {
-      trang_thai: 'hien_thi',
+      trang_thai: { in: ['hien_thi', 'an'] },
       dat_phong: bookingWhere,
     };
 
@@ -110,7 +162,8 @@ const partnerReviewService = {
       orderBy: { ngay_danh_gia: 'desc' },
     });
 
-    const mapped = reviews.map(mapReview);
+    const partnerActive = await getPartnerActiveStatus(doiTacId);
+    const mapped = reviews.map((dg) => mapReview(dg, doiTacId, partnerActive));
 
     const tong = mapped.length;
     const chuaPhanHoi = mapped.filter((r) => !r.da_phan_hoi).length;
@@ -170,7 +223,7 @@ const partnerReviewService = {
     const review = await prisma.danh_gia.findFirst({
       where: {
         ma_danh_gia: Number(maDanhGia),
-        trang_thai: 'hien_thi',
+        trang_thai: { in: ['hien_thi', 'an'] },
         dat_phong: {
           loai_phong: { khach_san: { ma_doi_tac: doiTacId } },
         },
@@ -179,14 +232,16 @@ const partnerReviewService = {
     });
 
     if (!review) throw new Error('Không tìm thấy đánh giá');
-    return mapReview(review);
+    const partnerActive = await getPartnerActiveStatus(doiTacId);
+    return mapReview(review, doiTacId, partnerActive);
   },
 
   respond: async (maDanhGia, phan_hoi_doi_tac, doiTacId) => {
+    const partnerActive = await getPartnerActiveStatus(doiTacId);
     const review = await prisma.danh_gia.findFirst({
       where: {
         ma_danh_gia: Number(maDanhGia),
-        trang_thai: 'hien_thi',
+        trang_thai: { in: ['hien_thi', 'an'] },
         dat_phong: {
           loai_phong: { khach_san: { ma_doi_tac: doiTacId } },
         },
@@ -194,7 +249,14 @@ const partnerReviewService = {
       include: reviewInclude,
     });
 
-    if (!review) throw new Error('Không tìm thấy đánh giá');
+    if (!review) {
+      throw new Error('Không tìm thấy đánh giá hoặc không thuộc quyền quản lý của bạn');
+    }
+
+    const eligibility = buildRespondEligibility(review, doiTacId, partnerActive);
+    if (!eligibility.co_the_phan_hoi) {
+      throw new Error(eligibility.ly_do_khong_phan_hoi);
+    }
 
     const updated = await prisma.danh_gia.update({
       where: { ma_danh_gia: Number(maDanhGia) },
@@ -205,7 +267,7 @@ const partnerReviewService = {
       include: reviewInclude,
     });
 
-    return mapReview(updated);
+    return mapReview(updated, doiTacId, partnerActive);
   },
 };
 

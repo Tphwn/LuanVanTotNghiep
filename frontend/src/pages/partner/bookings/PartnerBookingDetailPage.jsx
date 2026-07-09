@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import ActionButton, { TableActions } from '../../../components/common/ActionButton';
@@ -7,6 +7,7 @@ import ManagementHeader from '../../../components/common/management/ManagementHe
 import DetailTable from '../../../components/booking/DetailTable';
 import BookingSectionTable from '../../../components/booking/BookingSectionTable';
 import BookingCancelNotice from '../../../components/booking/BookingCancelNotice';
+import PartnerBookingCheckConfirmModal from './components/PartnerBookingCheckConfirmModal';
 import {
   fetchBookingDetail,
   checkInBooking,
@@ -21,10 +22,11 @@ import {
   getRefundBadgeMeta,
   formatCurrency,
   formatDate,
-  formatOrderTime,
   formatStayDateTime,
   addDays,
   diffDays,
+  canPartnerCheckIn,
+  canPartnerCheckOut,
 } from '../../../utils/bookingDisplay';
 
 const getPriceTypeLabel = (type) => {
@@ -47,8 +49,6 @@ const getPriceTypeBadge = (type) => {
   return badges[type] || 'badge-default';
 };
 
-const canCheckIn = (status) => ['da_xac_nhan', 'cho_xac_nhan'].includes(status);
-
 export default function PartnerBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -56,6 +56,9 @@ export default function PartnerBookingDetailPage() {
   const { detail, detailLoading, actionLoading, error, successMsg } = useSelector(
     (s) => s.partnerBooking || {},
   );
+
+  const [checkConfirmAction, setCheckConfirmAction] = useState(null);
+  const [checkActionLoading, setCheckActionLoading] = useState(false);
 
   useEffect(() => {
     if (id) dispatch(fetchBookingDetail(id));
@@ -67,6 +70,7 @@ export default function PartnerBookingDetailPage() {
       const t = setTimeout(() => dispatch(clearMsg()), 4000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [successMsg, error, dispatch]);
 
   const bookingStatus = useMemo(() => {
@@ -107,16 +111,36 @@ export default function PartnerBookingDetailPage() {
 
   const handleBack = () => navigate('/partner/bookings');
 
-  const handleCheckIn = async () => {
+  const handleCheckInClick = () => {
     if (!detail) return;
-    if (!window.confirm(`Xác nhận khách đã check-in cho đơn ${detail.ma_don_hang}?`)) return;
-    await dispatch(checkInBooking(detail.ma_dat_phong));
+    setCheckConfirmAction('check-in');
   };
 
-  const handleCheckOut = async () => {
+  const handleCheckOutClick = () => {
     if (!detail) return;
-    if (!window.confirm(`Xác nhận khách đã check-out cho đơn ${detail.ma_don_hang}?`)) return;
-    await dispatch(checkOutBooking(detail.ma_dat_phong));
+    setCheckConfirmAction('check-out');
+  };
+
+  const handleCloseCheckConfirm = () => {
+    if (checkActionLoading) return;
+    setCheckConfirmAction(null);
+  };
+
+  const handleConfirmCheckAction = async () => {
+    if (!detail || !checkConfirmAction) return;
+
+    setCheckActionLoading(true);
+    dispatch(clearMsg());
+    const thunk = checkConfirmAction === 'check-in' ? checkInBooking : checkOutBooking;
+    const result = await dispatch(thunk(detail.ma_dat_phong));
+    setCheckActionLoading(false);
+
+    if (thunk.fulfilled.match(result)) {
+      setCheckConfirmAction(null);
+      return;
+    }
+
+    setCheckConfirmAction(null);
   };
 
   if (detailLoading) {
@@ -136,8 +160,8 @@ export default function PartnerBookingDetailPage() {
     );
   }
 
-  const showCheckInAction = canCheckIn(detail.trang_thai);
-  const showCheckOutAction = detail.trang_thai === 'da_checkin';
+  const showCheckInAction = canPartnerCheckIn(detail);
+  const showCheckOutAction = canPartnerCheckOut(detail);
   const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail.thong_tin_hoan_tien;
   const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
@@ -184,6 +208,14 @@ export default function PartnerBookingDetailPage() {
         </div>
       )}
 
+      <PartnerBookingCheckConfirmModal
+        booking={checkConfirmAction ? detail : null}
+        action={checkConfirmAction}
+        loading={checkActionLoading}
+        onClose={handleCloseCheckConfirm}
+        onConfirm={handleConfirmCheckAction}
+      />
+
       <div className="content-card booking-detail-page-card">
         <div className="booking-detail-status-bar booking-detail-status-bar--page">
           <div className="booking-detail-status-left">
@@ -195,14 +227,14 @@ export default function PartnerBookingDetailPage() {
             )}
             {showCheckInAction && (
               <TableActions style={{ justifyContent: 'flex-end' }}>
-                <ActionButton variant="confirm" onClick={handleCheckIn} disabled={actionLoading}>
+                <ActionButton variant="confirm" onClick={handleCheckInClick} disabled={actionLoading}>
                   {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-in'}
                 </ActionButton>
               </TableActions>
             )}
             {showCheckOutAction && (
               <TableActions style={{ justifyContent: 'flex-end' }}>
-                <ActionButton variant="confirm" onClick={handleCheckOut} disabled={actionLoading}>
+                <ActionButton variant="confirm" onClick={handleCheckOutClick} disabled={actionLoading}>
                   {actionLoading ? 'Đang xử lý...' : 'Xác nhận check-out'}
                 </ActionButton>
               </TableActions>

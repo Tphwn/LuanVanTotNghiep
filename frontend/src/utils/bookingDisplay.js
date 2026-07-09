@@ -230,6 +230,28 @@ export const formatCurrency = (amount) =>
 export const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString('vi-VN') : '—';
 
+/** Đã qua ngày trả phòng — không còn check-in/check-out */
+export const isBookingStayEnded = (checkoutDate) => {
+  if (!checkoutDate) return false;
+  const checkout = new Date(checkoutDate);
+  const today = new Date();
+  checkout.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return checkout < today;
+};
+
+export const canPartnerCheckIn = (booking) => (
+  Boolean(booking)
+  && ['da_xac_nhan', 'cho_xac_nhan'].includes(booking.trang_thai)
+  && !isBookingStayEnded(booking.ngay_tra_phong)
+);
+
+export const canPartnerCheckOut = (booking) => (
+  Boolean(booking)
+  && booking.trang_thai === 'da_checkin'
+  && !isBookingStayEnded(booking.ngay_tra_phong)
+);
+
 export const formatHotelTime = (time, fallback = '14:00') => {
   if (!time) return fallback;
   const d = new Date(time);

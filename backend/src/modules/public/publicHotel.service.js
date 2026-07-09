@@ -146,7 +146,7 @@ const getHotelReviewData = async (hotelId) => {
       diem_vi_tri: dg.diem_vi_tri,
       diem_tien_nghi: dg.diem_tien_nghi,
       ngay_danh_gia: dg.ngay_danh_gia,
-      phan_hoi_doi_tac: dg.phan_hoi_doi_tac?.trim() ? dg.phan_hoi_doi_tac : null,
+      phan_hoi_doi_tac: (!dg.phan_hoi_bi_an && dg.phan_hoi_doi_tac?.trim()) ? dg.phan_hoi_doi_tac : null,
       ngay_phan_hoi: dg.ngay_phan_hoi,
       khach_hang: dg.khach_hang,
       ten_loai_phong: dg.dat_phong?.loai_phong?.ten_loai || null,

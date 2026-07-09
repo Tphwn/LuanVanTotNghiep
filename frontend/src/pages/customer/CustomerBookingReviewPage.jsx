@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerStarRating from '../../components/customer/CustomerStarRating';
+import ReviewModerationNotice from '../../components/review/ReviewModerationNotice';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { formatBookingDate } from '../../utils/bookingDisplay';
@@ -252,6 +253,15 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
                     {noiDung?.trim() || 'Không có nhận xét'}
                   </p>
                 </div>
+
+                {review?.trang_thai === 'an' && (
+                  <ReviewModerationNotice
+                    variant="hidden"
+                    title="Đánh giá đã bị ẩn bởi admin"
+                    reasonLabel="Lý do"
+                    reason={review.ly_do_an || '—'}
+                  />
+                )}
 
                 {review?.phan_hoi_doi_tac && (
                   <div className="customer-review-partner-reply">

@@ -1,4 +1,11 @@
 const prisma = require('../../../config/prisma');
+const { notifyCustomer } = require('../../../utils/customerNotify');
+const {
+  notifyReviewHidden,
+  notifyReviewUnhidden,
+  notifyPartnerResponseHidden,
+  notifyPartnerResponseUnhidden,
+} = require('../../../utils/partnerNotify');
 
 const reviewInclude = {
   khach_hang: { select: { ho_ten: true, ma_khach_hang: true } },
@@ -45,6 +52,9 @@ const mapReview = (dg) => ({
   diem_vi_tri: dg.diem_vi_tri,
   noi_dung: dg.noi_dung,
   phan_hoi_doi_tac: dg.phan_hoi_doi_tac,
+  phan_hoi_bi_an: !!dg.phan_hoi_bi_an,
+  ly_do_an: dg.ly_do_an,
+  ly_do_an_phan_hoi: dg.ly_do_an_phan_hoi,
   ngay_danh_gia: dg.ngay_danh_gia,
   ngay_phan_hoi: dg.ngay_phan_hoi,
   ngay_duyet: dg.ngay_duyet,
@@ -195,30 +205,172 @@ const getFilterPartners = async () => {
   });
 };
 
-const hideReview = async (id) => {
-  const review = await prisma.danh_gia.findUnique({
-    where: { ma_danh_gia: Number(id) },
-  });
-  if (!review) return null;
+const getReviewContext = async (id) => prisma.danh_gia.findUnique({
+  where: { ma_danh_gia: Number(id) },
+  include: {
+    khach_hang: {
+      select: {
+        ho_ten: true,
+        ma_khach_hang: true,
+        nguoi_dung: { select: { ma_nguoi_dung: true } },
+      },
+    },
+    dat_phong: {
+      select: {
+        ma_dat_phong: true,
+        ma_don_hang: true,
+        loai_phong: {
+          select: {
+            ten_loai: true,
+            khach_san: {
+              select: {
+                ten: true,
+                ma_doi_tac: true,
+                doi_tac: { select: { ten_cong_ty: true } },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+});
 
-  return prisma.danh_gia.update({
+const getNotifyPayload = (context) => ({
+  maDonHang: context.dat_phong?.ma_don_hang || '—',
+  tenKhachSan: context.dat_phong?.loai_phong?.khach_san?.ten || '—',
+  maDoiTac: context.dat_phong?.loai_phong?.khach_san?.ma_doi_tac,
+  maNguoiDung: context.khach_hang?.nguoi_dung?.ma_nguoi_dung,
+  maDatPhong: context.dat_phong?.ma_dat_phong,
+});
+
+const hideReview = async (id, lyDo) => {
+  const context = await getReviewContext(id);
+  if (!context) return null;
+  if (context.trang_thai === 'an') {
+    return prisma.danh_gia.findUnique({
+      where: { ma_danh_gia: Number(id) },
+      include: reviewInclude,
+    }).then(mapReview);
+  }
+
+  const updated = await prisma.danh_gia.update({
     where: { ma_danh_gia: Number(id) },
-    data: { trang_thai: 'an' },
+    data: {
+      trang_thai: 'an',
+      ly_do_an: lyDo,
+    },
     include: reviewInclude,
-  }).then(mapReview);
+  });
+
+  const payload = getNotifyPayload(context);
+  if (payload.maNguoiDung) {
+    await notifyCustomer(payload.maNguoiDung, {
+      tieu_de: 'Đánh giá của bạn đã bị ẩn',
+      noi_dung: `Đánh giá đơn #${payload.maDonHang} tại "${payload.tenKhachSan}" đã bị ẩn. Lý do: ${lyDo}`,
+      loai: 'danh_gia',
+      ma_dat_phong: payload.maDatPhong,
+    });
+  }
+  if (payload.maDoiTac) {
+    await notifyReviewHidden(payload.maDoiTac, {
+      maDonHang: payload.maDonHang,
+      tenKhachSan: payload.tenKhachSan,
+      lyDo,
+    });
+  }
+
+  return mapReview(updated);
 };
 
 const unhideReview = async (id) => {
-  const review = await prisma.danh_gia.findUnique({
-    where: { ma_danh_gia: Number(id) },
-  });
-  if (!review) return null;
+  const context = await getReviewContext(id);
+  if (!context) return null;
 
-  return prisma.danh_gia.update({
+  const updated = await prisma.danh_gia.update({
     where: { ma_danh_gia: Number(id) },
-    data: { trang_thai: 'hien_thi' },
+    data: {
+      trang_thai: 'hien_thi',
+      ly_do_an: null,
+    },
     include: reviewInclude,
-  }).then(mapReview);
+  });
+
+  const payload = getNotifyPayload(context);
+  if (payload.maNguoiDung) {
+    await notifyCustomer(payload.maNguoiDung, {
+      tieu_de: 'Đánh giá của bạn đã được hiện lại',
+      noi_dung: `Đánh giá đơn #${payload.maDonHang} tại "${payload.tenKhachSan}" đã được hiện lại trên hệ thống.`,
+      loai: 'danh_gia',
+      ma_dat_phong: payload.maDatPhong,
+    });
+  }
+  if (payload.maDoiTac) {
+    await notifyReviewUnhidden(payload.maDoiTac, {
+      maDonHang: payload.maDonHang,
+      tenKhachSan: payload.tenKhachSan,
+    });
+  }
+
+  return mapReview(updated);
+};
+
+const hidePartnerResponse = async (id, lyDo) => {
+  const context = await getReviewContext(id);
+  if (!context) return null;
+  if (!context.phan_hoi_doi_tac?.trim()) {
+    throw { statusCode: 400, message: 'Đánh giá chưa có phản hồi đối tác' };
+  }
+  if (context.phan_hoi_bi_an) {
+    return prisma.danh_gia.findUnique({
+      where: { ma_danh_gia: Number(id) },
+      include: reviewInclude,
+    }).then(mapReview);
+  }
+
+  const updated = await prisma.danh_gia.update({
+    where: { ma_danh_gia: Number(id) },
+    data: {
+      phan_hoi_bi_an: true,
+      ly_do_an_phan_hoi: lyDo,
+    },
+    include: reviewInclude,
+  });
+
+  const payload = getNotifyPayload(context);
+  if (payload.maDoiTac) {
+    await notifyPartnerResponseHidden(payload.maDoiTac, {
+      maDonHang: payload.maDonHang,
+      tenKhachSan: payload.tenKhachSan,
+      lyDo,
+    });
+  }
+
+  return mapReview(updated);
+};
+
+const unhidePartnerResponse = async (id) => {
+  const context = await getReviewContext(id);
+  if (!context) return null;
+
+  const updated = await prisma.danh_gia.update({
+    where: { ma_danh_gia: Number(id) },
+    data: {
+      phan_hoi_bi_an: false,
+      ly_do_an_phan_hoi: null,
+    },
+    include: reviewInclude,
+  });
+
+  const payload = getNotifyPayload(context);
+  if (payload.maDoiTac) {
+    await notifyPartnerResponseUnhidden(payload.maDoiTac, {
+      maDonHang: payload.maDonHang,
+      tenKhachSan: payload.tenKhachSan,
+    });
+  }
+
+  return mapReview(updated);
 };
 
 module.exports = {
@@ -228,4 +380,6 @@ module.exports = {
   getFilterPartners,
   hideReview,
   unhideReview,
+  hidePartnerResponse,
+  unhidePartnerResponse,
 };

@@ -1,4 +1,7 @@
+import { MessageSquare } from 'lucide-react';
 import DetailTable from '../../../../components/booking/DetailTable';
+import ActionButton from '../../../../components/common/ActionButton';
+import ReviewModerationNotice from '../../../../components/review/ReviewModerationNotice';
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
@@ -20,8 +23,18 @@ const ScoreRow = ({ label, value, highlight = false }) => (
   </div>
 );
 
-const ReviewDetailModal = ({ review, loading, onClose }) => {
+const ReviewDetailModal = ({
+  review,
+  loading,
+  onClose,
+  onRespond,
+  respondLoading,
+}) => {
   if (!review && !loading) return null;
+
+  const canRespond = review?.co_the_phan_hoi;
+  const isReviewHidden = review?.trang_thai === 'an';
+  const isResponseHidden = Boolean(review?.phan_hoi_bi_an);
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
@@ -65,6 +78,15 @@ const ReviewDetailModal = ({ review, loading, onClose }) => {
               </div>
 
               <div className="partner-review-detail-right">
+                {isReviewHidden && (
+                  <ReviewModerationNotice
+                    variant="hidden"
+                    title="Đánh giá bị admin ẩn"
+                    reasonLabel="Lý do admin ẩn"
+                    reason={review.ly_do_an || '—'}
+                  />
+                )}
+
                 <div className="partner-review-detail-section">
                   <h4 className="booking-detail-section-title">Điểm đánh giá chi tiết</h4>
                   <div className="partner-review-detail-scores">
@@ -84,19 +106,50 @@ const ReviewDetailModal = ({ review, loading, onClose }) => {
                   </div>
                 </div>
 
-                {review.phan_hoi_doi_tac && (
+                {(review.phan_hoi_doi_tac || isResponseHidden) && (
                   <div className="partner-review-detail-section">
                     <h4 className="booking-detail-section-title">Phản hồi của bạn</h4>
-                    <div className="review-partner-reply">{review.phan_hoi_doi_tac}</div>
+                    {isResponseHidden && (
+                      <ReviewModerationNotice
+                        variant="hidden"
+                        title="Phản hồi bị admin ẩn"
+                        reasonLabel="Lý do admin ẩn"
+                        reason={review.ly_do_an_phan_hoi || '—'}
+                      />
+                    )}
+                    {review.phan_hoi_doi_tac && (
+                      <div className={`review-partner-reply${isResponseHidden ? ' review-partner-reply--muted' : ''}`}>
+                        {review.phan_hoi_doi_tac}
+                      </div>
+                    )}
                   </div>
+                )}
+
+                {!canRespond && review.ly_do_khong_phan_hoi && !isReviewHidden && !isResponseHidden && (
+                  <ReviewModerationNotice
+                    variant="restricted"
+                    title="Không thể phản hồi hoặc sửa phản hồi"
+                    reasonLabel="Lý do"
+                    reason={review.ly_do_khong_phan_hoi}
+                  />
                 )}
               </div>
             </div>
 
             <div className="partner-review-detail-footer">
-              <button type="button" className="btn btn-primary" onClick={onClose}>
+              <button type="button" className="btn btn-ghost" onClick={onClose}>
                 Đóng
               </button>
+              {canRespond && (
+                <ActionButton
+                  variant="reply"
+                  icon={MessageSquare}
+                  disabled={respondLoading}
+                  onClick={() => onRespond(review)}
+                >
+                  {review.da_phan_hoi ? 'Sửa phản hồi' : 'Phản hồi'}
+                </ActionButton>
+              )}
             </div>
           </>
         )}

@@ -5698,6 +5698,12 @@ body {
   padding: 14px 16px;
 }
 
+.review-partner-reply--muted {
+  opacity: 0.75;
+  background: #fafafa;
+  border-color: #e8eeec;
+}
+
 .review-partner-reply-date {
   margin: 8px 0 0;
   font-size: 12px;
@@ -6131,4 +6137,118 @@ body {
   .admin-review-stat-card {
     flex: 1 1 100%;
   }
+}
+
+/* ===== REVIEW MODERATION NOTICE (ẩn/hiện đánh giá) ===== */
+.review-moderation-notice {
+  margin: 0 0 14px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.review-moderation-notice--hidden {
+  border-color: #fecaca;
+  background: #fff8f8;
+}
+
+.review-moderation-notice--visible {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.review-moderation-notice--restricted {
+  border-color: #fed7aa;
+  background: #fffbeb;
+}
+
+.review-moderation-notice-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2e28;
+}
+
+.review-moderation-notice--hidden .review-moderation-notice-title {
+  color: #7f1d1d;
+}
+
+.review-moderation-notice--visible .review-moderation-notice-title {
+  color: #14532d;
+}
+
+.review-moderation-notice--restricted .review-moderation-notice-title {
+  color: #9a3412;
+}
+
+.review-moderation-notice-reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1a2e28;
+}
+
+.review-moderation-notice--hidden .review-moderation-notice-reason {
+  color: #7f1d1d;
+}
+
+.review-moderation-notice--visible .review-moderation-notice-reason {
+  color: #14532d;
+}
+
+.review-moderation-notice-note {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.review-moderation-notice--hidden .review-moderation-notice-note {
+  border: 1px solid #f5d0d0;
+}
+
+.review-moderation-notice--visible .review-moderation-notice-note {
+  border: 1px solid #bbf7d0;
+}
+
+.review-moderation-notice-note-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.review-moderation-notice-note p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.review-moderation-notice--hidden .review-moderation-notice-note p {
+  color: #7f1d1d;
+}
+
+.review-moderation-notice--visible .review-moderation-notice-note p {
+  color: #14532d;
+}
+
+.partner-notify-item--hidden {
+  background: #fff8f8 !important;
+  border-left: 3px solid #f87171;
+}
+
+.partner-notify-item--visible {
+  background: #f0fdf4 !important;
+  border-left: 3px solid #4ade80;
+}
+
+.partner-notify-item--hidden .partner-notify-item-title {
+  color: #7f1d1d;
+}
+
+.partner-notify-item--visible .partner-notify-item-title {
+  color: #14532d;
 }

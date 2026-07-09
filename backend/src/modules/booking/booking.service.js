@@ -1,6 +1,6 @@
 const prisma = require('../../config/prisma');
 const { processRefundOnCancel } = require('../../utils/refundHelpers');
-const { autoCompleteExpiredCheckIns } = require('../../utils/bookingHelpers');
+const { autoCompleteExpiredCheckIns, isStayPeriodEnded } = require('../../utils/bookingHelpers');
 
 const ADMIN_HOTEL_LIST_SELECT = {
   select: {
@@ -98,6 +98,8 @@ const bookingService = {
 
   // Lấy chi tiết 1 đơn
   getDetailById: async (id) => {
+    await autoCompleteExpiredCheckIns({ ma_dat_phong: Number(id) });
+
     return await prisma.dat_phong.findUnique({
       where: { ma_dat_phong: Number(id) },
       include: {
@@ -142,6 +144,9 @@ const bookingService = {
     if (!['da_xac_nhan', 'cho_xac_nhan'].includes(booking.trang_thai)) {
       throw new Error('Chỉ check-in đơn đang chờ khách đến');
     }
+    if (isStayPeriodEnded(booking.ngay_tra_phong)) {
+      throw new Error('Đơn đã qua ngày trả phòng, không thể check-in');
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.dat_phong.update({
@@ -165,6 +170,9 @@ const bookingService = {
     const booking = await verifyOwner(id, doiTacId);
     if (booking.trang_thai !== 'da_checkin') {
       throw new Error('Chỉ check-out đơn đã check-in');
+    }
+    if (isStayPeriodEnded(booking.ngay_tra_phong)) {
+      throw new Error('Đơn đã qua ngày trả phòng, không thể check-out');
     }
     await prisma.dat_phong.update({
       where: { ma_dat_phong: Number(id) },

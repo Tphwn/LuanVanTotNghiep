@@ -3,6 +3,8 @@ import api from '../../../services/api';
 import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
 import { HotelAmenityPicker } from './components/HotelAmenityGroups';
+import PartnerHotelSubmitConfirmModal from './components/PartnerHotelSubmitConfirmModal';
+import PartnerHotelTimeConfirmModal from './components/PartnerHotelTimeConfirmModal';
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
@@ -92,6 +94,53 @@ const HotelFormContent = ({
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '', mo_ta: ''});
   const [requestRefresh, setRequestRefresh] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formAlert, setFormAlert] = useState('');
+  const [toast, setToast] = useState(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [timeConfirm, setTimeConfirm] = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const updateField = (name, value) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (formAlert) setFormAlert('');
+  };
+
+  const inputStyle = (field) => ({
+    width: '100%',
+    boxSizing: 'border-box',
+    border: fieldErrors[field] ? '1px solid #ffb3b3' : undefined,
+  });
+
+  const errSt = { margin: '4px 0 0', fontSize: 12, color: '#e05c5c' };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!form.ten?.trim()) errors.ten = 'Vui lòng nhập tên khách sạn';
+    if (!form.dia_chi?.trim()) errors.dia_chi = 'Vui lòng nhập địa chỉ cụ thể';
+    if (!form.ma_dia_diem) errors.ma_dia_diem = 'Vui lòng chọn địa điểm khu vực';
+    if (hotelImages.length === 0) errors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh đại diện';
+    return errors;
+  };
+
+  const applyValidationErrors = (errors) => {
+    setFieldErrors(errors);
+    const firstKey = Object.keys(errors)[0];
+    if (['ten', 'dia_chi', 'ma_dia_diem'].includes(firstKey)) setActiveTab('info');
+    else if (firstKey === 'images') setActiveTab('images');
+    setFormAlert(
+      isEdit
+        ? 'Cập nhật không thành công. Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc.'
+        : 'Gửi duyệt không thành công. Vui lòng điền đầy đủ thông tin bắt buộc.',
+    );
+  };
 
   const toggleAmenity = (id) => {
     setForm((prev) => ({
@@ -167,6 +216,8 @@ const HotelFormContent = ({
     }));
 
     setHotelImages((prev) => [...prev, ...newImages]);
+    setFieldErrors((prev) => ({ ...prev, images: undefined }));
+    if (formAlert) setFormAlert('');
     e.target.value = '';
   };
 
@@ -187,17 +238,51 @@ const HotelFormContent = ({
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (!form.ten.trim()) { setActiveTab('info'); return alert('Vui lòng nhập tên khách sạn'); }
-    if (!form.dia_chi.trim()) { setActiveTab('info'); return alert('Vui lòng nhập địa chỉ cụ thể'); }
-    if (!form.ma_dia_diem) { setActiveTab('info'); return alert('Vui lòng chọn địa điểm khu vực'); }
-    if (hotelImages.length === 0) { setActiveTab('images'); return alert('Vui lòng tải lên ít nhất 1 hình ảnh đại diện'); }
-
-    onSubmit({
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      applyValidationErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+    setFormAlert('');
+    setPendingPayload({
       ...form,
       hinh_anh: hotelImages,
       chinh_sach_huy: cancelPolicies,
       removedImageIds,
     });
+    setShowSubmitConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingPayload) return;
+    setConfirmLoading(true);
+    try {
+      await onSubmit(pendingPayload);
+      setShowSubmitConfirm(false);
+      setPendingPayload(null);
+    } catch (err) {
+      showToast(err?.message || 'Thao tác thất bại', 'error');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const handleTimeInputChange = (field, newValue) => {
+    if (!newValue || newValue === form[field]) return;
+    setTimeConfirm({ field, newValue, oldValue: form[field] });
+  };
+
+  const handleConfirmTimeChange = () => {
+    if (!timeConfirm) return;
+    setForm((prev) => ({ ...prev, [timeConfirm.field]: timeConfirm.newValue }));
+    const label = timeConfirm.field === 'gio_nhan_phong' ? 'giờ nhận phòng' : 'giờ trả phòng';
+    showToast(`Đã cập nhật ${label} thành ${timeConfirm.newValue}`);
+    setTimeConfirm(null);
+  };
+
+  const handleCancelTimeChange = () => {
+    setTimeConfirm(null);
   };
 
   const tabs = [
@@ -208,6 +293,36 @@ const HotelFormContent = ({
 
   return (
     <div>
+        {formAlert && (
+          <div className="mgmt-toast error" style={{ marginBottom: 12 }}>
+            {formAlert}
+          </div>
+        )}
+
+        {toast && (
+          <div className={`mgmt-toast ${toast.type}`} style={{ marginBottom: 12 }}>
+            {toast.msg}
+          </div>
+        )}
+
+        {showSubmitConfirm && (
+          <PartnerHotelSubmitConfirmModal
+            isEdit={isEdit}
+            hotelName={form.ten?.trim()}
+            loading={confirmLoading || loading}
+            onClose={() => !confirmLoading && !loading && setShowSubmitConfirm(false)}
+            onConfirm={handleConfirmSubmit}
+          />
+        )}
+
+        <PartnerHotelTimeConfirmModal
+          field={timeConfirm?.field}
+          newValue={timeConfirm?.newValue}
+          oldValue={timeConfirm?.oldValue}
+          onClose={handleCancelTimeChange}
+          onConfirm={handleConfirmTimeChange}
+        />
+
         <div style={{
           display: 'flex', gap: 8, marginBottom: 20,
           borderBottom: '2px solid #e8f5f1', paddingBottom: 10, flexWrap: 'wrap',
@@ -223,7 +338,7 @@ const HotelFormContent = ({
           ))}
         </div>
 
-        <form onSubmit={handleFormSubmit}>
+        <form onSubmit={handleFormSubmit} noValidate>
           {activeTab === 'info'&& (
             <>
 
@@ -232,18 +347,20 @@ const HotelFormContent = ({
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>
                     Tên khách sạn <span style={{ color:'#e05c5c'}}>*</span>
                   </label>
-                  <input className="search-input"style={{ width:'100%', boxSizing: 'border-box'}} value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} placeholder="VD: Khách sạn Mặt Trời"/>
+                  <input className="search-input" style={inputStyle('ten')} value={form.ten} onChange={(e) => updateField('ten', e.target.value)} placeholder="VD: Khách sạn Mặt Trời"/>
+                  {fieldErrors.ten && <p style={errSt}>{fieldErrors.ten}</p>}
                 </div>
                 <div>
                   <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>
                     Địa điểm <span style={{ color:'#e05c5c'}}>*</span>
                   </label>
-                  <select className="search-input"style={{ width:'100%', boxSizing: 'border-box'}} value={form.ma_dia_diem} onChange={(e) => setForm({ ...form, ma_dia_diem: e.target.value })}>
+                  <select className="search-input" style={inputStyle('ma_dia_diem')} value={form.ma_dia_diem} onChange={(e) => updateField('ma_dia_diem', e.target.value)}>
                     <option value="">-- Chọn --</option>
                     {diaDiem.map((d) => (
                       <option key={d.ma_dia_diem} value={d.ma_dia_diem}>{d.ten_dia_diem}</option>
                     ))}
                   </select>
+                  {fieldErrors.ma_dia_diem && <p style={errSt}>{fieldErrors.ma_dia_diem}</p>}
                 </div>
                 <div>
                   <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Số sao</label>
@@ -257,7 +374,8 @@ const HotelFormContent = ({
                 <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>
                   Địa chỉ cụ thể <span style={{ color:'#e05c5c'}}>*</span>
                 </label>
-                <input className="search-input"style={{ width:'100%', boxSizing: 'border-box'}} value={form.dia_chi} onChange={(e) => setForm({ ...form, dia_chi: e.target.value })} placeholder="Số nhà, đường, phường/xã..."/>
+                <input className="search-input" style={inputStyle('dia_chi')} value={form.dia_chi} onChange={(e) => updateField('dia_chi', e.target.value)} placeholder="Số nhà, đường, phường/xã..."/>
+                {fieldErrors.dia_chi && <p style={errSt}>{fieldErrors.dia_chi}</p>}
               </div>
 
               <div style={{ marginBottom: 16 }}>
@@ -300,8 +418,10 @@ const HotelFormContent = ({
               <label
                 style={{
                   display:'block', position: 'relative',
-                  border: '2px dashed #3C7363', padding: '28px',
-                  textAlign: 'center', borderRadius: 8, background: '#f8fdfb',
+                  border: fieldErrors.images ? '2px dashed #ffb3b3' : '2px dashed #3C7363',
+                  padding: '28px',
+                  textAlign: 'center', borderRadius: 8,
+                  background: fieldErrors.images ? '#fff8f8' : '#f8fdfb',
                   marginBottom: 16, cursor: 'pointer',
                 }}
               >
@@ -309,6 +429,10 @@ const HotelFormContent = ({
                 <div style={{ color: '#888', fontSize: 12 }}>Chọn nhiều file JPG, PNG (tối đa 10 ảnh)</div>
                 <input type="file"multiple accept="image/*"onChange={handleImageChange} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer'}} />
               </label>
+
+              {fieldErrors.images && (
+                <p style={{ ...errSt, marginTop: -8, marginBottom: 12 }}>{fieldErrors.images}</p>
+              )}
 
               {hotelImages.length === 0 ? (
                 <div style={{
@@ -374,12 +498,12 @@ const HotelFormContent = ({
                 border: '1px solid #d4ede6', marginBottom: 16,
               }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Giờ nhận phòng</label>
-                  <input type="time"className="search-input"style={{ width:'100%', boxSizing: 'border-box'}} value={form.gio_nhan_phong} onChange={(e) => setForm({ ...form, gio_nhan_phong: e.target.value })} />
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Giờ nhận phòng (check-in)</label>
+                  <input type="time" className="search-input" style={{ width:'100%', boxSizing: 'border-box'}} value={form.gio_nhan_phong} onChange={(e) => handleTimeInputChange('gio_nhan_phong', e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Giờ trả phòng</label>
-                  <input type="time"className="search-input"style={{ width:'100%', boxSizing: 'border-box'}} value={form.gio_tra_phong} onChange={(e) => setForm({ ...form, gio_tra_phong: e.target.value })} />
+                  <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Giờ trả phòng (check-out)</label>
+                  <input type="time" className="search-input" style={{ width:'100%', boxSizing: 'border-box'}} value={form.gio_tra_phong} onChange={(e) => handleTimeInputChange('gio_tra_phong', e.target.value)} />
                 </div>
               </div>
 
@@ -616,8 +740,8 @@ const HotelFormContent = ({
             borderTop: '1px solid #eee', paddingTop: 20, marginTop: 20,
           }}>
             <button type="button"className="btn btn-ghost"onClick={onClose}>Hủy bỏ</button>
-            <button type="submit"className="btn btn-primary" disabled={loading}>
-              {loading ? 'Đang xử lý...': isEdit ?'Lưu thay đổi':'Gửi duyệt'}
+            <button type="submit" className="btn btn-primary" disabled={loading || confirmLoading}>
+              {loading || confirmLoading ? 'Đang xử lý...': isEdit ?'Lưu thay đổi':'Gửi duyệt'}
             </button>
           </div>
         </form>

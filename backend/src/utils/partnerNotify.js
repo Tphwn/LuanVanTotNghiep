@@ -75,6 +75,38 @@ const notifyRoomTypeUnlocked = async (maDoiTac, { tenLoaiPhong, tenKhachSan }) =
   });
 };
 
+const notifyReviewHidden = async (maDoiTac, { maDonHang, tenKhachSan, lyDo }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Đánh giá bị ẩn bởi quản trị viên',
+    noi_dung: `Đánh giá đơn #${maDonHang} tại khách sạn "${tenKhachSan}" đã bị ẩn. Lý do: ${lyDo}`,
+    loai: 'danh_gia',
+  });
+};
+
+const notifyReviewUnhidden = async (maDoiTac, { maDonHang, tenKhachSan }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Đánh giá đã được hiện lại',
+    noi_dung: `Đánh giá đơn #${maDonHang} tại khách sạn "${tenKhachSan}" đã được quản trị viên hiện lại.`,
+    loai: 'danh_gia',
+  });
+};
+
+const notifyPartnerResponseHidden = async (maDoiTac, { maDonHang, tenKhachSan, lyDo }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Phản hồi đánh giá bị ẩn',
+    noi_dung: `Phản hồi của bạn cho đơn #${maDonHang} tại "${tenKhachSan}" đã bị ẩn. Lý do: ${lyDo}`,
+    loai: 'danh_gia',
+  });
+};
+
+const notifyPartnerResponseUnhidden = async (maDoiTac, { maDonHang, tenKhachSan }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Phản hồi đánh giá đã được hiện lại',
+    noi_dung: `Phản hồi của bạn cho đơn #${maDonHang} tại "${tenKhachSan}" đã được quản trị viên hiện lại.`,
+    loai: 'danh_gia',
+  });
+};
+
 module.exports = {
   notifyPartner,
   notifyAmenityApproved,
@@ -83,4 +115,8 @@ module.exports = {
   notifyHotelUnlocked,
   notifyRoomTypeLocked,
   notifyRoomTypeUnlocked,
+  notifyReviewHidden,
+  notifyReviewUnhidden,
+  notifyPartnerResponseHidden,
+  notifyPartnerResponseUnhidden,
 };

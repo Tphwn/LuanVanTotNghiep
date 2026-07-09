@@ -173,7 +173,7 @@ const partnerBookingSlice = createSlice({
 
       .addCase(checkInBooking.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.successMsg = 'Đã xác nhận check-in';
+        state.successMsg = 'Xác nhận check-in thành công!';
         upsertListItem(state.list, action.payload);
         if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
           state.detail = action.payload;
@@ -192,7 +192,7 @@ const partnerBookingSlice = createSlice({
 
       .addCase(checkOutBooking.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.successMsg = 'Đã xác nhận check-out, đơn hoàn thành';
+        state.successMsg = 'Xác nhận check-out thành công!';
         upsertListItem(state.list, action.payload);
         if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
           state.detail = action.payload;

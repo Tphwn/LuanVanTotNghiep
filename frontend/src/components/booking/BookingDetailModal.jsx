@@ -32,10 +32,11 @@ import {
   addDays,
   diffDays,
   getBookingCancelReason,
+  canPartnerCheckIn,
+  canPartnerCheckOut,
 } from '../../utils/bookingDisplay';
 
 const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'];
-const canCheckIn = (status) => ['da_xac_nhan', 'cho_xac_nhan'].includes(status);
 
 const getPriceTypeLabel = (type) => {
   const labels = {
@@ -211,6 +212,7 @@ const BookingDetailModal = ({
     if (!detail || !checkConfirmAction) return;
 
     setCheckActionLoading(true);
+    if (!isAdmin) dispatch(clearPartnerMsg());
     const thunk = checkConfirmAction === 'check-in' ? checkInBooking : checkOutBooking;
     const result = await dispatch(thunk(detail.ma_dat_phong));
     setCheckActionLoading(false);
@@ -218,15 +220,10 @@ const BookingDetailModal = ({
     if (thunk.fulfilled.match(result)) {
       setCheckConfirmAction(null);
       onUpdated?.();
-      alert(checkConfirmAction === 'check-in'
-        ? 'Xác nhận check-in thành công!'
-        : 'Xác nhận check-out thành công!');
       return;
     }
 
-    if (thunk.rejected.match(result)) {
-      alert(result.payload || `Xác nhận ${checkConfirmAction === 'check-in' ? 'check-in' : 'check-out'} thất bại`);
-    }
+    setCheckConfirmAction(null);
   };
 
   if (!isOpen) return null;
@@ -236,8 +233,8 @@ const BookingDetailModal = ({
   const refundInfo = detail?.thong_tin_hoan_tien;
   const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
   const refundPending = ['cho_xu_ly', 'dang_xu_ly'].includes(detail?.hoan_tien?.trang_thai);
-  const showCheckInAction = !isAdmin && detail && canCheckIn(detail.trang_thai);
-  const showCheckOutAction = !isAdmin && detail?.trang_thai === 'da_checkin';
+  const showCheckInAction = !isAdmin && canPartnerCheckIn(detail);
+  const showCheckOutAction = !isAdmin && canPartnerCheckOut(detail);
 
   const paymentMethod = detail
     ? (PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—')

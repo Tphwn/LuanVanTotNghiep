@@ -135,32 +135,53 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
 const isAutoCompletedBooking = (booking) =>
   Boolean(booking?.ghi_chu?.includes(AUTO_COMPLETE_MARKER));
 
-const autoCompleteExpiredCheckIns = async (where = {}) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const isStayPeriodEnded = (ngayTraPhong) => {
+  const checkoutKey = formatDateKey(ngayTraPhong);
+  const todayKey = formatDateKey(new Date());
+  if (!checkoutKey || !todayKey) return false;
+  return checkoutKey < todayKey;
+};
 
-  const expired = await prisma.dat_phong.findMany({
+const appendAutoCompleteMarker = (ghiChu) => {
+  if (ghiChu?.includes(AUTO_COMPLETE_MARKER)) return ghiChu;
+  return ghiChu ? `${ghiChu}\n${AUTO_COMPLETE_MARKER}` : AUTO_COMPLETE_MARKER;
+};
+
+const autoCompleteExpiredCheckIns = async (where = {}) => {
+  const candidates = await prisma.dat_phong.findMany({
     where: {
       ...where,
-      trang_thai: { in: PENDING_CHECKIN_STATUS },
-      ngay_nhan_phong: { lt: today },
+      trang_thai: { in: [...PENDING_CHECKIN_STATUS, 'da_checkin'] },
     },
   });
 
-  if (!expired.length) return 0;
+  const pendingExpired = candidates.filter(
+    (booking) => PENDING_CHECKIN_STATUS.includes(booking.trang_thai)
+      && isStayPeriodEnded(booking.ngay_tra_phong),
+  );
 
-  await Promise.all(expired.map((booking) => {
-    const ghiChu = booking.ghi_chu?.includes(AUTO_COMPLETE_MARKER)
-      ? booking.ghi_chu
-      : (booking.ghi_chu ? `${booking.ghi_chu}\n${AUTO_COMPLETE_MARKER}` : AUTO_COMPLETE_MARKER);
+  const checkedInExpired = candidates.filter(
+    (booking) => booking.trang_thai === 'da_checkin'
+      && isStayPeriodEnded(booking.ngay_tra_phong),
+  );
 
-    return prisma.dat_phong.update({
+  if (!pendingExpired.length && !checkedInExpired.length) return 0;
+
+  await Promise.all([
+    ...pendingExpired.map((booking) => prisma.dat_phong.update({
       where: { ma_dat_phong: booking.ma_dat_phong },
-      data: { trang_thai: 'hoan_thanh', ghi_chu: ghiChu },
-    });
-  }));
+      data: {
+        trang_thai: 'hoan_thanh',
+        ghi_chu: appendAutoCompleteMarker(booking.ghi_chu),
+      },
+    })),
+    ...checkedInExpired.map((booking) => prisma.dat_phong.update({
+      where: { ma_dat_phong: booking.ma_dat_phong },
+      data: { trang_thai: 'hoan_thanh' },
+    })),
+  ]);
 
-  return expired.length;
+  return pendingExpired.length + checkedInExpired.length;
 };
 
 module.exports = {
@@ -174,5 +195,6 @@ module.exports = {
   calcRoomAvailability,
   calcStayPrice,
   isAutoCompletedBooking,
+  isStayPeriodEnded,
   autoCompleteExpiredCheckIns,
 };

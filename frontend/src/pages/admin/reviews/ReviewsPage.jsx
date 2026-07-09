@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Lock, Unlock } from 'lucide-react';
+import { Eye, MessageSquareOff, MessageSquare } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
+import ReviewModerationNotice from '../../../components/review/ReviewModerationNotice';
+import AdminReviewConfirmModal from './components/AdminReviewConfirmModal';
 
 const PAGE_SIZE = 10;
 
@@ -68,10 +70,17 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
+const DetailModal = ({
+  review,
+  onClose,
+  onRequestAction,
+  actionLoading,
+}) => {
   if (!review) return null;
   const st = REVIEW_STATUS[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
   const isHidden = review.trang_thai === 'an';
+  const hasPartnerReply = Boolean(review.phan_hoi_doi_tac?.trim());
+  const isResponseHidden = Boolean(review.phan_hoi_bi_an);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -84,7 +93,19 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
         <div className="admin-review-modal-meta">
           <span className={`badge ${st.cls}`}>{st.label}</span>
           <StarScore value={review.so_sao} />
+          {isResponseHidden && (
+            <span className="badge badge-warning">Phản hồi đã ẩn</span>
+          )}
         </div>
+
+        {isHidden && (
+          <ReviewModerationNotice
+            variant="hidden"
+            title="Đánh giá bị admin ẩn"
+            reasonLabel="Lý do admin ẩn"
+            reason={review.ly_do_an || '—'}
+          />
+        )}
 
         <div className="content-card admin-review-modal-section">
           <h4 className="admin-review-modal-section-title">Thông tin đánh giá</h4>
@@ -112,10 +133,20 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
 
         <div className="admin-review-modal-block">
           <h4 className="admin-review-modal-section-title">Phản hồi của đối tác</h4>
-          {review.phan_hoi_doi_tac ? (
+          {isResponseHidden && (
+            <ReviewModerationNotice
+              variant="hidden"
+              title="Phản hồi bị admin ẩn"
+              reasonLabel="Lý do admin ẩn"
+              reason={review.ly_do_an_phan_hoi || '—'}
+              note="Chỉ đối tác nhìn thấy thông báo này"
+            />
+          )}
+          {hasPartnerReply ? (
             <div className="admin-review-partner-reply">
               <div className="admin-review-partner-reply-meta">
                 {review.ten_doi_tac || 'Đối tác'} · {formatDateTime(review.ngay_phan_hoi)}
+                {isResponseHidden && ' · Đã ẩn'}
               </div>
               {review.phan_hoi_doi_tac}
             </div>
@@ -126,10 +157,23 @@ const DetailModal = ({ review, onClose, onToggleStatus, actionLoading }) => {
 
         <div className="admin-review-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
+          {hasPartnerReply && (
+            <ActionButton
+              variant={isResponseHidden ? 'unlock' : 'lock'}
+              icon={isResponseHidden ? MessageSquare : MessageSquareOff}
+              disabled={actionLoading}
+              onClick={() => onRequestAction(
+                review,
+                isResponseHidden ? 'show-response' : 'hide-response',
+              )}
+            >
+              {isResponseHidden ? 'Hiện phản hồi' : 'Ẩn phản hồi'}
+            </ActionButton>
+          )}
           <ActionButton
             variant={isHidden ? 'unlock' : 'lock'}
             disabled={actionLoading}
-            onClick={() => onToggleStatus(review)}
+            onClick={() => onRequestAction(review, isHidden ? 'show-review' : 'hide-review')}
           >
             {actionLoading ? 'Đang xử lý...' : isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá'}
           </ActionButton>
@@ -157,6 +201,7 @@ const ReviewsPage = () => {
   const [denNgay, setDenNgay] = useState('');
 
   const [detailReview, setDetailReview] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
   const [toast, setToast] = useState(null);
   const skipFilterReload = useRef(true);
 
@@ -253,19 +298,33 @@ const ReviewsPage = () => {
     if (!hotelStillValid) setHotelFilter('');
   };
 
-  const handleToggleStatus = async (review) => {
-    const isHidden = review.trang_thai === 'an';
-    const msg = isHidden
-      ? `Hiện lại đánh giá #${review.ma_danh_gia}?`
-      : `Ẩn đánh giá #${review.ma_danh_gia} khỏi hệ thống?`;
-    if (!window.confirm(msg)) return;
+  const handleRequestAction = (review, action) => {
+    setConfirmTarget({ review, action });
+  };
+
+  const handleConfirmAction = async (lyDo) => {
+    if (!confirmTarget) return;
+    const { review, action } = confirmTarget;
+
+    const endpoints = {
+      'hide-review': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/hide`, body: { ly_do: lyDo } },
+      'show-review': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/show` },
+      'hide-response': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/hide-partner-response`, body: { ly_do: lyDo } },
+      'show-response': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/show-partner-response` },
+    };
+
+    const req = endpoints[action];
+    if (!req) return;
 
     setActionLoading(true);
     try {
-      const endpoint = isHidden ? 'show' : 'hide';
-      const res = await api.patch(`/admin/reviews/${review.ma_danh_gia}/${endpoint}`);
+      const res = req.body
+        ? await api.patch(req.url, req.body)
+        : await api.patch(req.url);
       showToast(res.data.message || 'Thành công');
-      setDetailReview((prev) => (prev?.ma_danh_gia === review.ma_danh_gia ? res.data.data : prev));
+      const updated = res.data.data;
+      setDetailReview((prev) => (prev?.ma_danh_gia === review.ma_danh_gia ? updated : prev));
+      setConfirmTarget(null);
       await loadReviews();
     } catch (err) {
       showToast(err.response?.data?.message || 'Thao tác thất bại', 'error');
@@ -497,13 +556,6 @@ const ReviewsPage = () => {
                           title="Chi tiết"
                           onClick={() => setDetailReview(rv)}
                         />
-                        <ActionButton
-                          variant={rv.trang_thai === 'an' ? 'unlock' : 'lock'}
-                          iconOnly
-                          icon={rv.trang_thai === 'an' ? Unlock : Lock}
-                          title={rv.trang_thai === 'an' ? 'Hiện đánh giá' : 'Ẩn đánh giá'}
-                          onClick={() => handleToggleStatus(rv)}
-                        />
                       </ActionCell>
                     </tr>
                   );
@@ -531,10 +583,18 @@ const ReviewsPage = () => {
         <DetailModal
           review={detailReview}
           onClose={() => setDetailReview(null)}
-          onToggleStatus={handleToggleStatus}
+          onRequestAction={handleRequestAction}
           actionLoading={actionLoading}
         />
       )}
+
+      <AdminReviewConfirmModal
+        review={confirmTarget?.review}
+        action={confirmTarget?.action}
+        loading={actionLoading}
+        onClose={() => !actionLoading && setConfirmTarget(null)}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 };

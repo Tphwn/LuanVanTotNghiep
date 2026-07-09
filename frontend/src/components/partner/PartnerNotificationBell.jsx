@@ -4,6 +4,13 @@ import api from '../../services/api';
 
 const formatTime = (d) => new Date(d).toLocaleString('vi-VN');
 
+const getNotifyTone = (title = '') => {
+  const t = title.toLowerCase();
+  if (t.includes('bị ẩn') || t.includes('bị admin ẩn')) return 'hidden';
+  if (t.includes('hiện lại') || t.includes('được hiện')) return 'visible';
+  return '';
+};
+
 const LOAI_LABEL = {
   tien_nghi: 'Tiện nghi',
   he_thong: 'Hệ thống',
@@ -102,12 +109,14 @@ const PartnerNotificationBell = () => {
           <div className="partner-notify-dropdown-body">
             {items.length === 0 ? (
               <div className="partner-notify-empty">Chưa có thông báo</div>
-            ) : items.map((n) => (
+            ) : items.map((n) => {
+              const tone = getNotifyTone(n.tieu_de);
+              return (
               <button
                 key={n.ma_thong_bao}
                 type="button"
                 onClick={() => !n.da_doc && markRead(n.ma_thong_bao)}
-                className={`partner-notify-item${n.da_doc ? '' : ' is-unread'}`}
+                className={`partner-notify-item${n.da_doc ? '' : ' is-unread'}${tone ? ` partner-notify-item--${tone}` : ''}`}
               >
                 <div className="partner-notify-item-title">
                   {!n.da_doc && <span className="partner-notify-unread-dot">●</span>}
@@ -119,7 +128,8 @@ const PartnerNotificationBell = () => {
                 <div className="partner-notify-item-content">{n.noi_dung}</div>
                 <div className="partner-notify-item-time">{formatTime(n.ngay_gui)}</div>
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}
