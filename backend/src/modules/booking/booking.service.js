@@ -277,6 +277,10 @@ const bookingService = {
   },
 
   cancelByAdmin: async (id, adminId, ly_do) => {
+    if (!ly_do || !String(ly_do).trim()) {
+      throw new Error('Phải kèm lý do mới được hủy');
+    }
+
     const booking = await prisma.dat_phong.findUnique({
       where: { ma_dat_phong: Number(id) },
     });
@@ -285,19 +289,21 @@ const bookingService = {
       throw new Error('Không thể hủy đơn đã check-in, đã hoàn thành hoặc đã hủy');
     }
 
+    const reason = String(ly_do).trim();
+
     await prisma.$transaction(async (tx) => {
       await tx.dat_phong.update({
         where: { ma_dat_phong: Number(id) },
-        data: { trang_thai: 'da_huy', ghi_chu: `[Admin hủy] ${ly_do}` },
+        data: { trang_thai: 'da_huy', ghi_chu: `[Admin hủy] ${reason}` },
       });
-      await processRefundOnCancel(tx, id, ly_do);
+      await processRefundOnCancel(tx, id, reason, { fullRefund: true });
 
       await tx.thong_bao.create({
         data: {
           ma_nguoi_dung: booking.ma_khach_hang,
           ma_dat_phong: Number(id),
           tieu_de: 'Đơn đặt phòng bị hủy bởi Admin',
-          noi_dung: `Đơn #${booking.ma_don_hang} đã bị hủy. Lý do: ${ly_do}`,
+          noi_dung: `Đơn #${booking.ma_don_hang} đã bị hủy. Lý do: ${reason}`,
           loai: 'dat_phong',
         },
       });

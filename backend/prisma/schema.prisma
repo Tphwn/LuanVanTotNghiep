@@ -220,6 +220,7 @@ model khach_san {
   gio_tra_phong       DateTime?             @db.Time(0)
   trang_thai          khach_san_trang_thai  @default(cho_duyet)
   ly_do_tu_choi       String?               @db.Text
+  ly_do_khoa          String?               @db.Text
   khoa_do_doi_tac     Boolean               @default(false)
   ngay_tao            DateTime              @default(now()) @db.DateTime(0)
   ngay_duyet          DateTime?             @db.DateTime(0)

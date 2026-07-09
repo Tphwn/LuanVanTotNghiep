@@ -1,9 +1,10 @@
 const prisma = require('../../config/prisma');
 const { attachHotelImages } = require('../../utils/images');
 const {
-  getHotelLockState,
-  isLockedByPartner,
+  lockAdminHotelResources,
+  unlockAdminHotelResources,
 } = require('../../utils/partnerLockHelpers');
+const { notifyHotelLocked, notifyHotelUnlocked } = require('../../utils/partnerNotify');
 
 const hotelService = {
   // ── Partner ──────────────────────────────────────────────
@@ -313,48 +314,21 @@ const hotelService = {
     });
   },
 
-  lockHotel: async (id) => {
-    const hotelId = Number(id);
-    const hotel = await prisma.khach_san.findUnique({
-      where: { ma_khach_san: hotelId },
-      select: { khoa_do_doi_tac: true },
-    });
-
-    if (!hotel) {
-      throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
+  lockHotel: async (id, lyDoKhoa) => {
+    const reason = lyDoKhoa?.trim();
+    if (!reason) {
+      throw { statusCode: 400, message: 'Vui lòng nhập lý do khóa' };
     }
 
-    return prisma.khach_san.update({
-      where: { ma_khach_san: hotelId },
-      data: {
-        trang_thai: 'bi_khoa',
-        ...(hotel.khoa_do_doi_tac ? {} : { khoa_do_doi_tac: false }),
-      },
-    });
+    const hotel = await prisma.$transaction((tx) => lockAdminHotelResources(tx, id, reason));
+    await notifyHotelLocked(hotel.ma_doi_tac, { tenKhachSan: hotel.ten, lyDo: reason });
+    return hotel;
   },
 
   unlockHotel: async (id) => {
-    const hotelId = Number(id);
-    const hotel = await getHotelLockState(prisma, hotelId);
-
-    if (!hotel) {
-      throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
-    }
-
-    if (isLockedByPartner(hotel)) {
-      throw {
-        statusCode: 400,
-        message: 'Khách sạn đang bị đối tác khóa. Bạn không thể mở khóa.',
-      };
-    }
-
-    return prisma.khach_san.update({
-      where: { ma_khach_san: hotelId },
-      data: {
-        trang_thai: 'hoat_dong',
-        khoa_do_doi_tac: false,
-      },
-    });
+    const hotel = await prisma.$transaction((tx) => unlockAdminHotelResources(tx, id));
+    await notifyHotelUnlocked(hotel.ma_doi_tac, { tenKhachSan: hotel.ten });
+    return hotel;
   },
 };
 

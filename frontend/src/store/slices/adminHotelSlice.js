@@ -37,9 +37,9 @@ export const requestInfoHotel = createAsyncThunk('adminHotels/requestInfo', asyn
   }
 });
 
-export const lockHotel = createAsyncThunk('adminHotels/lock', async (id, thunkAPI) => {
+export const lockHotel = createAsyncThunk('adminHotels/lock', async ({ id, lyDoKhoa }, thunkAPI) => {
   try {
-    await adminHotelService.lock(id);
+    await adminHotelService.lock(id, lyDoKhoa);
     return { id, trang_thai:'bi_khoa'};
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message);

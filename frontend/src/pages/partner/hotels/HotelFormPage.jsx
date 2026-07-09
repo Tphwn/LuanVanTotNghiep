@@ -45,6 +45,12 @@ export default function HotelFormPage() {
     }
   }, [successMsg, dispatch]);
 
+  useEffect(() => {
+    if (!localSuccess) return undefined;
+    const timer = setTimeout(() => setLocalSuccess(''), 4000);
+    return () => clearTimeout(timer);
+  }, [localSuccess]);
+
   const handleSubmit = async (formData) => {
     if (!isEdit) {
       const res = await dispatch(createHotel(formData));
@@ -52,14 +58,18 @@ export default function HotelFormPage() {
         alert(res.payload || 'Không thể tạo khách sạn');
         return;
       }
-      navigate('/partner/hotels');
+      dispatch(clearMsg());
+      navigate('/partner/hotels', {
+        state: { toast: 'Thêm khách sạn thành công! Chờ admin duyệt.' },
+      });
     } else {
       const res = await dispatch(updateHotel({ id: hotel.ma_khach_san, data: formData }));
       if (res.error) {
         alert(res.payload || 'Không thể cập nhật khách sạn');
         return;
       }
-      setLocalSuccess('Cập nhật thành công!');
+      setLocalSuccess('Sửa khách sạn thành công!');
+      dispatch(clearMsg());
       setFormVersion((v) => v + 1);
     }
   };
@@ -87,7 +97,7 @@ export default function HotelFormPage() {
 
       <div className="content-card">
         {localSuccess && (
-          <div className="partner-form-success-banner">{localSuccess}</div>
+          <div className="mgmt-toast success">{localSuccess}</div>
         )}
         <HotelFormContent
           key={isEdit ? `${hotel?.ma_khach_san}-${formVersion}` : 'new'}

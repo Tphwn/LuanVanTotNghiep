@@ -1,6 +1,8 @@
 import { Eye, Pencil, Lock, Unlock } from 'lucide-react';
 import { resolveUploadUrl } from '../../../../utils/media';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
+import FilterTabs from '../../../../components/common/management/FilterTabs';
+import ListPagination from '../../../../components/common/management/ListPagination';
 import { TRANG_THAI } from '../constants';
 import { getMainImage } from '../utils';
 
@@ -11,15 +13,25 @@ export default function RoomListSection({
   onRoomTypeFilterChange,
   statusFilter,
   onStatusFilterChange,
+  filterTabs,
   filteredRooms,
   onViewRoom,
   onEditRoom,
   onToggleRoom,
   hasActiveFilter,
   onClearFilters,
+  variant = 'partner',
+  pagination,
 }) {
+  const isAdmin = variant === 'admin';
+  const showStatusTabs = filterTabs?.length > 0;
+
   return (
     <>
+      {showStatusTabs && (
+        <FilterTabs tabs={filterTabs} active={statusFilter} onChange={onStatusFilterChange} />
+      )}
+
       <div className="partner-room-filters partner-room-filters--room">
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="room-type-filter">Loại phòng</label>
@@ -37,19 +49,21 @@ export default function RoomListSection({
             ))}
           </select>
         </div>
-        <div className="partner-room-filter-field">
-          <label className="partner-room-filter-label" htmlFor="room-status-filter">Trạng thái</label>
-          <select
-            id="room-status-filter"
-            className="search-input partner-room-filter-input"
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value)}
-          >
-            <option value="all">Tất cả</option>
-            <option value="hoat_dong">Đang hoạt động</option>
-            <option value="an">Đã ẩn</option>
-          </select>
-        </div>
+        {!showStatusTabs && (
+          <div className="partner-room-filter-field">
+            <label className="partner-room-filter-label" htmlFor="room-status-filter">Trạng thái</label>
+            <select
+              id="room-status-filter"
+              className="search-input partner-room-filter-input"
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value)}
+            >
+              <option value="all">Tất cả</option>
+              <option value="hoat_dong">Đang hoạt động</option>
+              <option value="an">Đã ẩn</option>
+            </select>
+          </div>
+        )}
         {hasActiveFilter && (
           <div className="partner-room-filter-field partner-room-filter-field--action">
             <button type="button" className="btn btn-ghost btn-sm" onClick={onClearFilters}>
@@ -96,7 +110,12 @@ export default function RoomListSection({
                   const mainImg = getMainImage(room);
                   const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai };
                   const isActive = room.trang_thai === 'hoat_dong';
-                  const adminLocked = !isActive && !room.khoa_do_doi_tac;
+                  const partnerLocked = Boolean(room.khoa_do_doi_tac);
+                  const adminLocked = !isAdmin && !isActive && !room.khoa_do_doi_tac;
+                  const toggleDisabled = isAdmin ? partnerLocked : adminLocked;
+                  const toggleTitle = isAdmin
+                    ? (partnerLocked ? 'Bị khóa do đối tác' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'))
+                    : (adminLocked ? 'Admin đã khóa' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'));
                   const moBan = room.so_luong_mo_ban ?? room.phong_con_lai ?? 0;
                   const tongPhong = room.so_luong_phong ?? 0;
 
@@ -129,19 +148,21 @@ export default function RoomListSection({
                           title="Xem chi tiết"
                           onClick={() => onViewRoom(room)}
                         />
-                        <ActionButton
-                          variant="edit"
-                          iconOnly
-                          icon={Pencil}
-                          title="Sửa"
-                          onClick={() => onEditRoom(room)}
-                        />
+                        {!isAdmin && onEditRoom && (
+                          <ActionButton
+                            variant="edit"
+                            iconOnly
+                            icon={Pencil}
+                            title="Sửa"
+                            onClick={() => onEditRoom(room)}
+                          />
+                        )}
                         <ActionButton
                           variant={isActive ? 'lock' : 'unlock'}
                           iconOnly
                           icon={isActive ? Lock : Unlock}
-                          title={adminLocked ? 'Admin đã khóa' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng')}
-                          disabled={adminLocked}
+                          title={toggleTitle}
+                          disabled={toggleDisabled}
                           onClick={() => onToggleRoom(room)}
                         />
                       </ActionCell>
@@ -151,6 +172,18 @@ export default function RoomListSection({
               </tbody>
             </table>
           </div>
+        )}
+
+        {pagination?.showPagination && (
+          <ListPagination
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            rangeFrom={pagination.rangeFrom}
+            rangeTo={pagination.rangeTo}
+            pageNumbers={pagination.pageNumbers}
+            onPageChange={pagination.onPageChange}
+          />
         )}
       </div>
     </>

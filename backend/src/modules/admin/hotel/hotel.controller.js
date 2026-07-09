@@ -48,7 +48,8 @@ const requestInfoHotel = async (req, res, next) => {
 
 const lockHotel = async (req, res, next) => {
   try {
-    const hotel = await hotelService.lockHotel(req.params.id);
+    const { ly_do_khoa: lyDoKhoa } = req.body;
+    const hotel = await hotelService.lockHotel(req.params.id, lyDoKhoa);
     res.json({ success: true, data: hotel, message: 'Khách sạn đã bị khóa' });
   } catch (error) {
     next(error);

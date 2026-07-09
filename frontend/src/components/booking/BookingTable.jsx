@@ -1,4 +1,4 @@
-import { Eye } from 'lucide-react';
+import { Eye, X } from 'lucide-react';
 import ActionButton, { ActionCell } from '../common/ActionButton';
 import {
   PARTNER_TRANG_THAI,
@@ -7,7 +7,9 @@ import {
   formatDate,
 } from '../../utils/bookingDisplay';
 
-export default function BookingTable({ bookings, onViewDetail }) {
+const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'];
+
+export default function BookingTable({ bookings, onViewDetail, onCancelBooking }) {
   return (
     <tbody>
       {bookings.map((b) => {
@@ -47,6 +49,15 @@ export default function BookingTable({ bookings, onViewDetail }) {
                 title="Chi tiết"
                 onClick={() => onViewDetail(b.ma_dat_phong)}
               />
+              {onCancelBooking && !CANCEL_BLOCKED_STATUS.includes(b.trang_thai) && (
+                <ActionButton
+                  variant="reject"
+                  iconOnly
+                  icon={X}
+                  title="Hủy đơn"
+                  onClick={() => onCancelBooking(b)}
+                />
+              )}
             </ActionCell>
           </tr>
         );

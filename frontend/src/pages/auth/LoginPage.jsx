@@ -17,6 +17,13 @@ const LoginPage = () => {
 
   const [formData, setFormData] = useState({ email: '', mat_khau: ''});
 
+  const isAccountLocked = Boolean(
+    error && (
+      error.includes('bị khóa')
+      || error.toLowerCase().includes('account locked')
+    ),
+  );
+
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) dispatch(clearError());
@@ -62,15 +69,18 @@ const LoginPage = () => {
 
         {error && (
           <div style={{
-            background:'#fff2f0',
-            border: '1px solid #ffccc7',
-            color: 'var(--color-danger)',
-            padding: '10px 14px',
+            background: isAccountLocked ? '#fff7e6' : '#fff2f0',
+            border: `1px solid ${isAccountLocked ? '#ffd591' : '#ffccc7'}`,
+            color: isAccountLocked ? '#ad6800' : 'var(--color-danger)',
+            padding: '12px 14px',
             borderRadius: 'var(--radius-md)',
             marginBottom: 'var(--spacing-md)',
             fontSize: 'var(--font-size-md)',
           }}>
-             {error}
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              {isAccountLocked ? 'Không thể đăng nhập' : 'Đăng nhập thất bại'}
+            </div>
+            <div>{error}</div>
           </div>
         )}
         <form onSubmit={handleSubmit}>

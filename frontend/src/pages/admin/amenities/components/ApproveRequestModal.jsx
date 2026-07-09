@@ -59,24 +59,6 @@ export const ApproveRequestModal = ({
           </div>
         )}
 
-        <div style={{
-          marginBottom: 20,
-          padding: '12px 14px',
-          background: '#fff8e6',
-          borderRadius: 8,
-          border: '1px solid #fac775',
-          fontSize: 13,
-          color: '#7a5a00',
-          lineHeight: 1.5,
-        }}
-        >
-          Xác nhận duyệt sẽ thông báo cho đối tác. Bạn cần tự thêm tiện nghi vào tab
-          {' '}
-          <strong>{targetTab}</strong>
-          {' '}
-          (có thể tách nhiều tiện nghi nếu đối tác gửi cùng lúc).
-        </div>
-
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>Hủy</button>
           <button type="button" className="btn btn-primary" onClick={onSubmit}>Xác nhận duyệt</button>

@@ -6,7 +6,7 @@ const MSG = {
   INVALID_CREDENTIALS:  'Email hoặc mật khẩu không đúng',
   EMAIL_EXISTS:         'Email đã được sử dụng',
   PHONE_EXISTS:         'Số điện thoại đã được sử dụng',
-  ACCOUNT_LOCKED:       'Tài khoản đã bị khóa',
+  ACCOUNT_LOCKED:       'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ bộ phận hỗ trợ để được hỗ trợ.',
   UNAUTHORIZED:         'Vui lòng đăng nhập',
   FORBIDDEN:            'Bạn không có quyền thực hiện',
   TOKEN_INVALID:        'Token không hợp lệ hoặc đã hết hạn',

@@ -14,6 +14,7 @@ import ManagementHeader from "../../../components/common/management/ManagementHe
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
 import StarRating from "../../../components/common/management/StarRating";
 import HotelThumb from "../../../components/common/management/HotelThumb";
+import HotelLockConfirmModal from "./components/HotelLockConfirmModal";
 
 const PAGE_SIZE = 10;
 
@@ -46,6 +47,8 @@ const HotelsPage = () => {
   const [locationFilter, setLocationFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -163,24 +166,41 @@ const HotelsPage = () => {
     }
   };
 
-  const handleToggleActive = async (hotel) => {
+  const handleToggleActive = (hotel) => {
     if (hotel.trang_thai === "hoat_dong") {
-      if (!window.confirm(`Khóa khách sạn "${hotel.ten}"?`)) return;
-      setToggleLoadingId(hotel.ma_khach_san);
-      const result = await dispatch(lockHotel(hotel.ma_khach_san));
-      setToggleLoadingId(null);
-      if (lockHotel.rejected.match(result)) {
-        alert(result.payload || "Khóa khách sạn thất bại");
-      }
-    } else if (hotel.trang_thai === "bi_khoa") {
-      if (!window.confirm(`Mở khóa khách sạn "${hotel.ten}"?`)) return;
-      setToggleLoadingId(hotel.ma_khach_san);
-      const result = await dispatch(unlockHotel(hotel.ma_khach_san));
-      setToggleLoadingId(null);
-      if (unlockHotel.rejected.match(result)) {
-        alert(result.payload || "Mở khóa khách sạn thất bại");
-      }
+      setConfirmAction({ hotel, action: "lock" });
+      return;
     }
+    if (hotel.trang_thai === "bi_khoa") {
+      setConfirmAction({ hotel, action: "unlock" });
+    }
+  };
+
+  const handleCloseConfirm = () => {
+    if (toggleLoadingId) return;
+    setConfirmAction(null);
+  };
+
+  const handleConfirmToggle = async (lyDoKhoa) => {
+    if (!confirmAction) return;
+
+    const { hotel, action } = confirmAction;
+    const isLock = action === "lock";
+
+    setToggleLoadingId(hotel.ma_khach_san);
+    setActionError("");
+    const thunk = isLock
+      ? lockHotel({ id: hotel.ma_khach_san, lyDoKhoa })
+      : unlockHotel(hotel.ma_khach_san);
+    const result = await dispatch(thunk);
+    setToggleLoadingId(null);
+
+    if (lockHotel.fulfilled.match(result) || unlockHotel.fulfilled.match(result)) {
+      setConfirmAction(null);
+      return;
+    }
+
+    setActionError(result.payload || (isLock ? "Khóa khách sạn thất bại" : "Mở khóa khách sạn thất bại"));
   };
 
   const canToggle = (status) => status === "hoat_dong" || status === "bi_khoa";
@@ -205,8 +225,20 @@ const HotelsPage = () => {
   };
 
   return (
-    <div className="mgmt-page mgmt-list-page">
+    <div className="mgmt-page mgmt-list-page admin-hotels-page">
       <ManagementHeader title="Quản Lý Khách Sạn" />
+
+      {actionError && (
+        <div className="mgmt-toast error">{actionError}</div>
+      )}
+
+      <HotelLockConfirmModal
+        hotel={confirmAction?.hotel}
+        action={confirmAction?.action}
+        loading={Boolean(confirmAction && toggleLoadingId === confirmAction.hotel?.ma_khach_san)}
+        onClose={handleCloseConfirm}
+        onConfirm={handleConfirmToggle}
+      />
 
       <ManagementToolbar
         searchValue={keyword}
@@ -215,9 +247,7 @@ const HotelsPage = () => {
         tabs={filterTabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      />
-
-      <div className="mgmt-toolbar">
+      >
         <select
           className="mgmt-select-inline"
           value={partnerFilter}
@@ -255,12 +285,14 @@ const HotelsPage = () => {
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
-      </div>
+        <span className="mgmt-toolbar-clear-slot">
+          {hasActiveFilter && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+              Xóa bộ lọc
+            </button>
+          )}
+        </span>
+      </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (

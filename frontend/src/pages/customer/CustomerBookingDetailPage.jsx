@@ -153,6 +153,8 @@ export default function CustomerBookingDetailPage() {
           </div>
         </section>
 
+      
+
         <section className="booking-detail-block booking-detail-block--payment">
           <h2 className="booking-detail-block-title">Chi tiết thanh toán</h2>
           <div className="booking-detail-split">
@@ -179,6 +181,41 @@ export default function CustomerBookingDetailPage() {
               />
             </div>
           </div>
+          {(booking.trang_thai === 'da_huy' || booking.trang_thai === 'tu_choi') && (
+          <section className="booking-detail-block booking-detail-block--cancel">
+            <h2 className="booking-detail-block-title">
+              {booking.huy_boi_admin ? 'Đơn bị admin hủy' : 'Thông tin hủy đơn'}
+            </h2>
+            {booking.ly_do_huy && (
+              <InfoField
+                label={booking.huy_boi_admin ? 'Lý do admin hủy' : 'Lý do hủy'}
+                value={booking.ly_do_huy}
+              />
+            )}
+            {booking.tom_tat_hoan_tien && (
+              <div className="booking-detail-cancel-note">
+                <span className="booking-detail-cancel-note-label">Hoàn tiền</span>
+                <p>{booking.tom_tat_hoan_tien}</p>
+              </div>
+            )}
+            {booking.hoan_tien?.so_tien_hoan > 0 && (
+              <InfoField
+                label="Số tiền hoàn"
+                value={
+                  booking.huy_boi_admin
+                    ? `100% — ${formatCurrency(booking.hoan_tien.so_tien_hoan)}`
+                    : formatCurrency(booking.hoan_tien.so_tien_hoan)
+                }
+              />
+            )}
+            {booking.hoan_tien?.trang_thai_label && (
+              <InfoField
+                label="Trạng thái hoàn tiền"
+                value={booking.hoan_tien.trang_thai_label}
+              />
+            )}
+          </section>
+        )}
           <div className="booking-detail-total-row">
             <span className="booking-detail-total-label">Tổng thanh toán</span>
             <strong className="booking-detail-total-amount">

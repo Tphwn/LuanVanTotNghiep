@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import BackButton from '../../../components/common/BackButton';
+import useListPagination from '../../../hooks/useListPagination';
 import HotelListSection from './components/HotelListSection';
 import RoomListSection from './components/RoomListSection';
 import RoomDetailModal from './components/RoomDetailModal';
+import PartnerRoomToggleConfirmModal from './components/PartnerRoomToggleConfirmModal';
+
+const PAGE_SIZE = 10;
 
 const isHotelActive = (hotel) => hotel.trang_thai === 'hoat_dong';
 
@@ -26,6 +30,8 @@ const RoomTypePage = () => {
   const [locationFilter, setLocationFilter] = useState('');
   const [hotelStatusFilter, setHotelStatusFilter] = useState('all');
   const [detailRoom, setDetailRoom] = useState(null);
+  const [toggleTarget, setToggleTarget] = useState(null);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -107,15 +113,23 @@ const RoomTypePage = () => {
     if (hotels.length) await loadHotelStats(hotels);
   };
 
-  const handleToggle = async (room) => {
-    const action = room.trang_thai === 'hoat_dong' ? 'ẩn' : 'mở';
-    if (!window.confirm(`Xác nhận ${action} loại phòng "${room.ten_loai}"?`)) return;
+  const handleToggle = (room) => {
+    setToggleTarget(room);
+  };
+
+  const handleToggleConfirm = async () => {
+    if (!toggleTarget) return;
+    const action = toggleTarget.trang_thai === 'hoat_dong' ? 'ẩn' : 'mở';
+    setToggleLoading(true);
     try {
-      await api.patch(`/partner/rooms/${room.ma_loai_phong}/toggle-status`);
-      showToast(`Đã ${action} loại phòng!`);
+      await api.patch(`/partner/rooms/${toggleTarget.ma_loai_phong}/toggle-status`);
+      showToast(`Đã ${action} loại phòng thành công!`);
+      setToggleTarget(null);
       triggerReloadRooms();
     } catch (err) {
       showToast(err.response?.data?.message || 'Lỗi thao tác', 'error');
+    } finally {
+      setToggleLoading(false);
     }
   };
 
@@ -154,6 +168,24 @@ const RoomTypePage = () => {
     const matchStatus = statusFilter === 'all' || room.trang_thai === statusFilter;
     return matchType && matchStatus;
   }), [rooms, roomTypeFilter, statusFilter]);
+
+  const roomFilterTabs = useMemo(() => [
+    { id: 'all', label: 'Tất cả', count: rooms.length },
+    { id: 'hoat_dong', label: 'Đang mở', count: rooms.filter((r) => r.trang_thai === 'hoat_dong').length },
+    { id: 'an', label: 'Đã ẩn', count: rooms.filter((r) => r.trang_thai === 'an').length },
+  ], [rooms]);
+
+  const hotelPagination = useListPagination(filteredHotels, PAGE_SIZE, [
+    hotelNameFilter,
+    locationFilter,
+    hotelStatusFilter,
+  ]);
+
+  const roomPagination = useListPagination(filteredRooms, PAGE_SIZE, [
+    selectedHotel,
+    roomTypeFilter,
+    statusFilter,
+  ]);
 
   const hasHotelListFilter = Boolean(
     hotelNameFilter
@@ -216,10 +248,20 @@ const RoomTypePage = () => {
               statusFilter={hotelStatusFilter}
               onStatusFilterChange={setHotelStatusFilter}
               filterTabs={hotelFilterTabs}
-              filteredHotels={filteredHotels}
+              filteredHotels={hotelPagination.pagedItems}
               onViewHotel={selectHotel}
               hasActiveFilter={hasHotelListFilter}
               onClearFilters={clearHotelListFilters}
+              pagination={{
+                showPagination: hotelPagination.showPagination,
+                total: filteredHotels.length,
+                currentPage: hotelPagination.currentPage,
+                totalPages: hotelPagination.totalPages,
+                rangeFrom: hotelPagination.rangeFrom,
+                rangeTo: hotelPagination.rangeTo,
+                pageNumbers: hotelPagination.pageNumbers,
+                onPageChange: hotelPagination.setPage,
+              }}
             />
           )}
         </>
@@ -258,12 +300,30 @@ const RoomTypePage = () => {
             onRoomTypeFilterChange={setRoomTypeFilter}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            filteredRooms={filteredRooms}
+            filterTabs={roomFilterTabs}
+            filteredRooms={roomPagination.pagedItems}
             onViewRoom={setDetailRoom}
             onEditRoom={(room) => navigate(`/partner/hotels/${selectedHotel}/rooms/${room.ma_loai_phong}/edit`)}
             onToggleRoom={handleToggle}
             hasActiveFilter={hasRoomListFilter}
             onClearFilters={clearRoomListFilters}
+            pagination={{
+              showPagination: roomPagination.showPagination,
+              total: filteredRooms.length,
+              currentPage: roomPagination.currentPage,
+              totalPages: roomPagination.totalPages,
+              rangeFrom: roomPagination.rangeFrom,
+              rangeTo: roomPagination.rangeTo,
+              pageNumbers: roomPagination.pageNumbers,
+              onPageChange: roomPagination.setPage,
+            }}
+          />
+
+          <PartnerRoomToggleConfirmModal
+            room={toggleTarget}
+            loading={toggleLoading}
+            onClose={() => !toggleLoading && setToggleTarget(null)}
+            onConfirm={handleToggleConfirm}
           />
 
           {detailRoom && (

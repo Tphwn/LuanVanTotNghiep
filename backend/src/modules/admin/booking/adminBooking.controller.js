@@ -23,7 +23,10 @@ exports.getById = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     const { ly_do } = req.body;
-    const data = await bookingService.cancelByAdmin(req.params.id, req.user?.id, ly_do);
+    if (!ly_do || !String(ly_do).trim()) {
+      return res.status(400).json({ success: false, message: 'Phải kèm lý do mới được hủy' });
+    }
+    const data = await bookingService.cancelByAdmin(req.params.id, req.user?.id, ly_do.trim());
     res.json({ success: true, data: mapPartnerBooking(data), message: 'Đã hủy đơn đặt phòng' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

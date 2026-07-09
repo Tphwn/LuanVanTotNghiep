@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   fetchAdminBookings,
   fetchBookingStats,
   fetchHotelsForFilter,
   fetchPartnersForFilter,
+  cancelAdminBooking,
   clearMsg,
 } from '../../../store/slices/adminBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import BookingTable from '../../../components/booking/BookingTable';
+import BookingDetailModal from '../../../components/booking/BookingDetailModal';
+import AdminBookingCancelModal from './components/AdminBookingCancelModal';
 
 const PAGE_SIZE = 10;
 
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { id: routeBookingId } = useParams();
   const { list, stats, hotels, partners, loading, error, successMsg } = useSelector(
     (s) => s.adminBooking || {},
   );
@@ -30,6 +34,8 @@ const AdminBookingsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
   const [page, setPage] = useState(1);
+  const [cancelBooking, setCancelBooking] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchBookingStats());
@@ -102,8 +108,57 @@ const AdminBookingsPage = () => {
   const rangeFrom = list.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, list.length);
 
+  const listFilters = useMemo(() => ({
+    keyword: debouncedKeyword,
+    trang_thai: statusFilter,
+    ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
+    ks_id: hotelFilter !== 'all' ? hotelFilter : '',
+    tu_ngay: tuNgay,
+    den_ngay: denNgay,
+  }), [debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+
   const handleViewDetail = (id) => {
     navigate(`/admin/bookings/${id}`);
+  };
+
+  const handleCloseDetail = () => {
+    navigate('/admin/bookings');
+  };
+
+  const handleDetailUpdated = () => {
+    dispatch(fetchBookingStats());
+    dispatch(fetchAdminBookings(listFilters));
+  };
+
+  const handleCancelRequest = (booking) => {
+    setCancelBooking(booking);
+  };
+
+  const handleCloseCancelModal = () => {
+    if (cancelLoading) return;
+    setCancelBooking(null);
+  };
+
+  const handleConfirmCancel = async (lyDo) => {
+    if (!cancelBooking) return;
+
+    setCancelLoading(true);
+    const result = await dispatch(cancelAdminBooking({
+      id: cancelBooking.ma_dat_phong,
+      ly_do: lyDo,
+    }));
+    setCancelLoading(false);
+
+    if (cancelAdminBooking.fulfilled.match(result)) {
+      setCancelBooking(null);
+      dispatch(fetchBookingStats());
+      dispatch(fetchAdminBookings(listFilters));
+      return;
+    }
+
+    if (cancelAdminBooking.rejected.match(result)) {
+      alert(result.payload || 'Hủy đơn đặt phòng thất bại');
+    }
   };
 
   const filterTabs = useMemo(() => [
@@ -133,7 +188,7 @@ const AdminBookingsPage = () => {
   };
 
   return (
-    <div className="mgmt-page mgmt-list-page">
+    <div className="mgmt-page mgmt-list-page admin-bookings-page">
       <ManagementHeader
         title="Quản Lý Đặt Phòng"
       />
@@ -144,6 +199,13 @@ const AdminBookingsPage = () => {
         </div>
       )}
 
+      <AdminBookingCancelModal
+        booking={cancelBooking}
+        loading={cancelLoading}
+        onClose={handleCloseCancelModal}
+        onConfirm={handleConfirmCancel}
+      />
+
       <ManagementToolbar
         searchValue={keyword}
         onSearchChange={(e) => setKeyword(e.target.value)}
@@ -151,8 +213,7 @@ const AdminBookingsPage = () => {
         tabs={filterTabs}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
-      />
-      <div className="mgmt-toolbar">
+      >
         <select
           className="mgmt-select-inline"
           value={partnerFilter}
@@ -175,10 +236,13 @@ const AdminBookingsPage = () => {
             <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
           ))}
         </select>
+      </ManagementToolbar>
+
+      <div className="mgmt-toolbar-row admin-bookings-date-row">
         <span className="mgmt-toolbar-label">Ngày check-in</span>
         <input
           type="date"
-          className="mgmt-select-inline"
+          className="mgmt-select-inline admin-bookings-date-filter"
           value={tuNgay}
           onChange={(e) => setTuNgay(e.target.value)}
           aria-label="Ngày nhận"
@@ -186,17 +250,19 @@ const AdminBookingsPage = () => {
         <span className="mgmt-toolbar-label">Ngày check-out</span>
         <input
           type="date"
-          className="mgmt-select-inline"
+          className="mgmt-select-inline admin-bookings-date-filter"
           value={denNgay}
           min={tuNgay}
           onChange={(e) => setDenNgay(e.target.value)}
           aria-label="Ngày trả"
         />
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
+        <span className="mgmt-toolbar-clear-slot">
+          {hasActiveFilter && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+              Xóa bộ lọc
+            </button>
+          )}
+        </span>
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -221,12 +287,13 @@ const AdminBookingsPage = () => {
                     <th style={{ width: 120 }}>Tổng tiền</th>
                     <th style={{ width: 100 }}>Thanh toán</th>
                     <th style={{ width: 120 }}>Trạng thái</th>
-                    <th style={{ width: 72 }}>Thao tác</th>
+                    <th style={{ width: 96 }}>Thao tác</th>
                   </tr>
                 </thead>
                 <BookingTable
                   bookings={pagedBookings}
                   onViewDetail={handleViewDetail}
+                  onCancelBooking={handleCancelRequest}
                 />
               </table>
             </div>
@@ -271,6 +338,15 @@ const AdminBookingsPage = () => {
           </>
         )}
       </div>
+
+      <BookingDetailModal
+        isOpen={Boolean(routeBookingId)}
+        bookingId={routeBookingId}
+        role="admin"
+        onClose={handleCloseDetail}
+        onUpdated={handleDetailUpdated}
+        listFilters={listFilters}
+      />
     </div>
   );
 };

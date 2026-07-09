@@ -38,6 +38,9 @@ const extractCancelReason = (ghiChu) => {
   return ghiChu.trim();
 };
 
+const isAdminCancelledBooking = (booking) =>
+  Boolean(booking?.ghi_chu?.trim().startsWith('[Admin hủy]'));
+
 const wasBookingPaid = (booking) =>
   booking?.phuong_thuc_tt === 'truc_tuyen'
   || booking?.thanh_toan?.trang_thai === 'thanh_cong';
@@ -61,10 +64,11 @@ const buildRefundStatusMessage = (refundStatus) => {
 const buildPartnerRefundInfo = (booking) => {
   if (!['da_huy', 'tu_choi'].includes(booking?.trang_thai)) return null;
 
+  const adminCancelled = isAdminCancelledBooking(booking);
   const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
   const cancelDate = booking.hoan_tien?.ngay_yeu_cau || new Date();
   const paid = wasBookingPaid(booking);
-  const calc = paid
+  const calc = paid && !adminCancelled
     ? calcRefundFromPolicy(
       policies,
       booking.ngay_nhan_phong,
@@ -74,15 +78,22 @@ const buildPartnerRefundInfo = (booking) => {
     : { phan_tram_hoan: 0, so_tien_hoan: 0, so_ngay_truoc_ap_dung: null, so_ngay_con_lai: 0 };
 
   const hoanTien = booking.hoan_tien;
-  const soTienHoan = hoanTien ? Number(hoanTien.so_tien_hoan) : calc.so_tien_hoan;
-  const phanTram = calc.phan_tram_hoan;
+  const soTienHoan = hoanTien
+    ? Number(hoanTien.so_tien_hoan)
+    : (adminCancelled && paid
+      ? Number(booking.thanh_toan_cuoi)
+      : calc.so_tien_hoan);
+  const phanTram = adminCancelled && paid ? 100 : calc.phan_tram_hoan;
   const trangThaiHoan = hoanTien?.trang_thai || (paid ? 'cho_xu_ly' : null);
 
   const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
   const trangThaiMsg = buildRefundStatusMessage(trangThaiHoan);
 
   let tomTat = null;
-  if (paid && soTienHoan > 0) {
+  if (adminCancelled && paid && soTienHoan > 0) {
+    tomTat = `Admin hủy đơn — khách được hoàn 100% số tiền đã thanh toán (tương đương ${soTienHoan.toLocaleString('vi-VN')}đ).`;
+    if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
+  } else if (paid && soTienHoan > 0) {
     tomTat = `Theo chính sách, khách được hoàn lại ${phanTram}% số tiền (tương đương ${soTienHoan.toLocaleString('vi-VN')}đ).`;
     if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
   } else if (paid) {
@@ -98,12 +109,14 @@ const buildPartnerRefundInfo = (booking) => {
     so_tien_hoan: soTienHoan,
     trang_thai_hoan: trangThaiHoan,
     da_thanh_toan_online: paid,
+    huy_boi_admin: adminCancelled,
     tom_tat_chinh_sach: tomTat,
     trang_thai_hoan_label: getRefundStatusLabel(trangThaiHoan),
   };
 };
 
-const processRefundOnCancel = async (tx, bookingId, lyDo) => {
+const processRefundOnCancel = async (tx, bookingId, lyDo, options = {}) => {
+  const { fullRefund = false } = options;
   const booking = await tx.dat_phong.findUnique({
     where: { ma_dat_phong: Number(bookingId) },
     include: {
@@ -129,12 +142,15 @@ const processRefundOnCancel = async (tx, bookingId, lyDo) => {
 
   const cancelDate = new Date();
   const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
-  const { so_tien_hoan: soTienHoan } = calcRefundFromPolicy(
-    policies,
-    booking.ngay_nhan_phong,
-    cancelDate,
-    booking.thanh_toan_cuoi,
-  );
+  const total = Number(booking.thanh_toan_cuoi) || 0;
+  const soTienHoan = fullRefund
+    ? total
+    : calcRefundFromPolicy(
+      policies,
+      booking.ngay_nhan_phong,
+      cancelDate,
+      booking.thanh_toan_cuoi,
+    ).so_tien_hoan;
 
   await tx.hoan_tien.create({
     data: {
@@ -152,6 +168,7 @@ module.exports = {
   daysBeforeCheckIn,
   calcRefundFromPolicy,
   extractCancelReason,
+  isAdminCancelledBooking,
   wasBookingPaid,
   getRefundStatusLabel,
   buildPartnerRefundInfo,

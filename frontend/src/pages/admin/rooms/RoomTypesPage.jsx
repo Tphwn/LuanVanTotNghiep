@@ -1,139 +1,263 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, Lock, Unlock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import adminHotelService from '../../../services/adminHotelService';
-import { resolveUploadUrl } from '../../../utils/media';
-import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
-import FilterTabs from '../../../components/common/management/FilterTabs';
-import ListPagination from '../../../components/common/management/ListPagination';
+import BackButton from '../../../components/common/BackButton';
 import useListPagination from '../../../hooks/useListPagination';
+import HotelListSection from '../../partner/rooms/components/HotelListSection';
+import RoomListSection from '../../partner/rooms/components/RoomListSection';
 import RoomDetailModal from '../../partner/rooms/components/RoomDetailModal';
+import AdminRoomTypeLockConfirmModal from './components/AdminRoomTypeLockConfirmModal';
 
 const PAGE_SIZE = 10;
+
 const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet', 'bi_khoa'];
 
-const ROOM_STATUS = {
-  hoat_dong: { label: 'Đang hoạt động', cls: 'partner-room-status--active' },
-  an: { label: 'Đã ẩn', cls: 'partner-room-status--inactive' },
-};
-
-const getMainImage = (room) => {
-  const imgs = room?.hinh_anh || [];
-  return imgs.find((i) => i.la_anh_chinh === 1 || i.la_anh_chinh === true) || imgs[0];
-};
+const isHotelActive = (hotel) => hotel.trang_thai === 'hoat_dong';
 
 const RoomTypesPage = () => {
+  const { hotelId: urlHotelId } = useParams();
+  const navigate = useNavigate();
+
   const [hotels, setHotels] = useState([]);
   const [partners, setPartners] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [hotelStats, setHotelStats] = useState({});
+  const [loadingHotels, setLoadingHotels] = useState(true);
+  const [selectedHotel, setSelectedHotel] = useState(urlHotelId || '');
   const [rooms, setRooms] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loadingMeta, setLoadingMeta] = useState(true);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [toast, setToast] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [detailRoom, setDetailRoom] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [lockTarget, setLockTarget] = useState(null);
+  const [lockLoading, setLockLoading] = useState(false);
 
   const [partnerFilter, setPartnerFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [hotelFilter, setHotelFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [detailRoom, setDetailRoom] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [hotelNameFilter, setHotelNameFilter] = useState('');
+  const [hotelStatusFilter, setHotelStatusFilter] = useState('all');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('');
+  const [roomStatusFilter, setRoomStatusFilter] = useState('all');
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
+  const selectHotel = (id) => {
+    const val = String(id);
+    setSelectedHotel(val);
+    setRoomTypeFilter('');
+    setRoomStatusFilter('all');
+    navigate(id ? `/admin/room-types/hotels/${id}` : '/admin/room-types');
+  };
+
+  const loadHotelStats = async (hotelList) => {
+    const entries = await Promise.all(
+      hotelList.map(async (hotel) => {
+        try {
+          const res = await api.get('/admin/room-types', {
+            params: { ma_khach_san: hotel.ma_khach_san, trang_thai: 'all' },
+          });
+          const list = res.data.data || [];
+          return [hotel.ma_khach_san, {
+            total: list.length,
+            active: list.filter((room) => room.trang_thai === 'hoat_dong').length,
+          }];
+        } catch {
+          return [hotel.ma_khach_san, { total: 0, active: 0 }];
+        }
+      }),
+    );
+    setHotelStats(Object.fromEntries(entries));
+  };
+
   useEffect(() => {
     const loadMeta = async () => {
-      setLoadingMeta(true);
+      setLoadingHotels(true);
       try {
         const [hotelsRes, metaRes] = await Promise.all([
           adminHotelService.getHotels(),
           api.get('/admin/room-types', { params: { trang_thai: 'all' } }),
         ]);
         const hotelList = (hotelsRes.data.data || hotelsRes.data || [])
-          .filter((h) => APPROVED_HOTEL_STATUSES.includes(h.trang_thai));
+          .filter((hotel) => APPROVED_HOTEL_STATUSES.includes(hotel.trang_thai));
         setHotels(hotelList);
         setPartners(metaRes.data.partners || []);
         setLocations(metaRes.data.locations || []);
+        await loadHotelStats(hotelList);
+
+        if (urlHotelId) {
+          setSelectedHotel(urlHotelId);
+        }
       } catch {
-        showToast('Không tải được dữ liệu bộ lọc', 'error');
+        showToast('Không tải được danh sách khách sạn', 'error');
       } finally {
-        setLoadingMeta(false);
+        setLoadingHotels(false);
       }
     };
     loadMeta();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadRooms = useCallback(async () => {
-    setLoadingRooms(true);
-    try {
-      const params = { trang_thai: statusFilter };
-      if (partnerFilter) params.ma_doi_tac = partnerFilter;
-      if (locationFilter) params.ma_dia_diem = locationFilter;
-      if (hotelFilter) params.ma_khach_san = hotelFilter;
-
-      const res = await api.get('/admin/room-types', { params });
-      setRooms(res.data.data || []);
-      setStats(res.data.stats || null);
-    } catch {
-      setRooms([]);
-      setStats(null);
-      showToast('Không tải được danh sách loại phòng', 'error');
-    } finally {
-      setLoadingRooms(false);
-    }
-  }, [partnerFilter, locationFilter, hotelFilter, statusFilter]);
+  useEffect(() => {
+    setSelectedHotel(urlHotelId || '');
+  }, [urlHotelId]);
 
   useEffect(() => {
-    loadRooms();
-  }, [loadRooms]);
+    if (!selectedHotel) {
+      setRooms([]);
+      return undefined;
+    }
 
-  const hotelOptions = useMemo(() => hotels.filter((hotel) => {
-    const matchPartner = !partnerFilter || String(hotel.doi_tac?.ma_doi_tac) === partnerFilter;
-    const matchLocation = !locationFilter || String(hotel.ma_dia_diem) === locationFilter;
-    return matchPartner && matchLocation;
+    let isMounted = true;
+    const fetchRooms = async () => {
+      setLoadingRooms(true);
+      try {
+        const res = await api.get('/admin/room-types', {
+          params: { ma_khach_san: selectedHotel, trang_thai: 'all' },
+        });
+        if (isMounted) setRooms(res.data.data || []);
+      } catch {
+        if (isMounted) setRooms([]);
+      } finally {
+        if (isMounted) setLoadingRooms(false);
+      }
+    };
+    fetchRooms();
+    return () => { isMounted = false; };
+  }, [selectedHotel, refreshKey]);
+
+  const triggerReloadRooms = async () => {
+    setRefreshKey((prev) => prev + 1);
+    if (hotels.length) await loadHotelStats(hotels);
+  };
+
+  const locationOptions = useMemo(() => {
+    if (locations.length) {
+      return locations.map((loc) => ({ id: loc.ma_dia_diem, name: loc.ten_dia_diem }));
+    }
+    const map = new Map();
+    hotels.forEach((hotel) => {
+      const id = hotel.dia_diem?.ma_dia_diem ?? hotel.ma_dia_diem;
+      const name = hotel.dia_diem?.ten_dia_diem;
+      if (id && name) map.set(id, name);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [hotels, locations]);
+
+  const hotelNameOptions = useMemo(() => hotels.filter((hotel) => {
+    const partnerId = hotel.doi_tac?.ma_doi_tac ?? hotel.ma_doi_tac;
+    const locationId = hotel.dia_diem?.ma_dia_diem ?? hotel.ma_dia_diem;
+    const matchPartner = !partnerFilter || String(partnerId) === partnerFilter;
+    const matchLoc = !locationFilter || String(locationId) === locationFilter;
+    return matchPartner && matchLoc;
   }), [hotels, partnerFilter, locationFilter]);
 
   useEffect(() => {
-    if (!hotelFilter) return;
-    const stillValid = hotelOptions.some((h) => String(h.ma_khach_san) === hotelFilter);
-    if (!stillValid) setHotelFilter('');
-  }, [hotelFilter, hotelOptions]);
+    if (!hotelNameFilter) return;
+    const stillValid = hotelNameOptions.some((h) => String(h.ma_khach_san) === hotelNameFilter);
+    if (!stillValid) setHotelNameFilter('');
+  }, [hotelNameFilter, hotelNameOptions]);
 
-  const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: stats?.total ?? rooms.length },
-    { id: 'hoat_dong', label: 'Đang mở', count: stats?.active ?? 0 },
-    { id: 'an', label: 'Đã ẩn', count: stats?.hidden ?? 0 },
-  ], [stats, rooms.length]);
+  const filteredHotels = useMemo(() => hotels.filter((hotel) => {
+    const partnerId = hotel.doi_tac?.ma_doi_tac ?? hotel.ma_doi_tac;
+    const locationId = hotel.dia_diem?.ma_dia_diem ?? hotel.ma_dia_diem;
+    const matchPartner = !partnerFilter || String(partnerId) === partnerFilter;
+    const matchName = !hotelNameFilter || String(hotel.ma_khach_san) === hotelNameFilter;
+    const matchLoc = !locationFilter || String(locationId) === locationFilter;
+    const matchStatus = hotelStatusFilter === 'all'
+      || (hotelStatusFilter === 'hoat_dong' && isHotelActive(hotel))
+      || (hotelStatusFilter === 'inactive' && !isHotelActive(hotel));
+    return matchPartner && matchName && matchLoc && matchStatus;
+  }), [hotels, partnerFilter, hotelNameFilter, locationFilter, hotelStatusFilter]);
 
-  const {
-    pagedItems: pagedRooms,
-    currentPage,
-    totalPages,
-    setPage,
-    pageNumbers,
-    rangeFrom,
-    rangeTo,
-    showPagination,
-  } = useListPagination(rooms, PAGE_SIZE, [partnerFilter, locationFilter, hotelFilter, statusFilter]);
+  const hotelFilterTabs = useMemo(() => {
+    const activeCount = hotels.filter(isHotelActive).length;
+    return [
+      { id: 'all', label: 'Tất cả', count: hotels.length },
+      { id: 'hoat_dong', label: 'Hoạt động', count: activeCount },
+      { id: 'inactive', label: 'Ngưng HĐ', count: hotels.length - activeCount },
+    ];
+  }, [hotels]);
 
-  const handleToggleStatus = async (room) => {
+  const filteredRooms = useMemo(() => rooms.filter((room) => {
+    const matchType = !roomTypeFilter || String(room.ma_loai_phong) === roomTypeFilter;
+    const matchStatus = roomStatusFilter === 'all' || room.trang_thai === roomStatusFilter;
+    return matchType && matchStatus;
+  }), [rooms, roomTypeFilter, roomStatusFilter]);
+
+  const roomFilterTabs = useMemo(() => [
+    { id: 'all', label: 'Tất cả', count: rooms.length },
+    { id: 'hoat_dong', label: 'Đang mở', count: rooms.filter((r) => r.trang_thai === 'hoat_dong').length },
+    { id: 'an', label: 'Đã ẩn', count: rooms.filter((r) => r.trang_thai === 'an').length },
+  ], [rooms]);
+
+  const hotelPagination = useListPagination(filteredHotels, PAGE_SIZE, [
+    partnerFilter,
+    hotelNameFilter,
+    locationFilter,
+    hotelStatusFilter,
+  ]);
+
+  const roomPagination = useListPagination(filteredRooms, PAGE_SIZE, [
+    selectedHotel,
+    roomTypeFilter,
+    roomStatusFilter,
+  ]);
+
+  const currentHotel = hotels.find((hotel) => String(hotel.ma_khach_san) === String(selectedHotel));
+
+  const hasHotelListFilter = Boolean(
+    partnerFilter
+    || hotelNameFilter
+    || locationFilter
+    || hotelStatusFilter !== 'all',
+  );
+
+  const hasRoomListFilter = Boolean(
+    roomTypeFilter
+    || roomStatusFilter !== 'all',
+  );
+
+  const clearHotelListFilters = () => {
+    setPartnerFilter('');
+    setHotelNameFilter('');
+    setLocationFilter('');
+    setHotelStatusFilter('all');
+  };
+
+  const clearRoomListFilters = () => {
+    setRoomTypeFilter('');
+    setRoomStatusFilter('all');
+  };
+
+  const handleToggleRoom = (room) => {
+    if (room.khoa_do_doi_tac) return;
     const isHidden = room.trang_thai === 'an';
-    const msg = isHidden
-      ? `Mở lại loại phòng "${room.ten_loai}"?`
-      : `Ẩn loại phòng "${room.ten_loai}" khỏi hệ thống?`;
-    if (!window.confirm(msg)) return;
+    setLockTarget({ room, action: isHidden ? 'show' : 'hide' });
+  };
 
+  const handleLockConfirm = async (lyDo) => {
+    if (!lockTarget) return;
+    setLockLoading(true);
     try {
-      const endpoint = isHidden ? 'show' : 'hide';
-      await api.patch(`/admin/room-types/${room.ma_loai_phong}/${endpoint}`);
-      showToast(isHidden ? 'Đã mở loại phòng' : 'Đã ẩn loại phòng');
-      loadRooms();
+      const { room, action } = lockTarget;
+      if (action === 'hide') {
+        await api.patch(`/admin/room-types/${room.ma_loai_phong}/hide`, { ly_do: lyDo });
+        showToast('Đã ẩn loại phòng.');
+      } else {
+        await api.patch(`/admin/room-types/${room.ma_loai_phong}/show`);
+        showToast('Đã mở loại phòng.');
+      }
+      setLockTarget(null);
+      triggerReloadRooms();
     } catch (err) {
       showToast(err.response?.data?.message || 'Thao tác thất bại', 'error');
+    } finally {
+      setLockLoading(false);
     }
   };
 
@@ -149,202 +273,132 @@ const RoomTypesPage = () => {
     }
   };
 
-  const hasActiveFilter = Boolean(
-    partnerFilter
-    || locationFilter
-    || hotelFilter
-    || statusFilter !== 'all',
-  );
-
-  const clearFilters = () => {
-    setPartnerFilter('');
-    setLocationFilter('');
-    setHotelFilter('');
-    setStatusFilter('all');
-  };
-
-  if (loadingMeta) {
+  if (loadingHotels) {
     return <div style={{ textAlign: 'center', padding: 60, color: '#5a7a72' }}>Đang tải dữ liệu...</div>;
   }
 
   return (
-    <div className="mgmt-page partner-room-mgmt mgmt-list-page">
-      <h1 className="partner-room-page-title">Quản lý loại phòng</h1>
-      <p className="partner-room-page-subtitle">
-        Danh sách loại phòng của tất cả đối tác — dùng bộ lọc để thu hẹp kết quả
-      </p>
-
+    <div className="mgmt-page partner-room-mgmt">
       {toast && (
         <div className={`mgmt-toast ${toast.type}`} style={{ marginBottom: 16 }}>
           {toast.msg}
         </div>
       )}
 
-      <FilterTabs tabs={filterTabs} active={statusFilter} onChange={setStatusFilter} />
+      {!selectedHotel ? (
+        <>
+          <h1 className="partner-room-page-title">Quản lý loại phòng</h1>
+          <p className="partner-room-page-subtitle">
+            Chọn khách sạn để xem danh sách loại phòng
+          </p>
 
-      <div className="partner-room-filters partner-room-filters--admin">
-        <div className="partner-room-filter-field">
-          <label className="partner-room-filter-label" htmlFor="admin-rt-partner">Đối tác</label>
-          <select
-            id="admin-rt-partner"
-            className="search-input partner-room-filter-input"
-            value={partnerFilter}
-            onChange={(e) => setPartnerFilter(e.target.value)}
-          >
-            <option value="">Tất cả đối tác</option>
-            {partners.map((p) => (
-              <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
-            ))}
-          </select>
-        </div>
-        <div className="partner-room-filter-field">
-          <label className="partner-room-filter-label" htmlFor="admin-rt-location">Địa điểm</label>
-          <select
-            id="admin-rt-location"
-            className="search-input partner-room-filter-input"
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-          >
-            <option value="">Tất cả địa điểm</option>
-            {locations.map((loc) => (
-              <option key={loc.ma_dia_diem} value={String(loc.ma_dia_diem)}>{loc.ten_dia_diem}</option>
-            ))}
-          </select>
-        </div>
-        <div className="partner-room-filter-field">
-          <label className="partner-room-filter-label" htmlFor="admin-rt-hotel">Khách sạn</label>
-          <select
-            id="admin-rt-hotel"
-            className="search-input partner-room-filter-input"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
-          >
-            <option value="">Tất cả khách sạn</option>
-            {hotelOptions.map((hotel) => (
-              <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>{hotel.ten}</option>
-            ))}
-          </select>
-        </div>
-        {hasActiveFilter && (
-          <div className="partner-room-filter-field partner-room-filter-field--action">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="mgmt-table-card partner-room-table-card">
-        <div className="mgmt-table-card-header partner-room-table-header">
-          <h3 className="mgmt-table-card-title">
-            Danh sách loại phòng ({rooms.length})
-          </h3>
-        </div>
-
-        {loadingRooms ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
-        ) : rooms.length === 0 ? (
-          <div className="empty-state">
-            <p className="empty-state-text">Không có loại phòng phù hợp bộ lọc</p>
-          </div>
-        ) : (
-          <>
-            <div className="mgmt-table-scroll">
-              <table className="data-table data-table-grid admin-mgmt-table">
-                <thead>
-                  <tr>
-                    <th>Ảnh đại diện</th>
-                    <th>Tên loại phòng</th>
-                    <th>Khách sạn</th>
-                    <th>Diện tích</th>
-                    <th>Sức chứa</th>
-                    <th>Số giường</th>
-                    <th>Số phòng</th>
-                    <th>Trạng thái</th>
-                    <th className="table-action-cell table-action-cell--compact">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedRooms.map((room) => {
-                    const mainImg = getMainImage(room);
-                    const st = ROOM_STATUS[room.trang_thai] || { label: room.trang_thai, cls: 'partner-room-status--inactive' };
-                    const isActive = room.trang_thai === 'hoat_dong';
-                    const partnerLocked = Boolean(room.khoa_do_doi_tac);
-                    const moBan = room.so_luong_mo_ban ?? 0;
-                    const tongPhong = room.so_luong_phong ?? 0;
-
-                    return (
-                      <tr key={room.ma_loai_phong}>
-                        <td>
-                          <div className="partner-room-thumb">
-                            {mainImg ? (
-                              <img src={resolveUploadUrl(mainImg.url)} alt="" />
-                            ) : (
-                              <span className="partner-room-thumb-empty">—</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="partner-room-type-name admin-cell-name">{room.ten_loai?.toUpperCase()}</td>
-                        <td>
-                          <div className="admin-cell-name">{room.khach_san?.ten}</div>
-                          <div className="mgmt-cell-sub">{room.khach_san?.doi_tac?.ten_cong_ty}</div>
-                        </td>
-                        <td>{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
-                        <td>{room.suc_chua} người lớn</td>
-                        <td>{room.so_giuong}</td>
-                        <td>{moBan}/{tongPhong}</td>
-                        <td>
-                          <span className={`partner-room-status ${st.cls}`}>{st.label}</span>
-                        </td>
-                        <ActionCell>
-                          <ActionButton
-                            variant="view"
-                            iconOnly
-                            icon={Eye}
-                            title="Xem chi tiết"
-                            onClick={() => handleViewRoom(room)}
-                          />
-                          <ActionButton
-                            variant={isActive ? 'lock' : 'unlock'}
-                            iconOnly
-                            icon={isActive ? Lock : Unlock}
-                            title={partnerLocked ? 'Bị khóa do đối tác' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng')}
-                            disabled={partnerLocked}
-                            onClick={() => handleToggleStatus(room)}
-                          />
-                        </ActionCell>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {hotels.length === 0 ? (
+            <div className="content-card">
+              <div className="empty-state">
+                <p className="empty-state-text">Chưa có khách sạn nào được duyệt</p>
+              </div>
             </div>
+          ) : (
+            <HotelListSection
+              hotels={hotels}
+              hotelNameOptions={hotelNameOptions}
+              hotelStats={hotelStats}
+              partnerFilter={partnerFilter}
+              onPartnerFilterChange={setPartnerFilter}
+              partnerOptions={partners}
+              hotelNameFilter={hotelNameFilter}
+              onHotelNameFilterChange={setHotelNameFilter}
+              locationFilter={locationFilter}
+              onLocationFilterChange={setLocationFilter}
+              locationOptions={locationOptions}
+              statusFilter={hotelStatusFilter}
+              onStatusFilterChange={setHotelStatusFilter}
+              filterTabs={hotelFilterTabs}
+              filteredHotels={hotelPagination.pagedItems}
+              onViewHotel={selectHotel}
+              hasActiveFilter={hasHotelListFilter}
+              onClearFilters={clearHotelListFilters}
+              pagination={{
+                showPagination: hotelPagination.showPagination,
+                total: filteredHotels.length,
+                currentPage: hotelPagination.currentPage,
+                totalPages: hotelPagination.totalPages,
+                rangeFrom: hotelPagination.rangeFrom,
+                rangeTo: hotelPagination.rangeTo,
+                pageNumbers: hotelPagination.pageNumbers,
+                onPageChange: hotelPagination.setPage,
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <BackButton
+            onClick={() => selectHotel('')}
+            className="page-back-btn--standalone"
+          />
 
-            {showPagination && (
-              <ListPagination
-                total={rooms.length}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                rangeFrom={rangeFrom}
-                rangeTo={rangeTo}
-                pageNumbers={pageNumbers}
-                onPageChange={setPage}
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      {detailLoading && (
-        <div className="modal-overlay" role="presentation">
-          <div className="modal-box" style={{ padding: 32, textAlign: 'center' }}>
-            Đang tải chi tiết...
+          <div className="partner-room-mgmt-head">
+            <h1 className="partner-room-page-title">Quản Lý Loại Phòng</h1>
           </div>
-        </div>
-      )}
 
-      {detailRoom && !detailLoading && (
-        <RoomDetailModal room={detailRoom} onClose={() => setDetailRoom(null)} />
+          {currentHotel && (
+            <div className="partner-room-hotel-info">
+              <p><strong>Khách sạn:</strong> {currentHotel.ten}</p>
+              <p><strong>Đối tác:</strong> {currentHotel.doi_tac?.ten_cong_ty || '—'}</p>
+              <p>
+                <strong>Địa điểm:</strong>{' '}
+                {[currentHotel.dia_chi, currentHotel.dia_diem?.ten_dia_diem].filter(Boolean).join(', ') || '—'}
+              </p>
+            </div>
+          )}
+
+          <RoomListSection
+            variant="admin"
+            rooms={rooms}
+            loading={loadingRooms}
+            roomTypeFilter={roomTypeFilter}
+            onRoomTypeFilterChange={setRoomTypeFilter}
+            statusFilter={roomStatusFilter}
+            onStatusFilterChange={setRoomStatusFilter}
+            filterTabs={roomFilterTabs}
+            filteredRooms={roomPagination.pagedItems}
+            onViewRoom={handleViewRoom}
+            onToggleRoom={handleToggleRoom}
+            hasActiveFilter={hasRoomListFilter}
+            onClearFilters={clearRoomListFilters}
+            pagination={{
+              showPagination: roomPagination.showPagination,
+              total: filteredRooms.length,
+              currentPage: roomPagination.currentPage,
+              totalPages: roomPagination.totalPages,
+              rangeFrom: roomPagination.rangeFrom,
+              rangeTo: roomPagination.rangeTo,
+              pageNumbers: roomPagination.pageNumbers,
+              onPageChange: roomPagination.setPage,
+            }}
+          />
+
+          <AdminRoomTypeLockConfirmModal
+            room={lockTarget?.room}
+            action={lockTarget?.action}
+            loading={lockLoading}
+            onClose={() => !lockLoading && setLockTarget(null)}
+            onConfirm={handleLockConfirm}
+          />
+
+          {detailLoading && (
+            <div className="modal-overlay" role="presentation">
+              <div className="modal-box" style={{ padding: 32, textAlign: 'center' }}>
+                Đang tải chi tiết...
+              </div>
+            </div>
+          )}
+
+          {detailRoom && !detailLoading && (
+            <RoomDetailModal room={detailRoom} onClose={() => setDetailRoom(null)} />
+          )}
+        </>
       )}
     </div>
   );

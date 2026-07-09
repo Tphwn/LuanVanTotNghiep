@@ -3,7 +3,6 @@ const { isLockedByAdminRoom } = require('../../utils/partnerLockHelpers');
 
 const roomService = {
 
-  // Lấy ds loại phòng của 1 KS (thuộc đối tác)
   getByHotel: async (maKhachSan, doiTacId) => {
     // Kiểm tra KS thuộc đối tác
     const ks = await prisma.khach_san.findFirst({

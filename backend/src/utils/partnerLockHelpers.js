@@ -26,6 +26,89 @@ const getRoomLockState = async (tx, roomId) => {
   });
 };
 
+const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
+  const id = Number(hotelId);
+  const hotel = await getHotelLockState(tx, id);
+
+  if (!hotel) {
+    throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
+  }
+
+  if (isLockedByPartner(hotel)) {
+    throw {
+      statusCode: 400,
+      message: 'Khách sạn đang bị đối tác khóa. Bạn không thể khóa theo cách admin.',
+    };
+  }
+
+  await tx.$executeRaw`
+    UPDATE loai_phong
+    SET
+      trang_thai = 'an',
+      so_luong_mo_ban_truoc_khoa = so_luong_mo_ban,
+      so_luong_mo_ban = 0
+    WHERE ma_khach_san = ${id}
+      AND trang_thai = 'hoat_dong'
+      AND khoa_do_doi_tac = false
+  `;
+
+  return tx.khach_san.update({
+    where: { ma_khach_san: id },
+    data: {
+      trang_thai: 'bi_khoa',
+      ly_do_khoa: lyDoKhoa,
+      khoa_do_doi_tac: false,
+    },
+    select: {
+      ma_khach_san: true,
+      ten: true,
+      ma_doi_tac: true,
+    },
+  });
+};
+
+const unlockAdminHotelResources = async (tx, hotelId) => {
+  const id = Number(hotelId);
+  const hotel = await getHotelLockState(tx, id);
+
+  if (!hotel) {
+    throw { statusCode: 404, message: 'Không tìm thấy khách sạn' };
+  }
+
+  if (isLockedByPartner(hotel)) {
+    throw {
+      statusCode: 400,
+      message: 'Khách sạn đang bị đối tác khóa.',
+    };
+  }
+
+  await tx.$executeRaw`
+    UPDATE loai_phong
+    SET
+      trang_thai = 'hoat_dong',
+      so_luong_mo_ban = COALESCE(so_luong_mo_ban_truoc_khoa, so_luong_phong),
+      so_luong_mo_ban_truoc_khoa = NULL
+    WHERE ma_khach_san = ${id}
+      AND trang_thai = 'an'
+      AND khoa_do_doi_tac = false
+      AND so_luong_mo_ban_truoc_khoa IS NOT NULL
+  `;
+
+  return tx.khach_san.update({
+    where: { ma_khach_san: id },
+    data: {
+      trang_thai: 'hoat_dong',
+      ly_do_khoa: null,
+      khoa_do_doi_tac: false,
+    },
+    select: {
+      ma_khach_san: true,
+      ten: true,
+      ma_doi_tac: true,
+    },
+  });
+};
+
 const lockPartnerResources = async (tx, maDoiTac) => {
   const partnerId = Number(maDoiTac);
 
@@ -112,6 +195,8 @@ const ACTIVE_HOTEL_STATUSES = ['hoat_dong', 'da_duyet'];
 module.exports = {
   lockPartnerResources,
   unlockPartnerResources,
+  lockAdminHotelResources,
+  unlockAdminHotelResources,
   syncAllLockedPartners,
   isLockedByPartner,
   isLockedByAdminHotel,

@@ -4,6 +4,15 @@ import api from '../../services/api';
 
 const formatTime = (d) => new Date(d).toLocaleString('vi-VN');
 
+const LOAI_LABEL = {
+  tien_nghi: 'Tiện nghi',
+  he_thong: 'Hệ thống',
+  dat_phong: 'Đặt phòng',
+  thanh_toan: 'Thanh toán',
+  danh_gia: 'Đánh giá',
+  khuyen_mai: 'Khuyến mãi',
+};
+
 const PartnerNotificationBell = () => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
@@ -13,7 +22,7 @@ const PartnerNotificationBell = () => {
 
   const load = async () => {
     try {
-      const res = await api.get('/partner/notifications', { params: { loai: 'tien_nghi'} });
+      const res = await api.get('/partner/notifications');
       setItems(res.data.data?.items || []);
       setUnreadCount(res.data.data?.unreadCount || 0);
     } catch {
@@ -48,12 +57,14 @@ const PartnerNotificationBell = () => {
   const markAllRead = async () => {
     setLoading(true);
     try {
-      await api.patch('/partner/notifications/read-all', null, { params: { loai: 'tien_nghi'} });
+      await api.patch('/partner/notifications/read-all');
       await load();
     } finally {
       setLoading(false);
     }
   };
+
+  const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
     <div ref={ref} className="partner-notify-wrap">
@@ -61,27 +72,26 @@ const PartnerNotificationBell = () => {
         type="button"
         className="admin-notify-btn"
         onClick={handleOpen}
-        title="Thông báo tiện nghi"
-        aria-label="Thông báo"
+        title="Thông báo"
+        aria-label={`Thông báo${unreadCount > 0 ? `, ${unreadCount} chưa đọc` : ''}`}
       >
         <Bell size={20} strokeWidth={1.8} />
-        {unreadCount > 0 && <span className="admin-notify-dot" />}
+        {unreadCount > 0 && (
+          <span className="admin-notify-badge" aria-hidden>
+            {badgeLabel}
+          </span>
+        )}
       </button>
 
       {open && (
-        <div style={{
-          position:'absolute', right: 0, top: 'calc(100% + 8px)', width: 360,
-          background: '#fff', border: '1px solid #d4ede6', borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, overflow: 'hidden',
-        }}>
-          <div style={{
-            padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <strong style={{ fontSize: 14, color: '#1a2e28'}}>Thông báo tiện nghi</strong>
+        <div className="partner-notify-dropdown">
+          <div className="partner-notify-dropdown-header">
+            <strong>Thông báo</strong>
             {unreadCount > 0 && (
               <button
-                type="button"className="btn btn-ghost btn-sm"disabled={loading}
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={loading}
                 onClick={markAllRead}
               >
                 Đánh dấu đã đọc
@@ -89,28 +99,25 @@ const PartnerNotificationBell = () => {
             )}
           </div>
 
-          <div style={{ maxHeight: 360, overflowY:'auto'}}>
+          <div className="partner-notify-dropdown-body">
             {items.length === 0 ? (
-              <div style={{ padding: 24, textAlign:'center', color: '#5a7a72', fontSize: 13 }}>
-                Chưa có thông báo
-              </div>
+              <div className="partner-notify-empty">Chưa có thông báo</div>
             ) : items.map((n) => (
               <button
                 key={n.ma_thong_bao}
                 type="button"
                 onClick={() => !n.da_doc && markRead(n.ma_thong_bao)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '12px 16px', border: 'none', borderBottom: '1px solid #f5f5f5',
-                  background: n.da_doc ? '#fff':'#f8fdfb', cursor: 'pointer',
-                }}
+                className={`partner-notify-item${n.da_doc ? '' : ' is-unread'}`}
               >
-                <div style={{ fontWeight: 600, fontSize: 13, color: '#1a2e28', marginBottom: 4 }}>
-                  {!n.da_doc && <span style={{ color: '#3C7363', marginRight: 6 }}>●</span>}
+                <div className="partner-notify-item-title">
+                  {!n.da_doc && <span className="partner-notify-unread-dot">●</span>}
                   {n.tieu_de}
+                  {LOAI_LABEL[n.loai] && (
+                    <span className="partner-notify-type">{LOAI_LABEL[n.loai]}</span>
+                  )}
                 </div>
-                <div style={{ fontSize: 12, color: '#5a7a72', lineHeight: 1.5 }}>{n.noi_dung}</div>
-                <div style={{ fontSize: 11, color: '#aaa', marginTop: 6 }}>{formatTime(n.ngay_gui)}</div>
+                <div className="partner-notify-item-content">{n.noi_dung}</div>
+                <div className="partner-notify-item-time">{formatTime(n.ngay_gui)}</div>
               </button>
             ))}
           </div>

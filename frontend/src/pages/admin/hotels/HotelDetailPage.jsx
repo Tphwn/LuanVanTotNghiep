@@ -19,6 +19,7 @@ import { HOTEL_CATEGORY_GROUPS } from '../amenities/constants';
 import { groupAmenitiesByCategory } from '../amenities/utils';
 import { getAdminRoomTypeStatus } from '../../../constants/statuses';
 import { TRANG_THAI, formatCurrency, formatDate } from '../../../utils/bookingDisplay';
+import HotelLockConfirmModal from './components/HotelLockConfirmModal';
 
 const PAGE_SIZE = 10;
 
@@ -92,6 +93,8 @@ const HotelDetailPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const [activeTab, setActiveTab] = useState('overview');
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [actionError, setActionError] = useState('');
 
   const loadHotel = useCallback(async () => {
     if (!id) return;
@@ -166,21 +169,53 @@ const HotelDetailPage = () => {
     } else if (actionType === 'reject') {
       const reason = window.prompt('Nhập lý do từ chối:');
       if (reason?.trim()) actionPromise = dispatch(rejectHotel({ id, lyDo: reason.trim() }));
-    } else if (actionType === 'lock' && window.confirm('Khóa khách sạn này?')) {
-      actionPromise = dispatch(lockHotel(id));
-    } else if (actionType === 'unlock' && window.confirm('Mở khóa khách sạn này?')) {
-      actionPromise = dispatch(unlockHotel(id));
+    } else if (actionType === 'lock') {
+      setConfirmAction({ hotel, action: 'lock' });
+      return;
+    } else if (actionType === 'unlock') {
+      setConfirmAction({ hotel, action: 'unlock' });
+      return;
     }
 
     if (!actionPromise) return;
 
     setActionLoading(true);
+    setActionError('');
     try {
       const result = await actionPromise;
       if (result.meta?.requestStatus === 'rejected') {
-        alert(result.payload || 'Thao tác thất bại');
+        setActionError(result.payload || 'Thao tác thất bại');
         return;
       }
+      await loadHotel();
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCloseConfirm = () => {
+    if (actionLoading) return;
+    setConfirmAction(null);
+  };
+
+  const handleConfirmToggle = async (lyDoKhoa) => {
+    if (!confirmAction) return;
+
+    const { action } = confirmAction;
+    const isLock = action === 'lock';
+
+    setActionLoading(true);
+    setActionError('');
+    try {
+      const thunk = isLock
+        ? lockHotel({ id, lyDoKhoa })
+        : unlockHotel(id);
+      const result = await dispatch(thunk);
+      if (result.meta?.requestStatus === 'rejected') {
+        setActionError(result.payload || 'Thao tác thất bại');
+        return;
+      }
+      setConfirmAction(null);
       await loadHotel();
     } finally {
       setActionLoading(false);
@@ -228,6 +263,16 @@ const HotelDetailPage = () => {
       <div className="admin-user-detail-top">
         <BackButton to="/admin/hotels" />
       </div>
+
+      {actionError && <div className="mgmt-toast error">{actionError}</div>}
+
+      <HotelLockConfirmModal
+        hotel={confirmAction?.hotel}
+        action={confirmAction?.action}
+        loading={actionLoading}
+        onClose={handleCloseConfirm}
+        onConfirm={handleConfirmToggle}
+      />
 
       <div className="admin-user-detail-hero content-card">
         <div className="admin-user-detail-hero-main">
@@ -300,6 +345,10 @@ const HotelDetailPage = () => {
                 {
                   label: 'Lý do từ chối / yêu cầu sửa',
                   value: hotel.ly_do_tu_choi?.trim() || '—',
+                },
+                {
+                  label: 'Lý do khóa',
+                  value: hotel.ly_do_khoa?.trim() || '—',
                 },
                 { label: 'Ngày duyệt', value: formatDateTime(hotel.ngay_duyet) },
                 { label: 'Ngày cập nhật gần nhất', value: formatDateTime(hotel.ngay_tao) },
@@ -411,9 +460,7 @@ const HotelDetailPage = () => {
                           <tr
                             key={room.ma_loai_phong}
                             className="admin-hotel-detail-row-link"
-                            onClick={() => navigate(`/admin/room-types/${room.ma_loai_phong}`, {
-                              state: { backTo: `/admin/hotels/${hotel.ma_khach_san}` },
-                            })}
+                            onClick={() => navigate(`/admin/room-types/hotels/${hotel.ma_khach_san}`)}
                           >
                             <td className="admin-cell-name">{room.ten_loai}</td>
                             <td>{formatCurrency(room.gia_co_ban)}</td>

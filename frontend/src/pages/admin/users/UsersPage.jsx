@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, Lock, Unlock } from "lucide-react";
 import {
   fetchUsers,
@@ -12,6 +12,8 @@ import { fetchHotels } from "../../../store/slices/adminHotelSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
+import CreatePartnerModal from "./components/CreatePartnerModal";
+import UserLockConfirmModal from "./components/UserLockConfirmModal";
 
 const PAGE_SIZE = 10;
 
@@ -50,7 +52,11 @@ const ROLE_FILTER = {
 const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { users = [], loading, error, successMsg } = useSelector((state) => state.adminUsers);
+
+  const [flashMsg, setFlashMsg] = useState(location.state?.toast || "");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [keyword, setKeyword] = useState("");
   const [debouncedKeyword, setDebouncedKeyword] = useState("");
@@ -58,6 +64,7 @@ const UsersPage = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -67,6 +74,13 @@ const UsersPage = () => {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!flashMsg) return undefined;
+    navigate(location.pathname, { replace: true, state: {} });
+    const t = setTimeout(() => setFlashMsg(""), 4000);
+    return () => clearTimeout(t);
+  }, [flashMsg]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -131,20 +145,36 @@ const UsersPage = () => {
     return pages;
   }, [currentPage, totalPages]);
 
-  const handleToggleActive = async (user) => {
+  const handleToggleActive = (user) => {
     const isActive = user.trang_thai === "hoat_dong";
-    const msg = isActive
-      ? `Khóa tài khoản "${getDisplayName(user)}" (${user.email})?`
-      : `Mở khóa tài khoản "${getDisplayName(user)}"?`;
-    if (!window.confirm(msg)) return;
+    setConfirmAction({
+      user: {
+        ...user,
+        displayName: getDisplayName(user),
+      },
+      action: isActive ? "lock" : "unlock",
+    });
+  };
+
+  const handleCloseConfirm = () => {
+    if (toggleLoadingId) return;
+    setConfirmAction(null);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmAction) return;
+
+    const { user, action } = confirmAction;
+    const isLock = action === "lock";
 
     setToggleLoadingId(user.ma_nguoi_dung);
-    const thunk = isActive ? lockUser(user.ma_nguoi_dung) : unlockUser(user.ma_nguoi_dung);
+    const thunk = isLock ? lockUser(user.ma_nguoi_dung) : unlockUser(user.ma_nguoi_dung);
     const result = await dispatch(thunk);
     setToggleLoadingId(null);
 
-    if (user.vai_tro === "doi_tac") {
-      if (lockUser.fulfilled.match(result) || unlockUser.fulfilled.match(result)) {
+    if (lockUser.fulfilled.match(result) || unlockUser.fulfilled.match(result)) {
+      setConfirmAction(null);
+      if (user.vai_tro === "doi_tac") {
         dispatch(fetchHotels());
       }
     }
@@ -172,19 +202,37 @@ const UsersPage = () => {
   };
 
   return (
-    <div className="mgmt-page mgmt-list-page">
+    <div className="mgmt-page mgmt-list-page admin-users-page">
       <ManagementHeader
         title="Quản Lý Người Dùng"
         actionLabel="Tạo tài khoản đối tác"
         onAction={() => {
           dispatch(clearUserMsg());
-          navigate("/admin/users/create-partner");
+          setShowCreateModal(true);
         }}
       />
 
-      {(successMsg || error) && (
-        <div className={`mgmt-toast ${successMsg ? "success" : "error"}`}>
-          {successMsg || error}
+      <CreatePartnerModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={(msg) => {
+          setShowCreateModal(false);
+          setFlashMsg(msg);
+          dispatch(fetchUsers());
+        }}
+      />
+
+      <UserLockConfirmModal
+        user={confirmAction?.user}
+        action={confirmAction?.action}
+        loading={Boolean(confirmAction && toggleLoadingId === confirmAction.user?.ma_nguoi_dung)}
+        onClose={handleCloseConfirm}
+        onConfirm={handleConfirmToggle}
+      />
+
+      {(flashMsg || successMsg || error) && (
+        <div className={`mgmt-toast ${flashMsg || successMsg ? "success" : "error"}`}>
+          {flashMsg || successMsg || error}
         </div>
       )}
 
@@ -206,11 +254,13 @@ const UsersPage = () => {
           <option value="khach_hang">Khách hàng</option>
           <option value="doi_tac">Đối tác</option>
         </select>
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
+        <span className="mgmt-toolbar-clear-slot">
+          {hasActiveFilter && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+              Xóa bộ lọc
+            </button>
+          )}
+        </span>
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

@@ -63,6 +63,15 @@ export const formatBookingDate = (d) => {
 export const buildCancelNoticeContent = (refundInfo) => {
   if (!refundInfo) return null;
 
+  if (refundInfo.tom_tat_chinh_sach) {
+    return {
+      policyLine: refundInfo.tom_tat_chinh_sach,
+      statusLine: null,
+      summaryText: refundInfo.tom_tat_chinh_sach,
+      refundBadge: getRefundBadgeMeta(refundInfo.trang_thai_hoan),
+    };
+  }
+
   const {
     phan_tram_hoan: phanTram,
     so_tien_hoan: soTienHoan,
@@ -96,6 +105,21 @@ export const buildCancelNoticeContent = (refundInfo) => {
 
 export const isCancelledBooking = (booking) =>
   ['da_huy', 'tu_choi'].includes(booking?.trang_thai);
+
+export const extractCancelReasonFromNote = (ghiChu) => {
+  if (!ghiChu?.trim()) return null;
+  const adminMatch = ghiChu.match(/^\[Admin hủy\]\s*(.+)$/i);
+  if (adminMatch) return adminMatch[1].trim();
+  return ghiChu.trim();
+};
+
+export const getBookingCancelReason = (booking) => {
+  if (!isCancelledBooking(booking)) return null;
+  return booking.thong_tin_hoan_tien?.ly_do_huy
+    || booking.ly_do_huy
+    || booking.hoan_tien?.ly_do
+    || extractCancelReasonFromNote(booking.ghi_chu);
+};
 
 export const isOnlinePaid = (booking) => {
   if (!booking || isCancelledBooking(booking)) return false;

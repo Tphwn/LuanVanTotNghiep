@@ -6,6 +6,7 @@ const {
   DEFAULT_POLICIES,
   wasBookingPaid,
   getRefundStatusLabel,
+  extractCancelReason,
 } = require('../../utils/refundHelpers');
 const {
   parseDate,
@@ -77,6 +78,46 @@ const canCustomerReviewBooking = (booking) => {
   return { ok: true };
 };
 
+const mapCustomerCancelReason = (booking) => {
+  if (!['da_huy', 'tu_choi'].includes(booking?.trang_thai)) return null;
+  return booking.hoan_tien?.ly_do || extractCancelReason(booking.ghi_chu);
+};
+
+const mapCustomerStatusLabel = (booking) => {
+  if (booking.ghi_chu?.trim().startsWith('[Admin hủy]')) return 'Bị hủy bởi admin';
+  return BOOKING_STATUS[booking.trang_thai] || booking.trang_thai;
+};
+
+const mapCustomerRefundSummary = (booking) => {
+  if (!['da_huy', 'tu_choi'].includes(booking?.trang_thai)) return null;
+
+  const adminCancelled = Boolean(booking.ghi_chu?.trim().startsWith('[Admin hủy]'));
+  const paid = wasBookingPaid(booking);
+  const soTienHoan = booking.hoan_tien ? Number(booking.hoan_tien.so_tien_hoan) : 0;
+  const refundLabel = booking.hoan_tien
+    ? getRefundStatusLabel(booking.hoan_tien.trang_thai)
+    : null;
+
+  if (adminCancelled) {
+    if (paid && soTienHoan > 0) {
+      let text = `Bạn được hoàn 100% số tiền đã thanh toán (${soTienHoan.toLocaleString('vi-VN')}đ).`;
+    
+      return text;
+    }
+    return 'Bạn chưa thanh toán online nên không phát sinh hoàn tiền.';
+  }
+
+  if (paid && soTienHoan > 0) {
+    let text = `Theo chính sách hủy, bạn được hoàn ${soTienHoan.toLocaleString('vi-VN')}đ.`;
+    if (refundLabel) text += ` Trạng thái hoàn tiền: ${refundLabel}.`;
+    return text;
+  }
+  if (paid) {
+    return 'Theo chính sách hủy, đơn này không được hoàn tiền.';
+  }
+  return 'Bạn chưa thanh toán online nên không phát sinh hoàn tiền.';
+};
+
 const mapCustomerBooking = (b) => ({
   ma_dat_phong: b.ma_dat_phong,
   ma_don_hang: b.ma_don_hang,
@@ -85,7 +126,10 @@ const mapCustomerBooking = (b) => ({
   so_khach: b.so_khach,
   thanh_toan_cuoi: Number(b.thanh_toan_cuoi),
   trang_thai: b.trang_thai,
-  trang_thai_label: BOOKING_STATUS[b.trang_thai] || b.trang_thai,
+  trang_thai_label: mapCustomerStatusLabel(b),
+  ly_do_huy: mapCustomerCancelReason(b),
+  huy_boi_admin: Boolean(b.ghi_chu?.trim().startsWith('[Admin hủy]')),
+  tom_tat_hoan_tien: mapCustomerRefundSummary(b),
   co_the_danh_gia: canCustomerReviewBooking(b).ok,
   da_danh_gia: !!b.danh_gia,
   danh_gia: mapCustomerReview(b.danh_gia),
@@ -142,7 +186,10 @@ const mapCustomerBookingDetail = (booking) => {
     ma_dat_phong: booking.ma_dat_phong,
     ma_don: booking.ma_don_hang,
     trang_thai: booking.trang_thai,
-    trang_thai_label: BOOKING_STATUS[booking.trang_thai] || booking.trang_thai,
+    trang_thai_label: mapCustomerStatusLabel(booking),
+    ly_do_huy: mapCustomerCancelReason(booking),
+    huy_boi_admin: Boolean(booking.ghi_chu?.trim().startsWith('[Admin hủy]')),
+    tom_tat_hoan_tien: mapCustomerRefundSummary(booking),
     co_the_huy: CANCELLABLE_STATUS.includes(booking.trang_thai),
     co_the_danh_gia: canCustomerReviewBooking(booking).ok,
     da_danh_gia: !!booking.danh_gia,
@@ -184,6 +231,13 @@ const mapCustomerBookingDetail = (booking) => {
       phuong_thuc: mapPaymentMethod(booking.phuong_thuc_tt),
       ma_giao_dich: booking.thanh_toan?.ma_giao_dich || null,
     },
+    hoan_tien: booking.hoan_tien
+      ? {
+        so_tien_hoan: Number(booking.hoan_tien.so_tien_hoan),
+        trang_thai: booking.hoan_tien.trang_thai,
+        trang_thai_label: getRefundStatusLabel(booking.hoan_tien.trang_thai),
+      }
+      : null,
     // Tuỳ chọn: chi tiết từng đêm cho UI breakdown
     chi_tiet_dem: nights.map((n) => ({
       ngay: toDateStr(n.ngay),
@@ -251,6 +305,7 @@ const customerBookingService = {
             ma_hoan_tien: true,
             trang_thai: true,
             so_tien_hoan: true,
+            ly_do: true,
           },
         },
         danh_gia: {
@@ -343,8 +398,8 @@ const customerBookingService = {
       },
       tom_tat: paid
         ? (calc.so_tien_hoan > 0
-          ? `Theo chính sách hủy, bạn được hoàn ${calc.phan_tram_hoan}% (tương đương ${calc.so_tien_hoan.toLocaleString('vi-VN')}đ). Sau khi xác nhận, yêu cầu hoàn tiền sẽ ở trạng thái "Chờ xử lý".`
-          : 'Theo chính sách hủy, bạn không được hoàn tiền. Yêu cầu sẽ ở trạng thái "Chờ xử lý" để admin xác nhận.')
+          ? `Theo chính sách hủy, bạn được hoàn ${calc.phan_tram_hoan}% (tương đương ${calc.so_tien_hoan.toLocaleString('vi-VN')}đ).`
+          : 'Theo chính sách hủy, bạn không được hoàn tiền.')
         : 'Bạn thanh toán tại khách sạn nên không phát sinh hoàn tiền.',
     };
   },
@@ -396,6 +451,14 @@ const customerBookingService = {
         },
         chi_tiet_dat_phong: { orderBy: { ngay: 'asc' } },
         thanh_toan: true,
+        hoan_tien: {
+          select: {
+            ma_hoan_tien: true,
+            trang_thai: true,
+            so_tien_hoan: true,
+            ly_do: true,
+          },
+        },
         danh_gia: {
           select: {
             ma_danh_gia: true,

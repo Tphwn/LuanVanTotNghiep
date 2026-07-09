@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   fetchMyHotels, fetchDiaDiem, fetchAmenitiesForHotel,
@@ -12,17 +12,22 @@ import ManagementToolbar from '../../../components/common/management/ManagementT
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import StarRating from '../../../components/common/management/StarRating';
 import HotelThumb from '../../../components/common/management/HotelThumb';
+import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
 import { TRANG_THAI, TAB_FILTER } from './constants';
 
 const HotelsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const partnerHotelState = useSelector((state) => state.partnerHotel);
   const { list = [], diaDiem = [], loading, error, successMsg } = partnerHotelState || {};
 
+  const [flashMsg, setFlashMsg] = useState(location.state?.toast || '');
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [diaDiemFilter, setDiaDiemFilter] = useState('all');
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMyHotels());
@@ -31,25 +36,33 @@ const HotelsPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    if (!flashMsg) return undefined;
+    navigate(location.pathname, { replace: true, state: {} });
+    const timer = setTimeout(() => setFlashMsg(''), 4000);
+    return () => clearTimeout(timer);
+  }, [flashMsg, location.pathname, navigate]);
+
+  useEffect(() => {
     if (successMsg || error) {
       const timer = setTimeout(() => dispatch(clearMsg()), 4000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [successMsg, error, dispatch]);
 
   const stats = useMemo(() => ({
     total: list.length,
     daDuyet: list.filter((h) => ['hoat_dong', 'da_duyet'].includes(h.trang_thai)).length,
     choDuyet: list.filter((h) => h.trang_thai === 'cho_duyet').length,
-    dangBan: list.filter((h) => h.trang_thai === 'hoat_dong').length,
+    tuChoi: list.filter((h) => ['tu_choi', 'yeu_cau_sua'].includes(h.trang_thai)).length,
   }), [list]);
 
   const filterTabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: stats.total },
     { id: 'da_duyet', label: 'Đã duyệt', count: stats.daDuyet },
     { id: 'cho_duyet', label: 'Chờ duyệt', count: stats.choDuyet },
-    { id: 'tu_choi', label: 'Từ chối', count: list.filter((h) => ['tu_choi', 'yeu_cau_sua'].includes(h.trang_thai)).length },
-  ], [list, stats]);
+    { id: 'tu_choi', label: 'Từ chối', count: stats.tuChoi },
+  ], [stats]);
 
   const filteredList = useMemo(() => {
     const tabFilter = TAB_FILTER[activeTab] || TAB_FILTER.all;
@@ -67,13 +80,32 @@ const HotelsPage = () => {
 
   const handleToggleStatus = (hotel) => {
     const isActivating = hotel.trang_thai === 'bi_khoa';
-    const confirmMsg = isActivating
-      ? `Bạn muốn MỞ LẠI hoạt động cho khách sạn "${hotel.ten}"?`
-      : `Bạn có chắc chắn muốn TẠM NGƯNG khách sạn "${hotel.ten}"? Khách hàng sẽ không thể đặt phòng mới.`;
+    setConfirmAction({
+      hotel,
+      action: isActivating ? 'resume' : 'pause',
+    });
+  };
 
-    if (window.confirm(confirmMsg)) {
-      const newStatus = isActivating ? 'hoat_dong' : 'bi_khoa';
-      dispatch(updateHotel({ id: hotel.ma_khach_san, data: { trang_thai: newStatus } }));
+  const handleCloseConfirm = () => {
+    if (toggleLoadingId) return;
+    setConfirmAction(null);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmAction) return;
+
+    const { hotel, action } = confirmAction;
+    const newStatus = action === 'resume' ? 'hoat_dong' : 'bi_khoa';
+
+    setToggleLoadingId(hotel.ma_khach_san);
+    const result = await dispatch(updateHotel({
+      id: hotel.ma_khach_san,
+      data: { trang_thai: newStatus },
+    }));
+    setToggleLoadingId(null);
+
+    if (!updateHotel.rejected.match(result)) {
+      setConfirmAction(null);
     }
   };
 
@@ -99,8 +131,11 @@ const HotelsPage = () => {
     }
   };
 
+  const toastMessage = flashMsg || successMsg || error;
+  const toastType = flashMsg || successMsg ? 'success' : 'error';
+
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page mgmt-list-page partner-hotels-page">
       <ManagementHeader
         title="Quản Lý Hồ Sơ Khách sạn"
         subtitle="Danh sách cơ sở khách sạn của bạn"
@@ -108,8 +143,17 @@ const HotelsPage = () => {
         onAction={() => navigate('/partner/hotels/create')}
       />
 
-      {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
-      {error && <div className="mgmt-toast error">{error}</div>}
+      {toastMessage && (
+        <div className={`mgmt-toast ${toastType}`}>{toastMessage}</div>
+      )}
+
+      <PartnerHotelPauseConfirmModal
+        hotel={confirmAction?.hotel}
+        action={confirmAction?.action}
+        loading={Boolean(confirmAction && toggleLoadingId === confirmAction.hotel?.ma_khach_san)}
+        onClose={handleCloseConfirm}
+        onConfirm={handleConfirmToggle}
+      />
 
       <ManagementToolbar
         searchValue={keyword}
@@ -120,21 +164,23 @@ const HotelsPage = () => {
         onTabChange={setActiveTab}
       >
         <select
-          className="mgmt-select-inline"
+          className="mgmt-select-inline partner-hotels-location-filter"
           value={diaDiemFilter}
           onChange={(e) => setDiaDiemFilter(e.target.value)}
-          style={{ marginLeft: 8 }}
+          aria-label="Lọc theo địa điểm"
         >
           <option value="all">Tất cả địa điểm</option>
           {diaDiem.map((d) => (
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
         </select>
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
+        <span className="partner-hotels-clear-slot">
+          {hasActiveFilter && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
+              Xóa bộ lọc
+            </button>
+          )}
+        </span>
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -164,6 +210,7 @@ const HotelsPage = () => {
                   const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: '' };
                   const isActive = hotel.trang_thai === 'hoat_dong';
                   const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
+                  const isToggling = toggleLoadingId === hotel.ma_khach_san;
                   return (
                     <tr key={hotel.ma_khach_san} style={{ opacity: hotel.trang_thai === 'bi_khoa' ? 0.85 : 1 }}>
                       <td><HotelThumb hotel={hotel} /></td>
@@ -190,7 +237,7 @@ const HotelsPage = () => {
                           <ToggleSwitch
                             compact
                             checked={isActive}
-                            disabled={adminLocked}
+                            disabled={adminLocked || isToggling}
                             onChange={() => handleToggleStatus(hotel)}
                             labelOn="Đang hoạt động"
                             labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}

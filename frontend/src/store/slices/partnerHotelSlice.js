@@ -230,7 +230,7 @@ const partnerHotelSlice = createSlice({
       .addCase(createHotel.fulfilled, (state, action) => {
         state.loading = false;
         state.list.unshift(action.payload);
-        state.successMsg = 'Tạo khách sạn thành công! Chờ admin duyệt.';
+        state.successMsg = 'Thêm khách sạn thành công! Chờ admin duyệt.';
       })
       .addCase(createHotel.rejected, (state, action) => {
         state.loading = false;
@@ -241,7 +241,20 @@ const partnerHotelSlice = createSlice({
         state.loading = false;
         const i = state.list.findIndex((x) => x.ma_khach_san === action.payload.ma_khach_san);
         if (i !== -1) state.list[i] = action.payload;
-        state.successMsg = 'Cập nhật thành công!';
+        if (state.detail?.ma_khach_san === action.payload.ma_khach_san) {
+          state.detail = action.payload;
+        }
+
+        const updateData = action.meta?.arg?.data || {};
+        const isStatusOnly = updateData.trang_thai && Object.keys(updateData).length === 1;
+
+        if (isStatusOnly && updateData.trang_thai === 'bi_khoa') {
+          state.successMsg = 'Tạm ngưng khách sạn thành công!';
+        } else if (isStatusOnly && updateData.trang_thai === 'hoat_dong') {
+          state.successMsg = 'Mở lại hoạt động khách sạn thành công!';
+        } else {
+          state.successMsg = 'Cập nhật khách sạn thành công!';
+        }
       })
       .addCase(updateHotel.rejected, (state, action) => {
         state.loading = false;

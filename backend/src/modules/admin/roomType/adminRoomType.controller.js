@@ -30,7 +30,11 @@ exports.getRoomTypeById = async (req, res, next) => {
 
 exports.hideRoomType = async (req, res, next) => {
   try {
-    const data = await service.hideRoomType(req.params.id);
+    const lyDo = req.body?.ly_do?.trim();
+    if (!lyDo) {
+      return res.status(400).json({ success: false, message: 'Phải kèm lý do khóa' });
+    }
+    const data = await service.hideRoomType(req.params.id, lyDo);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy loại phòng' });
     }

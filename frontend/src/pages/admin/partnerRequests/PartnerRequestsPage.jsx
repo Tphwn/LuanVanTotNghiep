@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
@@ -7,7 +6,7 @@ import ListPagination from '../../../components/common/management/ListPagination
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import adminPartnerRequestService from '../../../services/adminPartnerRequestService';
 import useListPagination from '../../../hooks/useListPagination';
-import ROUTES from '../../../constants/routes';
+import PartnerRequestDetailModal from './components/PartnerRequestDetailModal';
 
 const PAGE_SIZE = 10;
 
@@ -23,14 +22,16 @@ const formatDateTime = (value) => (
 );
 
 const PartnerRequestsPage = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedId, setSelectedId] = useState(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedKeyword(keyword.trim()), 350);
@@ -41,7 +42,7 @@ const PartnerRequestsPage = () => {
     adminPartnerRequestService.getStats()
       .then((res) => setStats(res.data?.data || null))
       .catch(() => setStats(null));
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     const load = async () => {
@@ -63,7 +64,13 @@ const PartnerRequestsPage = () => {
     };
 
     load();
-  }, [statusFilter, debouncedKeyword]);
+  }, [statusFilter, debouncedKeyword, refreshTick]);
+
+  useEffect(() => {
+    if (!successMsg) return undefined;
+    const t = setTimeout(() => setSuccessMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [successMsg]);
 
   const filterTabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: stats?.total ?? items.length },
@@ -98,9 +105,22 @@ const PartnerRequestsPage = () => {
         subtitle="Quản lý đăng ký hợp tác từ đối tác khách sạn"
       />
 
-      {error && (
-        <div className="mgmt-toast error">{error}</div>
+      {(successMsg || error) && (
+        <div className={`mgmt-toast ${successMsg ? 'success' : 'error'}`}>
+          {successMsg || error}
+        </div>
       )}
+
+      <PartnerRequestDetailModal
+        isOpen={selectedId !== null}
+        requestId={selectedId}
+        onClose={() => setSelectedId(null)}
+        onUpdated={(msg) => {
+          setSelectedId(null);
+          setSuccessMsg(msg);
+          setRefreshTick((t) => t + 1);
+        }}
+      />
 
       <ManagementToolbar
         searchValue={keyword}
@@ -134,8 +154,10 @@ const PartnerRequestsPage = () => {
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 160 }}>Mã yêu cầu &amp; ngày gửi</th>
-                    <th>Tên &amp; số điện thoại</th>
+                    <th style={{ width: 160 }}>Mã yêu</th>
+                    <th>Ngày gửi</th>
+                    <th>Tên </th>
+                    <th>Số điện thoại</th>
                     <th>Tên khách sạn</th>
                     <th style={{ width: 130 }}>Trạng thái</th>
                     <th style={{ width: 72 }}>Thao tác</th>
@@ -154,12 +176,16 @@ const PartnerRequestsPage = () => {
                         <div style={{ fontWeight: 600, color: '#1a2e28' }}>
                           #{item.ma_yeu_cau}
                         </div>
-                        <div style={{ fontSize: 12, color: '#5a7a72', marginTop: 4 }}>
+                      </td>
+                      <td>
+                      <div style={{ fontSize: 12, color: '#5a7a72', marginTop: 4 }}>
                           {formatDateTime(item.ngay_yeu_cau)}
                         </div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 500 }}>{item.ho_ten}</div>
+                      </td>
+                      <td>
                         <div style={{ fontSize: 13, color: '#5a7a72', marginTop: 4 }}>
                           {item.so_dien_thoai}
                         </div>
@@ -174,7 +200,7 @@ const PartnerRequestsPage = () => {
                           icon={Eye}
                           iconOnly
                           title="Xem chi tiết"
-                          onClick={() => navigate(`${ROUTES.ADMIN.PARTNER_REQUESTS}/${item.ma_yeu_cau}`)}
+                          onClick={() => setSelectedId(item.ma_yeu_cau)}
                         />
                       </ActionCell>
                     </tr>

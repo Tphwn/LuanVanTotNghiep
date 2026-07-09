@@ -39,7 +39,6 @@ import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
-import PartnerBookingDetailPage from '../pages/partner/bookings/PartnerBookingDetailPage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
 import PartnerPromotionsPage from '../pages/partner/promotions/PromotionsPage';
 
@@ -48,7 +47,6 @@ import PartnerRequestDetailPage from '../pages/admin/partnerRequests/PartnerRequ
 import AdminDashboardPage from '../pages/admin/DashboardPage';
 import AdminHotelsPage from '../pages/admin/hotels/HotelsPage';
 import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
-import BookingDetailPage from '../pages/admin/bookings/BookingDetailPage';
 import AdminFinancePage from '../pages/admin/finance/AdminFinancePage';
 import TransactionDetailPage from '../pages/admin/finance/TransactionDetailPage';
 import RefundDetailPage from '../pages/admin/finance/RefundDetailPage';
@@ -56,7 +54,6 @@ import AdminReportsPage from '../pages/admin/reports/ReportsPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AmenityFormPage from '../pages/admin/amenities/AmenityFormPage';
 import AdminRoomTypesPage from '../pages/admin/rooms/RoomTypesPage';
-import AdminRoomDetailPage from '../pages/admin/rooms/RoomDetailPage';
 import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
@@ -143,7 +140,7 @@ const AppRoutes = () => {
           <Route path="hotels/:hotelId/rooms/create" element={<PartnerRoomFormPage />} />
           <Route path="hotels/:hotelId/rooms/:roomId/edit" element={<PartnerRoomFormPage />} />
           <Route path="bookings" element={<PartnerBookingsPage />} />
-          <Route path="bookings/:id" element={<PartnerBookingDetailPage />} />
+          <Route path="bookings/:id" element={<PartnerBookingsPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="images" element={<PartnerImagesPage />} />
@@ -168,13 +165,13 @@ const AppRoutes = () => {
           <Route path="hotels" element={<AdminHotelsPage />} />
           <Route path="hotels/:id" element={<HotelDetailPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
-          <Route path="bookings/:id" element={<BookingDetailPage />} />
+          <Route path="bookings/:id" element={<AdminBookingsPage />} />
           <Route path="payments" element={<Navigate to="/admin/finance" replace />} />
           <Route path="amenities" element={<AdminAmenitiesPage />} />
           <Route path="amenities/create" element={<AmenityFormPage />} />
           <Route path="amenities/:id/edit" element={<AmenityFormPage />} />
           <Route path="room-types" element={<AdminRoomTypesPage />} />
-          <Route path="room-types/:id" element={<AdminRoomDetailPage />} />
+          <Route path="room-types/hotels/:hotelId" element={<AdminRoomTypesPage />} />
           <Route path="reviews" element={<AdminReviewsPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
           <Route path="finance/transactions/:id" element={<TransactionDetailPage />} />

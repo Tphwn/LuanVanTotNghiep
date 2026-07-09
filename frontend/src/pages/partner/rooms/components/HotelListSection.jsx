@@ -2,6 +2,7 @@ import { Eye } from 'lucide-react';
 import { resolveUploadUrl } from '../../../../utils/media';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
 import FilterTabs from '../../../../components/common/management/FilterTabs';
+import ListPagination from '../../../../components/common/management/ListPagination';
 import { HOTEL_STATUS } from '../constants';
 import { getMainImage } from '../utils';
 
@@ -24,6 +25,10 @@ export default function HotelListSection({
   locationFilter,
   onLocationFilterChange,
   locationOptions,
+  partnerFilter,
+  onPartnerFilterChange,
+  partnerOptions,
+  hotelNameOptions = hotels,
   statusFilter,
   onStatusFilterChange,
   filterTabs,
@@ -31,10 +36,35 @@ export default function HotelListSection({
   onViewHotel,
   hasActiveFilter,
   onClearFilters,
+  pagination,
 }) {
+  const showPartnerFilter = Boolean(partnerOptions?.length);
+
   return (
     <>
-      <div className="partner-room-filters">
+      {filterTabs?.length > 0 && (
+        <FilterTabs tabs={filterTabs} active={statusFilter} onChange={onStatusFilterChange} />
+      )}
+
+      <div className="partner-room-filters partner-room-filters--admin">
+        {showPartnerFilter && (
+          <div className="partner-room-filter-field">
+            <label className="partner-room-filter-label" htmlFor="hotel-partner-filter">Đối tác</label>
+            <select
+              id="hotel-partner-filter"
+              className="search-input partner-room-filter-input"
+              value={partnerFilter}
+              onChange={(e) => onPartnerFilterChange(e.target.value)}
+            >
+              <option value="">Tất cả đối tác</option>
+              {partnerOptions.map((partner) => (
+                <option key={partner.ma_doi_tac} value={String(partner.ma_doi_tac)}>
+                  {partner.ten_cong_ty}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="hotel-name-filter">Tên khách sạn</label>
           <select
@@ -44,7 +74,7 @@ export default function HotelListSection({
             onChange={(e) => onHotelNameFilterChange(e.target.value)}
           >
             <option value="">Tất cả khách sạn</option>
-            {hotels.map((hotel) => (
+            {hotelNameOptions.map((hotel) => (
               <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>
                 {hotel.ten}
               </option>
@@ -79,7 +109,6 @@ export default function HotelListSection({
       <div className="mgmt-table-card partner-room-table-card">
         <div className="mgmt-table-card-header partner-room-table-header">
           <h3 className="mgmt-table-card-title">Danh sách khách sạn</h3>
-          <FilterTabs tabs={filterTabs} active={statusFilter} onChange={onStatusFilterChange} />
         </div>
 
         {filteredHotels.length === 0 ? (
@@ -93,6 +122,7 @@ export default function HotelListSection({
                 <tr>
                   <th>Ảnh đại diện</th>
                   <th>Tên khách sạn</th>
+                  {showPartnerFilter && <th>Đối tác</th>}
                   <th>Địa điểm</th>
                   <th>Số loại phòng</th>
                   <th>Trạng thái</th>
@@ -117,6 +147,9 @@ export default function HotelListSection({
                         </div>
                       </td>
                       <td className="partner-room-name-cell">{hotel.ten}</td>
+                      {showPartnerFilter && (
+                        <td>{hotel.doi_tac?.ten_cong_ty || '—'}</td>
+                      )}
                       <td>{hotel.dia_diem?.ten_dia_diem || '—'}</td>
                       <td>{roomCount}</td>
                       <td>
@@ -137,6 +170,18 @@ export default function HotelListSection({
               </tbody>
             </table>
           </div>
+        )}
+
+        {pagination?.showPagination && (
+          <ListPagination
+            total={pagination.total}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            rangeFrom={pagination.rangeFrom}
+            rangeTo={pagination.rangeTo}
+            pageNumbers={pagination.pageNumbers}
+            onPageChange={pagination.onPageChange}
+          />
         )}
       </div>
     </>

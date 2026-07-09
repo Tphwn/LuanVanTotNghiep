@@ -11,7 +11,7 @@ const adminHotelService = {
 
   requestInfo: (id, ghiChu) => api.patch(`/admin/hotels/${id}/request-info`, { ghiChu }),
 
-  lock: (id) => api.patch(`/admin/hotels/${id}/lock`),
+  lock: (id, lyDoKhoa) => api.patch(`/admin/hotels/${id}/lock`, { ly_do_khoa: lyDoKhoa }),
 
   unlock: (id) => api.patch(`/admin/hotels/${id}/unlock`),
 };

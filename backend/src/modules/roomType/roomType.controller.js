@@ -16,9 +16,7 @@ const calcMoBanOnTotalChange = (existing, newSoPhong) => {
   const oldTong = Number(existing.so_luong_phong) || 0;
   const oldMoBan = Number(existing.so_luong_mo_ban) || 0;
   if (existing.trang_thai !== 'hoat_dong') return oldMoBan;
-  // Đang mở bán hết → thêm/bớt phòng vật lý vẫn mở bán hết
   if (oldTong > 0 && oldMoBan >= oldTong) return newSoPhong;
-  // Mở bán một phần, tăng tổng phòng → cộng thêm phần mở bán
   if (oldMoBan > 0 && newSoPhong > oldTong) {
     return Math.min(oldMoBan + (newSoPhong - oldTong), newSoPhong);
   }
@@ -102,9 +100,30 @@ const pickRoomImageFiles = (req) => {
   return files;
 };
 
+const validateRoomFormData = (data) => {
+  if (!data.ten_loai?.trim()) {
+    return 'Vui lòng nhập tên loại phòng';
+  }
+  const dienTich = safeInt(data.dien_tich);
+  if (!dienTich || dienTich < 10) return 'Diện tích phải từ 10 m² trở lên';
+  const sucChua = safeInt(data.suc_chua);
+  if (!sucChua || sucChua < 1) return 'Sức chứa phải từ 1 trở lên';
+  const soGiuong = safeInt(data.so_giuong);
+  if (!soGiuong || soGiuong < 1) return 'Số giường phải từ 1 trở lên';
+  const soPhong = safeInt(data.so_luong_phong);
+  if (!soPhong || soPhong < 1) return 'Số lượng phòng phải từ 1 trở lên';
+  const gia = safeFloat(data.gia_co_ban);
+  if (!gia || gia < 100000) return 'Giá cơ bản phải từ 100.000đ trở lên';
+  return null;
+};
+
 exports.createRoomType = async (req, res) => {
   try {
     const data = req.body;
+    const validationError = validateRoomFormData(data);
+    if (validationError) {
+      return res.status(400).json({ success: false, message: validationError });
+    }
     const tienNghi = parseJsonField(data.tien_nghi_ids, []);
     const files = pickRoomImageFiles(req);
     const hotelId = safeInt(data.ma_khach_san);
@@ -165,6 +184,10 @@ exports.updateRoomType = async (req, res) => {
   try {
     const roomId = parseInt(req.params.id);
     const data = req.body;
+    const validationError = validateRoomFormData(data);
+    if (validationError) {
+      return res.status(400).json({ success: false, message: validationError });
+    }
     const files = pickRoomImageFiles(req);
 
     const existing = await prisma.loai_phong.findUnique({

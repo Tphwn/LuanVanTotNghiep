@@ -26,10 +26,15 @@ const FILTER_TABS = [
   { id: 'da_huy', label: 'Đã Hủy', tone: 'cancel' },
 ];
 
-const getStatusMeta = (status) => {
+const getStatusMeta = (booking) => {
+  if (booking.huy_boi_admin) {
+    return { label: 'Bị hủy bởi admin', tone: 'cancel' };
+  }
+
+  const status = booking.trang_thai;
   const base = TRANG_THAI[status] || { label: status, cls: 'badge-default' };
   if (status === 'da_huy' || status === 'tu_choi') {
-    return { label: 'Đã Hủy', tone: 'cancel' };
+    return { label: booking.trang_thai_label || 'Đã Hủy', tone: 'cancel' };
   }
   if (status === 'hoan_thanh') {
     return { label: 'Hoàn thành', tone: 'done' };
@@ -171,7 +176,7 @@ const MyBookingsPage = () => {
       {!loading && !error && filtered.length > 0 && (
         <div className="my-bookings-list">
           {filtered.map((b) => {
-            const statusMeta = getStatusMeta(b.trang_thai);
+            const statusMeta = getStatusMeta(b);
             const address = b.khach_san?.dia_chi
               || [b.khach_san?.dia_diem?.ten_dia_diem].filter(Boolean).join('');
 

@@ -4,6 +4,10 @@ const {
   getRoomLockState,
   isLockedByPartner,
 } = require('../../../utils/partnerLockHelpers');
+const {
+  notifyRoomTypeLocked,
+  notifyRoomTypeUnlocked,
+} = require('../../../utils/partnerNotify');
 
 const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet', 'bi_khoa'];
 
@@ -233,7 +237,19 @@ const getStats = async (filters = {}) => {
   return { total, active, hidden };
 };
 
-const hideRoomType = async (id) => {
+const getRoomNotifyContext = async (id) => prisma.loai_phong.findUnique({
+  where: { ma_loai_phong: Number(id) },
+  include: {
+    khach_san: {
+      select: {
+        ten: true,
+        ma_doi_tac: true,
+      },
+    },
+  },
+});
+
+const hideRoomType = async (id, lyDo) => {
   const room = await getRoomLockState(prisma, id);
   if (!room) return null;
 
@@ -243,13 +259,15 @@ const hideRoomType = async (id) => {
       message: 'Loại phòng đang bị đối tác khóa. Bạn không thể thay đổi trạng thái.',
     };
   }
-  if (room.trang_thai === 'an') return prisma.loai_phong.findUnique({ where: { ma_loai_phong: Number(id) } });
+  if (room.trang_thai === 'an') {
+    return prisma.loai_phong.findUnique({ where: { ma_loai_phong: Number(id) } });
+  }
 
   const moBanTruoc = Number(room.so_luong_mo_ban) > 0
     ? room.so_luong_mo_ban
     : room.so_luong_phong;
 
-  return prisma.loai_phong.update({
+  const updated = await prisma.loai_phong.update({
     where: { ma_loai_phong: Number(id) },
     data: {
       trang_thai: 'an',
@@ -258,6 +276,17 @@ const hideRoomType = async (id) => {
       so_luong_mo_ban: 0,
     },
   });
+
+  const context = await getRoomNotifyContext(id);
+  if (context?.khach_san?.ma_doi_tac) {
+    await notifyRoomTypeLocked(context.khach_san.ma_doi_tac, {
+      tenLoaiPhong: context.ten_loai,
+      tenKhachSan: context.khach_san.ten,
+      lyDo,
+    });
+  }
+
+  return updated;
 };
 
 const showRoomType = async (id) => {
@@ -278,7 +307,7 @@ const showRoomType = async (id) => {
     ? room.so_luong_mo_ban_truoc_khoa
     : (Number(room.so_luong_mo_ban) > 0 ? room.so_luong_mo_ban : room.so_luong_phong);
 
-  return prisma.loai_phong.update({
+  const updated = await prisma.loai_phong.update({
     where: { ma_loai_phong: Number(id) },
     data: {
       trang_thai: 'hoat_dong',
@@ -287,6 +316,16 @@ const showRoomType = async (id) => {
       so_luong_mo_ban_truoc_khoa: null,
     },
   });
+
+  const context = await getRoomNotifyContext(id);
+  if (context?.khach_san?.ma_doi_tac) {
+    await notifyRoomTypeUnlocked(context.khach_san.ma_doi_tac, {
+      tenLoaiPhong: context.ten_loai,
+      tenKhachSan: context.khach_san.ten,
+    });
+  }
+
+  return updated;
 };
 
 module.exports = {

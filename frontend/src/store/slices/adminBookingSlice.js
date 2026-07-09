@@ -108,9 +108,11 @@ const adminBookingSlice = createSlice({
 
       .addCase(cancelAdminBooking.fulfilled, (state, action) => {
         state.successMsg = 'Đã hủy đơn đặt phòng!';
-        const i = state.list.findIndex(x => x.ma_dat_phong === action.payload.ma_dat_phong);
-        if (i !== -1) state.list[i] = { ...state.list[i], trang_thai: 'da_huy' };
-        if (state.detail) state.detail.trang_thai = 'da_huy';
+        const i = state.list.findIndex((x) => x.ma_dat_phong === action.payload.ma_dat_phong);
+        if (i !== -1) state.list[i] = action.payload;
+        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
+          state.detail = action.payload;
+        }
       })
       .addCase(cancelAdminBooking.rejected, (state, action) => {
         state.error = action.payload;

@@ -2588,6 +2588,17 @@ a.hotel-result-cta:visited {
   border: 1px solid #91caff;
 }
 
+.my-booking-cancel-reason {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #7f1d1d;
+}
+
 .my-booking-dates {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -4701,6 +4712,38 @@ a.hotel-result-cta:visited {
 
 .booking-detail-block--payment {
   padding-bottom: 0;
+}
+
+.booking-detail-block--cancel {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff8f8;
+}
+
+.booking-detail-cancel-note {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #f5d0d0;
+}
+
+.booking-detail-cancel-note-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.booking-detail-cancel-note p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #7f1d1d;
 }
 
 .booking-detail-total-row {

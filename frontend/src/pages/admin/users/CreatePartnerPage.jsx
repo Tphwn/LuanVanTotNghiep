@@ -1,329 +1,267 @@
-import { useEffect, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  createPartner,
-  clearUserMsg,
-} from '../../../store/slices/adminUserSlice';
-import EditField from './components/EditField';
+import { Building2, KeyRound } from 'lucide-react';
+import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import adminUserService from '../../../services/adminUserService';
 
-const INIT_FORM = {
+const INITIAL_FORM = {
+  ten_cong_ty: '',
+  ma_so_thue: '',
+  email_lien_he: '',
+  dia_chi: '',
+  phan_tram_hoa_hong: '',
   email: '',
   so_dien_thoai: '',
   mat_khau: '',
-  xac_nhan_mat_khau: '',
   trang_thai: 'hoat_dong',
-  ten_cong_ty: '',
-  dia_chi: '',
-  ma_so_thue: '',
-  phan_tram_hoa_hong: '',
 };
 
-const getInitials = (name) => {
-  if (!name?.trim()) return '?';
-  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-};
+const Field = ({ label, required, error, hint, children }) => (
+  <div className="create-partner-field">
+    <label className="create-partner-label">
+      {label}
+      {required && <span className="create-partner-required">*</span>}
+    </label>
+    {children}
+    {hint && !error && <p className="create-partner-hint">{hint}</p>}
+    {error && <p className="create-partner-error">{error}</p>}
+  </div>
+);
 
-const validateForm = (form) => {
-  const errors = {};
-  if (!form.email.trim()) errors.email = 'Email đăng nhập là bắt buộc';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-    errors.email = 'Email không hợp lệ';
-  }
-  if (!form.so_dien_thoai.trim()) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
-  if (!form.mat_khau) errors.mat_khau = 'Mật khẩu tạm là bắt buộc';
-  else if (form.mat_khau.length < 6) errors.mat_khau = 'Mật khẩu tối thiểu 6 ký tự';
-  if (!form.xac_nhan_mat_khau) errors.xac_nhan_mat_khau = 'Vui lòng xác nhận mật khẩu';
-  else if (form.mat_khau !== form.xac_nhan_mat_khau) {
-    errors.xac_nhan_mat_khau = 'Mật khẩu xác nhận không khớp';
-  }
-  if (!form.ten_cong_ty.trim()) errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
-  if (form.phan_tram_hoa_hong !== '') {
-    const pct = Number(form.phan_tram_hoa_hong);
-    if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-      errors.phan_tram_hoa_hong = 'Phần trăm hoa hồng phải từ 0 đến 100';
-    }
-  }
-  return errors;
-};
-
-const inputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  border: 'none',
-  background: 'transparent',
-  padding: 0,
-  fontSize: 14,
-  fontWeight: 500,
-  color: '#1a2e28',
-  outline: 'none',
-};
-
-export default function CreatePartnerPage() {
-  const dispatch = useDispatch();
+const CreatePartnerPage = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-  const { creating, error } = useSelector((state) => state.adminUsers);
 
-  const [form, setForm] = useState(INIT_FORM);
-  const [errors, setErrors] = useState({});
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  useEffect(() => {
-    dispatch(clearUserMsg());
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-  }, [dispatch, avatarPreview]);
-
-  const handleChange = (field) => (e) => {
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setErrors((prev) => ({ ...prev, avatar: 'Vui lòng chọn file ảnh' }));
+  const validate = () => {
+    const errors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!formData.ten_cong_ty.trim()) errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
+    if (!formData.email.trim()) errors.email = 'Email đăng nhập là bắt buộc';
+    else if (!emailRegex.test(formData.email.trim())) errors.email = 'Email đăng nhập không hợp lệ';
+    if (formData.email_lien_he.trim() && !emailRegex.test(formData.email_lien_he.trim())) {
+      errors.email_lien_he = 'Email liên hệ không hợp lệ';
+    }
+    if (!formData.so_dien_thoai.trim()) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
+    if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
+    else if (formData.mat_khau.length < 6) errors.mat_khau = '';
+    if (formData.phan_tram_hoa_hong !== '') {
+      const pct = Number(formData.phan_tram_hoa_hong);
+      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+        errors.phan_tram_hoa_hong = 'Hoa hồng phải từ 0 đến 100';
+      }
+    }
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError('Vui lòng kiểm tra lại các trường được đánh dấu.');
       return;
     }
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-    setErrors((prev) => ({ ...prev, avatar: undefined }));
-  };
 
-  const handleRemoveAvatar = () => {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(null);
-    setAvatarPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleSubmit = async () => {
-    const nextErrors = validateForm(form);
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-
-    const payload = new FormData();
-    payload.append('email', form.email.trim());
-    payload.append('so_dien_thoai', form.so_dien_thoai.trim());
-    payload.append('mat_khau', form.mat_khau);
-    payload.append('trang_thai', form.trang_thai);
-    payload.append('ten_cong_ty', form.ten_cong_ty.trim());
-    if (form.dia_chi.trim()) payload.append('dia_chi', form.dia_chi.trim());
-    if (form.ma_so_thue.trim()) payload.append('ma_so_thue', form.ma_so_thue.trim());
-    if (form.phan_tram_hoa_hong !== '') {
-      payload.append('phan_tram_hoa_hong', form.phan_tram_hoa_hong);
-    }
-    if (avatarFile) payload.append('avatar', avatarFile);
-
-    const result = await dispatch(createPartner(payload));
-    if (createPartner.fulfilled.match(result)) {
-      navigate('/admin/users');
+    setLoading(true);
+    try {
+      await adminUserService.createPartner({
+        ten_cong_ty: formData.ten_cong_ty.trim(),
+        ma_so_thue: formData.ma_so_thue.trim() || null,
+        email_lien_he: formData.email_lien_he.trim() || null,
+        dia_chi: formData.dia_chi.trim() || null,
+        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? null : Number(formData.phan_tram_hoa_hong),
+        email: formData.email.trim(),
+        so_dien_thoai: formData.so_dien_thoai.trim(),
+        mat_khau: formData.mat_khau,
+        trang_thai: formData.trang_thai,
+      });
+      navigate('/admin/users', {
+        state: { toast: 'Tạo tài khoản đối tác thành công' },
+      });
+    } catch (err) {
+      const resErrors = err.response?.data?.errors;
+      if (resErrors) setFieldErrors(resErrors);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo tài khoản');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page create-partner-page">
+      <BackButton to="/admin/users" label="Quay lại danh sách" />
+
       <ManagementHeader
-        title="Quản lý người dùng"
-        subtitle="Tạo tài khoản đối tác"
-        onBack={() => navigate('/admin/users')}
+        title="Tạo Tài Khoản Đối Tác"
+        subtitle="Hệ thống sẽ cấp quyền quản lý khách sạn & phòng cho tài khoản này."
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <span
-          className="mgmt-type-tag"
-          style={{ padding: '8px 14px', fontSize: 13, background: '#f1f5f9' }}
-        >
-          Tạo Tài Khoản Đối Tác
-        </span>
-      </div>
+      {error && <div className="create-partner-alert">{error}</div>}
 
-      {error && (
-        <div className="mgmt-toast error" style={{ marginBottom: 16 }}>
-          {error}
-        </div>
-      )}
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={handleAvatarChange}
-      />
-
-      <div className="create-partner-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div className="content-card">
-          <h3 className="content-card-title" style={{ marginBottom: 12 }}>
-            Thông tin tài khoản đăng nhập
-          </h3>
-
-          <EditField label="Email đăng nhập" required error={errors.email}>
-            <input
-              type="email"
-              style={inputStyle}
-              value={form.email}
-              onChange={handleChange('email')}
-              placeholder="partner@example.com"
-            />
-          </EditField>
-
-          <EditField label="Số điện thoại" required error={errors.so_dien_thoai}>
-            <input
-              type="tel"
-              style={inputStyle}
-              value={form.so_dien_thoai}
-              onChange={handleChange('so_dien_thoai')}
-              placeholder="0901234567"
-            />
-          </EditField>
-
-          <EditField label="Trạng thái">
-            <select
-              className="search-input"
-              style={{ width: '100%', marginTop: 2 }}
-              value={form.trang_thai}
-              onChange={handleChange('trang_thai')}
-            >
-              <option value="hoat_dong">Hoạt động</option>
-              <option value="bi_khoa">Bị khóa</option>
-            </select>
-          </EditField>
-
-          <EditField label="Mật khẩu tạm" required error={errors.mat_khau}>
-            <input
-              type="password"
-              style={inputStyle}
-              value={form.mat_khau}
-              onChange={handleChange('mat_khau')}
-              placeholder="Tối thiểu 6 ký tự"
-            />
-          </EditField>
-
-          <EditField label="Xác nhận mật khẩu" required error={errors.xac_nhan_mat_khau}>
-            <input
-              type="password"
-              style={inputStyle}
-              value={form.xac_nhan_mat_khau}
-              onChange={handleChange('xac_nhan_mat_khau')}
-              placeholder="Nhập lại mật khẩu"
-            />
-          </EditField>
-        </div>
-
-        <div className="content-card">
-          <h3 className="content-card-title" style={{ marginBottom: 12 }}>
-            Thông tin đối tác
-          </h3>
-
-          <EditField label="Tên công ty / tên đối tác" required error={errors.ten_cong_ty}>
-            <input
-              type="text"
-              style={inputStyle}
-              value={form.ten_cong_ty}
-              onChange={handleChange('ten_cong_ty')}
-              placeholder="Công ty TNHH ABC Travel"
-            />
-          </EditField>
-
-          <EditField label="Địa chỉ">
-            <input
-              type="text"
-              style={inputStyle}
-              value={form.dia_chi}
-              onChange={handleChange('dia_chi')}
-              placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"
-            />
-          </EditField>
-
-          <EditField label="Mã số thuế">
-            <input
-              type="text"
-              style={inputStyle}
-              value={form.ma_so_thue}
-              onChange={handleChange('ma_so_thue')}
-              placeholder="0123456789"
-            />
-          </EditField>
-
-          <EditField label="Phần trăm hoa hồng" error={errors.phan_tram_hoa_hong}>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              style={inputStyle}
-              value={form.phan_tram_hoa_hong}
-              onChange={handleChange('phan_tram_hoa_hong')}
-              placeholder="VD: 15"
-            />
-          </EditField>
-
-          <EditField label="Ảnh đại diện" error={errors.avatar}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="mgmt-avatar" style={{ width: 44, height: 44, fontSize: 14, flexShrink: 0 }}>
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  getInitials(form.ten_cong_ty)
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {avatarPreview ? 'Đổi ảnh' : 'Chọn ảnh đại diện'}
-                </button>
-                {avatarPreview && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    style={{ marginLeft: 8, color: '#e05c5c' }}
-                    onClick={handleRemoveAvatar}
-                  >
-                    Xóa
-                  </button>
-                )}
-              </div>
+      <form onSubmit={handleSubmit} className="create-partner-form">
+        <section className="content-card create-partner-card">
+          <div className="create-partner-card-head">
+            <span className="create-partner-card-icon">
+              <Building2 size={18} strokeWidth={2} />
+            </span>
+            <div>
+              <h3 className="create-partner-card-title">Thông tin cơ sở kinh doanh</h3>
+              <p className="create-partner-card-desc">Thông tin hồ sơ đối tác hiển thị trong hệ thống.</p>
             </div>
-          </EditField>
+          </div>
+
+          <div className="create-partner-grid">
+            <Field label="Tên công ty / đối tác" required error={fieldErrors.ten_cong_ty}>
+              <input
+                type="text"
+                name="ten_cong_ty"
+                className="search-input create-partner-input"
+                value={formData.ten_cong_ty}
+                onChange={handleChange}
+                placeholder="VD: Công ty TNHH Mường Thanh"
+              />
+            </Field>
+
+            <Field label="Mã số thuế" error={fieldErrors.ma_so_thue}>
+              <input
+                type="text"
+                name="ma_so_thue"
+                className="search-input create-partner-input"
+                value={formData.ma_so_thue}
+                onChange={handleChange}
+                placeholder="VD: 0312345678"
+              />
+            </Field>
+
+            <Field label="Email liên hệ" error={fieldErrors.email_lien_he} hint="Email hiển thị để khách/hệ thống liên hệ (khác email đăng nhập).">
+              <input
+                type="email"
+                name="email_lien_he"
+                className="search-input create-partner-input"
+                value={formData.email_lien_he}
+                onChange={handleChange}
+                placeholder="lienhe@congty.com"
+              />
+            </Field>
+
+            <Field label="Tỉ lệ hoa hồng (%)" error={fieldErrors.phan_tram_hoa_hong} hint="Để trống nếu dùng mức mặc định của hệ thống.">
+              <input
+                type="number"
+                name="phan_tram_hoa_hong"
+                min="0"
+                max="100"
+                step="0.01"
+                className="search-input create-partner-input"
+                value={formData.phan_tram_hoa_hong}
+                onChange={handleChange}
+                placeholder="VD: 10"
+              />
+            </Field>
+
+            <Field label="Địa chỉ công ty" error={fieldErrors.dia_chi}>
+              <textarea
+                name="dia_chi"
+                rows={2}
+                className="search-input create-partner-input create-partner-textarea"
+                value={formData.dia_chi}
+                onChange={handleChange}
+                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành..."
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="content-card create-partner-card">
+          <div className="create-partner-card-head">
+            <span className="create-partner-card-icon">
+              <KeyRound size={18} strokeWidth={2} />
+            </span>
+            <div>
+              <h3 className="create-partner-card-title">Thông tin tài khoản đăng nhập</h3>
+              <p className="create-partner-card-desc">Tài khoản để đối tác đăng nhập vào hệ thống.</p>
+            </div>
+          </div>
+
+          <div className="create-partner-grid">
+            <Field label="Email đăng nhập" required error={fieldErrors.email}>
+              <input
+                type="email"
+                name="email"
+                autoComplete="off"
+                className="search-input create-partner-input"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="doitac@gmail.com"
+              />
+            </Field>
+
+            <Field label="Số điện thoại" required error={fieldErrors.so_dien_thoai}>
+              <input
+                type="tel"
+                name="so_dien_thoai"
+                className="search-input create-partner-input"
+                value={formData.so_dien_thoai}
+                onChange={handleChange}
+                placeholder="0987654321"
+              />
+            </Field>
+
+            <Field label="Mật khẩu khởi tạo" required error={fieldErrors.mat_khau} hint="">
+              <input
+                type="password"
+                name="mat_khau"
+                autoComplete="new-password"
+                className="search-input create-partner-input"
+                value={formData.mat_khau}
+                onChange={handleChange}
+                placeholder="••••••••"
+              />
+            </Field>
+
+            <Field label="Trạng thái tài khoản" error={fieldErrors.trang_thai}>
+              <select
+                name="trang_thai"
+                className="search-input create-partner-input"
+                value={formData.trang_thai}
+                onChange={handleChange}
+              >
+                <option value="hoat_dong">Đang hoạt động</option>
+                <option value="bi_khoa">Bị khóa</option>
+              </select>
+            </Field>
+          </div>
+        </section>
+
+        <div className="create-partner-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => navigate('/admin/users')}
+            disabled={loading}
+          >
+            Hủy
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Đang xử lý...' : 'Xác nhận tạo tài khoản'}
+          </button>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => navigate('/admin/users')}
-          disabled={creating}
-        >
-          Hủy
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={creating}
-        >
-          {creating ? 'Đang tạo...' : 'Tạo tài khoản'}
-        </button>
-      </div>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .create-partner-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      </form>
     </div>
   );
-}
+};
+
+export default CreatePartnerPage;
