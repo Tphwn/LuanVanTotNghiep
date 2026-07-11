@@ -6,8 +6,8 @@ export const ADMIN_ROOM_TYPE_STATUS = {
   },
   an: {
     label: 'Đã ẩn',
-    textCls: 'mgmt-status-text--locked',
-    badgeCls: 'badge-warning',
+    textCls: 'mgmt-status-text--muted',
+    badgeCls: 'badge-default',
   },
   bi_khoa: {
     label: 'Bị khóa',

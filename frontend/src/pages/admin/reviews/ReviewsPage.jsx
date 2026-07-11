@@ -8,6 +8,7 @@ import ListPagination from '../../../components/common/management/ListPagination
 import useListPagination from '../../../hooks/useListPagination';
 import ReviewModerationNotice from '../../../components/review/ReviewModerationNotice';
 import AdminReviewConfirmModal from './components/AdminReviewConfirmModal';
+import { REVIEW_BADGE } from '../../../constants/statusConfig';
 
 const PAGE_SIZE = 10;
 
@@ -22,11 +23,6 @@ const EMPTY_STATS = {
 const StarScore = ({ value }) => (
   <span className="admin-review-score">{Math.round(value || 0)}/5</span>
 );
-
-const REVIEW_STATUS = {
-  hien_thi: { label: 'Hiển thị', cls: 'badge-success' },
-  an: { label: 'Đã ẩn', cls: 'badge-default' },
-};
 
 const TIME_PRESETS = [
   { value: 'all', label: 'Tất cả thời gian' },
@@ -77,7 +73,7 @@ const DetailModal = ({
   actionLoading,
 }) => {
   if (!review) return null;
-  const st = REVIEW_STATUS[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
+  const st = REVIEW_BADGE[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
   const isHidden = review.trang_thai === 'an';
   const hasPartnerReply = Boolean(review.phan_hoi_doi_tac?.trim());
   const isResponseHidden = Boolean(review.phan_hoi_bi_an);
@@ -354,8 +350,8 @@ const ReviewsPage = () => {
   const statItems = useMemo(() => [
     { label: 'Tổng đánh giá', value: stats.tong_danh_gia ?? 0 },
     { label: 'Điểm trung bình', value: formatAvgScore(stats.diem_trung_binh) },
-    { label: 'Đang hiển thị', value: stats.hien_thi ?? 0 },
-    { label: 'Đã ẩn', value: stats.an ?? 0 },
+    { label: 'Đang hiển thị', value: stats.hien_thi ?? 0, tone: 'success' },
+    { label: 'Đã ẩn', value: stats.an ?? 0, tone: 'muted' },
   ], [stats]);
 
   const {
@@ -535,7 +531,7 @@ const ReviewsPage = () => {
                 </thead>
                 <tbody>
                   {pagedReviews.map((rv) => {
-                  const st = REVIEW_STATUS[rv.trang_thai] || { label: rv.trang_thai, cls: 'badge-default' };
+                  const st = REVIEW_BADGE[rv.trang_thai] || { label: rv.trang_thai, cls: 'badge-default' };
                   return (
                     <tr key={rv.ma_danh_gia}>
                       <td className="admin-review-id">#{rv.ma_danh_gia}</td>

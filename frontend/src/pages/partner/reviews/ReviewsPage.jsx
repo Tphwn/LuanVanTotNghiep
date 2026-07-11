@@ -4,6 +4,8 @@ import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import SummaryStats from '../../../components/common/management/SummaryStats';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import ReviewDetailModal from './components/ReviewDetailModal';
 import RespondModal from './components/RespondModal';
 
@@ -158,11 +160,22 @@ const ReviewsPage = () => {
   };
 
   const statItems = [
-    { label: 'Tổng đánh giá', value: stats.tong_danh_gia ?? 0, color: '#1a2e28' },
-    { label: 'Điểm trung bình', value: stats.diem_trung_binh ?? 0, color: '#1a2e28' },
-    { label: 'Đã phản hồi', value: stats.da_phan_hoi ?? 0, color: '#1a2e28' },
-    { label: 'Chưa phản hồi', value: stats.chua_phan_hoi ?? 0, color: '#b36b00' },
+    { label: 'Tổng đánh giá', value: stats.tong_danh_gia ?? 0 },
+    { label: 'Điểm trung bình', value: stats.diem_trung_binh ?? 0 },
+    { label: 'Đã phản hồi', value: stats.da_phan_hoi ?? 0, tone: 'success' },
+    { label: 'Chưa phản hồi', value: stats.chua_phan_hoi ?? 0, tone: 'warning' },
   ];
+
+  const {
+    pagedItems: pagedReviews,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(danhSach, 10, [hotelFilter, roomFilter, starFilter, tuNgay, denNgay]);
 
   return (
     <div className="mgmt-page">
@@ -242,6 +255,7 @@ const ReviewsPage = () => {
             <p className="empty-state-text">Không có đánh giá phù hợp bộ lọc</p>
           </div>
         ) : (
+          <>
           <div className="mgmt-table-scroll">
             <table className="data-table">
               <thead>
@@ -255,7 +269,7 @@ const ReviewsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {danhSach.map((review) => (
+                {pagedReviews.map((review) => (
                   <tr key={review.ma_danh_gia}>
                     <td className="partner-review-customer">{review.khach_hang?.ho_ten || 'Khách hàng'}</td>
                     <td>{review.ten_khach_san || '—'}</td>
@@ -276,6 +290,18 @@ const ReviewsPage = () => {
               </tbody>
             </table>
           </div>
+          {showPagination && (
+            <ListPagination
+              total={danhSach.length}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeFrom={rangeFrom}
+              rangeTo={rangeTo}
+              pageNumbers={pageNumbers}
+              onPageChange={setPage}
+            />
+          )}
+          </>
         )}
       </div>
 

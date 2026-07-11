@@ -8,6 +8,11 @@ const {
   notifyRoomTypeLocked,
   notifyRoomTypeUnlocked,
 } = require('../../../utils/partnerNotify');
+const {
+  countActiveBookedRooms,
+  countActiveBookedRoomsMap,
+  calcRoomAvailability,
+} = require('../../../utils/bookingHelpers');
 
 const APPROVED_HOTEL_STATUSES = ['hoat_dong', 'da_duyet', 'bi_khoa'];
 
@@ -49,22 +54,24 @@ const getLoaiGiuongLabel = (soGiuong, sucChua) => {
   return `${n} giường đơn`;
 };
 
-const computeInventory = (room) => {
+const computeInventory = (room, daDat = 0) => {
   const tong = Number(room.so_luong_phong);
   const moBan = Number(room.so_luong_mo_ban ?? 0);
   const hotelLocked = room.khach_san?.trang_thai === 'bi_khoa';
 
   if (hotelLocked) {
-    return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong };
+    return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong, da_dat: 0, con_trong: 0 };
   }
   if (room.trang_thai === 'an') {
-    return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong };
+    return { tong_so_phong: tong, dang_mo_ban: 0, dang_bao_tri: 0, dang_khoa: tong, da_dat: 0, con_trong: 0 };
   }
   return {
     tong_so_phong: tong,
     dang_mo_ban: moBan,
     dang_bao_tri: Math.max(0, tong - moBan),
     dang_khoa: 0,
+    da_dat: daDat,
+    con_trong: Math.max(0, moBan - daDat),
   };
 };
 
@@ -116,7 +123,14 @@ const getRoomTypes = async (filters = {}) => {
     orderBy: { ma_loai_phong: 'desc' },
   });
 
-  return attachRoomImages(rooms);
+  // Trừ số phòng đang có đơn giữ để hiển thị "còn lại" chính xác
+  const bookedMap = await countActiveBookedRoomsMap(rooms.map((r) => r.ma_loai_phong));
+  const withAvailability = rooms.map((room) => {
+    const daDat = bookedMap.get(room.ma_loai_phong) || 0;
+    return { ...room, ...calcRoomAvailability(room, daDat) };
+  });
+
+  return attachRoomImages(withAvailability);
 };
 
 const getRoomTypeById = async (id) => {
@@ -135,6 +149,8 @@ const getRoomTypeById = async (id) => {
 
   if (!room) return null;
   if (!APPROVED_HOTEL_STATUSES.includes(room.khach_san?.trang_thai)) return null;
+
+  const daDat = await countActiveBookedRooms(room.ma_loai_phong);
 
   const [hinh_anh, gia, reviews, reviewAgg] = await Promise.all([
     prisma.hinh_anh.findMany({
@@ -168,7 +184,8 @@ const getRoomTypeById = async (id) => {
     ...room,
     hinh_anh,
     loai_giuong: getLoaiGiuongLabel(room.so_giuong, room.suc_chua),
-    tinh_trang_phong: computeInventory(room),
+    ...calcRoomAvailability(room, daDat),
+    tinh_trang_phong: computeInventory(room, daDat),
     gia: gia,
     danh_gia: reviews.map((dg) => ({
       ma_danh_gia: dg.ma_danh_gia,

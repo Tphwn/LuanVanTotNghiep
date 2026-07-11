@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../../../utils/bookingDisplay';
+import ReasonField from '../../../../components/common/ReasonField';
 
 const AdminBookingCancelModal = ({
   booking,
@@ -9,10 +10,12 @@ const AdminBookingCancelModal = ({
   onConfirm,
 }) => {
   const [lyDo, setLyDo] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!booking) {
       setLyDo('');
+      setError('');
     }
   }, [booking]);
 
@@ -22,7 +25,7 @@ const AdminBookingCancelModal = ({
 
   const handleConfirm = () => {
     if (!lyDo.trim()) {
-      alert('Vui lòng nhập lý do hủy đơn');
+      setError('Vui lòng nhập lý do hủy đơn');
       return;
     }
     onConfirm(lyDo.trim());
@@ -78,16 +81,18 @@ const AdminBookingCancelModal = ({
             </div>
           </div>
 
-          <label className="booking-reject-label" htmlFor="admin-cancel-reason">
-            Lý do hủy <span style={{ color: '#e05c5c' }}>*</span>
-          </label>
-          <textarea
+          <ReasonField
             id="admin-cancel-reason"
+            label="Lý do hủy"
+            required
             rows={3}
-            className="booking-reject-textarea"
-            placeholder="VD: Khách yêu cầu hủy, khách sạn không đủ phòng..."
             value={lyDo}
-            onChange={(e) => setLyDo(e.target.value)}
+            onChange={(e) => {
+              setLyDo(e.target.value);
+              if (error) setError('');
+            }}
+            error={error}
+            placeholder="VD: Khách yêu cầu hủy, khách sạn không đủ phòng..."
           />
         </div>
 

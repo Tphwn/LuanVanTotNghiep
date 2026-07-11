@@ -69,6 +69,34 @@ const countActiveBookedRooms = async (maLoaiPhong) => {
   });
 };
 
+/**
+ * Đếm đơn đang giữ phòng cho nhiều loại phòng cùng lúc (tránh N+1).
+ * Trả về Map<ma_loai_phong, số đơn đang giữ>.
+ */
+const countActiveBookedRoomsMap = async (maLoaiPhongList = []) => {
+  const ids = [...new Set((maLoaiPhongList || []).map((id) => Number(id)).filter(Boolean))];
+  const result = new Map();
+  if (!ids.length) return result;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const grouped = await prisma.dat_phong.groupBy({
+    by: ['ma_loai_phong'],
+    where: {
+      ma_loai_phong: { in: ids },
+      trang_thai: { in: ACTIVE_BOOKING },
+      ngay_tra_phong: { gte: today },
+    },
+    _count: { ma_dat_phong: true },
+  });
+
+  grouped.forEach((row) => {
+    result.set(row.ma_loai_phong, row._count.ma_dat_phong);
+  });
+  return result;
+};
+
 const calcRoomAvailability = (room, daDat) => {
   const tong = Number(room.so_luong_phong) || 0;
   const moBan = Number(room.so_luong_mo_ban) || 0;
@@ -192,6 +220,7 @@ module.exports = {
   getDatesInRange,
   countOverlappingBookings,
   countActiveBookedRooms,
+  countActiveBookedRoomsMap,
   calcRoomAvailability,
   calcStayPrice,
   isAutoCompletedBooking,

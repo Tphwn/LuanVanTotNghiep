@@ -39,6 +39,26 @@ exports.delete = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// LOCK (ẩn)
+exports.lock = async (req, res) => {
+  try {
+    const data = await amenityService.setStatus(req.params.id, "an");
+    res.json({ success: true, data, message: "Đã khóa tiện nghi" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// UNLOCK (mở lại)
+exports.unlock = async (req, res) => {
+  try {
+    const data = await amenityService.setStatus(req.params.id, "hoat_dong");
+    res.json({ success: true, data, message: "Đã mở khóa tiện nghi" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
 // GET yêu cầu tiện nghi
 exports.getRequests = async (req, res) => {
   try {

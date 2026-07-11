@@ -14,6 +14,7 @@ import { fetchMyHotels, updateHotel, clearMsg } from '../../../store/slices/part
 import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
 import { HOTEL_CATEGORY_GROUPS } from '../../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../../admin/amenities/utils';
+import { getHotelStatusMeta } from '../../../constants/statusConfig';
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
@@ -27,15 +28,6 @@ const PARTNER_HOTEL_TABS = [
   { id: 'amenities', label: 'Tiện nghi' },
   { id: 'policies', label: 'Nội quy & Chính sách' },
 ];
-
-const STATUS_BADGE = {
-  cho_duyet: { label: 'Chờ duyệt', cls: 'badge-warning' },
-  da_duyet: { label: 'Đã duyệt', cls: 'badge-success' },
-  hoat_dong: { label: 'Đang hoạt động', cls: 'badge-success' },
-  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
-  yeu_cau_sua: { label: 'Cần sửa', cls: 'badge-warning' },
-  bi_khoa: { label: 'Tạm ngừng', cls: 'badge-danger' },
-};
 
 const formatTime = (d) => {
   if (!d) return '—';
@@ -158,7 +150,7 @@ export default function HotelDetailPage() {
     );
   }
 
-  const st = STATUS_BADGE[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'badge-default' };
+  const st = getHotelStatusMeta(hotel, { variant: 'badge' });
   const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
   const images = hotel.hinh_anh?.length ? hotel.hinh_anh : [];
   const currentImg = images[activeImg] || images[0];

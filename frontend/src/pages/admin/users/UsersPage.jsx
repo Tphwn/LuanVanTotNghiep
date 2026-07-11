@@ -14,6 +14,7 @@ import ManagementHeader from "../../../components/common/management/ManagementHe
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
 import CreatePartnerModal from "./components/CreatePartnerModal";
 import UserLockConfirmModal from "./components/UserLockConfirmModal";
+import { ACCOUNT_TEXT } from "../../../constants/statusConfig";
 
 const PAGE_SIZE = 10;
 
@@ -105,9 +106,9 @@ const UsersPage = () => {
   }), [nonAdminUsers]);
 
   const filterTabs = useMemo(() => [
-    { id: "all", label: "Tất cả", count: stats.total },
-    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong },
-    { id: "bi_khoa", label: "Đã khóa", count: stats.biKhoa },
+    { id: "all", label: "Tất cả", count: stats.total, tone: "neutral" },
+    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong, tone: "success" },
+    { id: "bi_khoa", label: "Đã khóa", count: stats.biKhoa, tone: "danger" },
   ], [stats]);
 
   const filteredUsers = useMemo(() => {
@@ -180,11 +181,7 @@ const UsersPage = () => {
     }
   };
 
-  const getStatusText = (status) => {
-    if (status === "hoat_dong") return { label: "Đang hoạt động", cls: "mgmt-status-text--active" };
-    if (status === "bi_khoa") return { label: "Đã khóa", cls: "mgmt-status-text--locked" };
-    return { label: status, cls: "" };
-  };
+  const getStatusText = (status) => ACCOUNT_TEXT[status] || { label: status, cls: "" };
 
   const rangeFrom = filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredUsers.length);

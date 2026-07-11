@@ -7,31 +7,17 @@ import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import { TRANG_THAI, formatCurrency, formatDate } from '../../../utils/bookingDisplay';
+import {
+  ACCOUNT_BADGE,
+  REVIEW_BADGE,
+  HOTEL_BADGE,
+} from '../../../constants/statusConfig';
 
 const PAGE_SIZE = 10;
 
 const ROLE_LABEL = {
   khach_hang: { label: 'Khách hàng', cls: 'admin-user-detail-role--customer' },
   doi_tac: { label: 'Đối tác', cls: 'admin-user-detail-role--partner' },
-};
-
-const ACCOUNT_STATUS = {
-  hoat_dong: { label: 'Đang hoạt động', cls: 'badge-success' },
-  bi_khoa: { label: 'Bị khóa', cls: 'badge-danger' },
-};
-
-const REVIEW_STATUS = {
-  hien_thi: { label: 'Hiển thị', cls: 'badge-success' },
-  an: { label: 'Đã ẩn', cls: 'badge-default' },
-};
-
-const HOTEL_APPROVAL_STATUS = {
-  cho_duyet: { label: 'Chờ duyệt', cls: 'badge-warning' },
-  hoat_dong: { label: 'Đã duyệt', cls: 'badge-success' },
-  da_duyet: { label: 'Đã duyệt', cls: 'badge-success' },
-  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
-  bi_khoa: { label: 'Đã khóa', cls: 'badge-danger' },
-  yeu_cau_sua: { label: 'Yêu cầu sửa', cls: 'badge-warning' },
 };
 
 const formatUpdateTime = (date) => {
@@ -107,20 +93,22 @@ export default function UserDetailPage() {
       ? partner?.ten_cong_ty
       : 'Admin';
 
-  const accountStatus = ACCOUNT_STATUS[user?.trang_thai] || { label: user?.trang_thai, cls: 'badge-default' };
+  const accountStatus = ACCOUNT_BADGE[user?.trang_thai] || { label: user?.trang_thai, cls: 'badge-default' };
 
   const customerStatItems = useMemo(() => {
     const bookings = customer?.dat_phong || [];
     return [
       { label: 'Tổng đơn', value: bookings.length },
-      { label: 'Hoàn thành', value: bookings.filter((b) => b.trang_thai === 'hoan_thanh').length },
+      { label: 'Hoàn thành', value: bookings.filter((b) => b.trang_thai === 'hoan_thanh').length, tone: 'success' },
       {
         label: 'Đang xử lý',
         value: bookings.filter((b) => ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'].includes(b.trang_thai)).length,
+        tone: 'info',
       },
       {
         label: 'Đã hủy',
         value: bookings.filter((b) => ['da_huy', 'tu_choi'].includes(b.trang_thai)).length,
+        tone: 'danger',
       },
     ];
   }, [customer]);
@@ -133,7 +121,7 @@ export default function UserDetailPage() {
       { label: 'Đơn', value: user?.thong_ke_doi_tac?.tong_don_dat ?? 0 },
       { label: 'Doanh thu', value: doanhThu ? formatCurrency(doanhThu) : '0 ₫' },
       { label: 'Khách sạn', value: hotels.length },
-      { label: 'Khách sạn chờ duyệt', value: choDuyet },
+      { label: 'Khách sạn chờ duyệt', value: choDuyet, tone: 'warning' },
     ];
   }, [partner, user]);
 
@@ -303,7 +291,7 @@ export default function UserDetailPage() {
                       </thead>
                       <tbody>
                         {pagedTabItems.map((review) => {
-                          const st = REVIEW_STATUS[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
+                          const st = REVIEW_BADGE[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
                           return (
                             <tr key={review.ma_danh_gia}>
                               <td className="admin-cell-id">#{review.ma_danh_gia}</td>
@@ -355,7 +343,7 @@ export default function UserDetailPage() {
                       </thead>
                       <tbody>
                         {pagedTabItems.map((hotel) => {
-                          const st = HOTEL_APPROVAL_STATUS[hotel.trang_thai]
+                          const st = HOTEL_BADGE[hotel.trang_thai]
                             || { label: hotel.trang_thai, cls: 'badge-default' };
                           return (
                             <tr key={hotel.ma_khach_san}>
@@ -409,7 +397,7 @@ export default function UserDetailPage() {
                       </thead>
                       <tbody>
                         {pagedTabItems.map((review) => {
-                          const st = REVIEW_STATUS[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
+                          const st = REVIEW_BADGE[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
                           return (
                             <tr key={review.ma_danh_gia}>
                               <td className="admin-cell-id">#{review.ma_danh_gia}</td>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   fetchFinanceOverview,
   fetchPaymentStats,
@@ -16,6 +16,11 @@ import {
 } from '../../../store/slices/adminFinanceSlice';
 import { Eye, Check } from 'lucide-react';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
+import { REFUND_TRANG_THAI } from '../../../utils/bookingDisplay';
+import TransactionDetailModal from './components/TransactionDetailModal';
+import RefundDetailModal from './components/RefundDetailModal';
 
 // ===== HELPERS =====
 const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(v || 0);
@@ -53,12 +58,7 @@ const TX_STATUS = {
   that_bai:     { label:'Thất bại',    cls: 'badge-danger'},
 };
 
-const REFUND_STATUS = {
-  cho_xu_ly:  { label:'Chờ xử lý',   cls: 'badge-warning'},
-  dang_xu_ly: { label:'Đang xử lý',  cls: 'badge-info'},
-  da_hoan:    { label:'Đã hoàn',      cls: 'badge-success'},
-  tu_choi:    { label:'Từ chối',      cls: 'badge-danger'},
-};
+const REFUND_STATUS = REFUND_TRANG_THAI;
 
 const COMM_STATUS = {
   chua_thu: { label:'Chưa thu', cls: 'badge-warning'},
@@ -89,7 +89,6 @@ const FINANCE_TABS = ['overview', 'transactions', 'refunds', 'commissions', 'par
 
 const AdminFinancePage = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     overview,
@@ -127,17 +126,12 @@ const AdminFinancePage = () => {
     }
   };
 
-  const goToTransactionDetail = (id) => {
-    navigate(`/admin/finance/transactions/${id}`, {
-      state: { returnTo: '/admin/finance?tab=transactions' },
-    });
-  };
+  const [txModalId, setTxModalId] = useState(null);
+  const [refundModalId, setRefundModalId] = useState(null);
 
-  const goToRefundDetail = (id) => {
-    navigate(`/admin/finance/refunds/${id}`, {
-      state: { returnTo: '/admin/finance?tab=refunds' },
-    });
-  };
+  const goToTransactionDetail = (id) => setTxModalId(id);
+
+  const goToRefundDetail = (id) => setRefundModalId(id);
 
   // Filters
   const [txFilter, setTxFilter]   = useState({ trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''});
@@ -169,6 +163,12 @@ const AdminFinancePage = () => {
   ];
 
   const pendingRefunds = refunds.filter(r => r.trang_thai === 'cho_xu_ly').length;
+
+  const txPg = useListPagination(transactions, 10, [transactions]);
+  const rfPg = useListPagination(refunds, 10, [refunds]);
+  const commPartnerPg = useListPagination(commByPartner, 10, [commByPartner]);
+  const commPg = useListPagination(commissions, 10, [commissions]);
+  const reconPg = useListPagination(reconciliations, 10, [reconciliations]);
 
   return (
     <div>
@@ -336,7 +336,7 @@ const AdminFinancePage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map(tx => {
+                  {txPg.pagedItems.map(tx => {
                     const st = TX_STATUS[tx.trang_thai] || { label: tx.trang_thai, cls:'badge-default'};
                     return (
                       <tr key={tx.ma_thanh_toan}>
@@ -368,6 +368,17 @@ const AdminFinancePage = () => {
                   })}
                 </tbody>
               </table>
+            )}
+            {txPg.showPagination && (
+              <ListPagination
+                total={transactions.length}
+                currentPage={txPg.currentPage}
+                totalPages={txPg.totalPages}
+                rangeFrom={txPg.rangeFrom}
+                rangeTo={txPg.rangeTo}
+                pageNumbers={txPg.pageNumbers}
+                onPageChange={txPg.setPage}
+              />
             )}
           </div>
         </>
@@ -439,11 +450,11 @@ const AdminFinancePage = () => {
                     <th>Phương thức</th>
                     <th>Ngày yêu cầu</th>
                     <th>Trạng thái</th>
-                    <th className="table-action-cell--compact" scope="col" aria-label="Thao tác"></th>
+                    <th className="table-action-cell--compact" scope="col">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {refunds.map(r => {
+                  {rfPg.pagedItems.map(r => {
                     const st = REFUND_STATUS[r.trang_thai] || { label:r.trang_thai, cls:'badge-default'};
                     const customerName = r.khach_hang_ten || r.dat_phong?.khach_hang?.ho_ten || '—';
                     return (
@@ -474,6 +485,17 @@ const AdminFinancePage = () => {
                 </tbody>
               </table>
             )}
+            {rfPg.showPagination && (
+              <ListPagination
+                total={refunds.length}
+                currentPage={rfPg.currentPage}
+                totalPages={rfPg.totalPages}
+                rangeFrom={rfPg.rangeFrom}
+                rangeTo={rfPg.rangeTo}
+                pageNumbers={rfPg.pageNumbers}
+                onPageChange={rfPg.setPage}
+              />
+            )}
           </div>
         </>
       )}
@@ -498,7 +520,7 @@ const AdminFinancePage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {commByPartner.map((r, i) => (
+                  {commPartnerPg.pagedItems.map((r, i) => (
                     <tr key={i}>
                       <td style={{ fontWeight:500 }}>{r.doi_tac?.ten_cong_ty || `Đối tác #${r.ma_doi_tac}`}</td>
                       <td>{r._count?.ma_hoa_hong || 0} đơn</td>
@@ -507,6 +529,17 @@ const AdminFinancePage = () => {
                   ))}
                 </tbody>
               </table>
+            )}
+            {commPartnerPg.showPagination && (
+              <ListPagination
+                total={commByPartner.length}
+                currentPage={commPartnerPg.currentPage}
+                totalPages={commPartnerPg.totalPages}
+                rangeFrom={commPartnerPg.rangeFrom}
+                rangeTo={commPartnerPg.rangeTo}
+                pageNumbers={commPartnerPg.pageNumbers}
+                onPageChange={commPartnerPg.setPage}
+              />
             )}
           </div>
 
@@ -533,7 +566,7 @@ const AdminFinancePage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {commissions.map(c => {
+                  {commPg.pagedItems.map(c => {
                     const st = COMM_STATUS[c.trang_thai] || { label:c.trang_thai, cls:'badge-default'};
                     return (
                       <tr key={c.ma_hoa_hong}>
@@ -560,6 +593,17 @@ const AdminFinancePage = () => {
                   })}
                 </tbody>
               </table>
+            )}
+            {commPg.showPagination && (
+              <ListPagination
+                total={commissions.length}
+                currentPage={commPg.currentPage}
+                totalPages={commPg.totalPages}
+                rangeFrom={commPg.rangeFrom}
+                rangeTo={commPg.rangeTo}
+                pageNumbers={commPg.pageNumbers}
+                onPageChange={commPg.setPage}
+              />
             )}
           </div>
         </>
@@ -608,7 +652,7 @@ const AdminFinancePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {reconciliations.map((item) => {
+                {reconPg.pagedItems.map((item) => {
                   const st = RECONCILE_STATUS[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
                   return (
                     <tr key={item.ma_doi_soat}>
@@ -623,7 +667,7 @@ const AdminFinancePage = () => {
                         {item.trang_thai === 'chua_doi_soat' && (
                           <button
                             type="button"
-                            className="btn btn-outline btn-sm"
+                            className="btn btn-primary btn-sm"
                             onClick={() => dispatch(updateReconciliationStatus({ id: item.ma_doi_soat, status: 'da_doi_soat' }))}
                           >
                             Xác nhận đối soát
@@ -645,7 +689,36 @@ const AdminFinancePage = () => {
               </tbody>
             </table>
           )}
+          {reconPg.showPagination && (
+            <ListPagination
+              total={reconciliations.length}
+              currentPage={reconPg.currentPage}
+              totalPages={reconPg.totalPages}
+              rangeFrom={reconPg.rangeFrom}
+              rangeTo={reconPg.rangeTo}
+              pageNumbers={reconPg.pageNumbers}
+              onPageChange={reconPg.setPage}
+            />
+          )}
         </div>
+      )}
+
+      {txModalId && (
+        <TransactionDetailModal
+          id={txModalId}
+          onClose={() => setTxModalId(null)}
+        />
+      )}
+
+      {refundModalId && (
+        <RefundDetailModal
+          id={refundModalId}
+          onClose={() => {
+            setRefundModalId(null);
+            dispatch(fetchRefunds(rfFilter));
+            dispatch(fetchFinanceOverview());
+          }}
+        />
       )}
 
     </div>

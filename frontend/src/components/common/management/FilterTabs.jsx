@@ -4,7 +4,7 @@ const FilterTabs = ({ tabs, active, onChange }) => (
       <button
         key={tab.id}
         type="button"
-        className={`mgmt-stat-card mgmt-stat-card--filter${active === tab.id ? ' is-active' : ''}`}
+        className={`mgmt-stat-card mgmt-stat-card--filter${tab.tone ? ` mgmt-stat-card--tone-${tab.tone}` : ''}${active === tab.id ? ' is-active' : ''}`}
         onClick={() => onChange(tab.id)}
       >
         <div className="mgmt-stat-label">{tab.label}</div>

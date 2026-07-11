@@ -1,11 +1,6 @@
-export const TRANG_THAI = {
-  cho_duyet: { label: 'Chờ duyệt', cls: 'mgmt-status-text--pending' },
-  da_duyet: { label: 'Đã duyệt', cls: 'mgmt-status-text--active' },
-  hoat_dong: { label: 'Đang hoạt động', cls: 'mgmt-status-text--active' },
-  tu_choi: { label: 'Từ chối', cls: 'mgmt-status-text--locked' },
-  yeu_cau_sua: { label: 'Cần sửa', cls: 'mgmt-status-text--pending' },
-  bi_khoa: { label: 'Tạm ngừng', cls: 'mgmt-status-text--locked' },
-};
+import { HOTEL_TEXT } from '../../../constants/statusConfig';
+
+export const TRANG_THAI = HOTEL_TEXT;
 
 export const TAB_FILTER = {
   all: () => true,

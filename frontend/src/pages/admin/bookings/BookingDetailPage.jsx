@@ -17,6 +17,7 @@ import BookingSectionTable from '../../../components/booking/BookingSectionTable
 import BookingCancelNotice from '../../../components/booking/BookingCancelNotice';
 import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import ReasonField from '../../../components/common/ReasonField';
 
 import {
   TRANG_THAI,
@@ -67,6 +68,7 @@ export default function BookingDetailPage() {
 
   const [cancelMode, setCancelMode] = useState(false);
   const [lyDo, setLyDo] = useState('');
+  const [cancelError, setCancelError] = useState('');
   const [refundLoading, setRefundLoading] = useState(false);
 
   useEffect(() => {
@@ -142,6 +144,7 @@ export default function BookingDetailPage() {
   const closeCancelBox = () => {
     setCancelMode(false);
     setLyDo('');
+    setCancelError('');
   };
 
   const handleCompleteRefund = async () => {
@@ -162,7 +165,7 @@ export default function BookingDetailPage() {
     if (!detail) return;
 
     if (!lyDo.trim()) {
-      alert('Vui lòng nhập lý do hủy đơn');
+      setCancelError('Vui lòng nhập lý do hủy đơn');
       return;
     }
 
@@ -292,16 +295,18 @@ export default function BookingDetailPage() {
               Vui lòng nhập lý do rõ ràng.
             </p>
 
-            <label className="booking-reject-label">
-              Lý do hủy <span style={{ color: '#e05c5c' }}>*</span>
-            </label>
-
-            <textarea
+            <ReasonField
+              id="admin-booking-cancel-reason"
+              label="Lý do hủy"
+              required
               rows={3}
-              className="booking-reject-textarea"
-              placeholder="VD: Khách sạn không đủ điều kiện phục vụ..."
               value={lyDo}
-              onChange={(e) => setLyDo(e.target.value)}
+              onChange={(e) => {
+                setLyDo(e.target.value);
+                if (cancelError) setCancelError('');
+              }}
+              error={cancelError}
+              placeholder="VD: Khách sạn không đủ điều kiện phục vụ..."
             />
 
             <div className="booking-reject-actions">

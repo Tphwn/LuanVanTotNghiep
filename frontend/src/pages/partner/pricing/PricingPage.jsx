@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import Toast from '../../../components/common/Toast';
+import useToast from '../../../hooks/useToast';
 import '../../../assets/styles/pricing-calendar.css';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -184,12 +186,7 @@ const PricingPage = () => {
   const [donGia, setDonGia] = useState('');
   const [moBan, setMoBan] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
+  const { toast, showToast } = useToast();
 
   useEffect(() => {
     api.get('/partner/pricing/hotels').then((res) => {
@@ -406,11 +403,7 @@ const PricingPage = () => {
         subtitle="Đặt giá theo ngày và số phòng áp dụng giá đó. Thêm loại phòng mới sẽ tự mở bán toàn bộ."
       />
 
-      {toast && (
-        <div className="price-inv-toast" data-type={toast.type}>
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} />
 
       <div className="price-inv-toolbar">
         <div className="field">

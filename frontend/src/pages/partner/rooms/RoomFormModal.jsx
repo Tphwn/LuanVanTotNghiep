@@ -66,7 +66,7 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const updateField = (name, value) => {
@@ -105,9 +105,9 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   };
 
   const handlePropose = async () => {
-    if (!proposeForm.ten_de_xuat.trim()) return alert('Nhập tên tiện nghi đề xuất');
+    if (!proposeForm.ten_de_xuat.trim()) return showToast('Nhập tên tiện nghi đề xuất', 'error');
     const roomName = form.ten_loai?.trim();
-    if (!roomName) return alert('Vui lòng nhập tên loại phòng trước khi gửi đề xuất');
+    if (!roomName) return showToast('Vui lòng nhập tên loại phòng trước khi gửi đề xuất', 'error');
     try {
       const contextTag = buildRoomContextTag(room?.ma_loai_phong, roomName);
       await api.post('/amenities/requests', {
@@ -586,39 +586,17 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          gap: 10,
-          justifyContent: 'flex-end',
-          borderTop: '1px solid #eee',
-          paddingTop: 20,
-        }}
-        >
+        <div className="modal-actions">
           <button
             type="button"
-            style={{
-              background: '#f5f5f5',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
+            className="btn btn-ghost"
             onClick={onClose}
           >
             Hủy
           </button>
           <button
             type="submit"
-            style={{
-              background: '#3C7363',
-              color: '#fff',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
+            className="btn btn-primary"
             disabled={saving}
           >
             {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo loại phòng'}

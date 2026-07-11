@@ -81,6 +81,21 @@ const amenityService = {
     });
   },
 
+  setStatus: async (id, trang_thai) => {
+    if (!['hoat_dong', 'an'].includes(trang_thai)) {
+      throw new Error('Trạng thái không hợp lệ');
+    }
+    const found = await prisma.tien_nghi.findUnique({
+      where: { ma_tien_nghi: Number(id) },
+    });
+    if (!found) throw new Error('Không tìm thấy tiện nghi');
+
+    return await prisma.tien_nghi.update({
+      where: { ma_tien_nghi: Number(id) },
+      data: { trang_thai },
+    });
+  },
+
   getRequests: async () => {
     const rows = await prisma.yeu_cau_tien_nghi.findMany({
       orderBy: { ngay_yeu_cau: 'desc' },

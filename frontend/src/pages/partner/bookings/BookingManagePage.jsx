@@ -7,6 +7,8 @@ import {
 } from '../../../store/slices/partnerBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import BookingTable from '../../../components/booking/BookingTable';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 
@@ -114,12 +116,23 @@ const BookingManagePage = () => {
   };
 
   const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: list.length },
-    { id: 'da_xac_nhan', label: 'Chờ check-in', count: countByStatus('da_xac_nhan') },
-    { id: 'da_checkin', label: 'Đã check-in', count: countByStatus('da_checkin') },
-    { id: 'hoan_thanh', label: 'Hoàn thành', count: countByStatus('hoan_thanh') },
-    { id: 'da_huy', label: 'Đã hủy', count: countByStatus('da_huy') + countByStatus('tu_choi') },
+    { id: 'all', label: 'Tất cả', count: list.length, tone: 'neutral' },
+    { id: 'da_xac_nhan', label: 'Chờ check-in', count: countByStatus('da_xac_nhan'), tone: 'info' },
+    { id: 'da_checkin', label: 'Đã check-in', count: countByStatus('da_checkin'), tone: 'info' },
+    { id: 'hoan_thanh', label: 'Hoàn thành', count: countByStatus('hoan_thanh'), tone: 'success' },
+    { id: 'da_huy', label: 'Đã hủy', count: countByStatus('da_huy') + countByStatus('tu_choi'), tone: 'danger' },
   ], [list]);
+
+  const {
+    pagedItems: pagedBookings,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(filtered, 10, [keyword, statusFilter, hotelFilter, roomTypeFilter]);
 
   const hasActiveFilter = Boolean(
     keyword.trim()
@@ -183,6 +196,7 @@ const BookingManagePage = () => {
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
         ) : (
+          <>
           <div className="mgmt-table-scroll">
             <table className="data-table data-table-grid">
               <thead>
@@ -200,11 +214,23 @@ const BookingManagePage = () => {
                 </tr>
               </thead>
               <BookingTable
-                bookings={filtered}
+                bookings={pagedBookings}
                 onViewDetail={handleViewDetail}
               />
             </table>
           </div>
+          {showPagination && (
+            <ListPagination
+              total={filtered.length}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeFrom={rangeFrom}
+              rangeTo={rangeTo}
+              pageNumbers={pageNumbers}
+              onPageChange={setPage}
+            />
+          )}
+          </>
         )}
       </div>
 

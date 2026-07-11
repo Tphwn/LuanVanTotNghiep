@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import customerAccountService from '../../services/customerAccountService';
 import '../../assets/styles/account.css';
 import { CUSTOMER_PROFILE_UPDATED } from '../../components/customer/account/CustomerAccountSidebar';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 const formatDate = (date) => {
   return date ? new Date(date).toLocaleString('vi-VN') : '—';
@@ -16,7 +18,7 @@ function ProfilePage() {
   const [savingPwd, setSavingPwd] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
 
-  const [toast, setToast] = useState(null);
+  const { toast, showToast } = useToast();
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
 
@@ -34,14 +36,6 @@ function ProfilePage() {
     mat_khau_moi: '',
     xac_nhan_mat_khau: '',
   });
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -200,11 +194,7 @@ function ProfilePage() {
   return (
     <div className="customer-account-page">
       <div className="customer-account-container">
-        {toast && (
-          <div className={`customer-toast ${toast.type}`}>
-            {toast.message}
-          </div>
-        )}
+        <Toast toast={toast} />
 
         <div className="customer-account-header">
           <h1>Tài khoản của tôi</h1>

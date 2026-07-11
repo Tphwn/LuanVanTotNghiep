@@ -10,6 +10,8 @@ import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { TRANG_THAI } from '../../utils/bookingDisplay';
 import { Link } from 'react-router-dom';
+import ListPagination from '../../components/common/management/ListPagination';
+import useListPagination from '../../hooks/useListPagination';
 import '../../assets/styles/home.css';
 const fmtDateCard = (d) => {
   if (!d) return '—';
@@ -102,6 +104,17 @@ const MyBookingsPage = () => {
     return bookings.filter((b) => b.trang_thai === statusFilter);
   }, [bookings, statusFilter]);
 
+  const {
+    pagedItems: pagedBookings,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(filtered, 10, [statusFilter]);
+
   if (!token) {
     return <Navigate to={ROUTES.HOME} replace />;
   }
@@ -174,8 +187,9 @@ const MyBookingsPage = () => {
       )}
 
       {!loading && !error && filtered.length > 0 && (
+        <>
         <div className="my-bookings-list">
-          {filtered.map((b) => {
+          {pagedBookings.map((b) => {
             const statusMeta = getStatusMeta(b);
             const address = b.khach_san?.dia_chi
               || [b.khach_san?.dia_diem?.ten_dia_diem].filter(Boolean).join('');
@@ -262,6 +276,18 @@ const MyBookingsPage = () => {
             );
           })}
         </div>
+        {showPagination && (
+          <ListPagination
+            total={filtered.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            rangeFrom={rangeFrom}
+            rangeTo={rangeTo}
+            pageNumbers={pageNumbers}
+            onPageChange={setPage}
+          />
+        )}
+        </>
       )}
 
       {cancelTarget && (

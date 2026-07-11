@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Lock, Unlock } from 'lucide-react';
+import ReasonField from '../../../../components/common/ReasonField';
 
 const HotelLockConfirmModal = ({
   hotel,
@@ -73,41 +74,19 @@ const HotelLockConfirmModal = ({
           </div>
 
           {isLock ? (
-            <div style={{ marginTop: 16 }}>
-              <label
-                htmlFor="hotel-lock-reason"
-                style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#334155' }}
-              >
-                Lý do khóa <span style={{ color: '#cf1322' }}>*</span>
-              </label>
-              <textarea
-                id="hotel-lock-reason"
-                rows={4}
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  if (error) setError('');
-                }}
-                placeholder="VD: Vi phạm chính sách nền tảng, thông tin không chính xác..."
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: `1px solid ${error ? '#ffa39e' : '#d4ede6'}`,
-                  borderRadius: 8,
-                  fontSize: 14,
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                }}
-              />
-              {error && (
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#cf1322' }}>{error}</p>
-              )}
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
-                Lý do sẽ được gửi thông báo cho đối tác quản lý khách sạn này.
-              </p>
-            </div>
+            <ReasonField
+              id="hotel-lock-reason"
+              label="Lý do khóa"
+              required
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (error) setError('');
+              }}
+              error={error}
+              hint="Lý do sẽ được gửi thông báo cho đối tác quản lý khách sạn này."
+              placeholder="VD: Vi phạm chính sách nền tảng, thông tin không chính xác..."
+            />
           ) : (
             hotel.ly_do_khoa && (
               <div className="user-lock-confirm-modal-warning" style={{ marginTop: 14 }}>

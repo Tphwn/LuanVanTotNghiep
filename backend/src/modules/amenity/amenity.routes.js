@@ -5,6 +5,8 @@ const controller = require("./amenity.controller");
 router.get("/",        controller.getAll);
 router.post("/",       controller.create);
 router.put("/:id",     controller.update);
+router.patch("/:id/lock",   controller.lock);
+router.patch("/:id/unlock", controller.unlock);
 router.delete("/:id",  controller.delete);
 
 router.get("/requests",              controller.getRequests);

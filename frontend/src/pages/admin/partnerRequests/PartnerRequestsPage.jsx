@@ -73,11 +73,11 @@ const PartnerRequestsPage = () => {
   }, [successMsg]);
 
   const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: stats?.total ?? items.length },
-    { id: 'cho_xu_ly', label: 'Chờ xử lý', count: stats?.cho_xu_ly ?? 0 },
-    { id: 'da_lien_he', label: 'Đã liên hệ', count: stats?.da_lien_he ?? 0 },
-    { id: 'da_hop_tac', label: 'Đã hợp tác', count: stats?.da_hop_tac ?? 0 },
-    { id: 'tu_choi', label: 'Từ chối', count: stats?.tu_choi ?? 0 },
+    { id: 'all', label: 'Tất cả', count: stats?.total ?? items.length, tone: 'neutral' },
+    { id: 'cho_xu_ly', label: 'Chờ xử lý', count: stats?.cho_xu_ly ?? 0, tone: 'warning' },
+    { id: 'da_lien_he', label: 'Đã liên hệ', count: stats?.da_lien_he ?? 0, tone: 'info' },
+    { id: 'da_hop_tac', label: 'Đã hợp tác', count: stats?.da_hop_tac ?? 0, tone: 'success' },
+    { id: 'tu_choi', label: 'Từ chối', count: stats?.tu_choi ?? 0, tone: 'danger' },
   ], [stats, items.length]);
 
   const hasActiveFilter = Boolean(keyword.trim() || statusFilter !== 'all');

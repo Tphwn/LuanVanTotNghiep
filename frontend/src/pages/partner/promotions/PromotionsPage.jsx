@@ -3,6 +3,10 @@ import { Pencil } from 'lucide-react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
+import Toast from '../../../components/common/Toast';
+import useToast from '../../../hooks/useToast';
 
 const LOAI_GIAM = {
   phan_tram: 'Phần trăm (%)',
@@ -42,17 +46,12 @@ const PartnerPromotionsPage = () => {
   const [items, setItems] = useState([]);
   const [hotelFilter, setHotelFilter] = useState('');
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const { toast, showToast } = useToast();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const loadPromotions = async () => {
     setLoading(true);
@@ -176,6 +175,17 @@ const PartnerPromotionsPage = () => {
     return `${formatCurrency(item.gia_tri)} đ`;
   };
 
+  const {
+    pagedItems: pagedPromotions,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(items, 10, [hotelFilter]);
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -185,19 +195,7 @@ const PartnerPromotionsPage = () => {
         onAction={openCreate}
       />
 
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 80, right: 24, zIndex: 999,
-          padding: '12px 20px', borderRadius: 10,
-          background: toast.type === 'success' ? '#e8f5f1' : '#fff0f0',
-          border: `1px solid ${toast.type === 'success' ? '#8FD9C4' : '#ffb3b3'}`,
-          color: toast.type === 'success' ? '#3C7363' : '#e05c5c',
-          fontSize: 14, fontWeight: 500,
-        }}
-        >
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} />
 
       <div className="mgmt-toolbar" style={{ marginBottom: 16 }}>
         <select
@@ -231,6 +229,7 @@ const PartnerPromotionsPage = () => {
             </button>
           </div>
         ) : (
+          <>
           <table className="data-table">
             <thead>
               <tr>
@@ -245,7 +244,7 @@ const PartnerPromotionsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => {
+              {pagedPromotions.map((item) => {
                 const st = TRANG_THAI[item.trang_thai] || { label: item.trang_thai, cls: '' };
                 return (
                   <tr key={item.ma_khuyen_mai}>
@@ -273,6 +272,18 @@ const PartnerPromotionsPage = () => {
               })}
             </tbody>
           </table>
+          {showPagination && (
+            <ListPagination
+              total={items.length}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeFrom={rangeFrom}
+              rangeTo={rangeTo}
+              pageNumbers={pageNumbers}
+              onPageChange={setPage}
+            />
+          )}
+          </>
         )}
       </div>
 

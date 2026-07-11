@@ -24,6 +24,16 @@ export const removeAmenity = createAsyncThunk("amenities/delete", async (id) => 
   return id;
 });
 
+export const lockAmenity = createAsyncThunk("amenities/lock", async (id) => {
+  const res = await api.patch(`${ENDPOINT}/${id}/lock`);
+  return res.data.data;
+});
+
+export const unlockAmenity = createAsyncThunk("amenities/unlock", async (id) => {
+  const res = await api.patch(`${ENDPOINT}/${id}/unlock`);
+  return res.data.data;
+});
+
 // ===== YÊU CẦU TIỆN NGHI =====
 export const fetchRequests = createAsyncThunk("amenities/fetchRequests", async () => {
   const res = await api.get(`${ENDPOINT}/requests`);
@@ -65,6 +75,14 @@ const amenitySlice = createSlice({
       })
       .addCase(removeAmenity.fulfilled, (state, action) => {
         state.list = state.list.filter(x => x.ma_tien_nghi !== action.payload);
+      })
+      .addCase(lockAmenity.fulfilled, (state, action) => {
+        const i = state.list.findIndex(x => x.ma_tien_nghi === action.payload?.ma_tien_nghi);
+        if (i !== -1 && action.payload) state.list[i] = action.payload;
+      })
+      .addCase(unlockAmenity.fulfilled, (state, action) => {
+        const i = state.list.findIndex(x => x.ma_tien_nghi === action.payload?.ma_tien_nghi);
+        if (i !== -1 && action.payload) state.list[i] = action.payload;
       })
 
       // Yêu cầu

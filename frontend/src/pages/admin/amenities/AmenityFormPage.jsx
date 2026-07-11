@@ -6,6 +6,8 @@ import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug } from '
 import EditField from '../users/components/EditField';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import BackButton from '../../../components/common/BackButton';
+import Toast from '../../../components/common/Toast';
+import useToast from '../../../hooks/useToast';
 import {
   AMENITY_SCOPE,
   HOTEL_CATEGORY_GROUPS,
@@ -81,6 +83,7 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
   });
   const iconManual = editInitial?.iconManual ?? false;
   const [submitting, setSubmitting] = useState(false);
+  const { toast, showToast } = useToast();
 
   const categoryGroups = useMemo(
     () => (scope ? getGroupsForScope(scope) : []),
@@ -112,10 +115,10 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
   };
 
   const handleSubmit = async () => {
-    if (!scope) return alert('Vui lòng chọn thêm cho khách sạn hoặc loại phòng');
-    if (!categoryId) return alert('Vui lòng chọn danh mục chi tiết');
-    if (!form.ten.trim()) return alert('Vui lòng nhập tên tiện nghi');
-    if (!form.loai) return alert('Vui lòng chọn danh mục để xác định loại tiện nghi');
+    if (!scope) return showToast('Vui lòng chọn thêm cho khách sạn hoặc loại phòng', 'error');
+    if (!categoryId) return showToast('Vui lòng chọn danh mục chi tiết', 'error');
+    if (!form.ten.trim()) return showToast('Vui lòng nhập tên tiện nghi', 'error');
+    if (!form.loai) return showToast('Vui lòng chọn danh mục để xác định loại tiện nghi', 'error');
 
     setSubmitting(true);
     const iconSlug = resolveIconSlug(form.bieu_tuong, form.ten);
@@ -132,11 +135,16 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
       } else {
         await dispatch(addAmenity(payload)).unwrap();
       }
-      navigate('/admin/amenities', { state: { tab: scope === 'phong' ? 'room' : 'hotel' } });
+      navigate('/admin/amenities', {
+        state: {
+          tab: scope === 'phong' ? 'room' : 'hotel',
+          toast: isEdit ? 'Cập nhật tiện nghi thành công' : 'Thêm tiện nghi thành công',
+        },
+      });
       onDone?.();
     } catch (err) {
       const msg = err?.message || err?.response?.data?.message || 'Lưu tiện nghi thất bại';
-      alert(msg);
+      showToast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -144,6 +152,7 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
 
   return (
     <>
+      <Toast toast={toast} />
       <div className="amenity-form-body detail-page-grid">
         <div className="content-card">
           <h3 className="content-card-title" style={{ marginBottom: 12 }}>Thông tin tiện nghi</h3>

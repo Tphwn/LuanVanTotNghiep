@@ -1,3 +1,5 @@
+import ReasonField from '../../../../components/common/ReasonField';
+
 export const RejectRequestModal = ({
   isOpen,
   rejectReason,
@@ -19,16 +21,13 @@ export const RejectRequestModal = ({
           Vui lòng nhập lý do từ chối để đối tác biết.
         </p>
 
-        <textarea
-          rows={4}
-          placeholder="VD: Tiện nghi này đã tồn tại với tên khác..."
+        <ReasonField
+          id="amenity-reject-reason"
+          label="Lý do từ chối"
+          required
           value={rejectReason}
           onChange={(e) => onReasonChange(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 14px', border: '1px solid #d4ede6',
-            borderRadius: 8, fontSize: 14, resize: 'vertical',
-            fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none',
-          }}
+          placeholder="VD: Tiện nghi này đã tồn tại với tên khác..."
         />
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>

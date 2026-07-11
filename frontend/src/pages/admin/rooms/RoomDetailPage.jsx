@@ -6,6 +6,8 @@ import ActionButton from "../../../components/common/ActionButton";
 import BackButton from "../../../components/common/BackButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import MetricCard from "../../../components/common/management/MetricCard";
+import Toast from "../../../components/common/Toast";
+import useToast from "../../../hooks/useToast";
 import { getAdminRoomTypeStatus } from "../../../constants/statuses";
 
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
@@ -38,6 +40,7 @@ const RoomDetailPage = () => {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [lightbox, setLightbox] = useState(null);
+  const { toast, showToast } = useToast();
 
   const loadRoom = useCallback(() => {
     setLoading(true);
@@ -61,9 +64,10 @@ const RoomDetailPage = () => {
       const endpoint = isHidden ? "show":"hide";
       const res = await api.patch(`/admin/room-types/${id}/${endpoint}`);
       setRoom((prev) => ({ ...prev, ...res.data.data, trang_thai: res.data.data.trang_thai }));
+      showToast(isHidden ? "Đã mở lại loại phòng" : "Đã ẩn loại phòng");
       loadRoom();
     } catch (err) {
-      alert(err.response?.data?.message || "Thao tác thất bại");
+      showToast(err.response?.data?.message || "Thao tác thất bại", "error");
     } finally {
       setActionLoading(false);
     }
@@ -104,6 +108,8 @@ const RoomDetailPage = () => {
         title="Quản lý loại phòng"
         onBack={() => navigate(backTo)}
       />
+
+      <Toast toast={toast} />
 
       <div style={{ marginBottom: 20 }}>
         <div className="content-card"style={{ padding: 0, overflow:"hidden"}}>
@@ -181,7 +187,8 @@ const RoomDetailPage = () => {
               color="#3C7363"
             />
             <MetricCard label="Đang mở bán" value={inv.dang_mo_ban ?? 0} color="#52c41a" />
-            <MetricCard label="Đang bảo trì" value={inv.dang_bao_tri ?? 0} color="#b36b00" />
+            <MetricCard label="Còn trống" value={inv.con_trong ?? inv.dang_mo_ban ?? 0} color="#3C7363" />
+            <MetricCard label="Đã đặt" value={inv.da_dat ?? 0} color="#b36b00" />
             <MetricCard label="Đang khóa" value={inv.dang_khoa ?? 0} color="#e05c5c" />
           </div>
         </div>

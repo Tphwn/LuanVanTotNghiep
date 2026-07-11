@@ -100,7 +100,7 @@ export default function RoomListSection({
                   <th>Diện tích</th>
                   <th>Sức chứa</th>
                   <th>Số giường</th>
-                  <th>Số phòng</th>
+                  <th>Còn trống</th>
                   <th>Trạng thái</th>
                   <th className="table-action-cell table-action-cell--compact">Thao tác</th>
                 </tr>
@@ -116,7 +116,7 @@ export default function RoomListSection({
                   const toggleTitle = isAdmin
                     ? (partnerLocked ? 'Bị khóa do đối tác' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'))
                     : (adminLocked ? 'Admin đã khóa' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'));
-                  const moBan = room.so_luong_mo_ban ?? room.phong_con_lai ?? 0;
+                  const conLai = room.phong_con_lai ?? room.so_luong_mo_ban ?? 0;
                   const tongPhong = room.so_luong_phong ?? 0;
 
                   return (
@@ -134,7 +134,7 @@ export default function RoomListSection({
                       <td>{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
                       <td>{room.suc_chua} người lớn</td>
                       <td>{room.so_giuong}</td>
-                      <td>{moBan}/{tongPhong}</td>
+                      <td>{conLai}/{tongPhong}</td>
                       <td>
                         <span className={`partner-room-status ${isActive ? 'partner-room-status--active' : 'partner-room-status--inactive'}`}>
                           {st.label}

@@ -15,17 +15,10 @@ import ManagementToolbar from "../../../components/common/management/ManagementT
 import StarRating from "../../../components/common/management/StarRating";
 import HotelThumb from "../../../components/common/management/HotelThumb";
 import HotelLockConfirmModal from "./components/HotelLockConfirmModal";
+import ConfirmModal from "../../../components/common/ConfirmModal";
+import { getHotelStatusMeta } from "../../../constants/statusConfig";
 
 const PAGE_SIZE = 10;
-
-const HOTEL_STATUS = {
-  cho_duyet: { label: "Chờ duyệt", cls: "mgmt-status-text--pending" },
-  hoat_dong: { label: "Đang hoạt động", cls: "mgmt-status-text--active" },
-  tu_choi: { label: "Từ chối", cls: "mgmt-status-text--locked" },
-  bi_khoa: { label: "Đã khóa", cls: "mgmt-status-text--locked" },
-  yeu_cau_sua: { label: "Yêu cầu sửa", cls: "mgmt-status-text--pending" },
-  da_duyet: { label: "Đã duyệt", cls: "mgmt-status-text--active" },
-};
 
 const TAB_STATUS_MAP = {
   all: null,
@@ -49,6 +42,8 @@ const HotelsPage = () => {
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [pendingAction, setPendingAction] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
@@ -71,10 +66,10 @@ const HotelsPage = () => {
   }), [hotels]);
 
   const filterTabs = useMemo(() => [
-    { id: "all", label: "Tất cả", count: stats.total },
-    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong },
-    { id: "cho_duyet", label: "Chờ duyệt", count: stats.choDuyet },
-    { id: "tu_choi", label: "Đã khóa", count: stats.biKhoa },
+    { id: "all", label: "Tất cả", count: stats.total, tone: "neutral" },
+    { id: "hoat_dong", label: "Đang hoạt động", count: stats.hoatDong, tone: "success" },
+    { id: "cho_duyet", label: "Chờ duyệt", count: stats.choDuyet, tone: "warning" },
+    { id: "tu_choi", label: "Đã khóa", count: stats.biKhoa, tone: "danger" },
   ], [stats]);
 
   const partnerOptions = useMemo(() => {
@@ -147,23 +142,34 @@ const HotelsPage = () => {
     return pages;
   }, [currentPage, totalPages]);
 
-  const handleApprove = async (hotel, e) => {
+  const handleApprove = (hotel, e) => {
     e?.stopPropagation();
-    if (!window.confirm(`Duyệt khách sạn "${hotel.ten}" hoạt động trên sàn?`)) return;
-    const result = await dispatch(approveHotel(hotel.ma_khach_san));
-    if (approveHotel.rejected.match(result)) {
-      alert(result.payload || "Duyệt khách sạn thất bại");
-    }
+    setPendingAction({ hotel, type: "approve" });
   };
 
-  const handleReject = async (hotel, e) => {
+  const handleReject = (hotel, e) => {
     e?.stopPropagation();
-    const reason = window.prompt(`Nhập lý do từ chối "${hotel.ten}":`);
-    if (!reason?.trim()) return;
-    const result = await dispatch(rejectHotel({ id: hotel.ma_khach_san, lyDo: reason.trim() }));
-    if (rejectHotel.rejected.match(result)) {
-      alert(result.payload || "Từ chối khách sạn thất bại");
+    setPendingAction({ hotel, type: "reject" });
+  };
+
+  const handleConfirmAction = async (reason) => {
+    if (!pendingAction) return;
+    const { hotel, type } = pendingAction;
+    setActionLoading(true);
+    setActionError("");
+    const thunk = type === "approve"
+      ? approveHotel(hotel.ma_khach_san)
+      : rejectHotel({ id: hotel.ma_khach_san, lyDo: reason });
+    const result = await dispatch(thunk);
+    setActionLoading(false);
+    const ok = type === "approve"
+      ? approveHotel.fulfilled.match(result)
+      : rejectHotel.fulfilled.match(result);
+    if (ok) {
+      setPendingAction(null);
+      return;
     }
+    setActionError(result.payload || (type === "approve" ? "Duyệt khách sạn thất bại" : "Từ chối khách sạn thất bại"));
   };
 
   const handleToggleActive = (hotel) => {
@@ -238,6 +244,31 @@ const HotelsPage = () => {
         loading={Boolean(confirmAction && toggleLoadingId === confirmAction.hotel?.ma_khach_san)}
         onClose={handleCloseConfirm}
         onConfirm={handleConfirmToggle}
+      />
+
+      <ConfirmModal
+        open={Boolean(pendingAction)}
+        variant={pendingAction?.type === "reject" ? "danger" : "primary"}
+        icon={pendingAction?.type === "reject" ? <X size={20} /> : <Check size={20} />}
+        title={pendingAction?.type === "reject" ? "Từ chối khách sạn" : "Duyệt khách sạn"}
+        intro={pendingAction?.type === "reject"
+          ? "Khách sạn sẽ bị từ chối và không hiển thị trên sàn. Vui lòng nhập lý do rõ ràng."
+          : "Bạn có chắc muốn duyệt khách sạn này hoạt động trên sàn?"}
+        infoRows={[
+          { label: "Tên khách sạn", value: pendingAction?.hotel?.ten },
+          { label: "Đối tác", value: pendingAction?.hotel?.doi_tac?.ten_cong_ty || "—" },
+        ]}
+        reason={pendingAction?.type === "reject" ? {
+          required: true,
+          id: "hotel-reject-reason",
+          label: "Lý do từ chối",
+          placeholder: "VD: Thông tin không chính xác, chưa đủ điều kiện...",
+          hint: "Lý do sẽ được gửi thông báo cho đối tác.",
+        } : undefined}
+        confirmText={pendingAction?.type === "reject" ? "Xác nhận từ chối" : "Duyệt hoạt động"}
+        loading={actionLoading}
+        onClose={() => { if (!actionLoading) setPendingAction(null); }}
+        onConfirm={handleConfirmAction}
       />
 
       <ManagementToolbar
@@ -319,7 +350,7 @@ const HotelsPage = () => {
                 </thead>
                 <tbody>
                   {pagedHotels.map((hotel) => {
-                    const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: "" };
+                    const st = getHotelStatusMeta(hotel, { variant: "text" });
                     const isActive = hotel.trang_thai === "hoat_dong";
                   const partnerLockedHotel = Boolean(hotel.khoa_do_doi_tac);
                     return (

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
-  Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Star,
+  Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Star, Check, X,
 } from 'lucide-react';
 import adminHotelService from '../../../services/adminHotelService';
 import {
@@ -19,23 +19,11 @@ import { HOTEL_CATEGORY_GROUPS } from '../amenities/constants';
 import { groupAmenitiesByCategory } from '../amenities/utils';
 import { getAdminRoomTypeStatus } from '../../../constants/statuses';
 import { TRANG_THAI, formatCurrency, formatDate } from '../../../utils/bookingDisplay';
+import { getHotelStatusMeta, REVIEW_BADGE } from '../../../constants/statusConfig';
 import HotelLockConfirmModal from './components/HotelLockConfirmModal';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 
 const PAGE_SIZE = 10;
-
-const HOTEL_STATUS = {
-  cho_duyet: { label: 'Chờ duyệt', cls: 'badge-warning' },
-  hoat_dong: { label: 'Hoạt động', cls: 'badge-success' },
-  da_duyet: { label: 'Đã duyệt', cls: 'badge-success' },
-  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
-  bi_khoa: { label: 'Bị khóa', cls: 'badge-danger' },
-  yeu_cau_sua: { label: 'Yêu cầu sửa', cls: 'badge-warning' },
-};
-
-const REVIEW_STATUS = {
-  hien_thi: { label: 'Hiển thị', cls: 'badge-success' },
-  an: { label: 'Đã ẩn', cls: 'badge-default' },
-};
 
 const HOTEL_TABS = [
   { id: 'overview', label: 'Tổng quan' },
@@ -95,6 +83,7 @@ const HotelDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
 
   const loadHotel = useCallback(async () => {
     if (!id) return;
@@ -162,31 +151,33 @@ const HotelDetailPage = () => {
     showPagination: showTabPagination,
   } = useListPagination(activeTabList, PAGE_SIZE, [resolvedTab, hotel?.ma_khach_san]);
 
-  const handleAction = async (actionType) => {
-    let actionPromise;
-    if (actionType === 'approve' && window.confirm('Duyệt khách sạn này hoạt động trên sàn?')) {
-      actionPromise = dispatch(approveHotel(id));
+  const handleAction = (actionType) => {
+    if (actionType === 'approve') {
+      setPendingAction({ type: 'approve' });
     } else if (actionType === 'reject') {
-      const reason = window.prompt('Nhập lý do từ chối:');
-      if (reason?.trim()) actionPromise = dispatch(rejectHotel({ id, lyDo: reason.trim() }));
+      setPendingAction({ type: 'reject' });
     } else if (actionType === 'lock') {
       setConfirmAction({ hotel, action: 'lock' });
-      return;
     } else if (actionType === 'unlock') {
       setConfirmAction({ hotel, action: 'unlock' });
-      return;
     }
+  };
 
-    if (!actionPromise) return;
-
+  const handleConfirmAction = async (reason) => {
+    if (!pendingAction) return;
+    const { type } = pendingAction;
     setActionLoading(true);
     setActionError('');
     try {
-      const result = await actionPromise;
+      const thunk = type === 'approve'
+        ? approveHotel(id)
+        : rejectHotel({ id, lyDo: reason });
+      const result = await dispatch(thunk);
       if (result.meta?.requestStatus === 'rejected') {
         setActionError(result.payload || 'Thao tác thất bại');
         return;
       }
+      setPendingAction(null);
       await loadHotel();
     } finally {
       setActionLoading(false);
@@ -241,7 +232,7 @@ const HotelDetailPage = () => {
     );
   }
 
-  const st = HOTEL_STATUS[hotel.trang_thai] || { label: hotel.trang_thai, cls: 'badge-default' };
+  const st = getHotelStatusMeta(hotel, { variant: 'badge' });
   const partnerLocked = Boolean(hotel.khoa_do_doi_tac);
   const partner = hotel.doi_tac;
   const images = hotel.hinh_anh?.length ? hotel.hinh_anh : [];
@@ -272,6 +263,31 @@ const HotelDetailPage = () => {
         loading={actionLoading}
         onClose={handleCloseConfirm}
         onConfirm={handleConfirmToggle}
+      />
+
+      <ConfirmModal
+        open={Boolean(pendingAction)}
+        variant={pendingAction?.type === 'reject' ? 'danger' : 'primary'}
+        icon={pendingAction?.type === 'reject' ? <X size={20} /> : <Check size={20} />}
+        title={pendingAction?.type === 'reject' ? 'Từ chối khách sạn' : 'Duyệt khách sạn'}
+        intro={pendingAction?.type === 'reject'
+          ? 'Khách sạn sẽ bị từ chối và không hiển thị trên sàn. Vui lòng nhập lý do rõ ràng.'
+          : 'Bạn có chắc muốn duyệt khách sạn này hoạt động trên sàn?'}
+        infoRows={[
+          { label: 'Tên khách sạn', value: hotel?.ten },
+          { label: 'Đối tác', value: hotel?.doi_tac?.ten_cong_ty || '—' },
+        ]}
+        reason={pendingAction?.type === 'reject' ? {
+          required: true,
+          id: 'hotel-detail-reject-reason',
+          label: 'Lý do từ chối',
+          placeholder: 'VD: Thông tin không chính xác, chưa đủ điều kiện...',
+          hint: 'Lý do sẽ được gửi thông báo cho đối tác.',
+        } : undefined}
+        confirmText={pendingAction?.type === 'reject' ? 'Xác nhận từ chối' : 'Duyệt hoạt động'}
+        loading={actionLoading}
+        onClose={() => { if (!actionLoading) setPendingAction(null); }}
+        onConfirm={handleConfirmAction}
       />
 
       <div className="admin-user-detail-hero content-card">
@@ -596,7 +612,7 @@ const HotelDetailPage = () => {
                     </thead>
                     <tbody>
                       {pagedTabItems.map((review) => {
-                        const reviewSt = REVIEW_STATUS[review.trang_thai]
+                        const reviewSt = REVIEW_BADGE[review.trang_thai]
                           || { label: review.trang_thai, cls: 'badge-default' };
                         return (
                           <tr key={review.ma_danh_gia}>

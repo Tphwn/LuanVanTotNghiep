@@ -1,6 +1,8 @@
 import { Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
+import ListPagination from '../../../../components/common/management/ListPagination';
+import useListPagination from '../../../../hooks/useListPagination';
 import { inferLoaiDeXuat } from '../utils';
 
 const LOAI_TABS = [
@@ -27,7 +29,19 @@ export const RequestsSection = ({
   filteredRequests,
   onApprove,
   onReject,
-}) => (
+}) => {
+  const {
+    pagedItems: pagedRequests,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(filteredRequests, 10, [requestFilter, requestLoaiFilter]);
+
+  return (
   <div className="mgmt-table-card mgmt-table-card--grid amenity-requests-card">
     <div className="amenity-requests-toolbar">
       <div className="amenity-request-loai-tabs">
@@ -77,7 +91,7 @@ export const RequestsSection = ({
             </tr>
           </thead>
           <tbody>
-            {filteredRequests.map((req) => {
+            {pagedRequests.map((req) => {
               const isPending = req.trang_thai === 'cho_xu_ly';
               const hotelId = req.doi_tac?.ma_khach_san;
               const hotelName = req.doi_tac?.ten_khach_san;
@@ -123,7 +137,19 @@ export const RequestsSection = ({
             })}
           </tbody>
         </table>
+        {showPagination && (
+          <ListPagination
+            total={filteredRequests.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            rangeFrom={rangeFrom}
+            rangeTo={rangeTo}
+            pageNumbers={pageNumbers}
+            onPageChange={setPage}
+          />
+        )}
       </div>
     )}
   </div>
-);
+  );
+};

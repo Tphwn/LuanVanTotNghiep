@@ -21,6 +21,7 @@ import {
   clearMsg as clearPartnerMsg,
 } from '../../store/slices/partnerBookingSlice';
 import PartnerBookingCheckConfirmModal from '../../pages/partner/bookings/components/PartnerBookingCheckConfirmModal';
+import ReasonField from '../common/ReasonField';
 import {
   TRANG_THAI,
   PHUONG_THUC,
@@ -80,6 +81,7 @@ const BookingDetailModal = ({
 
   const [cancelMode, setCancelMode] = useState(false);
   const [lyDo, setLyDo] = useState('');
+  const [cancelError, setCancelError] = useState('');
   const [refundLoading, setRefundLoading] = useState(false);
   const [checkConfirmAction, setCheckConfirmAction] = useState(null);
   const [checkActionLoading, setCheckActionLoading] = useState(false);
@@ -162,6 +164,7 @@ const BookingDetailModal = ({
   const closeCancelBox = () => {
     setCancelMode(false);
     setLyDo('');
+    setCancelError('');
   };
 
   const handleCompleteRefund = async () => {
@@ -178,7 +181,7 @@ const BookingDetailModal = ({
   const handleCancelBooking = async () => {
     if (!detail) return;
     if (!lyDo.trim()) {
-      alert('Phải kèm lý do mới được hủy');
+      setCancelError('Phải kèm lý do mới được hủy');
       return;
     }
     const result = await dispatch(cancelAdminBooking({
@@ -360,15 +363,18 @@ const BookingDetailModal = ({
                   Hủy đơn sẽ cập nhật trạng thái đơn và thông báo cho khách hàng.
                   Vui lòng nhập lý do rõ ràng.
                 </p>
-                <label className="booking-reject-label">
-                  Lý do hủy <span style={{ color: '#e05c5c' }}>*</span>
-                </label>
-                <textarea
+                <ReasonField
+                  id="modal-booking-cancel-reason"
+                  label="Lý do hủy"
+                  required
                   rows={3}
-                  className="booking-reject-textarea"
-                  placeholder="VD: Khách sạn không đủ điều kiện phục vụ..."
                   value={lyDo}
-                  onChange={(e) => setLyDo(e.target.value)}
+                  onChange={(e) => {
+                    setLyDo(e.target.value);
+                    if (cancelError) setCancelError('');
+                  }}
+                  error={cancelError}
+                  placeholder="VD: Khách sạn không đủ điều kiện phục vụ..."
                 />
                 <div className="booking-reject-actions">
                   <button type="button" className="btn btn-ghost btn-sm" onClick={closeCancelBox}>

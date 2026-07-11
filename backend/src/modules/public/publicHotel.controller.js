@@ -20,6 +20,15 @@ const getPopularDestinations = async (req, res, next) => {
   }
 };
 
+const getFeaturedByDestination = async (req, res, next) => {
+  try {
+    const data = await publicHotelService.getFeaturedByDestination();
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const listHotels = async (req, res, next) => {
   try {
     const { ma_dia_diem } = req.query;
@@ -110,6 +119,7 @@ const getAmenityFilters = async (req, res, next) => {
 module.exports = {
   getLocations,
   getPopularDestinations,
+  getFeaturedByDestination,
   getAmenityFilters,
   listHotels,
   searchHotels,

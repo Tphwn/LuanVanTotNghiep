@@ -172,7 +172,7 @@ export default function RoomDetailModal({ room, onClose }) {
             <span className="partner-room-detail-price-label">Giá phòng:</span>
             <span className="partner-room-detail-price">{fmt(room.gia_co_ban)} VNĐ / đêm</span>
           </div>
-          <button type="button" className="btn btn-primary partner-room-detail-close-btn" onClick={onClose}>
+          <button type="button" className="btn btn-ghost partner-room-detail-close-btn" onClick={onClose}>
             Đóng
           </button>
         </div>

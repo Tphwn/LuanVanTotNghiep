@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import Toast from '../../../components/common/Toast';
+import useToast from '../../../hooks/useToast';
 
 const formatDate = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
@@ -18,7 +20,7 @@ const ProfilePage = () => {
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingPwd, setSavingPwd] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
-  const [toast, setToast] = useState(null);
+  const { toast, showToast } = useToast();
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
 
@@ -30,11 +32,6 @@ const ProfilePage = () => {
     mat_khau_cu: '', mat_khau_moi: '', xac_nhan_mat_khau: '',
   });
   const [phoneForm, setPhoneForm] = useState({ so_dien_thoai: ''});
-
-  const showToast = (msg, type ='success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -147,16 +144,7 @@ const ProfilePage = () => {
         subtitle="Cập nhật thông tin cá nhân và cài đặt bảo mật"
       />
 
-      {toast && (
-        <div style={{
-          background: toast.type ==='success'?'#e8f5f1':'#fff0f0',
-          border: `1px solid ${toast.type === 'success'?'#8FD9C4':'#ffb3b3'}`,
-          color: toast.type === 'success'?'#3C7363':'#e05c5c',
-          padding: '10px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14,
-        }}>
-          {toast.type === 'success'?'':''} {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} inline />
 
       {/* Profile header card */}
       <div className="content-card"style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>

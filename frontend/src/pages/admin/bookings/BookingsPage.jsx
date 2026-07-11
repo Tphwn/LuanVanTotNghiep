@@ -153,20 +153,15 @@ const AdminBookingsPage = () => {
       setCancelBooking(null);
       dispatch(fetchBookingStats());
       dispatch(fetchAdminBookings(listFilters));
-      return;
-    }
-
-    if (cancelAdminBooking.rejected.match(result)) {
-      alert(result.payload || 'Hủy đơn đặt phòng thất bại');
     }
   };
 
   const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: stats?.total ?? list.length },
-    { id: 'da_xac_nhan', label: 'Chờ check-in', count: stats?.da_xac_nhan ?? 0 },
-    { id: 'da_checkin', label: 'Đã check-in', count: stats?.da_checkin ?? 0 },
-    { id: 'hoan_thanh', label: 'Hoàn thành', count: stats?.hoan_thanh ?? 0 },
-    { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0 },
+    { id: 'all', label: 'Tất cả', count: stats?.total ?? list.length, tone: 'neutral' },
+    { id: 'da_xac_nhan', label: 'Chờ check-in', count: stats?.da_xac_nhan ?? 0, tone: 'info' },
+    { id: 'da_checkin', label: 'Đã check-in', count: stats?.da_checkin ?? 0, tone: 'info' },
+    { id: 'hoan_thanh', label: 'Hoàn thành', count: stats?.hoan_thanh ?? 0, tone: 'success' },
+    { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0, tone: 'danger' },
   ], [stats, list.length]);
 
   const hasActiveFilter = Boolean(

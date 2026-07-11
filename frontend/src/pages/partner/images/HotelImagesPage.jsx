@@ -3,7 +3,7 @@ const PartnerImagesPage = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
         <h1>Quản lý hình ảnh</h1>
-        <button style={{ padding:'0.75rem 1.25rem', borderRadius: 8, background: '#117d62', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14 }}>Tải lên</button>
+        <button type="button" className="btn btn-primary">Tải lên</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem'}}>
@@ -14,7 +14,7 @@ const PartnerImagesPage = () => {
             </div>
             <div style={{ padding:'0.75rem'}}>
               <p style={{ margin: 0, color:'#666', fontSize: 13 }}>Khách sạn Riverside</p>
-              <button style={{ marginTop: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 4, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: 12 }}>Xóa</button>
+              <button type="button" className="btn btn-danger btn-sm" style={{ marginTop: '0.5rem' }}>Xóa</button>
             </div>
           </div>
         ))}

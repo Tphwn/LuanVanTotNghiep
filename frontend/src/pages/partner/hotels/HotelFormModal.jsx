@@ -165,9 +165,9 @@ const HotelFormContent = ({
   };
 
   const handlePropose = async () => {
-    if (!proposeForm.ten_de_xuat.trim()) return alert('Nhập tên tiện nghi đề xuất');
+    if (!proposeForm.ten_de_xuat.trim()) return showToast('Nhập tên tiện nghi đề xuất', 'error');
     const hotelName = form.ten?.trim();
-    if (!hotelName) return alert('Vui lòng nhập tên khách sạn trước khi gửi đề xuất');
+    if (!hotelName) return showToast('Vui lòng nhập tên khách sạn trước khi gửi đề xuất', 'error');
     try {
       const contextTag = hotel?.ma_khach_san
         ? `[khách sạn:${hotel.ma_khach_san}:${hotelName}]`
@@ -177,12 +177,12 @@ const HotelFormContent = ({
         loai_de_xuat: 'khach_san',
         mo_ta: `${contextTag} ${proposeForm.mo_ta || 'Đối tác yêu cầu tiện nghi cho khách sạn này'}`,
       });
-      alert('Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
+      showToast('Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
       setProposeForm({ ten_de_xuat: '', mo_ta: ''});
       setShowPropose(false);
       setRequestRefresh((k) => k + 1);
     } catch {
-      alert('Gửi đề xuất thất bại');
+      showToast('Gửi đề xuất thất bại', 'error');
     }
   };
 

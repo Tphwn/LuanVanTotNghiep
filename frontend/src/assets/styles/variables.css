@@ -2,15 +2,15 @@
 
 :root {
   /* Màu chủ đạo */
-  --color-primary: #117d62;
-  --color-primary-hover: #10ca8f;
-  --color-primary-light: #e6f4ff;
+  --color-primary: #3C7363;
+  --color-primary-hover: #2d5a4d;
+  --color-primary-light: #e8f5f1;
   
   /* Màu chức năng */
-  --color-danger: #ff4d4f;  
-  --color-danger-hover: #d9363e;
-  --color-success: #52c41a;
-  --color-warning: #faad14;
+  --color-danger: #e05c5c;  
+  --color-danger-hover: #c94a4a;
+  --color-success: #1a7a4a;
+  --color-warning: #b36b00;
 
   /* Màu nền */
   --color-bg: #dce1e8;

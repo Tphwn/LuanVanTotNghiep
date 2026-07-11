@@ -157,9 +157,9 @@ const RoomTypePage = () => {
   const hotelFilterTabs = useMemo(() => {
     const activeCount = hotels.filter(isHotelActive).length;
     return [
-      { id: 'all', label: 'Tất cả', count: hotels.length },
-      { id: 'hoat_dong', label: 'Hoạt động', count: activeCount },
-      { id: 'inactive', label: 'Ngưng HĐ', count: hotels.length - activeCount },
+      { id: 'all', label: 'Tất cả', count: hotels.length, tone: 'neutral' },
+      { id: 'hoat_dong', label: 'Hoạt động', count: activeCount, tone: 'success' },
+      { id: 'inactive', label: 'Ngưng HĐ', count: hotels.length - activeCount, tone: 'danger' },
     ];
   }, [hotels]);
 
@@ -170,9 +170,9 @@ const RoomTypePage = () => {
   }), [rooms, roomTypeFilter, statusFilter]);
 
   const roomFilterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: rooms.length },
-    { id: 'hoat_dong', label: 'Đang mở', count: rooms.filter((r) => r.trang_thai === 'hoat_dong').length },
-    { id: 'an', label: 'Đã ẩn', count: rooms.filter((r) => r.trang_thai === 'an').length },
+    { id: 'all', label: 'Tất cả', count: rooms.length, tone: 'neutral' },
+    { id: 'hoat_dong', label: 'Đang mở', count: rooms.filter((r) => r.trang_thai === 'hoat_dong').length, tone: 'success' },
+    { id: 'an', label: 'Đã ẩn', count: rooms.filter((r) => r.trang_thai === 'an').length, tone: 'muted' },
   ], [rooms]);
 
   const hotelPagination = useListPagination(filteredHotels, PAGE_SIZE, [

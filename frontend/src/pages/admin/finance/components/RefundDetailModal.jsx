@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import DetailTable from '../../../components/booking/DetailTable';
-import BackButton from '../../../components/common/BackButton';
-import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import DetailTable from '../../../../components/booking/DetailTable';
 import {
   approveRefund,
-  clearMsg,
   clearRefundDetail,
   fetchRefundById,
-} from '../../../store/slices/adminFinanceSlice';
+} from '../../../../store/slices/adminFinanceSlice';
 import {
   formatCurrency,
   formatDate,
   formatStayDateTime,
   REFUND_TRANG_THAI,
   TRANG_THAI,
-} from '../../../utils/bookingDisplay';
+} from '../../../../utils/bookingDisplay';
 
 const REFUND_STATUS = REFUND_TRANG_THAI;
 const BOOKING_STATUS = TRANG_THAI;
@@ -33,31 +30,19 @@ const formatDateTime = (date) => {
   return `${d.toLocaleDateString('vi-VN')} - ${time}`;
 };
 
-export default function RefundDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+export default function RefundDetailModal({ id, onClose }) {
   const dispatch = useDispatch();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const {
     refundDetail,
     refundDetailLoading,
     loading,
-    successMsg,
-    error,
   } = useSelector((s) => s.adminFinance || {});
 
   useEffect(() => {
     if (id) dispatch(fetchRefundById(id));
     return () => { dispatch(clearRefundDetail()); };
   }, [dispatch, id]);
-
-  useEffect(() => {
-    if (successMsg || error) {
-      const t = setTimeout(() => dispatch(clearMsg()), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [successMsg, error, dispatch]);
 
   const refundStatus = useMemo(() => {
     if (!refundDetail) return { label: '—', cls: 'badge-default' };
@@ -113,10 +98,6 @@ export default function RefundDetailPage() {
     ];
   }, [refundDetail]);
 
-  const handleBack = () => {
-    navigate(location.state?.returnTo || '/admin/finance?tab=refunds');
-  };
-
   const canApprove = refundDetail
     && ['cho_xu_ly', 'dang_xu_ly'].includes(refundDetail.trang_thai);
 
@@ -126,46 +107,73 @@ export default function RefundDetailPage() {
     });
   };
 
-  if (refundDetailLoading) {
-    return (
-      <div className="content-card" style={{ textAlign: 'center', padding: 60 }}>
-        Đang tải chi tiết yêu cầu hoàn tiền...
-      </div>
-    );
-  }
-
-  if (!refundDetail) {
-    return (
-      <div className="content-card" style={{ textAlign: 'center', padding: 48 }}>
-        <p style={{ color: '#e05c5c', marginBottom: 16 }}>Không tìm thấy yêu cầu hoàn tiền</p>
-        <BackButton variant="outline" onClick={handleBack} />
-      </div>
-    );
-  }
-
   return (
-    <div className="booking-detail-page mgmt-page">
-      <ManagementHeader
-        title="Tài chính"
-        subtitle={`Chi tiết hoàn tiền ${refundDetail.ma_hoan || `#${refundDetail.ma_hoan_tien}`}`}
-        onBack={handleBack}
-      />
-
-      {(successMsg || error) && (
-        <div className={`mgmt-toast ${successMsg ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
-          {successMsg || error}
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div
+        className="modal-box finance-detail-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="modal-header">
+          <h3 className="modal-title">
+            Chi tiết hoàn tiền {refundDetail ? (refundDetail.ma_hoan || `#${refundDetail.ma_hoan_tien}`) : ''}
+          </h3>
+          <button type="button" className="modal-close" onClick={onClose}>×</button>
         </div>
-      )}
 
-      <div className="content-card booking-detail-page-card">
-        <div className="booking-detail-status-bar booking-detail-status-bar--page">
-          <div className="booking-detail-status-left">
-            <span className={`badge ${refundStatus.cls}`}>{refundStatus.label}</span>
-          </div>
+        <div className="finance-detail-modal-body">
+          {refundDetailLoading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>
+              Đang tải chi tiết yêu cầu hoàn tiền...
+            </div>
+          ) : !refundDetail ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#e05c5c' }}>
+              Không tìm thấy yêu cầu hoàn tiền
+            </div>
+          ) : (
+            <>
+              <div className="booking-detail-status-bar" style={{ marginBottom: 16 }}>
+                <span className={`badge ${refundStatus.cls}`}>{refundStatus.label}</span>
+              </div>
+
+              <div className="booking-detail-reason-box" style={{ marginBottom: 16 }}>
+                <h4 className="booking-detail-section-title">Lý do hủy</h4>
+                <p style={{ margin: 0, fontSize: 14, color: '#1a2e28', lineHeight: 1.6 }}>
+                  {refundDetail.ly_do_huy || '—'}
+                </p>
+              </div>
+
+              <div
+                className="booking-detail-calc-box"
+                style={{
+                  marginBottom: 16,
+                  padding: '16px 18px',
+                  background: '#f0faf7',
+                  border: '1px solid #d4ede6',
+                  borderRadius: 10,
+                }}
+              >
+                <h4 className="booking-detail-section-title" style={{ marginTop: 0 }}>Chi tiết tính toán</h4>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#1a2e28' }}>
+                  {refundDetail.chi_tiet_tinh_toan || '—'}
+                </p>
+              </div>
+
+              <div className="booking-detail-grid">
+                <DetailTable title="Thông tin yêu cầu" rows={requestRows} />
+                <DetailTable title="Thông tin đơn đặt phòng" rows={bookingRows} />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="finance-detail-modal-footer">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
           {canApprove && (
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary"
               disabled={loading}
               onClick={() => setConfirmOpen(true)}
             >
@@ -173,35 +181,15 @@ export default function RefundDetailPage() {
             </button>
           )}
         </div>
-
-        <div className="booking-detail-reason-box" style={{ marginBottom: 20 }}>
-          <h4 className="booking-detail-section-title">Lý do hủy</h4>
-          <p style={{ margin: 0, fontSize: 14, color: '#1a2e28', lineHeight: 1.6 }}>
-            {refundDetail.ly_do_huy || '—'}
-          </p>
-        </div>
-
-        <div className="booking-detail-calc-box" style={{
-          marginBottom: 20,
-          padding: '16px 18px',
-          background: '#f0faf7',
-          border: '1px solid #d4ede6',
-          borderRadius: 10,
-        }}>
-          <h4 className="booking-detail-section-title" style={{ marginTop: 0 }}>Chi tiết tính toán</h4>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#1a2e28' }}>
-            {refundDetail.chi_tiet_tinh_toan || '—'}
-          </p>
-        </div>
-
-        <div className="booking-detail-grid">
-          <DetailTable title="Thông tin yêu cầu" rows={requestRows} />
-          <DetailTable title="Thông tin đơn đặt phòng" rows={bookingRows} />
-        </div>
       </div>
 
-      {confirmOpen && (
-        <div className="modal-overlay" onClick={() => setConfirmOpen(false)}>
+      {confirmOpen && refundDetail && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1200 }}
+          onClick={(e) => { e.stopPropagation(); setConfirmOpen(false); }}
+          role="presentation"
+        >
           <div className="modal-box" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Xác nhận hoàn tiền</h3>

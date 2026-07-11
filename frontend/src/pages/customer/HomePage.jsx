@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import publicHotelService from '../../services/publicHotelService';
 import ROUTES from '../../constants/routes';
 import { resolveUploadUrl } from '../../utils/media';
+import { formatCurrency } from '../../utils/formatCurrency';
 import { searchFormToParams, resolveSearchForm, saveSearchForm } from '../../utils/hotelSearchStorage';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
 import '../../assets/styles/home.css';
@@ -16,10 +17,38 @@ const DEST_IMAGES = [
   'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=600&q=80',
 ];
 
+const normalizeName = (value) => (value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .replace(/Đ/g, 'D')
+  .toLowerCase();
+
+const DEST_IMAGE_MAP = [
+  { match: ['vung tau', 'ba ria'], url: '/uploads/ba-ria-vung-tau.jpg' },
+  { match: ['da lat'], url: '/uploads/da-lat.jpeg' },
+  { match: ['quy nhon'], url: '/uploads/quynhon.jpg' },
+];
+
+const resolveDestImage = (name, fallbackIndex) => {
+  const key = normalizeName(name);
+  const found = DEST_IMAGE_MAP.find((item) => item.match.some((m) => key.includes(m)));
+  if (found) return resolveUploadUrl(found.url);
+  return DEST_IMAGES[fallbackIndex % DEST_IMAGES.length];
+};
+
+const getMainHotelImage = (hotel) => {
+  const images = hotel?.hinh_anh || [];
+  const main = images.find((img) => img.la_anh_chinh) || images[0];
+  return main ? resolveUploadUrl(main.url) : null;
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
   const [popular, setPopular] = useState([]);
+  const [featured, setFeatured] = useState([]);
+  const [activeDest, setActiveDest] = useState(0);
 
   useEffect(() => {
     publicHotelService.getLocations()
@@ -29,6 +58,10 @@ const HomePage = () => {
     publicHotelService.getPopularDestinations()
       .then((res) => setPopular(res.data?.data || []))
       .catch(() => setPopular([]));
+
+    publicHotelService.getFeaturedByDestination()
+      .then((res) => setFeatured(res.data?.data || []))
+      .catch(() => setFeatured([]));
   }, []);
 
   const handleSearch = (data) => {
@@ -41,6 +74,12 @@ const HomePage = () => {
     saveSearchForm(data);
     handleSearch(data);
   };
+
+  const handleHotelClick = (maKhachSan) => {
+    navigate(ROUTES.CUSTOMER.HOTEL_DETAIL.replace(':id', maKhachSan));
+  };
+
+  const activeGroup = featured[activeDest] || null;
 
   return (
     <div className="home-page">
@@ -76,7 +115,7 @@ const HomePage = () => {
                 className="home-dest-card"
                 onClick={() => handleDestClick(dest.ma_dia_diem)}
               >
-                <img src={DEST_IMAGES[i % DEST_IMAGES.length]} alt={dest.ten_dia_diem} />
+                <img src={resolveDestImage(dest.ten_dia_diem, i)} alt={dest.ten_dia_diem} />
                 <div className="home-dest-overlay">
                   <p className="home-dest-name">{dest.ten_dia_diem}</p>
                   <p className="home-dest-count">{dest.so_khach_san} khách sạn</p>
@@ -84,6 +123,81 @@ const HomePage = () => {
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {featured.length > 0 && (
+        <section className="home-section">
+          <div className="home-section-header">
+            <h2 className="home-section-title">Chỗ nghỉ nổi bật được đề xuất cho quý khách</h2>
+            <p className="home-section-subtitle">Những khách sạn được đặt nhiều nhất tại mỗi điểm đến</p>
+          </div>
+
+          <div className="home-featured-tabbar">
+            <div className="home-featured-tabs" role="tablist">
+              {featured.map((group, i) => (
+                <button
+                  key={group.ma_dia_diem}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeDest === i}
+                  className={`home-featured-tab${activeDest === i ? ' home-featured-tab--active' : ''}`}
+                  onClick={() => setActiveDest(i)}
+                >
+                  {group.ten_dia_diem}
+                </button>
+              ))}
+            </div>
+            {activeGroup && (
+              <button
+                type="button"
+                className="home-featured-more"
+                onClick={() => handleDestClick(activeGroup.ma_dia_diem)}
+              >
+                Xem thêm các chỗ nghỉ ({activeGroup.ten_dia_diem}) ›
+              </button>
+            )}
+          </div>
+
+          {activeGroup && (
+            <div className="home-featured-grid">
+              {activeGroup.hotels.map((hotel) => {
+                const img = getMainHotelImage(hotel);
+                return (
+                  <button
+                    key={hotel.ma_khach_san}
+                    type="button"
+                    className="home-featured-card"
+                    onClick={() => handleHotelClick(hotel.ma_khach_san)}
+                  >
+                    <div className="home-featured-media">
+                      {img ? (
+                        <img src={img} alt={hotel.ten} />
+                      ) : (
+                        <div className="home-featured-media-placeholder" />
+                      )}
+                      {hotel.diem_trung_binh > 0 && (
+                        <span className="home-featured-score">{hotel.diem_trung_binh.toFixed(1)}</span>
+                      )}
+                    </div>
+                    <div className="home-featured-body">
+                      <h3 className="home-featured-name">{hotel.ten}</h3>
+                      <div className="home-featured-meta">
+                        <span className="home-featured-stars">{'★'.repeat(Number(hotel.so_sao) || 0)}</span>
+                        <span className="home-featured-location">{hotel.dia_diem?.ten_dia_diem}</span>
+                      </div>
+                      {hotel.gia_tu != null && (
+                        <p className="home-featured-price">
+                          Giá mỗi đêm từ{' '}
+                          <strong>{formatCurrency(hotel.gia_tu)} đ</strong>
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 

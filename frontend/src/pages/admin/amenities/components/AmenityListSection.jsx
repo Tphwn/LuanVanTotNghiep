@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Lock, Unlock } from 'lucide-react';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
 import { getAmenityLucideIcon } from '../../../../utils/amenityIcons';
 
@@ -11,7 +11,7 @@ export const AmenityListSection = ({
   onCategoryChange,
   amenities,
   onEdit,
-  onDelete,
+  onToggleLock,
 }) => (
   <div className="mgmt-table-card amenity-list-card">
     <div className="amenity-list-toolbar">
@@ -54,8 +54,9 @@ export const AmenityListSection = ({
           <tbody>
             {amenities.map((item) => {
               const ItemIcon = getAmenityLucideIcon(item.bieu_tuong || item.ten);
+              const isLocked = item.trang_thai === 'an';
               return (
-                <tr key={item.ma_tien_nghi}>
+                <tr key={item.ma_tien_nghi} className={isLocked ? 'amenity-row--locked' : ''}>
                   <td>
                     <div className="amenity-table-icon">
                       <ItemIcon size={15} strokeWidth={1.6} />
@@ -63,6 +64,7 @@ export const AmenityListSection = ({
                   </td>
                   <td className="amenity-name-cell">
                     <span className="amenity-name-text">{item.ten}</span>
+                    {isLocked && <span className="badge badge-danger amenity-lock-badge">Đã khóa</span>}
                   </td>
                   <ActionCell>
                     <ActionButton
@@ -73,11 +75,11 @@ export const AmenityListSection = ({
                       onClick={() => onEdit(item)}
                     />
                     <ActionButton
-                      variant="delete"
+                      variant={isLocked ? 'unlock' : 'lock'}
                       iconOnly
-                      icon={Trash2}
-                      title="Xóa"
-                      onClick={() => onDelete(item.ma_tien_nghi)}
+                      icon={isLocked ? Unlock : Lock}
+                      title={isLocked ? 'Mở khóa' : 'Khóa'}
+                      onClick={() => onToggleLock(item)}
                     />
                   </ActionCell>
                 </tr>

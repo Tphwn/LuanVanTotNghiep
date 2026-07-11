@@ -9,11 +9,14 @@ import {
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import StarRating from '../../../components/common/management/StarRating';
 import HotelThumb from '../../../components/common/management/HotelThumb';
 import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
-import { TRANG_THAI, TAB_FILTER } from './constants';
+import { TAB_FILTER } from './constants';
+import { getHotelStatusMeta } from '../../../constants/statusConfig';
 
 const HotelsPage = () => {
   const dispatch = useDispatch();
@@ -58,10 +61,10 @@ const HotelsPage = () => {
   }), [list]);
 
   const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: stats.total },
-    { id: 'da_duyet', label: 'Đã duyệt', count: stats.daDuyet },
-    { id: 'cho_duyet', label: 'Chờ duyệt', count: stats.choDuyet },
-    { id: 'tu_choi', label: 'Từ chối', count: stats.tuChoi },
+    { id: 'all', label: 'Tất cả', count: stats.total, tone: 'neutral' },
+    { id: 'da_duyet', label: 'Đã duyệt', count: stats.daDuyet, tone: 'success' },
+    { id: 'cho_duyet', label: 'Chờ duyệt', count: stats.choDuyet, tone: 'warning' },
+    { id: 'tu_choi', label: 'Từ chối', count: stats.tuChoi, tone: 'danger' },
   ], [stats]);
 
   const filteredList = useMemo(() => {
@@ -77,6 +80,17 @@ const HotelsPage = () => {
       return matchDiaDiem && matchKeyword;
     });
   }, [list, keyword, activeTab, diaDiemFilter]);
+
+  const {
+    pagedItems: pagedList,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(filteredList, 10, [keyword, activeTab, diaDiemFilter]);
 
   const handleToggleStatus = (hotel) => {
     const isActivating = hotel.trang_thai === 'bi_khoa';
@@ -193,6 +207,7 @@ const HotelsPage = () => {
             </p>
           </div>
         ) : (
+          <>
           <div className="mgmt-table-scroll">
             <table className="data-table data-table-grid">
               <thead>
@@ -206,8 +221,8 @@ const HotelsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredList.map((hotel) => {
-                  const st = TRANG_THAI[hotel.trang_thai] || { label: hotel.trang_thai, cls: '' };
+                {pagedList.map((hotel) => {
+                  const st = getHotelStatusMeta(hotel, { variant: 'text' });
                   const isActive = hotel.trang_thai === 'hoat_dong';
                   const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
                   const isToggling = toggleLoadingId === hotel.ma_khach_san;
@@ -277,6 +292,18 @@ const HotelsPage = () => {
               </tbody>
             </table>
           </div>
+          {showPagination && (
+            <ListPagination
+              total={filteredList.length}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeFrom={rangeFrom}
+              rangeTo={rangeTo}
+              pageNumbers={pageNumbers}
+              onPageChange={setPage}
+            />
+          )}
+          </>
         )}
       </div>
     </div>

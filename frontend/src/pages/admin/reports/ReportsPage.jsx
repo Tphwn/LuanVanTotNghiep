@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import api from "../../../services/api";
 import { Eye } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
+import ListPagination from "../../../components/common/management/ListPagination";
+import useListPagination from "../../../hooks/useListPagination";
+import Toast from "../../../components/common/Toast";
+import useToast from "../../../hooks/useToast";
 
 const REPORT_STATUS = {
   cho_xu_ly:    { label: "Chờ xử lý", cls: "badge-warning"},
@@ -169,18 +173,13 @@ const ReportsPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [detailReport, setDetailReport] = useState(null);
-  const [toast, setToast] = useState(null);
+  const { toast, showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [timePreset, setTimePreset] = useState("all");
   const [tuNgay, setTuNgay] = useState("");
   const [denNgay, setDenNgay] = useState("");
-
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const loadDashboard = async () => {
     try {
@@ -259,6 +258,17 @@ const ReportsPage = () => {
   const hasActiveFilter = statusFilter !== "all"|| typeFilter !=="all"|| timePreset !=="all";
   const dash = dashboard || {};
 
+  const {
+    pagedItems: pagedReports,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(reports, 10, [statusFilter, typeFilter, timePreset, tuNgay, denNgay]);
+
   return (
     <div>
       <div className="page-header">
@@ -268,16 +278,7 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      {toast && (
-        <div style={{
-          background: toast.type === "success"?"#e8f5f1":"#fff0f0",
-          border: `1px solid ${toast.type === "success"?"#8FD9C4":"#ffb3b3"}`,
-          color: toast.type === "success"?"#3C7363":"#e05c5c",
-          padding: "10px 16px", borderRadius: 8, marginBottom: 16, fontSize: 14,
-        }}>
-          {toast.type === "success"?"":""} {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} inline />
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -462,7 +463,7 @@ const ReportsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {reports.map((r) => {
+                    {pagedReports.map((r) => {
                       const st = REPORT_STATUS[r.trang_thai] || { label: r.trang_thai, cls:"badge-default"};
                       return (
                         <tr key={r.ma_bao_cao}>
@@ -491,6 +492,17 @@ const ReportsPage = () => {
                   </tbody>
                 </table>
               </div>
+            )}
+            {showPagination && (
+              <ListPagination
+                total={reports.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                rangeFrom={rangeFrom}
+                rangeTo={rangeTo}
+                pageNumbers={pageNumbers}
+                onPageChange={setPage}
+              />
             )}
           </div>
         </>

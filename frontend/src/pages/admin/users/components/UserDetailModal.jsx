@@ -164,7 +164,7 @@ export default function UserDetailModal({ userId, onClose }) {
         )}
 
         <div className="admin-user-detail-footer">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
             Đóng
           </button>
         </div>

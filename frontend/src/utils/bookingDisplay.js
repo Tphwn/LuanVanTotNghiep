@@ -1,38 +1,34 @@
-export const TRANG_THAI = {
-  cho_xac_nhan: { label: 'Chờ check-in', cls: 'badge-info' },
-  da_xac_nhan: { label: 'Chờ check-in', cls: 'badge-info' },
-  da_checkin: { label: 'Đã check-in', cls: 'badge-info' },
-  hoan_thanh: { label: 'Hoàn thành', cls: 'badge-success' },
-  da_huy: { label: 'Đã hủy', cls: 'badge-danger' },
-  tu_choi: { label: 'Đã hủy', cls: 'badge-danger' },
-};
+import {
+  BOOKING_STATUS,
+  REFUND_STATUS,
+  badgeMeta,
+  textMeta,
+} from '../constants/statusConfig';
 
-export const PARTNER_TRANG_THAI = {
-  cho_xac_nhan: { label: 'Chờ check-in', cls: 'mgmt-status-text--info' },
-  da_xac_nhan: { label: 'Chờ check-in', cls: 'mgmt-status-text--info' },
-  da_checkin: { label: 'Đã check-in', cls: 'mgmt-status-text--info' },
-  hoan_thanh: { label: 'Hoàn thành', cls: 'mgmt-status-text--active' },
-  da_huy: { label: 'Đã hủy', cls: 'mgmt-status-text--danger' },
-  tu_choi: { label: 'Đã hủy', cls: 'mgmt-status-text--danger' },
-};
+// Nhãn + màu đặt phòng lấy từ nguồn tập trung (statusConfig)
+const buildMap = (source, variant) => Object.fromEntries(
+  Object.keys(source).map((key) => [
+    key,
+    variant === 'text' ? textMeta(source, key) : badgeMeta(source, key),
+  ]),
+);
+
+export const TRANG_THAI = buildMap(BOOKING_STATUS, 'badge');
+export const PARTNER_TRANG_THAI = buildMap(BOOKING_STATUS, 'text');
 
 export const PHUONG_THUC = {
   truc_tuyen: 'Trực tuyến',
   tai_khach_san: 'Tại khách sạn',
 };
 
-export const REFUND_TRANG_THAI = {
-  cho_xu_ly: { label: 'Chờ xử lý', cls: 'badge-warning' },
-  dang_xu_ly: { label: 'Chờ xử lý', cls: 'badge-warning' },
-  da_hoan: { label: 'Đã hoàn', cls: 'badge-success' },
-  tu_choi: { label: 'Từ chối', cls: 'badge-danger' },
-};
+export const REFUND_TRANG_THAI = buildMap(REFUND_STATUS, 'badge');
 
+// Badge hoàn tiền dùng nhãn dài hơn nhưng vẫn đồng bộ màu với REFUND_STATUS
 export const REFUND_BADGE = {
-  cho_xu_ly: { label: 'Chờ xử lý hoàn tiền', cls: 'badge-warning' },
-  dang_xu_ly: { label: 'Chờ xử lý hoàn tiền', cls: 'badge-warning' },
-  da_hoan: { label: 'Đã hoàn tiền', cls: 'badge-success' },
-  tu_choi: { label: 'Từ chối hoàn tiền', cls: 'badge-danger' },
+  cho_xu_ly: { label: 'Chờ xử lý hoàn tiền', cls: REFUND_STATUS.cho_xu_ly.badge },
+  dang_xu_ly: { label: 'Đang xử lý hoàn tiền', cls: REFUND_STATUS.dang_xu_ly.badge },
+  da_hoan: { label: 'Đã hoàn tiền', cls: REFUND_STATUS.da_hoan.badge },
+  tu_choi: { label: 'Từ chối hoàn tiền', cls: REFUND_STATUS.tu_choi.badge },
 };
 
 export const getRefundBadgeMeta = (trangThaiHoan) => {

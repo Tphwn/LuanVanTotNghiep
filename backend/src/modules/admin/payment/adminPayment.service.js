@@ -221,7 +221,8 @@ const adminPaymentService = {
 
   getRefunds: async (filters = {}) => {
     const { trang_thai, tu_ngay, den_ngay, keyword } = filters;
-    const where = {};
+    // Chỉ hiển thị đơn thực sự phải hoàn tiền (bỏ đơn hủy hoàn 0đ)
+    const where = { so_tien_hoan: { gt: 0 } };
     if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
     if (tu_ngay) where.ngay_yeu_cau = { gte: new Date(tu_ngay) };
     if (den_ngay) where.ngay_yeu_cau = { ...where.ngay_yeu_cau, lte: new Date(`${den_ngay}T23:59:59`) };
