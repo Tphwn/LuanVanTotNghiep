@@ -88,7 +88,7 @@ const partnerPromotionService = {
         ngay_bat_dau: new Date(ngay_bat_dau),
         ngay_ket_thuc: new Date(ngay_ket_thuc),
         so_luot_toi_da: so_luot_toi_da != null ? Number(so_luot_toi_da) : null,
-        trang_thai: 'hoat_dong',
+        trang_thai: 'cho_duyet',
       },
       include: { khach_san: { select: { ten: true } } },
     });

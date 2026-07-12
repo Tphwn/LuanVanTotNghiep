@@ -55,6 +55,7 @@ import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AmenityFormPage from '../pages/admin/amenities/AmenityFormPage';
 import AdminRoomTypesPage from '../pages/admin/rooms/RoomTypesPage';
 import AdminReviewsPage from '../pages/admin/reviews/ReviewsPage';
+import AdminPromotionsPage from '../pages/admin/promotions/PromotionsPage';
 import PartnersPage from '../pages/admin/users/PartnersPage';
 import UserDetailPage from '../pages/admin/users/UserDetailPage';
 import AdminUsersPage from "../pages/admin/users/UsersPage";
@@ -173,6 +174,7 @@ const AppRoutes = () => {
           <Route path="room-types" element={<AdminRoomTypesPage />} />
           <Route path="room-types/hotels/:hotelId" element={<AdminRoomTypesPage />} />
           <Route path="reviews" element={<AdminReviewsPage />} />
+          <Route path="promotions" element={<AdminPromotionsPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
           <Route path="finance/transactions/:id" element={<TransactionDetailPage />} />
           <Route path="finance/refunds/:id" element={<RefundDetailPage />} />

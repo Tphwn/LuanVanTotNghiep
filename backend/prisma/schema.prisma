@@ -281,6 +281,7 @@ model khuyen_mai {
   so_luot_toi_da        Int?
   so_luot_da_dung       Int                     @default(0)
   trang_thai            khuyen_mai_trang_thai   @default(hoat_dong)
+  ly_do                 String?                 @db.VarChar(255)
   dat_phong             dat_phong[]
   khach_hang_khuyen_mai khach_hang_khuyen_mai[]
   khach_san             khach_san?              @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_ks")
@@ -644,7 +645,9 @@ enum dat_phong_trang_thai {
 }
 
 enum khuyen_mai_trang_thai {
+  cho_duyet
   hoat_dong
+  tu_choi
   het_han
   an
 }

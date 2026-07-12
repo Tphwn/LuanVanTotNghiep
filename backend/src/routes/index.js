@@ -11,6 +11,7 @@ const registerRoutes = (app) => {
   app.use('/api/admin/bookings', ...adminGuard, require('../modules/admin/booking/adminBooking.routes'));
   app.use('/api/admin/payments', ...adminGuard, require('../modules/admin/payment/adminPayment.routes'));
   app.use('/api/admin/finance', ...adminGuard, require('../modules/admin/finance/finance.routes'));
+  app.use('/api/admin/promotions', ...adminGuard, require('../modules/admin/promotion/adminPromotion.routes'));
 
   app.use('/api/partner/rooms', require('../modules/roomType/roomType.routes'));
   app.use('/api/partner/hotels', require('../modules/hotel/hotel.routes'));

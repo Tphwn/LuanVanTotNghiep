@@ -12,6 +12,7 @@ import {
   Wallet,
   FileBarChart,
   Handshake,
+  Ticket,
   Bell,
   LogOut,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const adminMenus = [
   { title: 'Tiện nghi', path: '/admin/amenities', icon: Sparkles },
   { title: 'Loại phòng', path: '/admin/room-types', icon: BedDouble },
   { title: 'Đánh giá', path: '/admin/reviews', icon: Star },
+  { title: 'Khuyến mãi', path: '/admin/promotions', icon: Ticket },
   { title: 'Tài chính', path: '/admin/finance', icon: Wallet },
   { title: 'Báo cáo', path: '/admin/reports', icon: FileBarChart },
   { title: 'Hợp tác', path: '/admin/partner-requests', icon: Handshake },

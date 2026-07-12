@@ -57,6 +57,15 @@ export const ACCOUNT_STATUS = {
   bi_khoa: make('Đã khóa', 'locked'),
 };
 
+// ── Khuyến mãi ──────────────────────────────────────────────
+export const PROMOTION_STATUS = {
+  cho_duyet: make('Chờ duyệt', 'warning'),
+  hoat_dong: make('Đang hoạt động', 'success'),
+  tu_choi: make('Từ chối', 'danger'),
+  het_han: make('Hết hạn', 'muted'),
+  an: make('Tạm ngưng', 'locked'),
+};
+
 const fallback = (key) => ({ label: key || '—', badge: 'badge-default', text: 'mgmt-status-text--muted' });
 
 /** Lấy meta dạng badge (pill nền màu): { label, cls } */
@@ -87,6 +96,8 @@ export const REVIEW_BADGE = buildMap(REVIEW_STATUS, 'badge');
 export const REVIEW_TEXT = buildMap(REVIEW_STATUS, 'text');
 export const ACCOUNT_BADGE = buildMap(ACCOUNT_STATUS, 'badge');
 export const ACCOUNT_TEXT = buildMap(ACCOUNT_STATUS, 'text');
+export const PROMOTION_BADGE = buildMap(PROMOTION_STATUS, 'badge');
+export const PROMOTION_TEXT = buildMap(PROMOTION_STATUS, 'text');
 
 export const getHotelStatusMeta = (hotel, { variant = 'badge' } = {}) => {
   const status = hotel?.trang_thai;

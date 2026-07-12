@@ -107,6 +107,38 @@ const notifyPartnerResponseUnhidden = async (maDoiTac, { maDonHang, tenKhachSan 
   });
 };
 
+const notifyPromotionApproved = async (maDoiTac, { tenKhuyenMai, maCode }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khuyến mãi đã được duyệt',
+    noi_dung: `Khuyến mãi "${tenKhuyenMai}" (mã ${maCode}) đã được quản trị viên duyệt và bắt đầu áp dụng.`,
+    loai: 'khuyen_mai',
+  });
+};
+
+const notifyPromotionRejected = async (maDoiTac, { tenKhuyenMai, maCode, lyDo }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khuyến mãi bị từ chối',
+    noi_dung: `Khuyến mãi "${tenKhuyenMai}" (mã ${maCode}) không được duyệt.${lyDo ? ` Lý do: ${lyDo}` : ''}`,
+    loai: 'khuyen_mai',
+  });
+};
+
+const notifyPromotionLocked = async (maDoiTac, { tenKhuyenMai, maCode, lyDo }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khuyến mãi bị tạm ngưng',
+    noi_dung: `Khuyến mãi "${tenKhuyenMai}" (mã ${maCode}) đã bị quản trị viên tạm ngưng.${lyDo ? ` Lý do: ${lyDo}` : ''}`,
+    loai: 'khuyen_mai',
+  });
+};
+
+const notifyPromotionUnlocked = async (maDoiTac, { tenKhuyenMai, maCode }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khuyến mãi đã được khôi phục',
+    noi_dung: `Khuyến mãi "${tenKhuyenMai}" (mã ${maCode}) đã được quản trị viên khôi phục và tiếp tục áp dụng.`,
+    loai: 'khuyen_mai',
+  });
+};
+
 module.exports = {
   notifyPartner,
   notifyAmenityApproved,
@@ -119,4 +151,8 @@ module.exports = {
   notifyReviewUnhidden,
   notifyPartnerResponseHidden,
   notifyPartnerResponseUnhidden,
+  notifyPromotionApproved,
+  notifyPromotionRejected,
+  notifyPromotionLocked,
+  notifyPromotionUnlocked,
 };
