@@ -64,8 +64,6 @@ const PartnerLayout = () => {
             />
           </div>
 
-          <div className="sidebar-section-label">Menu chính</div>
-
           <nav className="sidebar-nav sidebar-nav-admin">
             {partnerMenus.map((item) => {
               const Icon = item.icon;

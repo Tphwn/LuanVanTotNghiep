@@ -6,7 +6,7 @@ const BASE = '/partner/hotels';
 export const DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
   { so_ngay_truoc: 3, phan_tram_hoan: 50 },
-  { so_ngay_truoc: 1, phan_tram_hoan: 0 },
+  { so_ngay_truoc: 1, phan_tram_hoan: 10 },
 ];
 
 const buildHotelFormData = (data) => {
@@ -28,6 +28,9 @@ const buildHotelFormData = (data) => {
   if (data.giay_to_bat_buoc !== undefined) {
     formData.append('giay_to_bat_buoc', JSON.stringify(data.giay_to_bat_buoc || []));
   }
+  if (data.noi_quy_khac !== undefined) {
+    formData.append('noi_quy_khac', JSON.stringify(data.noi_quy_khac || []));
+  }
   ['cho_phep_hut_thuoc', 'cho_phep_to_chuc_tiec', 'cho_phep_thu_cung'].forEach((key) => {
     if (data[key] !== undefined) {
       formData.append(key, data[key] ? 'true' : 'false');
@@ -38,15 +41,6 @@ const buildHotelFormData = (data) => {
       formData.append(key, data[key]);
     }
   });
-  ['hoan_khi_benh', 'hoan_cong_viec_dot_xuat', 'yeu_cau_minh_chung_huy'].forEach((key) => {
-    if (data[key] !== undefined) {
-      formData.append(key, data[key] ? 'true' : 'false');
-    }
-  });
-  if (data.mo_ta_chinh_sach_huy !== undefined && data.mo_ta_chinh_sach_huy !== null) {
-    formData.append('mo_ta_chinh_sach_huy', data.mo_ta_chinh_sach_huy);
-  }
-
   if (data.removedImageIds?.length) {
     formData.append('removedImageIds', JSON.stringify(data.removedImageIds));
   }
@@ -80,7 +74,9 @@ export const fetchMyHotels = createAsyncThunk('partnerHotel/fetchAll', async (_,
     if (res.data?.success && res.data?.data) {
       return {
         list: res.data.data,
-        defaultCancelPolicies: res.data.defaultCancelPolicies || DEFAULT_CANCEL_POLICIES,
+        defaultCancelPolicies: res.data.defaultCancelPolicies?.length
+          ? res.data.defaultCancelPolicies
+          : DEFAULT_CANCEL_POLICIES,
       };
     }
     return rejectWithValue(res.data?.message || 'Lấy danh sách thất bại');

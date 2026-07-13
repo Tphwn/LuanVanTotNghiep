@@ -60,6 +60,9 @@ exports.updatePromotion = async (req, res, next) => {
     }
     res.json({ success: true, data, message: 'Đã cập nhật khuyến mãi' });
   } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ success: false, message: err.message });
+    }
     next(err);
   }
 };

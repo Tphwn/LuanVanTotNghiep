@@ -16,6 +16,17 @@ export const parseGiayToBatBuoc = (value) => {
   }
 };
 
+export const parseNoiQuyKhac = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return String(value).split('\n').map((s) => s.trim()).filter(Boolean);
+  }
+};
+
 export const toMoneyString = (value) => {
   if (value == null || value === '') return '';
   const raw = typeof value === 'object' && value !== null

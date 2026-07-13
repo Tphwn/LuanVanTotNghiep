@@ -8,7 +8,7 @@ const { isLockedByAdminHotel } = require('../../utils/partnerLockHelpers');
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
   { so_ngay_truoc: 3, phan_tram_hoan: 50 },
-  { so_ngay_truoc: 1, phan_tram_hoan: 0 },
+  { so_ngay_truoc: 1, phan_tram_hoan: 10 },
 ];
 
 const getPartnerDefaultCancelPolicies = (hotels) => {

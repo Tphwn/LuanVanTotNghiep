@@ -129,6 +129,45 @@ const getPromotionById = async (id) => prisma.khuyen_mai.findUnique({
   include: promotionInclude,
 });
 
+// Ràng buộc giá trị dùng chung cho tạo/sửa (chặn cả khi gọi API trực tiếp)
+const assertValidValues = ({
+  loai_giam, gia_tri, giam_toi_da, don_hang_toi_thieu,
+  ngay_bat_dau, ngay_ket_thuc, so_luot_toi_da,
+}) => {
+  const MIN_TIEN = 1000;
+  const val = Number(gia_tri);
+  if (Number.isNaN(val) || val <= 0) {
+    throw { statusCode: 400, message: 'Giá trị giảm phải lớn hơn 0' };
+  }
+  if (loai_giam === 'phan_tram' && val > 100) {
+    throw { statusCode: 400, message: 'Phần trăm giảm không được vượt quá 100%' };
+  }
+  if (loai_giam !== 'phan_tram' && val < MIN_TIEN) {
+    throw { statusCode: 400, message: 'Số tiền giảm phải từ 1.000đ trở lên' };
+  }
+  if (giam_toi_da != null && giam_toi_da !== '' && Number(giam_toi_da) < MIN_TIEN) {
+    throw { statusCode: 400, message: 'Giảm tối đa phải từ 1.000đ trở lên' };
+  }
+  if (don_hang_toi_thieu != null && don_hang_toi_thieu !== '') {
+    const dh = Number(don_hang_toi_thieu);
+    if (Number.isNaN(dh) || dh < 0) {
+      throw { statusCode: 400, message: 'Đơn tối thiểu không hợp lệ' };
+    }
+    if (dh > 0 && dh < MIN_TIEN) {
+      throw { statusCode: 400, message: 'Đơn tối thiểu phải từ 1.000đ trở lên' };
+    }
+  }
+  if (ngay_bat_dau && ngay_ket_thuc && new Date(ngay_ket_thuc) <= new Date(ngay_bat_dau)) {
+    throw { statusCode: 400, message: 'Ngày kết thúc phải lớn hơn ngày bắt đầu' };
+  }
+  if (
+    so_luot_toi_da != null && so_luot_toi_da !== ''
+    && (!Number.isInteger(Number(so_luot_toi_da)) || Number(so_luot_toi_da) < 1)
+  ) {
+    throw { statusCode: 400, message: 'Số lượt tối đa phải là số nguyên ≥ 1' };
+  }
+};
+
 const createSystemPromotion = async (userId, payload) => {
   const {
     ma_code,
@@ -145,6 +184,8 @@ const createSystemPromotion = async (userId, payload) => {
   if (!ma_code || !ten || !loai_giam || gia_tri == null || !ngay_bat_dau || !ngay_ket_thuc) {
     throw { statusCode: 400, message: 'Thiếu thông tin khuyến mãi bắt buộc' };
   }
+
+  assertValidValues(payload);
 
   const code = String(ma_code).trim().toUpperCase();
   const existing = await prisma.khuyen_mai.findUnique({ where: { ma_code: code } });
@@ -173,6 +214,16 @@ const createSystemPromotion = async (userId, payload) => {
 const updatePromotion = async (id, payload) => {
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
+
+  assertValidValues({
+    loai_giam: payload.loai_giam || promo.loai_giam,
+    gia_tri: payload.gia_tri != null ? payload.gia_tri : promo.gia_tri,
+    giam_toi_da: payload.giam_toi_da !== undefined ? payload.giam_toi_da : promo.giam_toi_da,
+    don_hang_toi_thieu: payload.don_hang_toi_thieu != null ? payload.don_hang_toi_thieu : promo.don_hang_toi_thieu,
+    ngay_bat_dau: payload.ngay_bat_dau || promo.ngay_bat_dau,
+    ngay_ket_thuc: payload.ngay_ket_thuc || promo.ngay_ket_thuc,
+    so_luot_toi_da: payload.so_luot_toi_da !== undefined ? payload.so_luot_toi_da : promo.so_luot_toi_da,
+  });
 
   const data = {};
   if (payload.ten != null) data.ten = String(payload.ten).trim();

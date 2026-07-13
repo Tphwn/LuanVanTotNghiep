@@ -11,12 +11,111 @@ import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
 import { formatHotelTime } from '../../utils/bookingDisplay';
+import { REQUIRED_DOC_LABELS } from '../../utils/hotelPolicyUtils';
 import { buildCustomerBookingUrl } from '../../utils/bookingNavigation';
 import { resolveSearchForm } from '../../utils/hotelSearchStorage';
 import '../../assets/styles/home.css';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const stars = (n) => '★'.repeat(Math.max(0, Number(n) || 0));
+
+const REVIEW_CATEGORIES = [
+  { key: 'diem_sach_se', label: 'Sạch sẽ' },
+  { key: 'diem_dich_vu', label: 'Dịch vụ' },
+  { key: 'diem_vi_tri', label: 'Vị trí' },
+  { key: 'diem_tien_nghi', label: 'Tiện nghi' },
+];
+
+const scoreLabel = (v) => {
+  if (v >= 4.5) return 'Xuất sắc';
+  if (v >= 4) return 'Rất tốt';
+  if (v >= 3.5) return 'Tốt';
+  if (v >= 3) return 'Khá';
+  if (v > 0) return 'Trung bình';
+  return '';
+};
+
+const avgCategory = (list, key) => {
+  const vals = list.map((r) => Number(r[key])).filter((n) => n > 0);
+  if (!vals.length) return 0;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+};
+
+const nameInitial = (name) => (name && name.trim() ? name.trim().charAt(0).toUpperCase() : 'K');
+
+const money = (v) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
+
+const buildPolicyRows = (h) => {
+  const rows = [];
+
+  // Giờ nhận/trả phòng — chỉ hiện khi khách sạn có thiết lập
+  if (h.gio_nhan_phong || h.gio_tra_phong) {
+    const lines = [];
+    if (h.gio_nhan_phong) lines.push({ label: 'Nhận phòng:', value: `Từ ${formatHotelTime(h.gio_nhan_phong, '14:00')}` });
+    if (h.gio_tra_phong) lines.push({ label: 'Trả phòng:', value: `Trước ${formatHotelTime(h.gio_tra_phong, '12:00')}` });
+    rows.push({ label: 'Giờ nhận phòng và trả phòng', lines });
+  }
+
+  // Chính sách trẻ em — chỉ hiện khi có dữ liệu
+  const childLines = [];
+  if (h.tuoi_toi_da_mien_phi != null) {
+    childLines.push(`Trẻ em từ ${h.tuoi_toi_da_mien_phi} tuổi trở xuống được miễn phí khi dùng chung giường với người lớn.`);
+  }
+  if (h.phu_thu_tre_em != null && Number(h.phu_thu_tre_em) > 0) {
+    childLines.push(`Phụ thu ${money(h.phu_thu_tre_em)}đ đối với trẻ em sử dụng giường hiện có.`);
+  }
+  if (childLines.length) rows.push({ label: 'Chính sách dành cho trẻ em', lines: childLines });
+
+  // Thú cưng
+  rows.push({
+    label: 'Thú cưng',
+    lines: [h.cho_phep_thu_cung
+      ? (h.phu_thu_thu_cung != null && Number(h.phu_thu_thu_cung) > 0
+        ? `Cho phép mang theo thú cưng (phụ thu ${money(h.phu_thu_thu_cung)}đ).`
+        : 'Cho phép mang theo thú cưng.')
+      : 'Không được phép mang theo thú cưng.'],
+  });
+
+  // Hút thuốc
+  rows.push({
+    label: 'Hút thuốc',
+    lines: [h.cho_phep_hut_thuoc ? 'Cho phép hút thuốc.' : 'Không cho phép hút thuốc.'],
+  });
+
+  // Tổ chức tiệc
+  rows.push({
+    label: 'Tổ chức tiệc',
+    lines: [h.cho_phep_to_chuc_tiec ? 'Cho phép tổ chức tiệc.' : 'Không cho phép tổ chức tiệc.'],
+  });
+
+  // Giấy tờ bắt buộc — chỉ hiện khi khách sạn có yêu cầu
+  if (Array.isArray(h.giay_to_bat_buoc) && h.giay_to_bat_buoc.length) {
+    rows.push({
+      label: 'Giấy tờ bắt buộc',
+      lines: h.giay_to_bat_buoc.map((doc) => REQUIRED_DOC_LABELS[doc] || doc),
+    });
+  }
+
+  // Nội quy riêng của khách sạn — chỉ hiện khi có
+  if (Array.isArray(h.noi_quy_khac) && h.noi_quy_khac.length) {
+    rows.push({ label: 'Nội quy khác', lines: h.noi_quy_khac });
+  }
+
+  // Chính sách hủy — theo mốc hoàn tiền thật của khách sạn
+  const cancelPolicies = (h.chinh_sach_huy || [])
+    .slice()
+    .sort((a, b) => Number(b.so_ngay_truoc) - Number(a.so_ngay_truoc));
+  if (cancelPolicies.length) {
+    rows.push({
+      label: 'Chính sách hủy',
+      lines: cancelPolicies.map(
+        (p) => `Hủy trước ${p.so_ngay_truoc} ngày: hoàn ${Number(p.phan_tram_hoan)}% tiền đã thanh toán.`,
+      ),
+    });
+  }
+
+  return rows;
+};
 
 const buildQueryString = (query) => {
   const params = new URLSearchParams();
@@ -170,6 +269,7 @@ const CustomerHotelDetailPage = () => {
   const mainImg = images[activeImg] || images[0];
   const sideImages = images.slice(1, 5);
   const reviews = hotel.danh_gia || [];
+  const policyRows = buildPolicyRows(hotel);
   const addressLine = [
     hotel.dia_diem?.ten_dia_diem,
     hotel.dia_chi,
@@ -307,44 +407,106 @@ const CustomerHotelDetailPage = () => {
 
       <section className="hotel-detail-reviews-section">
         <h2 className="hotel-detail-block-title hotel-detail-reviews-title">
-          Đánh giá của khách hàng{hotel.so_danh_gia > 0 ? ` (${hotel.so_danh_gia})` : ''}
+          Đánh giá của khách hàng
         </h2>
         {reviews.length === 0 ? (
           <p className="hotel-detail-reviews-empty">Chưa có đánh giá cho khách sạn này</p>
         ) : (
-          <div className="hotel-review-list">
-            {reviews.map((rv) => (
-              <article key={rv.ma_danh_gia} className="hotel-review-item">
-                <div className="hotel-review-grid">
-                  <div className="hotel-review-left">
-                    <div className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</div>
-                    {rv.ten_loai_phong && (
-                      <div className="hotel-review-room-block">
-                        <span className="hotel-review-room-label">Sử dụng loại phòng:</span>
-                        <span className="hotel-review-room-name">{rv.ten_loai_phong}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="hotel-review-right">
-                    <div className="hotel-review-meta">
-                      <span className="hotel-review-score">{rv.so_sao}/5</span>
-                      <span className="hotel-review-date">{fmtDate(rv.ngay_danh_gia)}</span>
+          <>
+            <div className="hotel-review-summary">
+              <div className="hotel-review-summary-bars">
+                {REVIEW_CATEGORIES.map((c) => {
+                  const v = avgCategory(reviews, c.key);
+                  return (
+                    <div key={c.key} className="hotel-review-bar-row">
+                      <span className="hotel-review-bar-label">{c.label}</span>
+                      <span className="hotel-review-bar-track">
+                        <span
+                          className="hotel-review-bar-fill"
+                          style={{ width: `${(Math.min(v, 5) / 5) * 100}%` }}
+                        />
+                      </span>
                     </div>
-                    {rv.noi_dung && (
-                      <p className="hotel-review-content">{rv.noi_dung}</p>
-                    )}
-                    {rv.phan_hoi_doi_tac && (
-                      <div className="hotel-review-partner-reply">
-                        {rv.phan_hoi_doi_tac}
-                      </div>
-                    )}
-                  </div>
+                  );
+                })}
+              </div>
+              <div className="hotel-review-summary-score">
+                <div className="hotel-review-summary-score-value">
+                  <strong>{hotel.diem_trung_binh || 0}</strong>/5
+                  <span className="hotel-review-summary-score-label">
+                    {scoreLabel(hotel.diem_trung_binh || 0)}
+                  </span>
                 </div>
-              </article>
-            ))}
-          </div>
+                <div className="hotel-review-summary-count">
+                  {hotel.so_danh_gia || reviews.length} đánh giá
+                </div>
+              </div>
+            </div>
+
+            <div className="hotel-review-list">
+              {reviews.map((rv) => (
+                <article key={rv.ma_danh_gia} className="hotel-review-item">
+                  <div className="hotel-review-grid">
+                    <div className="hotel-review-left">
+                      <div className="hotel-review-author-row">
+                        <span className="hotel-review-avatar">
+                          {nameInitial(rv.khach_hang?.ho_ten)}
+                        </span>
+                        <div className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</div>
+                      </div>
+                      {rv.ten_loai_phong && (
+                        <div className="hotel-review-room-name">{rv.ten_loai_phong}</div>
+                      )}
+                    </div>
+                    <div className="hotel-review-right">
+                      <div className="hotel-review-meta">
+                        <span className="hotel-review-score">{rv.so_sao}/5</span>
+                        <span className="hotel-review-date">Đánh giá ngày {fmtDate(rv.ngay_danh_gia)}</span>
+                      </div>
+                      {rv.noi_dung && (
+                        <p className="hotel-review-content">{rv.noi_dung}</p>
+                      )}
+                      {rv.phan_hoi_doi_tac && (
+                        <div className="hotel-review-partner-reply">
+                          {rv.phan_hoi_doi_tac}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
         )}
       </section>
+
+      {policyRows.length > 0 && (
+      <section className="hotel-detail-policy-section">
+        <h2 className="hotel-detail-block-title hotel-detail-reviews-title">
+          Chính sách hủy và chỗ ở
+        </h2>
+        <div className="hotel-policy-table">
+          {policyRows.map((row) => (
+            <div key={row.label} className="hotel-policy-row">
+              <div className="hotel-policy-label">{row.label}</div>
+              <div className="hotel-policy-value">
+                {row.lines.map((line, i) => (
+                  <p key={i} className="hotel-policy-line">
+                    {typeof line === 'string' ? line : (
+                      <>
+                        <span className="hotel-policy-inline-label">{line.label}</span>
+                        {' '}
+                        <strong>{line.value}</strong>
+                      </>
+                    )}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      )}
 
       {lightboxOpen && images.length > 0 && (
         <div className="hotel-gallery-lightbox" role="dialog" aria-modal="true">

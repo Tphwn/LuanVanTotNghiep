@@ -138,11 +138,16 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
       return;
     }
 
+    if (!noiDung.trim()) {
+      setError('Vui lòng nhập nhận xét của bạn về khách sạn');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await customerBookingService.createReview(id, {
         ...scores,
-        noi_dung: noiDung.trim() || null,
+        noi_dung: noiDung.trim(),
       });
       showToast('Đã gửi đánh giá. Cảm ơn bạn!');
       setTimeout(() => navigate(ROUTES.CUSTOMER.MY_BOOKINGS), 1200);
@@ -292,7 +297,7 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
                 ))}
 
                 <label className="customer-review-field" htmlFor="review-content">
-                  <span>Nhận xét của bạn về khách sạn</span>
+                  <span className="required">Nhận xét của bạn về khách sạn</span>
                   <textarea
                     id="review-content"
                     className="customer-review-textarea"
@@ -300,6 +305,7 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
                     onChange={(e) => setNoiDung(e.target.value)}
                     placeholder="Chia sẻ chi tiết trải nghiệm của bạn..."
                     maxLength={2000}
+                    required
                   />
                 </label>
 

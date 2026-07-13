@@ -239,6 +239,7 @@ model khach_san {
   hoan_cong_viec_dot_xuat Boolean               @default(false)
   yeu_cau_minh_chung_huy  Boolean               @default(true)
   mo_ta_chinh_sach_huy    String?               @db.Text
+  noi_quy_khac            String?               @db.Text
   chinh_sach_huy      chinh_sach_huy[]
   nguoi_dung          nguoi_dung?           @relation(fields: [duyet_boi_admin_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ks_admin")
   dia_diem            dia_diem              @relation(fields: [ma_dia_diem], references: [ma_dia_diem], onUpdate: Restrict, map: "fk_ks_diadiem")

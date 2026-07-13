@@ -121,7 +121,7 @@ body {
 .sidebar-nav-admin {
   flex: 1;
   padding: 4px 10px;
-  overflow-y: auto;
+  overflow-y: hidden;
   min-height: 0;
 }
 
@@ -5536,6 +5536,20 @@ body {
   font-style: italic;
 }
 
+.partner-hotel-detail-rule-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.partner-hotel-detail-rule-list li {
+  font-size: 13px;
+  color: #1a2e28;
+  line-height: 1.5;
+}
+
 .partner-hotel-policy-table {
   margin-top: 8px;
 }
@@ -6376,6 +6390,22 @@ body {
   margin: 6px 0 0;
   font-size: 12px;
   color: #cf1322;
+}
+
+.form-field-error {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: #cf1322;
+}
+
+.search-input.input-invalid {
+  border-color: #e05c5c;
+  background: #fff5f5;
+}
+
+.search-input.input-invalid:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 92, 92, 0.18);
 }
 
 .reason-field-hint {

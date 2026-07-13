@@ -8,6 +8,7 @@ import PartnerHotelTimeConfirmModal from './components/PartnerHotelTimeConfirmMo
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
+  parseNoiQuyKhac,
   toMoneyString,
 } from './hotelPolicyUtils';
 
@@ -23,10 +24,7 @@ const INIT_FORM = {
   phu_thu_thu_cung: '',
   tuoi_toi_da_mien_phi: 6,
   phu_thu_tre_em: '',
-  hoan_khi_benh: false,
-  hoan_cong_viec_dot_xuat: false,
-  yeu_cau_minh_chung_huy: true,
-  mo_ta_chinh_sach_huy: '',
+  noi_quy_khac: [],
 };
 
 const REQUIRED_DOC_OPTIONS = Object.entries(REQUIRED_DOC_LABELS).map(([id, label]) => ({ id, label }));
@@ -43,6 +41,15 @@ const mapPolicies = (policies) =>
     so_ngay_truoc: Number(p.so_ngay_truoc),
     phan_tram_hoan: Number(p.phan_tram_hoan),
   }));
+
+const onlyDigits = (value) => String(value ?? '').replace(/[^\d]/g, '');
+
+const formatThousands = (value) => {
+  const digits = onlyDigits(value);
+  return digits ? Number(digits).toLocaleString('vi-VN') : '';
+};
+
+const blurOnWheel = (e) => e.currentTarget.blur();
 
 const HotelFormContent = ({
   hotel, diaDiem, amenities, defaultCancelPolicies,
@@ -69,10 +76,7 @@ const HotelFormContent = ({
       phu_thu_thu_cung: toMoneyString(hotel.phu_thu_thu_cung),
       tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi ?? 6,
       phu_thu_tre_em: toMoneyString(hotel.phu_thu_tre_em),
-      hoan_khi_benh: !!hotel.hoan_khi_benh,
-      hoan_cong_viec_dot_xuat: !!hotel.hoan_cong_viec_dot_xuat,
-      yeu_cau_minh_chung_huy: hotel.yeu_cau_minh_chung_huy !== false,
-      mo_ta_chinh_sach_huy: hotel.mo_ta_chinh_sach_huy || '',
+      noi_quy_khac: parseNoiQuyKhac(hotel.noi_quy_khac),
     } : { ...INIT_FORM }
   );
 
@@ -85,11 +89,8 @@ const HotelFormContent = ({
       : []
   );
 
-  const [cancelPolicies, setCancelPolicies] = useState(
-    isEdit && hotel.chinh_sach_huy?.length > 0
-      ? mapPolicies(hotel.chinh_sach_huy)
-      : mapPolicies(defaultCancelPolicies)
-  );
+  // Quy định hoàn tiền là mặc định chung cho tất cả khách sạn — chỉ đọc
+  const cancelPolicies = mapPolicies(defaultCancelPolicies);
 
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '', mo_ta: ''});
@@ -164,6 +165,24 @@ const HotelFormContent = ({
     setForm((prev) => ({ ...prev, [key]: checked }));
   };
 
+  const handleAddNoiQuy = () => {
+    setForm((prev) => ({ ...prev, noi_quy_khac: [...prev.noi_quy_khac, ''] }));
+  };
+
+  const handleNoiQuyChange = (index, value) => {
+    setForm((prev) => ({
+      ...prev,
+      noi_quy_khac: prev.noi_quy_khac.map((item, i) => (i === index ? value : item)),
+    }));
+  };
+
+  const handleRemoveNoiQuy = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      noi_quy_khac: prev.noi_quy_khac.filter((_, i) => i !== index),
+    }));
+  };
+
   const handlePropose = async () => {
     if (!proposeForm.ten_de_xuat.trim()) return showToast('Nhập tên tiện nghi đề xuất', 'error');
     const hotelName = form.ten?.trim();
@@ -184,24 +203,6 @@ const HotelFormContent = ({
     } catch {
       showToast('Gửi đề xuất thất bại', 'error');
     }
-  };
-
-  const handleAddPolicy = () => {
-    setCancelPolicies([...cancelPolicies, { so_ngay_truoc: 1, phan_tram_hoan: 0 }]);
-  };
-
-  const handleRemovePolicy = (index) => {
-    setCancelPolicies(cancelPolicies.filter((_, i) => i !== index));
-  };
-
-  const handlePolicyChange = (index, field, value) => {
-    const updated = [...cancelPolicies];
-    updated[index][field] = Number(value);
-    setCancelPolicies(updated);
-  };
-
-  const handleResetPolicies = () => {
-    setCancelPolicies(mapPolicies(defaultCancelPolicies));
   };
 
   const handleImageChange = (e) => {
@@ -247,6 +248,7 @@ const HotelFormContent = ({
     setFormAlert('');
     setPendingPayload({
       ...form,
+      noi_quy_khac: form.noi_quy_khac.map((s) => s.trim()).filter(Boolean),
       hinh_anh: hotelImages,
       chinh_sach_huy: cancelPolicies,
       removedImageIds,
@@ -564,13 +566,13 @@ const HotelFormContent = ({
                       Phụ thu thú cưng (VNĐ/đêm)
                     </label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       className="search-input"
                       style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={form.phu_thu_thu_cung}
-                      onChange={(e) => setForm({ ...form, phu_thu_thu_cung: e.target.value })}
-                      placeholder="VD: 200000"
+                      value={formatThousands(form.phu_thu_thu_cung)}
+                      onChange={(e) => setForm({ ...form, phu_thu_thu_cung: onlyDigits(e.target.value) })}
+                      placeholder="VD: 200.000"
                       disabled={!form.cho_phep_thu_cung}
                     />
                   </div>
@@ -586,6 +588,7 @@ const HotelFormContent = ({
                       style={{ width: '100%', boxSizing: 'border-box' }}
                       value={form.tuoi_toi_da_mien_phi}
                       onChange={(e) => setForm({ ...form, tuoi_toi_da_mien_phi: e.target.value })}
+                      onWheel={blurOnWheel}
                       placeholder="VD: 6"
                     />
                   </div>
@@ -594,28 +597,61 @@ const HotelFormContent = ({
                       Phụ thu trẻ em (VNĐ/đêm)
                     </label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       className="search-input"
                       style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={form.phu_thu_tre_em}
-                      onChange={(e) => setForm({ ...form, phu_thu_tre_em: e.target.value })}
-                      placeholder="VD: 150000"
+                      value={formatThousands(form.phu_thu_tre_em)}
+                      onChange={(e) => setForm({ ...form, phu_thu_tre_em: onlyDigits(e.target.value) })}
+                      placeholder="VD: 150.000"
                     />
                   </div>
                 </div>
+
+                <div style={{ marginTop: 16, borderTop: '1px dashed #d4ede6', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: '#1a2e28' }}>
+                      Nội quy riêng của khách sạn
+                    </label>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddNoiQuy}>
+                      + Thêm nội quy
+                    </button>
+                  </div>
+
+                  {form.noi_quy_khac.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 12, color: '#888', fontStyle: 'italic' }}>
+                      Chưa có nội quy riêng. Nhấn &quot;Thêm nội quy&quot; để bổ sung quy định của khách sạn.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {form.noi_quy_khac.map((rule, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input
+                            className="search-input"
+                            style={{ flex: 1, boxSizing: 'border-box' }}
+                            value={rule}
+                            onChange={(e) => handleNoiQuyChange(idx, e.target.value)}
+                            placeholder="VD: Không nhận khách dưới 18 tuổi nếu không có người giám hộ"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleRemoveNoiQuy(idx)}
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ marginBottom: 12 }}>
                 <h4 style={{ margin: 0, fontSize: 14, color: '#1a2e28'}}>Quy định hoàn tiền khi hủy phòng</h4>
-                <div style={{ display:'flex', gap: 8 }}>
-                  <button type="button"className="btn btn-ghost btn-sm"onClick={handleResetPolicies}>
-                    Khôi phục mặc định
-                  </button>
-                  <button type="button"className="btn btn-outline btn-sm"onClick={handleAddPolicy}>
-                    + Thêm mốc
-                  </button>
-                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>
+                  Quy định này áp dụng mặc định cho tất cả khách sạn.
+                </p>
               </div>
 
               <table className="data-table">
@@ -623,115 +659,17 @@ const HotelFormContent = ({
                   <tr>
                     <th>Hủy trước (ngày)</th>
                     <th>Hoàn tiền (%)</th>
-                    <th style={{ width: 80, textAlign: 'center'}}>Xóa</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cancelPolicies.length === 0 ? (
-                    <tr>
-                      <td colSpan="3"style={{ textAlign:'center', color: '#888', fontStyle: 'italic'}}>
-                        Không có chính sách — khách hủy sẽ mất 100% cọc
-                      </td>
-                    </tr>
-                  ) : cancelPolicies.map((p, idx) => (
+                  {cancelPolicies.map((p, idx) => (
                     <tr key={idx}>
-                      <td>
-                        <input
-                          type="number"min="0"className="search-input"style={{ width: 80, display:'inline-block', marginRight: 6 }}
-                          value={p.so_ngay_truoc}
-                          onChange={(e) => handlePolicyChange(idx, 'so_ngay_truoc', e.target.value)}
-                        />
-                        ngày
-                      </td>
-                      <td>
-                        <input
-                          type="number"min="0"max="100"className="search-input"style={{ width: 80, display: 'inline-block', marginRight: 6 }}
-                          value={p.phan_tram_hoan}
-                          onChange={(e) => handlePolicyChange(idx, 'phan_tram_hoan', e.target.value)}
-                        />
-                        %
-                      </td>
-                      <td style={{ textAlign: 'center'}}>
-                        <button type="button"className="btn btn-danger btn-sm"onClick={() => handleRemovePolicy(idx)}>
-                          Xóa
-                        </button>
-                      </td>
+                      <td>{p.so_ngay_truoc} ngày</td>
+                      <td>{Number(p.phan_tram_hoan)}%</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              <div style={{
-                marginTop: 16, padding: 14, background: '#f8fdfb',
-                borderRadius: 8, border: '1px solid #d4ede6',
-              }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: 14, color: '#1a2e28' }}>
-                  Mô tả chính sách hủy đặc biệt
-                </h4>
-                <p style={{ margin: '0 0 12px', fontSize: 12, color: '#666', lineHeight: 1.5 }}>
-                  Áp dụng khi khách hủy ngoài các mốc hoàn tiền ở trên. Khách cần gửi minh chứng để được xem xét hoàn tiền.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: 12 }}>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      style={{ marginTop: 3 }}
-                      checked={form.hoan_khi_benh}
-                      onChange={(e) => setRuleFlag('hoan_khi_benh', e.target.checked)}
-                    />
-                    <span>
-                      <strong>Bị bệnh</strong>
-                      <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
-                        Chấp nhận hoàn tiền khi khách bị bệnh (giấy xác nhận y tế)
-                      </span>
-                    </span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      style={{ marginTop: 3 }}
-                      checked={form.hoan_cong_viec_dot_xuat}
-                      onChange={(e) => setRuleFlag('hoan_cong_viec_dot_xuat', e.target.checked)}
-                    />
-                    <span>
-                      <strong>Công việc đột xuất</strong>
-                      <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
-                        Chấp nhận hoàn tiền khi có việc công tác / công việc khẩn cấp
-                      </span>
-                    </span>
-                  </label>
-                </div>
-
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
-                  <input
-                    type="checkbox"
-                    style={{ marginTop: 3 }}
-                    checked={form.yeu_cau_minh_chung_huy}
-                    onChange={(e) => setRuleFlag('yeu_cau_minh_chung_huy', e.target.checked)}
-                  />
-                  <span>
-                    <strong>Yêu cầu hình ảnh minh chứng</strong>
-                    <span style={{ display: 'block', fontSize: 12, color: '#666' }}>
-                      Khách phải đính kèm ảnh minh chứng (đơn thuốc, giấy bác sĩ, thư công ty...) khi yêu cầu hoàn tiền
-                    </span>
-                  </span>
-                </label>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
-                    Ghi chú bổ sung
-                  </label>
-                  <textarea
-                    className="search-input"
-                    rows={3}
-                    style={{ resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
-                    value={form.mo_ta_chinh_sach_huy}
-                    onChange={(e) => setForm({ ...form, mo_ta_chinh_sach_huy: e.target.value })}
-                    placeholder="VD: Khách gửi minh chứng trong vòng 24h sau khi hủy. Khách sạn xem xét và phản hồi trong 3 ngày làm việc."
-                  />
-                </div>
-              </div>
             </div>
           )}
 

@@ -18,6 +18,7 @@ import { getHotelStatusMeta } from '../../../constants/statusConfig';
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
+  parseNoiQuyKhac,
   formatMoneyVnd,
   formatYesNo,
 } from './hotelPolicyUtils';
@@ -156,6 +157,7 @@ export default function HotelDetailPage() {
   const currentImg = images[activeImg] || images[0];
   const requiredDocs = parseGiayToBatBuoc(hotel.giay_to_bat_buoc)
     .map((docId) => REQUIRED_DOC_LABELS[docId] || docId);
+  const noiQuyKhac = parseNoiQuyKhac(hotel.noi_quy_khac);
   const cancelPolicies = (hotel.chinh_sach_huy || [])
     .filter((p) => p.trang_thai === 'hoat_dong' || !p.trang_thai)
     .sort((a, b) => b.so_ngay_truoc - a.so_ngay_truoc);
@@ -367,6 +369,17 @@ export default function HotelDetailPage() {
                   { label: 'Phụ thu trẻ em', value: formatMoneyVnd(hotel.phu_thu_tre_em) },
                 ]}
               />
+
+              {noiQuyKhac.length > 0 && (
+                <div className="partner-hotel-detail-subsection">
+                  <div className="partner-hotel-detail-subtitle">Nội quy riêng của khách sạn</div>
+                  <ul className="partner-hotel-detail-rule-list">
+                    {noiQuyKhac.map((rule, idx) => (
+                      <li key={idx}>{rule}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="partner-hotel-detail-section">
@@ -391,18 +404,6 @@ export default function HotelDetailPage() {
               ) : (
                 <p className="partner-hotel-detail-empty">Chưa cấu hình — khách hủy sẽ mất 100% cọc</p>
               )}
-
-              <div className="partner-hotel-detail-subsection">
-                <div className="partner-hotel-detail-subtitle">Trường hợp hoàn tiền đặc biệt</div>
-                <DetailTable
-                  rows={[
-                    { label: 'Bị bệnh', value: formatYesNo(hotel.hoan_khi_benh) },
-                    { label: 'Công việc đột xuất', value: formatYesNo(hotel.hoan_cong_viec_dot_xuat) },
-                    { label: 'Yêu cầu minh chứng', value: formatYesNo(hotel.yeu_cau_minh_chung_huy) },
-                    { label: 'Ghi chú', value: hotel.mo_ta_chinh_sach_huy || '—' },
-                  ]}
-                />
-              </div>
             </div>
           </div>
         )}

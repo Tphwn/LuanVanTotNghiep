@@ -29,7 +29,6 @@ const PHAM_VI = {
   doi_tac: 'Đối tác',
 };
 
-// Cấu hình modal xác nhận theo từng hành động
 const CONFIRM_CONFIG = {
   lock: {
     title: 'Tạm ngưng khuyến mãi',
@@ -125,7 +124,6 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-// ── Popup chi tiết ──────────────────────────────────────────
 const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
   if (!item) return null;
   const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
@@ -200,122 +198,148 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
   );
 };
 
-// ── Popup thêm / sửa (chỉ áp dụng KM nền tảng của admin) ─────
-const FormModal = ({ editing, form, setForm, saving, onClose, onSubmit }) => (
-  <div className="modal-overlay" onClick={() => !saving && onClose()} role="presentation">
-    <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-      <h2 className="modal-title">{editing ? 'Sửa khuyến mãi' : 'Thêm khuyến mãi nền tảng'}</h2>
-      <form onSubmit={onSubmit}>
-        <div className="form-group">
-          <label>Mã khuyến mãi</label>
-          <input
-            className="search-input"
-            value={form.ma_code}
-            onChange={(e) => setForm({ ...form, ma_code: e.target.value.toUpperCase() })}
-            required
-            disabled={!!editing}
-            placeholder="VD: SUMMER2026"
-          />
-        </div>
-        <div className="form-group">
-          <label>Tên chương trình</label>
-          <input
-            className="search-input"
-            value={form.ten}
-            onChange={(e) => setForm({ ...form, ten: e.target.value })}
-            required
-          />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+const FieldError = ({ msg }) => (msg ? <p className="form-field-error">{msg}</p> : null);
+
+const inputCls = (err) => `search-input${err ? ' input-invalid' : ''}`;
+
+const onlyDigits = (v) => String(v ?? '').replace(/\D/g, '');
+const formatThousandInput = (v) => {
+  const digits = onlyDigits(v);
+  return digits ? new Intl.NumberFormat('vi-VN').format(Number(digits)) : '';
+};
+
+const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubmit }) => {
+  const isPercent = form.loai_giam === 'phan_tram';
+  return (
+    <div className="modal-overlay" onClick={() => !saving && onClose()} role="presentation">
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <h2 className="modal-title">{editing ? 'Sửa khuyến mãi' : 'Thêm khuyến mãi nền tảng'}</h2>
+        <form onSubmit={onSubmit} noValidate>
           <div className="form-group">
-            <label>Loại giảm</label>
-            <select
-              className="search-input"
-              value={form.loai_giam}
-              onChange={(e) => setForm({ ...form, loai_giam: e.target.value })}
-            >
-              {Object.entries(LOAI_GIAM).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
+            <label>Mã khuyến mãi</label>
+            <input
+              className={inputCls(errors.ma_code)}
+              value={form.ma_code}
+              onChange={(e) => updateField('ma_code', e.target.value.toUpperCase())}
+              disabled={!!editing}
+              placeholder="VD: SUMMER2026"
+            />
+            <FieldError msg={errors.ma_code} />
           </div>
           <div className="form-group">
-            <label>Giá trị</label>
+            <label>Tên chương trình</label>
             <input
-              className="search-input"
+              className={inputCls(errors.ten)}
+              value={form.ten}
+              onChange={(e) => updateField('ten', e.target.value)}
+            />
+            <FieldError msg={errors.ten} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label>Loại giảm</label>
+              <select
+                className="search-input"
+                value={form.loai_giam}
+                onChange={(e) => updateField('loai_giam', e.target.value)}
+              >
+                {Object.entries(LOAI_GIAM).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>{isPercent ? 'Giá trị giảm (%)' : 'Số tiền giảm (VNĐ)'}</label>
+              {isPercent ? (
+                <input
+                  className={inputCls(errors.gia_tri)}
+                  type="number"
+                  value={form.gia_tri}
+                  onChange={(e) => updateField('gia_tri', e.target.value)}
+                />
+              ) : (
+                <input
+                  className={inputCls(errors.gia_tri)}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatThousandInput(form.gia_tri)}
+                  onChange={(e) => updateField('gia_tri', onlyDigits(e.target.value))}
+                  placeholder="VD: 50.000"
+                />
+              )}
+              <FieldError msg={errors.gia_tri} />
+            </div>
+          </div>
+          {isPercent && (
+            <div className="form-group">
+              <label>Giảm tối đa (VNĐ)</label>
+              <input
+                className={inputCls(errors.giam_toi_da)}
+                type="text"
+                inputMode="numeric"
+                value={formatThousandInput(form.giam_toi_da)}
+                onChange={(e) => updateField('giam_toi_da', onlyDigits(e.target.value))}
+                placeholder="Không bắt buộc (VD: 150.000)"
+              />
+              <FieldError msg={errors.giam_toi_da} />
+            </div>
+          )}
+          <div className="form-group">
+            <label>Đơn tối thiểu (VNĐ)</label>
+            <input
+              className={inputCls(errors.don_hang_toi_thieu)}
+              type="text"
+              inputMode="numeric"
+              value={formatThousandInput(form.don_hang_toi_thieu)}
+              onChange={(e) => updateField('don_hang_toi_thieu', onlyDigits(e.target.value))}
+              placeholder="VD: 500.000"
+            />
+            <FieldError msg={errors.don_hang_toi_thieu} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label>Từ ngày</label>
+              <input
+                className={inputCls(errors.ngay_bat_dau)}
+                type="date"
+                value={form.ngay_bat_dau}
+                onChange={(e) => updateField('ngay_bat_dau', e.target.value)}
+              />
+              <FieldError msg={errors.ngay_bat_dau} />
+            </div>
+            <div className="form-group">
+              <label>Đến ngày</label>
+              <input
+                className={inputCls(errors.ngay_ket_thuc)}
+                type="date"
+                value={form.ngay_ket_thuc}
+                min={form.ngay_bat_dau || undefined}
+                onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
+              />
+              <FieldError msg={errors.ngay_ket_thuc} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Số lượt tối đa (để trống = không giới hạn)</label>
+            <input
+              className={inputCls(errors.so_luot_toi_da)}
               type="number"
-              min={0}
-              value={form.gia_tri}
-              onChange={(e) => setForm({ ...form, gia_tri: e.target.value })}
-              required
+              value={form.so_luot_toi_da}
+              onChange={(e) => updateField('so_luot_toi_da', e.target.value)}
             />
+            <FieldError msg={errors.so_luot_toi_da} />
           </div>
-        </div>
-        {form.loai_giam === 'phan_tram' && (
-          <div className="form-group">
-            <label>Giảm tối đa (VNĐ)</label>
-            <input
-              className="search-input"
-              type="number"
-              min={0}
-              value={form.giam_toi_da}
-              onChange={(e) => setForm({ ...form, giam_toi_da: e.target.value })}
-            />
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Hủy</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo khuyến mãi'}
+            </button>
           </div>
-        )}
-        <div className="form-group">
-          <label>Đơn tối thiểu (VNĐ)</label>
-          <input
-            className="search-input"
-            type="number"
-            min={0}
-            value={form.don_hang_toi_thieu}
-            onChange={(e) => setForm({ ...form, don_hang_toi_thieu: e.target.value })}
-          />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="form-group">
-            <label>Từ ngày</label>
-            <input
-              className="search-input"
-              type="date"
-              value={form.ngay_bat_dau}
-              onChange={(e) => setForm({ ...form, ngay_bat_dau: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Đến ngày</label>
-            <input
-              className="search-input"
-              type="date"
-              value={form.ngay_ket_thuc}
-              min={form.ngay_bat_dau}
-              onChange={(e) => setForm({ ...form, ngay_ket_thuc: e.target.value })}
-              required
-            />
-          </div>
-        </div>
-        <div className="form-group">
-          <label>Số lượt tối đa (để trống = không giới hạn)</label>
-          <input
-            className="search-input"
-            type="number"
-            min={1}
-            value={form.so_luot_toi_da}
-            onChange={(e) => setForm({ ...form, so_luot_toi_da: e.target.value })}
-          />
-        </div>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Hủy</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo khuyến mãi'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AdminPromotionsPage = () => {
   const [items, setItems] = useState([]);
@@ -342,6 +366,7 @@ const AdminPromotionsPage = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   const firstLoad = useRef(true);
@@ -414,15 +439,73 @@ const AdminPromotionsPage = () => {
     setDenNgay('');
   };
 
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFormErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validateForm = (f) => {
+    const e = {};
+    const today = new Date().toISOString().slice(0, 10);
+    const isPercent = f.loai_giam === 'phan_tram';
+
+    if (!f.ten.trim()) e.ten = 'Tên khuyến mãi không được để trống.';
+    if (!f.ma_code.trim()) e.ma_code = 'Mã khuyến mãi không được để trống.';
+
+    const MIN_TIEN = 1000;
+    const giaTri = Number(f.gia_tri);
+    if (f.gia_tri === '' || Number.isNaN(giaTri) || giaTri <= 0) {
+      e.gia_tri = isPercent ? 'Giá trị giảm phải lớn hơn 0.' : 'Số tiền giảm phải lớn hơn 0.';
+    } else if (isPercent && giaTri > 100) {
+      e.gia_tri = 'Phần trăm giảm không được vượt quá 100%.';
+    } else if (!isPercent && giaTri < MIN_TIEN) {
+      e.gia_tri = 'Số tiền giảm phải từ 1.000đ trở lên.';
+    }
+
+    if (isPercent && f.giam_toi_da !== '') {
+      const gtd = Number(f.giam_toi_da);
+      if (Number.isNaN(gtd) || gtd < MIN_TIEN) e.giam_toi_da = 'Giảm tối đa phải từ 1.000đ trở lên.';
+    }
+
+    if (f.don_hang_toi_thieu !== '') {
+      const dh = Number(f.don_hang_toi_thieu);
+      if (Number.isNaN(dh) || dh < 0) e.don_hang_toi_thieu = 'Đơn tối thiểu không hợp lệ.';
+      else if (dh > 0 && dh < MIN_TIEN) e.don_hang_toi_thieu = 'Đơn tối thiểu phải từ 1.000đ trở lên.';
+    }
+
+    if (!f.ngay_bat_dau) e.ngay_bat_dau = 'Vui lòng chọn ngày bắt đầu.';
+    if (!f.ngay_ket_thuc) e.ngay_ket_thuc = 'Vui lòng chọn ngày kết thúc.';
+    if (f.ngay_bat_dau && f.ngay_ket_thuc && f.ngay_ket_thuc <= f.ngay_bat_dau) {
+      e.ngay_ket_thuc = 'Ngày kết thúc phải lớn hơn ngày bắt đầu.';
+    }
+    if (!editing && f.ngay_ket_thuc && f.ngay_ket_thuc < today) {
+      e.ngay_ket_thuc = 'Ngày kết thúc không được nằm trong quá khứ.';
+    }
+
+    if (f.so_luot_toi_da !== '') {
+      const sl = Number(f.so_luot_toi_da);
+      if (!Number.isInteger(sl) || sl < 1) e.so_luot_toi_da = 'Số lượt tối đa phải là số nguyên ≥ 1.';
+    }
+
+    return e;
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setFormErrors({});
     setFormOpen(true);
   };
 
   const openEdit = (item) => {
     setDetailItem(null);
     setEditing(item);
+    setFormErrors({});
     setForm({
       ma_code: item.ma_code,
       ten: item.ten,
@@ -439,9 +522,13 @@ const AdminPromotionsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.ma_code || !form.ten || !form.gia_tri || !form.ngay_bat_dau || !form.ngay_ket_thuc) {
-      return showToast('Vui lòng điền đủ thông tin bắt buộc', 'error');
+    const errs = validateForm(form);
+    if (Object.keys(errs).length) {
+      setFormErrors(errs);
+      showToast('Vui lòng kiểm tra lại thông tin khuyến mãi', 'error');
+      return;
     }
+    setFormErrors({});
     setSaving(true);
     try {
       const payload = {
@@ -465,7 +552,11 @@ const AdminPromotionsPage = () => {
       setFormOpen(false);
       loadPromotions();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Lỗi lưu khuyến mãi', 'error');
+      const msg = err.response?.data?.message || 'Lỗi lưu khuyến mãi';
+      if (/tồn tại|trùng/i.test(msg)) {
+        setFormErrors((prev) => ({ ...prev, ma_code: msg }));
+      }
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -708,7 +799,8 @@ const AdminPromotionsPage = () => {
         <FormModal
           editing={editing}
           form={form}
-          setForm={setForm}
+          updateField={updateField}
+          errors={formErrors}
           saving={saving}
           onClose={() => setFormOpen(false)}
           onSubmit={handleSubmit}

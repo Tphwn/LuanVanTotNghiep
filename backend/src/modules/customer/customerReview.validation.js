@@ -16,7 +16,11 @@ const createReviewSchema = Joi.object({
   diem_tien_nghi: Joi.number().integer().min(1).max(5).required()
     .messages({ 'any.required': 'Điểm tiện nghi là bắt buộc' }),
 
-  noi_dung: Joi.string().max(2000).allow('', null),
+  noi_dung: Joi.string().trim().min(1).max(2000).required()
+    .messages({
+      'any.required': 'Nhận xét về khách sạn là bắt buộc',
+      'string.empty': 'Nhận xét về khách sạn là bắt buộc',
+    }),
 });
 
 const validate = (schema) => (req, res, next) => {

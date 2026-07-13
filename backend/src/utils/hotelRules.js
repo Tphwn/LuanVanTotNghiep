@@ -51,7 +51,25 @@ const parseHotelRulesInput = (body) => {
     rules.mo_ta_chinh_sach_huy = val === '' ? null : val;
   }
 
+  if (body.noi_quy_khac !== undefined) {
+    const parsed = parseJsonField(body.noi_quy_khac, []);
+    const list = Array.isArray(parsed)
+      ? parsed.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    rules.noi_quy_khac = list.length ? JSON.stringify(list) : null;
+  }
+
   return rules;
+};
+
+const parseNoiQuyKhac = (value) => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return String(value).split('\n').map((s) => s.trim()).filter(Boolean);
+  }
 };
 
 const parseGiayToBatBuoc = (value) => {
@@ -67,4 +85,5 @@ const parseGiayToBatBuoc = (value) => {
 module.exports = {
   parseHotelRulesInput,
   parseGiayToBatBuoc,
+  parseNoiQuyKhac,
 };
