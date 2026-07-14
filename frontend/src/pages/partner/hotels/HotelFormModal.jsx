@@ -27,6 +27,8 @@ const INIT_FORM = {
   noi_quy_khac: [],
 };
 
+const MAX_HOTEL_IMAGES = 30;
+
 const REQUIRED_DOC_OPTIONS = Object.entries(REQUIRED_DOC_LABELS).map(([id, label]) => ({ id, label }));
 
 const formatTimeValue = (value) => {
@@ -128,6 +130,9 @@ const HotelFormContent = ({
     if (!form.dia_chi?.trim()) errors.dia_chi = 'Vui lòng nhập địa chỉ cụ thể';
     if (!form.ma_dia_diem) errors.ma_dia_diem = 'Vui lòng chọn địa điểm khu vực';
     if (hotelImages.length === 0) errors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh đại diện';
+    if (hotelImages.length > MAX_HOTEL_IMAGES) {
+      errors.images = `Tối đa ${MAX_HOTEL_IMAGES} ảnh mỗi khách sạn`;
+    }
     return errors;
   };
 
@@ -209,7 +214,19 @@ const HotelFormContent = ({
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    const newImages = files.map((file, idx) => ({
+    const remaining = Math.max(0, MAX_HOTEL_IMAGES - hotelImages.length);
+    if (remaining === 0) {
+      showToast(`Tối đa ${MAX_HOTEL_IMAGES} ảnh mỗi khách sạn`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    const accepted = files.slice(0, remaining);
+    if (files.length > remaining) {
+      showToast(`Chỉ thêm được ${remaining} ảnh nữa (tối đa ${MAX_HOTEL_IMAGES} ảnh)`, 'error');
+    }
+
+    const newImages = accepted.map((file, idx) => ({
       ma_hinh_anh: `new-${Date.now()}-${idx}`,
       url: URL.createObjectURL(file),
       file,
@@ -424,12 +441,25 @@ const HotelFormContent = ({
                   padding: '28px',
                   textAlign: 'center', borderRadius: 8,
                   background: fieldErrors.images ? '#fff8f8' : '#f8fdfb',
-                  marginBottom: 16, cursor: 'pointer',
+                  marginBottom: 16,
+                  cursor: hotelImages.length >= MAX_HOTEL_IMAGES ? 'not-allowed' : 'pointer',
+                  opacity: hotelImages.length >= MAX_HOTEL_IMAGES ? 0.6 : 1,
                 }}
               >
-                <div style={{ color: '#3C7363', fontWeight: 600, marginBottom: 4 }}>+ Tải ảnh khách sạn</div>
-                <div style={{ color: '#888', fontSize: 12 }}>Chọn nhiều file JPG, PNG (tối đa 10 ảnh)</div>
-                <input type="file"multiple accept="image/*"onChange={handleImageChange} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer'}} />
+                <div style={{ color: '#3C7363', fontWeight: 600, marginBottom: 4 }}>
+                  + Tải ảnh khách sạn ({hotelImages.length}/{MAX_HOTEL_IMAGES})
+                </div>
+                <div style={{ color: '#888', fontSize: 12 }}>
+                  Chọn nhiều file JPG, PNG (tối đa {MAX_HOTEL_IMAGES} ảnh)
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={hotelImages.length >= MAX_HOTEL_IMAGES}
+                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: hotelImages.length >= MAX_HOTEL_IMAGES ? 'not-allowed' : 'pointer' }}
+                />
               </label>
 
               {fieldErrors.images && (

@@ -262,6 +262,20 @@
   font-family: inherit;
 }
 
+.price-inv-date-row input[type="date"].input-invalid,
+.price-inv-panel .form-row input.input-invalid {
+  border-color: #e05c5c;
+  background: #fff5f5;
+}
+
+.price-inv-panel .form-field-error {
+  margin: 5px 0 0;
+}
+
+.price-inv-panel-section > .form-field-error {
+  margin: -2px 0 8px;
+}
+
 .price-inv-legend {
   font-size: 12px;
   color: #555;

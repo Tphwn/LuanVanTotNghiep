@@ -41,21 +41,30 @@ const pricingService = {
     return await prisma.khach_san.findMany({
       where: {
         ma_doi_tac: doiTacId,
-        trang_thai: { in: ['da_duyet', 'hoat_dong'] },
+        trang_thai: { in: ['da_duyet', 'hoat_dong', 'bi_khoa'] },
       },
       select: {
         ma_khach_san: true,
         ten: true,
+        dia_chi: true,
+        so_sao: true,
+        trang_thai: true,
+        khoa_do_doi_tac: true,
+        dia_diem: { select: { ten_dia_diem: true } },
         loai_phong: {
-          where: { trang_thai: 'hoat_dong' },
+          where: { trang_thai: { in: ['hoat_dong', 'an'] } },
           select: {
             ma_loai_phong: true,
             ten_loai: true,
             gia_co_ban: true,
             so_luong_phong: true,
+            trang_thai: true,
           },
+          orderBy: { ten_loai: 'asc' },
         },
+        _count: { select: { loai_phong: true } },
       },
+      orderBy: { ten: 'asc' },
     });
   },
 

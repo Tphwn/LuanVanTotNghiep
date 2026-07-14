@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Eye } from 'lucide-react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import ListPagination from '../../../components/common/management/ListPagination';
+import useListPagination from '../../../hooks/useListPagination';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
+import { getHotelStatusMeta } from '../../../constants/statusConfig';
 import '../../../assets/styles/pricing-calendar.css';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -51,11 +57,6 @@ const formatDisplayDate = (dateStr) => {
   return new Date(`${dateStr}T12:00:00`).toLocaleDateString('vi-VN');
 };
 
-const getInclusiveDayCount = (from, to) => {
-  if (!from || !to) return 0;
-  return getDatesInRange(from, to).length;
-};
-
 const getDatesInRange = (from, to) => {
   const dates = [];
   const cur = new Date(`${from}T12:00:00`);
@@ -65,6 +66,11 @@ const getDatesInRange = (from, to) => {
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
+};
+
+const getInclusiveDayCount = (from, to) => {
+  if (!from || !to) return 0;
+  return getDatesInRange(from, to).length;
 };
 
 const buildMonthWeeks = (year, month) => {
@@ -93,6 +99,9 @@ const isInRange = (dateStr, from, to) => {
   if (!from || !to) return false;
   return dateStr >= from && dateStr <= to;
 };
+
+const getActiveRooms = (hotel) =>
+  (hotel?.loai_phong || []).filter((r) => r.trang_thai === 'hoat_dong' || !r.trang_thai);
 
 const MonthCalendar = ({
   year,
@@ -169,8 +178,9 @@ const PricingPage = () => {
   const today = toDateKey(now);
 
   const [hotels, setHotels] = useState([]);
-  const [selectedHotel, setSelectedHotel] = useState('');
-  const [rooms, setRooms] = useState([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [keyword, setKeyword] = useState('');
+  const [detailHotelId, setDetailHotelId] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState('');
 
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -186,28 +196,83 @@ const PricingPage = () => {
   const [donGia, setDonGia] = useState('');
   const [moBan, setMoBan] = useState('');
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const { toast, showToast } = useToast();
 
-  useEffect(() => {
-    api.get('/partner/pricing/hotels').then((res) => {
-      setHotels(res.data.data || []);
-    }).catch(() => showToast('Không tải được danh sách khách sạn', 'error'));
-  }, []);
+  const clearFieldError = (key) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   useEffect(() => {
-    if (!selectedHotel) {
-      setRooms([]);
-      setSelectedRoom('');
-      return;
-    }
-    const hotel = hotels.find((h) => h.ma_khach_san === Number(selectedHotel));
-    const list = hotel?.loai_phong || [];
-    setRooms(list);
-    setSelectedRoom(list[0] ? String(list[0].ma_loai_phong) : '');
+    setListLoading(true);
+    api.get('/partner/pricing/hotels')
+      .then((res) => setHotels(res.data.data || []))
+      .catch(() => showToast('Không tải được danh sách khách sạn', 'error'))
+      .finally(() => setListLoading(false));
+  }, [showToast]);
+
+  const detailHotel = useMemo(
+    () => hotels.find((h) => h.ma_khach_san === Number(detailHotelId)) || null,
+    [hotels, detailHotelId],
+  );
+
+  const rooms = useMemo(() => getActiveRooms(detailHotel), [detailHotel]);
+
+  const filteredHotels = useMemo(() => {
+    const text = keyword.trim().toLowerCase();
+    if (!text) return hotels;
+    return hotels.filter((hotel) => (
+      hotel.ten?.toLowerCase().includes(text)
+      || hotel.dia_chi?.toLowerCase().includes(text)
+      || hotel.dia_diem?.ten_dia_diem?.toLowerCase().includes(text)
+    ));
+  }, [hotels, keyword]);
+
+  const {
+    pagedItems: pagedHotels,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(filteredHotels, 10, [keyword]);
+
+  const openDetail = (hotel) => {
+    const activeRooms = getActiveRooms(hotel);
+    setDetailHotelId(hotel.ma_khach_san);
+    setSelectedRoom(activeRooms[0] ? String(activeRooms[0].ma_loai_phong) : '');
     setRangeAnchor(null);
     setSelectedFrom('');
     setSelectedTo('');
-  }, [selectedHotel, hotels]);
+    setDonGia('');
+    setFieldErrors({});
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+  };
+
+  const handleHotelFilterChange = (hotelId) => {
+    const hotel = hotels.find((h) => String(h.ma_khach_san) === String(hotelId));
+    if (!hotel) return;
+    openDetail(hotel);
+  };
+
+  const closeDetail = () => {
+    setDetailHotelId(null);
+    setSelectedRoom('');
+    setCalendarData({ room: null, days: [] });
+    setRangeAnchor(null);
+    setSelectedFrom('');
+    setSelectedTo('');
+    setDonGia('');
+    setFieldErrors({});
+  };
 
   const rangeStart = useMemo(() => {
     const m = String(viewMonth + 1).padStart(2, '0');
@@ -248,11 +313,11 @@ const PricingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedRoom, rangeStart, rangeEnd]);
+  }, [selectedRoom, rangeStart, rangeEnd, showToast]);
 
   useEffect(() => {
-    loadCalendar();
-  }, [loadCalendar]);
+    if (detailHotelId) loadCalendar();
+  }, [detailHotelId, loadCalendar]);
 
   const dayMap = useMemo(() => {
     const map = {};
@@ -269,6 +334,8 @@ const PricingPage = () => {
 
   const handleFromDateChange = (value) => {
     setSelectedFrom(value);
+    clearFieldError('selectedFrom');
+    clearFieldError('selectedTo');
     setRangeAnchor(null);
     if (value && selectedTo && value > selectedTo) {
       setSelectedTo(value);
@@ -277,6 +344,8 @@ const PricingPage = () => {
 
   const handleToDateChange = (value) => {
     setSelectedTo(value);
+    clearFieldError('selectedFrom');
+    clearFieldError('selectedTo');
     setRangeAnchor(null);
     if (value && selectedFrom && value < selectedFrom) {
       setSelectedFrom(value);
@@ -284,6 +353,8 @@ const PricingPage = () => {
   };
 
   const handleDayClick = (dateStr) => {
+    clearFieldError('selectedFrom');
+    clearFieldError('selectedTo');
     if (!rangeAnchor) {
       setRangeAnchor(dateStr);
       setSelectedFrom(dateStr);
@@ -291,8 +362,10 @@ const PricingPage = () => {
       const info = dayMap[dateStr];
       if (info) {
         setDonGia(formatCurrency(info.don_gia));
+        clearFieldError('donGia');
         if (info.so_luong_ap_dung != null) {
           setMoBan(String(info.so_luong_ap_dung));
+          clearFieldError('moBan');
         }
       }
       return;
@@ -310,8 +383,10 @@ const PricingPage = () => {
     const info = dayMap[dateStr];
     if (info) {
       setDonGia(formatCurrency(info.don_gia));
+      clearFieldError('donGia');
       if (info.so_luong_ap_dung != null) {
         setMoBan(String(info.so_luong_ap_dung));
+        clearFieldError('moBan');
       }
     }
   };
@@ -336,25 +411,69 @@ const PricingPage = () => {
     setRangeAnchor(null);
   };
 
+  const validateSave = () => {
+    const errors = {};
+
+    if (!selectedRoom) {
+      errors.selectedRoom = 'Loại phòng là bắt buộc';
+    }
+
+    if (!selectedFrom) {
+      errors.selectedFrom = 'Ngày bắt đầu là bắt buộc';
+    } else if (selectedFrom < today) {
+      errors.selectedFrom = 'Không thể chọn ngày đã qua';
+    }
+
+    if (!selectedTo) {
+      errors.selectedTo = 'Ngày kết thúc là bắt buộc';
+    }
+
+    if (selectedFrom && selectedTo && selectedFrom > selectedTo) {
+      errors.selectedTo = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu';
+    }
+
+    const priceRaw = String(donGia ?? '').trim();
+    if (!priceRaw) {
+      errors.donGia = 'Đơn giá là bắt buộc';
+    } else {
+      const priceValue = parseCurrency(priceRaw);
+      if (!Number.isFinite(priceValue) || priceValue <= 0) {
+        errors.donGia = 'Đơn giá không hợp lệ';
+      } else if (priceValue < 1000) {
+        errors.donGia = 'Đơn giá phải từ 1.000 VNĐ trở lên';
+      }
+    }
+
+    const moBanRaw = String(moBan ?? '').trim();
+    if (!moBanRaw) {
+      errors.moBan = 'Số phòng là bắt buộc';
+    } else {
+      const moBanValue = Number(moBanRaw);
+      if (!Number.isInteger(moBanValue) || moBanValue <= 0) {
+        errors.moBan = 'Số phòng phải lớn hơn 0';
+      } else {
+        const tongPhongHienTai = Number(calendarData.room?.tong_phong || 0);
+        if (tongPhongHienTai > 0 && moBanValue > tongPhongHienTai) {
+          errors.moBan = `Số phòng không được vượt quá ${tongPhongHienTai}`;
+        }
+      }
+    }
+
+    return errors;
+  };
+
   const handleSave = async () => {
-    if (!selectedRoom || !selectedFrom || !selectedTo) {
-      return showToast('Chọn khoảng ngày trên lịch', 'error');
+    const errors = validateSave();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
+      return;
     }
 
+    setFieldErrors({});
     const priceValue = parseCurrency(donGia);
-    if (!priceValue || priceValue <= 0) {
-      return showToast('Nhập giá hợp lệ', 'error');
-    }
-
-    const roomInfo = calendarData.room;
     const moBanValue = Number(moBan);
-    if (Number.isNaN(moBanValue) || moBanValue < 1) {
-      return showToast('Số phòng áp dụng giá phải từ 1', 'error');
-    }
-    if (moBanValue > Number(roomInfo?.tong_phong || 0)) {
-      return showToast(`Số phòng áp dụng không được vượt quá tổng phòng (${roomInfo.tong_phong})`, 'error');
-    }
-
+    const roomInfo = calendarData.room;
     const giaCoBan = Number(roomInfo?.gia_co_ban || 0);
     const dates = getDatesInRange(selectedFrom, selectedTo);
 
@@ -384,11 +503,11 @@ const PricingPage = () => {
         await api.post('/partner/pricing/delete-bulk', { items: toDelete });
       }
 
-      showToast('Đã cập nhật giá theo ngày');
+      showToast('Lưu thay đổi thành công');
       setRangeAnchor(null);
       await loadCalendar();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Lỗi lưu dữ liệu', 'error');
+      showToast(err.response?.data?.message || 'Lưu không thành công. Vui lòng thử lại.', 'error');
     } finally {
       setSaving(false);
     }
@@ -396,55 +515,160 @@ const PricingPage = () => {
 
   const tongPhong = calendarData.room?.tong_phong ?? 0;
 
+  if (!detailHotelId) {
+    return (
+      <div className="mgmt-page mgmt-list-page">
+        <ManagementHeader
+          title="Quản lý giá và kho phòng"
+          subtitle="Danh sách khách sạn đang quản lý — chọn xem chi tiết để chỉnh giá theo ngày"
+        />
+
+        <Toast toast={toast} />
+
+        <ManagementToolbar
+          searchValue={keyword}
+          onSearchChange={(e) => setKeyword(e.target.value)}
+          searchPlaceholder="Tìm theo tên khách sạn, địa điểm hoặc địa chỉ..."
+        />
+
+        <div className="mgmt-table-card mgmt-table-card--grid">
+          {listLoading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
+          ) : filteredHotels.length === 0 ? (
+            <div className="empty-state">
+              <p className="empty-state-text">
+                {hotels.length
+                  ? 'Không có khách sạn phù hợp bộ lọc'
+                  : 'Chưa có khách sạn nào đang hoạt động để quản lý giá.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mgmt-table-scroll">
+                <table className="data-table data-table-grid">
+                  <thead>
+                    <tr>
+                      <th>Tên khách sạn</th>
+                      <th>Địa điểm</th>
+                      <th>Địa chỉ</th>
+                      <th style={{ width: 120 }}>Loại phòng</th>
+                      <th style={{ width: 140 }}>Trạng thái</th>
+                      <th style={{ width: 100 }}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedHotels.map((hotel) => {
+                      const st = getHotelStatusMeta(hotel, { variant: 'badge' });
+                      const roomCount = hotel._count?.loai_phong
+                        ?? hotel.loai_phong?.length
+                        ?? 0;
+                      const activeCount = getActiveRooms(hotel).length;
+                      return (
+                        <tr key={hotel.ma_khach_san}>
+                          <td>
+                            <strong>{hotel.ten}</strong>
+                          </td>
+                          <td>{hotel.dia_diem?.ten_dia_diem || '—'}</td>
+                          <td>{hotel.dia_chi || '—'}</td>
+                          <td>
+                            {activeCount > 0
+                              ? `${activeCount}${roomCount !== activeCount ? ` / ${roomCount}` : ''}`
+                              : roomCount}
+                          </td>
+                          <td>
+                            <span className={`badge ${st.cls}`}>{st.label}</span>
+                          </td>
+                          <ActionCell>
+                            <ActionButton
+                              variant="view"
+                              iconOnly
+                              icon={Eye}
+                              title="Xem chi tiết"
+                              onClick={() => openDetail(hotel)}
+                              disabled={activeCount === 0}
+                            />
+                          </ActionCell>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {showPagination && (
+                <ListPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageNumbers={pageNumbers}
+                  rangeFrom={rangeFrom}
+                  rangeTo={rangeTo}
+                  totalItems={filteredHotels.length}
+                  onPageChange={setPage}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mgmt-page price-inv-page">
       <ManagementHeader
         title="Quản lý giá và kho phòng"
-        subtitle="Đặt giá theo ngày và số phòng áp dụng giá đó. Thêm loại phòng mới sẽ tự mở bán toàn bộ."
+        subtitle={detailHotel?.ten || 'Chi tiết lịch giá'}
+        onBack={closeDetail}
       />
-
       <Toast toast={toast} />
 
       <div className="price-inv-toolbar">
         <div className="field">
-          <label>Chọn khách sạn</label>
+          <label>Khách sạn</label>
           <select
             className="search-input"
-            style={{ width: '10%' }}
-            value={selectedHotel}
-            onChange={(e) => setSelectedHotel(e.target.value)}
+            value={detailHotelId || ''}
+            onChange={(e) => handleHotelFilterChange(e.target.value)}
           >
-            <option value="">-- Chọn khách sạn --</option>
             {hotels.map((h) => (
               <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
             ))}
           </select>
         </div>
         <div className="field">
-          <label>Chọn loại phòng</label>
+          <label>Chọn loại phòng <span style={{ color: '#e05c5c' }}>*</span></label>
           <select
-            className="search-input"
-            style={{ width: '10%' }}
+            className={`search-input${fieldErrors.selectedRoom ? ' input-invalid' : ''}`}
             value={selectedRoom}
             onChange={(e) => {
               setSelectedRoom(e.target.value);
+              clearFieldError('selectedRoom');
               setRangeAnchor(null);
               setSelectedFrom('');
               setSelectedTo('');
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.selectedFrom;
+                delete next.selectedTo;
+                return next;
+              });
             }}
-            disabled={!selectedHotel}
           >
             <option value="">-- Chọn loại phòng --</option>
             {rooms.map((r) => (
-              <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
+              <option key={r.ma_loai_phong} value={r.ma_loai_phong}>
+                {r.ten_loai}
+              </option>
             ))}
           </select>
+          {fieldErrors.selectedRoom && (
+            <p className="form-field-error">{fieldErrors.selectedRoom}</p>
+          )}
         </div>
       </div>
 
       {!selectedRoom ? (
         <div className="content-card price-inv-empty">
-          Chọn khách sạn và loại phòng để xem lịch giá & kho
+          Chọn loại phòng để xem lịch giá &amp; kho
         </div>
       ) : (
         <div className="price-inv-body">
@@ -492,24 +716,32 @@ const PricingPage = () => {
             <h3>Ngày áp giá</h3>
             <div className="price-inv-panel-section">
               <div className="price-inv-date-row">
-                <span>Từ</span>
+                <span>Từ <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
                   type="date"
+                  className={fieldErrors.selectedFrom ? 'input-invalid' : ''}
                   value={selectedFrom}
                   min={today}
                   onChange={(e) => handleFromDateChange(e.target.value)}
                 />
               </div>
+              {fieldErrors.selectedFrom && (
+                <p className="form-field-error">{fieldErrors.selectedFrom}</p>
+              )}
               <div className="price-inv-date-row">
-                <span>Đến</span>
+                <span>Đến <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
                   type="date"
+                  className={fieldErrors.selectedTo ? 'input-invalid' : ''}
                   value={selectedTo}
                   min={selectedFrom || today}
                   onChange={(e) => handleToDateChange(e.target.value)}
                 />
               </div>
-              {selectedFrom && selectedTo && (
+              {fieldErrors.selectedTo && (
+                <p className="form-field-error">{fieldErrors.selectedTo}</p>
+              )}
+              {selectedFrom && selectedTo && !fieldErrors.selectedFrom && !fieldErrors.selectedTo && (
                 <p className="price-inv-hint">
                   Áp dụng cho {selectedDayCount} ngày (từ {formatDisplayDate(selectedFrom)} đến {formatDisplayDate(selectedTo)}, bao gồm cả hai ngày)
                 </p>
@@ -517,18 +749,25 @@ const PricingPage = () => {
             </div>
 
             <div className="price-inv-panel-section">
-              <h3>Giá phòng </h3>
+              <h3>Giá phòng</h3>
               <div className="form-row">
-                <label>Đơn giá (VNĐ)</label>
+                <label>Đơn giá (VNĐ) <span style={{ color: '#e05c5c' }}>*</span></label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  className={fieldErrors.donGia ? 'input-invalid' : ''}
                   value={donGia}
-                  onChange={(e) => setDonGia(formatCurrency(parseCurrency(e.target.value)))}
-                  placeholder="Nhập giá"
+                  onChange={(e) => {
+                    setDonGia(formatCurrency(parseCurrency(e.target.value)));
+                    clearFieldError('donGia');
+                  }}
+                  placeholder="Tối thiểu 1.000"
                 />
-                {calendarData.room && (
+                {fieldErrors.donGia ? (
+                  <p className="form-field-error">{fieldErrors.donGia}</p>
+                ) : (
                   <p className="price-inv-hint">
-                    Giá cơ bản: {formatCurrency(calendarData.room.gia_co_ban)} đ
+                    {calendarData.room ? ` · Giá cơ bản: ${formatCurrency(calendarData.room.gia_co_ban)} đ` : ''}
                   </p>
                 )}
               </div>
@@ -537,17 +776,28 @@ const PricingPage = () => {
             <div className="price-inv-panel-section">
               <h3>Sét phòng áp dụng giá</h3>
               <div className="form-row">
-                <label>Số phòng</label>
+                <label>Số phòng <span style={{ color: '#e05c5c' }}>*</span></label>
                 <input
                   type="number"
                   min={1}
-                  max={tongPhong}
+                  max={tongPhong || undefined}
+                  className={fieldErrors.moBan ? 'input-invalid' : ''}
                   value={moBan}
-                  onChange={(e) => setMoBan(e.target.value)}
+                  onChange={(e) => {
+                    setMoBan(e.target.value);
+                    clearFieldError('moBan');
+                  }}
+                  placeholder="Lớn hơn 0"
                 />
-                <p className="price-inv-hint">
-                  Áp dụng giá trên cho {moBan || '—'} / {tongPhong} phòng trong khoảng ngày đã chọn
-                </p>
+                {fieldErrors.moBan ? (
+                  <p className="form-field-error">{fieldErrors.moBan}</p>
+                ) : (
+                  <p className="price-inv-hint">
+                    Số phòng phải &gt; 0
+                    {tongPhong > 0 ? ` và ≤ ${tongPhong}` : ''}
+                    {' · '}Áp dụng: {moBan || '—'} / {tongPhong || '—'} phòng
+                  </p>
+                )}
               </div>
             </div>
 
@@ -556,7 +806,7 @@ const PricingPage = () => {
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
               onClick={handleSave}
-              disabled={saving || !selectedFrom || !selectedTo}
+              disabled={saving}
             >
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>

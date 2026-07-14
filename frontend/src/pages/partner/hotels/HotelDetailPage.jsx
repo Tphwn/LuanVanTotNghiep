@@ -9,7 +9,7 @@ import BackButton from '../../../components/common/BackButton';
 import ActionButton from '../../../components/common/ActionButton';
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import DetailTable from '../../../components/booking/DetailTable';
-import { formatDate } from '../../../utils/bookingDisplay';
+import { formatDate, formatHotelTime } from '../../../utils/bookingDisplay';
 import { fetchMyHotels, updateHotel, clearMsg } from '../../../store/slices/partnerHotelSlice';
 import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
 import { HOTEL_CATEGORY_GROUPS } from '../../admin/amenities/constants';
@@ -29,11 +29,6 @@ const PARTNER_HOTEL_TABS = [
   { id: 'amenities', label: 'Tiện nghi' },
   { id: 'policies', label: 'Nội quy & Chính sách' },
 ];
-
-const formatTime = (d) => {
-  if (!d) return '—';
-  return new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-};
 
 const formatDateTime = (date) => (date ? new Date(date).toLocaleString('vi-VN') : '—');
 
@@ -178,13 +173,6 @@ export default function HotelDetailPage() {
     <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page partner-hotels-page">
       <div className="admin-user-detail-top">
         <BackButton to="/partner/hotels" />
-        <ActionButton
-          variant="edit"
-          icon={Pencil}
-          onClick={() => navigate(`/partner/hotels/${hotel.ma_khach_san}/edit`)}
-        >
-          Chỉnh sửa
-        </ActionButton>
       </div>
 
       {(successMsg || error) && (
@@ -253,8 +241,12 @@ export default function HotelDetailPage() {
                 { label: 'Địa điểm', value: hotel.dia_diem?.ten_dia_diem || '—' },
                 { label: 'Địa chỉ', value: hotel.dia_chi || '—' },
                 { label: 'Hạng sao', value: hotel.so_sao ? `${hotel.so_sao} sao` : '—' },
-                { label: 'Giờ nhận phòng', value: formatTime(hotel.gio_nhan_phong) },
-                { label: 'Giờ trả phòng', value: formatTime(hotel.gio_tra_phong) },
+                {
+                  label: 'Loại phòng',
+                  value: hotel._count?.loai_phong != null ? String(hotel._count.loai_phong) : '0',
+                },
+                { label: 'Giờ nhận phòng', value: formatHotelTime(hotel.gio_nhan_phong, '—') },
+                { label: 'Giờ trả phòng', value: formatHotelTime(hotel.gio_tra_phong, '—') },
                 { label: 'Trạng thái', value: <span className={`badge ${st.cls}`}>{st.label}</span> },
                 { label: 'Mô tả', value: hotel.mo_ta?.trim() || '—' },
                 { label: 'Ngày đăng ký', value: formatDateTime(hotel.ngay_tao) },

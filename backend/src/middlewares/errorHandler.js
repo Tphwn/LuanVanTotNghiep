@@ -3,7 +3,7 @@ const errorHandler = (err, req, res, next) => {
 
   if (err.name === 'MulterError' || err.code?.startsWith?.('LIMIT_')) {
     const message = err.code === 'LIMIT_UNEXPECTED_FILE' && err.field === 'images'
-      ? 'Chỉ được tải tối đa 10 ảnh mỗi loại phòng'
+      ? 'Chỉ được tải tối đa 30 ảnh'
       : (err.message || 'Lỗi tải file');
     return res.status(400).json({ success: false, message });
   }

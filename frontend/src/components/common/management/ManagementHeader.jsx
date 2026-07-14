@@ -10,22 +10,33 @@ const ManagementHeader = ({
   actionLabel,
   onAction,
   actionIcon: ActionIcon = Plus,
-}) => (
-  <div className="mgmt-header">
-    <div className="mgmt-header-main">
-      <h1 className="mgmt-title">{title}</h1>
-      {subtitle && <p className="mgmt-subtitle">{subtitle}</p>}
-      {(backTo || onBack) && (
-        <BackButton to={backTo} onClick={onBack} label={backLabel} />
+}) => {
+  const hasBack = Boolean(backTo || onBack);
+
+  return (
+    <div className="mgmt-header">
+      {hasBack && (
+        <BackButton
+          to={backTo}
+          onClick={onBack}
+          label={backLabel}
+          className="page-back-btn--standalone"
+        />
       )}
+      <div className="mgmt-header-row">
+        <div className="mgmt-header-main">
+          <h1 className="mgmt-title">{title}</h1>
+          {subtitle && <p className="mgmt-subtitle">{subtitle}</p>}
+        </div>
+        {actionLabel && onAction && (
+          <button type="button" className="btn btn-primary mgmt-header-action" onClick={onAction}>
+            <ActionIcon size={18} strokeWidth={2.5} />
+            {actionLabel}
+          </button>
+        )}
+      </div>
     </div>
-    {actionLabel && onAction && (
-      <button type="button" className="btn btn-primary mgmt-header-action" onClick={onAction}>
-        <ActionIcon size={18} strokeWidth={2.5} />
-        {actionLabel}
-      </button>
-    )}
-  </div>
-);
+  );
+};
 
 export default ManagementHeader;

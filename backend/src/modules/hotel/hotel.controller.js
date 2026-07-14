@@ -31,6 +31,7 @@ const fetchHotelFull = async (hotelId) => {
       dia_diem: true,
       khach_san_tien_nghi: { include: { tien_nghi: true } },
       chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+      _count: { select: { loai_phong: true } },
     },
   });
 
@@ -202,6 +203,7 @@ exports.getMyHotels = async (req, res) => {
         dia_diem: true,
         khach_san_tien_nghi: { include: { tien_nghi: true } },
         chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+        _count: { select: { loai_phong: true } },
       },
       orderBy: { ngay_tao: 'desc' },
     });
