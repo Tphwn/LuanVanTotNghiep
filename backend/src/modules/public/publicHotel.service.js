@@ -645,6 +645,7 @@ const publicHotelService = {
       dia_chi: hotel.dia_chi,
       mo_ta: hotel.mo_ta,
       so_sao: hotel.so_sao,
+      ma_dia_diem: hotel.ma_dia_diem,
       gio_nhan_phong: hotel.gio_nhan_phong,
       gio_tra_phong: hotel.gio_tra_phong,
       cho_phep_thu_cung: hotel.cho_phep_thu_cung,
