@@ -1,6 +1,7 @@
 const prisma = require('../../config/prisma');
 const { processRefundOnCancel } = require('../../utils/refundHelpers');
 const { autoCompleteExpiredCheckIns, isStayPeriodEnded } = require('../../utils/bookingHelpers');
+const { ensureCommissionForBooking } = require('../../utils/commissionHelpers');
 
 const ADMIN_HOTEL_LIST_SELECT = {
   select: {
@@ -165,7 +166,6 @@ const bookingService = {
     return bookingService.getDetailById(id);
   },
 
-  // Xác nhận khách đã check-out → hoàn thành
   checkOut: async (id, doiTacId) => {
     const booking = await verifyOwner(id, doiTacId);
     if (booking.trang_thai !== 'da_checkin') {
@@ -178,6 +178,7 @@ const bookingService = {
       where: { ma_dat_phong: Number(id) },
       data: { trang_thai: 'hoan_thanh' },
     });
+    await ensureCommissionForBooking(id);
     return bookingService.getDetailById(id);
   },
 

@@ -83,7 +83,7 @@ const CreatePartnerPage = () => {
         ma_so_thue: formData.ma_so_thue.trim() || null,
         email_lien_he: formData.email_lien_he.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
-        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? null : Number(formData.phan_tram_hoa_hong),
+        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? 15 : Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
         so_dien_thoai: formData.so_dien_thoai.trim(),
         mat_khau: formData.mat_khau,
@@ -158,7 +158,7 @@ const CreatePartnerPage = () => {
               />
             </Field>
 
-            <Field label="Tỉ lệ hoa hồng (%)" error={fieldErrors.phan_tram_hoa_hong} hint="Để trống nếu dùng mức mặc định của hệ thống.">
+            <Field label="Tỉ lệ hoa hồng (%)" error={fieldErrors.phan_tram_hoa_hong} hint="Để trống sẽ dùng mức mặc định hệ thống 15%.">
               <input
                 type="number"
                 name="phan_tram_hoa_hong"
@@ -168,7 +168,7 @@ const CreatePartnerPage = () => {
                 className="search-input create-partner-input"
                 value={formData.phan_tram_hoa_hong}
                 onChange={handleChange}
-                placeholder="VD: 10"
+                placeholder="Mặc định 15%"
               />
             </Field>
 

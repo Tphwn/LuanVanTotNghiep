@@ -129,9 +129,11 @@ const CustomerBookingPage = () => {
     if (ngayNhan) params.set('ngay_nhan', ngayNhan);
     if (ngayTra) params.set('ngay_tra', ngayTra);
     if (soKhach) params.set('so_khach', soKhach);
+    if (bookingParams.tre_em != null) params.set('tre_em', bookingParams.tre_em);
+    if (bookingParams.so_phong) params.set('so_phong', bookingParams.so_phong);
     const qs = params.toString();
-    return `/hotels/${maKhachSan}/rooms/${maLoaiPhong}${qs ? `?${qs}` : ''}`;
-  }, [maKhachSan, maLoaiPhong, ngayNhan, ngayTra, soKhach, searchParams]);
+    return `/hotels/${maKhachSan}${qs ? `?${qs}` : ''}`;
+  }, [maKhachSan, ngayNhan, ngayTra, soKhach, bookingParams.tre_em, bookingParams.so_phong, searchParams]);
 
   const nights = useMemo(() => {
     if (room?.so_dem) return room.so_dem;

@@ -24,8 +24,11 @@ exports.list = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);
     if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
-    const data = await partnerPromotionService.list(doiTacId, req.query);
-    res.json({ success: true, data });
+    const { ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay } = req.query;
+    const result = await partnerPromotionService.list(doiTacId, {
+      ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay,
+    });
+    res.json({ success: true, data: result.data, stats: result.stats });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -36,7 +39,11 @@ exports.create = async (req, res) => {
     const doiTacId = await getDoiTacId(req.user.id);
     if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
     const data = await partnerPromotionService.create(doiTacId, req.user.id, req.body);
-    res.status(201).json({ success: true, data, message: 'Đã tạo khuyến mãi' });
+    res.status(201).json({
+      success: true,
+      data,
+      message: 'Đã gửi yêu cầu duyệt khuyến mãi',
+    });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -51,7 +58,42 @@ exports.update = async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
     }
     const data = await partnerPromotionService.update(doiTacId, id, req.body);
-    res.json({ success: true, data, message: 'Đã cập nhật khuyến mãi' });
+    res.json({
+      success: true,
+      data,
+      message: 'Đã gửi yêu cầu duyệt lại khuyến mãi',
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.lock = async (req, res) => {
+  try {
+    const doiTacId = await getDoiTacId(req.user.id);
+    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
+    }
+    const lyDo = req.body?.ly_do?.trim();
+    const data = await partnerPromotionService.lock(doiTacId, req.user.id, id, lyDo);
+    res.json({ success: true, data, message: 'Đã tạm ngưng khuyến mãi' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.restore = async (req, res) => {
+  try {
+    const doiTacId = await getDoiTacId(req.user.id);
+    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
+    }
+    const data = await partnerPromotionService.restore(doiTacId, req.user.id, id);
+    res.json({ success: true, data, message: 'Đã kích hoạt lại khuyến mãi' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

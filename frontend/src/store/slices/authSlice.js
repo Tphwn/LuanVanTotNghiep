@@ -11,14 +11,37 @@ const mapAuthUser = (raw = {}) => ({
   khach_hang: raw.khach_hang ?? null,
 });
 
+const applyAuthSession = (state, payload) => {
+  state.token = payload.token;
+  state.user = mapAuthUser(payload.user);
+  setToken(payload.token);
+  setUser(state.user);
+};
+
 export const login = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
   try {
     const res = await authService.login(data);
     return res.data?.data ?? res.data;
   } catch (err) {
-    return rejectWithValue(err.response?.data?.message || 'Đăng nhập thất bại');
+    return rejectWithValue({
+      message: err.response?.data?.message || 'Đăng nhập thất bại',
+      code: err.response?.data?.code,
+      email: err.response?.data?.email,
+    });
   }
 });
+
+export const loginWithGoogle = createAsyncThunk(
+  'auth/loginWithGoogle',
+  async (idToken, { rejectWithValue }) => {
+    try {
+      const res = await authService.loginWithGoogle(idToken);
+      return res.data?.data ?? res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Đăng nhập Google thất bại');
+    }
+  },
+);
 
 export const register = createAsyncThunk('auth/register', async (data, { rejectWithValue }) => {
   try {
@@ -28,6 +51,18 @@ export const register = createAsyncThunk('auth/register', async (data, { rejectW
     return rejectWithValue(err.response?.data?.message || 'Đăng ký thất bại');
   }
 });
+
+export const verifyRegisterOtp = createAsyncThunk(
+  'auth/verifyRegisterOtp',
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await authService.verifyRegisterOtp(data);
+      return res.data?.data ?? res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Xác thực OTP thất bại');
+    }
+  },
+);
 
 export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue }) => {
   try {
@@ -42,10 +77,10 @@ const authSlice = createSlice({
   name: 'auth',
 
   initialState: {
-    user: getUser(),  
-    token: getToken(), 
-    loading: false,   
-    error: null,   
+    user: getUser(),
+    token: getToken(),
+    loading: false,
+    error: null,
   },
 
   reducers: {
@@ -67,12 +102,21 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
-        state.user = mapAuthUser(action.payload.user);
-        setToken(action.payload.token);
-        setUser(state.user);
+        applyAuthSession(state, action.payload);
       })
       .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || action.payload || 'Đăng nhập thất bại';
+      })
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.loading = false;
+        applyAuthSession(state, action.payload);
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -82,12 +126,24 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
-        state.user = mapAuthUser(action.payload.user);
-        setToken(action.payload.token);
-        setUser(state.user);
+        // Đăng ký chỉ gửi OTP — chưa đăng nhập
+        if (action.payload?.token && action.payload?.user) {
+          applyAuthSession(state, action.payload);
+        }
       })
       .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(verifyRegisterOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyRegisterOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        applyAuthSession(state, action.payload);
+      })
+      .addCase(verifyRegisterOtp.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

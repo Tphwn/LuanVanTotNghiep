@@ -40,7 +40,7 @@ const AmenitiesPage = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [approveModal, setApproveModal] = useState(null);
   const [requestFilter, setRequestFilter] = useState('cho_xu_ly');
-  const [requestLoaiFilter, setRequestLoaiFilter] = useState('khach_san');
+  const [requestLoaiFilter, setRequestLoaiFilter] = useState('all');
   const [hotelCategoryFilter, setHotelCategoryFilter] = useState('');
   const [roomCategoryFilter, setRoomCategoryFilter] = useState('');
   const [lockTarget, setLockTarget] = useState(null);
@@ -141,6 +141,14 @@ const AmenitiesPage = () => {
   };
 
   const handleToggleLock = (item) => {
+    const isLocked = item.trang_thai === 'an';
+    if (!isLocked && item.dang_su_dung) {
+      showToast(
+        'Không thể khóa tiện nghi này vì đã có đối tác chọn. Chỉ khóa khi chưa có đối tác nào sử dụng.',
+        'error',
+      );
+      return;
+    }
     setLockTarget(item);
   };
 
@@ -158,7 +166,11 @@ const AmenitiesPage = () => {
       }
       setLockTarget(null);
     } catch (err) {
-      const msg = err?.message || err?.response?.data?.message || 'Thao tác thất bại';
+      const msg =
+        (typeof err === 'string' ? err : null)
+        || err?.message
+        || err?.response?.data?.message
+        || 'Thao tác thất bại';
       showToast(msg, 'error');
     } finally {
       setLockLoading(false);
@@ -173,55 +185,73 @@ const AmenitiesPage = () => {
     setApproveModal(req);
   };
 
-  const handleApproveSubmit = () => {
+  const handleApproveSubmit = async () => {
     if (!approveModal) return;
-    dispatch(approveRequest({ id: approveModal.ma_yeu_cau })).then(() => {
-      dispatch(fetchRequests());
+    const ten = approveModal.ten_de_xuat || 'tiện nghi';
+    try {
+      await dispatch(approveRequest({ id: approveModal.ma_yeu_cau })).unwrap();
+      await dispatch(fetchRequests());
       setApproveModal(null);
-    });
+      showToast(`Đã duyệt yêu cầu tiện nghi "${ten}"`);
+    } catch (err) {
+      const msg = err?.message || err?.response?.data?.message || 'Duyệt yêu cầu thất bại';
+      showToast(msg, 'error');
+    }
   };
 
-  const handleRejectSubmit = () => {
+  const handleRejectSubmit = async () => {
     if (!rejectReason.trim()) return showToast('Vui lòng nhập lý do từ chối', 'error');
-    dispatch(rejectRequest({ id: rejectModal, phan_hoi: rejectReason })).then(() => {
-      dispatch(fetchRequests());
+    if (!rejectModal) return;
+    const ten = rejectModal.ten_de_xuat || 'tiện nghi';
+    try {
+      await dispatch(rejectRequest({
+        id: rejectModal.ma_yeu_cau,
+        phan_hoi: rejectReason.trim(),
+      })).unwrap();
+      await dispatch(fetchRequests());
       setRejectModal(null);
       setRejectReason('');
-    });
+      showToast(`Đã từ chối yêu cầu tiện nghi "${ten}"`);
+    } catch (err) {
+      const msg = err?.message || err?.response?.data?.message || 'Từ chối yêu cầu thất bại';
+      showToast(msg, 'error');
+    }
   };
 
   return (
     <div className="mgmt-page mgmt-list-page amenity-page">
       <div className="mgmt-header amenity-page-header">
-        <div className="mgmt-header-main">
-          <h1 className="mgmt-title">Quản Lý Tiện Nghi</h1>
-        </div>
-        <div className="amenity-header-actions">
-          <button
-            type="button"
-            className={`amenity-requests-link${viewMode === 'requests' ? ' active' : ''}`}
-            onClick={openRequestsView}
-          >
-            <Bell size={16} strokeWidth={1.8} />
-            Yêu cầu từ đối tác
-            {pendingCount > 0 && (
-              <span className="amenity-header-badge">{pendingCount}</span>
-            )}
-          </button>
-          {viewMode === 'main' ? (
-            <button type="button" className="btn btn-primary mgmt-header-action" onClick={openAddPage}>
-              <Plus size={18} strokeWidth={2.5} />
-              Thêm tiện nghi
-            </button>
-          ) : (
+        <div className="mgmt-header-row">
+          <div className="mgmt-header-main">
+            <h1 className="mgmt-title">Quản Lý Tiện Nghi</h1>
+          </div>
+          <div className="amenity-header-actions">
             <button
               type="button"
-              className="btn btn-ghost amenity-back-btn"
-              onClick={() => setViewMode('main')}
+              className={`amenity-requests-link${viewMode === 'requests' ? ' active' : ''}`}
+              onClick={openRequestsView}
             >
-              Quay lại danh sách
+              <Bell size={16} strokeWidth={1.8} />
+              Yêu cầu từ đối tác
+              {pendingCount > 0 && (
+                <span className="amenity-header-badge">{pendingCount}</span>
+              )}
             </button>
-          )}
+            {viewMode === 'main' ? (
+              <button type="button" className="btn btn-primary mgmt-header-action" onClick={openAddPage}>
+                <Plus size={18} strokeWidth={2.5} />
+                Thêm tiện nghi
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-ghost amenity-back-btn"
+                onClick={() => setViewMode('main')}
+              >
+                Quay lại danh sách
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -264,7 +294,10 @@ const AmenitiesPage = () => {
           totalCount={scopedRequests.length}
           filteredRequests={filteredRequests}
           onApprove={openApprove}
-          onReject={(id) => setRejectModal(id)}
+          onReject={(req) => {
+            setRejectModal(req);
+            setRejectReason('');
+          }}
         />
       )}
 
@@ -275,9 +308,12 @@ const AmenitiesPage = () => {
       />
 
       <RejectRequestModal
-        isOpen={!!rejectModal}
+        request={rejectModal}
         rejectReason={rejectReason}
-        onClose={() => setRejectModal(null)}
+        onClose={() => {
+          setRejectModal(null);
+          setRejectReason('');
+        }}
         onSubmit={handleRejectSubmit}
         onReasonChange={setRejectReason}
       />
@@ -289,7 +325,7 @@ const AmenitiesPage = () => {
         title={lockTarget?.trang_thai === 'an' ? 'Xác nhận mở khóa tiện nghi' : 'Xác nhận khóa tiện nghi'}
         intro={lockTarget?.trang_thai === 'an'
           ? 'Bạn có chắc muốn mở khóa tiện nghi này? Tiện nghi sẽ hoạt động trở lại và có thể được gán cho khách sạn/loại phòng.'
-          : 'Bạn có chắc muốn khóa tiện nghi này? Tiện nghi sẽ bị ẩn và không thể gán mới cho khách sạn/loại phòng.'}
+          : 'Bạn có chắc muốn khóa tiện nghi này? Chỉ khóa được khi chưa có đối tác nào chọn. Sau khi khóa, tiện nghi sẽ bị ẩn và không thể gán mới.'}
         infoRows={lockTarget ? [
           { label: 'Tên tiện nghi', value: lockTarget.ten },
         ] : []}

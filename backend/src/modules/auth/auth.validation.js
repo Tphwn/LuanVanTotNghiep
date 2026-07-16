@@ -1,26 +1,75 @@
 const Joi = require('joi');
 
 const registerSchema = Joi.object({
-  email:         Joi.string().email().required().messages({ 'string.email': 'Email không hợp lệ', 'any.required': 'Email là bắt buộc' }),
-  so_dien_thoai: Joi.string().min(9).max(15).required().messages({ 'any.required': 'Số điện thoại là bắt buộc' }),
-  mat_khau:      Joi.string().min(6).required().messages({ 'string.min': 'Mật khẩu ít nhất 6 ký tự', 'any.required': 'Mật khẩu là bắt buộc' }),
-  ho_ten:        Joi.string().min(2).max(100).required().messages({ 'any.required': 'Họ tên là bắt buộc' }),
+  email: Joi.string().email().required().messages({
+    'string.email': 'Email không hợp lệ',
+    'any.required': 'Email là bắt buộc',
+  }),
+  so_dien_thoai: Joi.string().min(9).max(15).required().messages({
+    'any.required': 'Số điện thoại là bắt buộc',
+  }),
+  mat_khau: Joi.string().min(6).required().messages({
+    'string.min': 'Mật khẩu ít nhất 6 ký tự',
+    'any.required': 'Mật khẩu là bắt buộc',
+  }),
+  ho_ten: Joi.string().min(2).max(100).required().messages({
+    'any.required': 'Họ tên là bắt buộc',
+  }),
 });
 
 const loginSchema = Joi.object({
-  email:    Joi.string().email().required(),
+  email: Joi.string().email().required(),
   mat_khau: Joi.string().required(),
 });
 
+const googleLoginSchema = Joi.object({
+  id_token: Joi.string().required().messages({
+    'any.required': 'Thiếu id_token từ Google',
+  }),
+});
+
+const emailOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+  otp: Joi.string().length(6).required().messages({
+    'string.length': 'Mã OTP gồm 6 chữ số',
+  }),
+});
+
+const resendOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+  purpose: Joi.string().valid('register', 'reset').default('register'),
+});
+
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  reset_token: Joi.string().required(),
+  mat_khau: Joi.string().min(6).required().messages({
+    'string.min': 'Mật khẩu ít nhất 6 ký tự',
+  }),
+});
+
 const validate = (schema) => (req, res, next) => {
-  const { error } = schema.validate(req.body, { abortEarly: false });
+  const { error, value } = schema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({
       success: false,
-      message: error.details.map(d => d.message).join(', '),
+      message: error.details.map((d) => d.message).join(', '),
     });
   }
+  req.body = value;
   next();
 };
 
-module.exports = { registerSchema, loginSchema, validate };
+module.exports = {
+  registerSchema,
+  loginSchema,
+  googleLoginSchema,
+  emailOtpSchema,
+  resendOtpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  validate,
+};

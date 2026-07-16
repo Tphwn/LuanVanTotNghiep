@@ -24,15 +24,33 @@ export const removeAmenity = createAsyncThunk("amenities/delete", async (id) => 
   return id;
 });
 
-export const lockAmenity = createAsyncThunk("amenities/lock", async (id) => {
-  const res = await api.patch(`${ENDPOINT}/${id}/lock`);
-  return res.data.data;
-});
+export const lockAmenity = createAsyncThunk(
+  'amenities/lock',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`${ENDPOINT}/${id}/lock`);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Khóa tiện nghi thất bại',
+      );
+    }
+  },
+);
 
-export const unlockAmenity = createAsyncThunk("amenities/unlock", async (id) => {
-  const res = await api.patch(`${ENDPOINT}/${id}/unlock`);
-  return res.data.data;
-});
+export const unlockAmenity = createAsyncThunk(
+  'amenities/unlock',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`${ENDPOINT}/${id}/unlock`);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || 'Mở khóa tiện nghi thất bại',
+      );
+    }
+  },
+);
 
 // ===== YÊU CẦU TIỆN NGHI =====
 export const fetchRequests = createAsyncThunk("amenities/fetchRequests", async () => {

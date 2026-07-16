@@ -3,9 +3,23 @@ import { suggestIconSlugFromName } from '../../../utils/amenityIcons';
 export const inferLoaiDeXuat = (req) => {
   if (req.loai_de_xuat) return req.loai_de_xuat;
   const moTa = (req.mo_ta || '').toLowerCase();
-  if (moTa.includes('loại phòng') || moTa.includes('loai phong')) return 'phong';
-  if (moTa.includes('khách sạn') || moTa.includes('khach san')) return 'khach_san';
+  if (moTa.includes('loại phòng') || moTa.includes('loai phong') || moTa.includes('[loại phòng:')) {
+    return 'phong';
+  }
+  if (moTa.includes('khách sạn') || moTa.includes('khach san') || moTa.includes('[khách sạn:')) {
+    return 'khach_san';
+  }
   return null;
+};
+
+export const getPartnerRequestNote = (moTa) => {
+  if (!moTa) return '';
+  const cleaned = String(moTa)
+    .replace(/\[khách sạn:[^\]]*\]\s*/gi, '')
+    .replace(/\[loại phòng:[^\]]*\]\s*/gi, '')
+    .replace(/Đối tác yêu cầu tiện nghi cho (khách sạn|loại phòng) này\.?/gi, '')
+    .trim();
+  return cleaned;
 };
 
 export const groupAmenitiesByCategory = (items, categoryGroups) => {

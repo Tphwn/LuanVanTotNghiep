@@ -2,6 +2,8 @@ import { Pencil, Lock, Unlock } from 'lucide-react';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
 import { getAmenityLucideIcon } from '../../../../utils/amenityIcons';
 
+const MAX_VISIBLE_ROWS = 10;
+
 export const AmenityListSection = ({
   loading,
   panelTitle,
@@ -42,7 +44,11 @@ export const AmenityListSection = ({
         {availableGroups.length === 0 ? 'Chưa có tiện nghi nào' : 'Không có tiện nghi trong danh mục này'}
       </div>
     ) : (
-      <div className="mgmt-table-scroll">
+      <div
+        className={`mgmt-table-scroll amenity-list-scroll${
+          amenities.length > MAX_VISIBLE_ROWS ? ' amenity-list-scroll--limited' : ''
+        }`}
+      >
         <table className="data-table data-table-grid admin-mgmt-table amenity-list-table">
           <thead>
             <tr>
@@ -55,16 +61,37 @@ export const AmenityListSection = ({
             {amenities.map((item) => {
               const ItemIcon = getAmenityLucideIcon(item.bieu_tuong || item.ten);
               const isLocked = item.trang_thai === 'an';
+              const inUse = Boolean(item.dang_su_dung);
+              const canLock = !isLocked && !inUse;
+
+              // Tooltip khi rê chuột vào tên / nút khóa
+              let statusHint = 'Đang hoạt động — có thể khóa';
+              if (isLocked) {
+                statusHint = 'Bị khóa';
+              } else if (inUse) {
+                statusHint = 'Không khóa vì đã được đối tác thêm';
+              }
+
+              const lockTitle = isLocked
+                ? 'Mở khóa tiện nghi'
+                : inUse
+                  ? 'Không khóa vì đã được đối tác thêm'
+                  : 'Khóa tiện nghi';
+
               return (
                 <tr key={item.ma_tien_nghi} className={isLocked ? 'amenity-row--locked' : ''}>
                   <td>
-                    <div className="amenity-table-icon">
+                    <div className="amenity-table-icon" title={statusHint}>
                       <ItemIcon size={15} strokeWidth={1.6} />
                     </div>
                   </td>
                   <td className="amenity-name-cell">
-                    <span className="amenity-name-text">{item.ten}</span>
-                    {isLocked && <span className="badge badge-danger amenity-lock-badge">Đã khóa</span>}
+                    <span
+                      className={`amenity-name-text${isLocked ? ' amenity-name-text--locked' : ''}`}
+                      title={statusHint}
+                    >
+                      {item.ten}
+                    </span>
                   </td>
                   <ActionCell>
                     <ActionButton
@@ -74,13 +101,19 @@ export const AmenityListSection = ({
                       title="Sửa"
                       onClick={() => onEdit(item)}
                     />
-                    <ActionButton
-                      variant={isLocked ? 'unlock' : 'lock'}
-                      iconOnly
-                      icon={isLocked ? Unlock : Lock}
-                      title={isLocked ? 'Mở khóa' : 'Khóa'}
-                      onClick={() => onToggleLock(item)}
-                    />
+                    {/* Wrapper để tooltip vẫn hiện khi nút bị disabled */}
+                    <span className="amenity-lock-btn-wrap" title={lockTitle}>
+                      <ActionButton
+                        variant={isLocked ? 'unlock' : 'lock'}
+                        iconOnly
+                        icon={isLocked ? Unlock : Lock}
+                        title={lockTitle}
+                        disabled={!isLocked && !canLock}
+                        onClick={() => {
+                          if (isLocked || canLock) onToggleLock(item);
+                        }}
+                      />
+                    </span>
                   </ActionCell>
                 </tr>
               );

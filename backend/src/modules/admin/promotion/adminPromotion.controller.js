@@ -77,7 +77,7 @@ exports.lockPromotion = async (req, res, next) => {
     if (!lyDo) {
       return res.status(400).json({ success: false, message: 'Phải kèm lý do tạm ngưng' });
     }
-    const data = await service.lockPromotion(id, lyDo);
+    const data = await service.lockPromotion(id, req.user.id, lyDo);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khuyến mãi' });
     }
@@ -93,7 +93,7 @@ exports.restorePromotion = async (req, res, next) => {
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
     }
-    const data = await service.restorePromotion(id);
+    const data = await service.restorePromotion(id, req.user.id);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khuyến mãi' });
     }
@@ -108,7 +108,7 @@ exports.approvePromotion = async (req, res, next) => {
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
     }
-    const data = await service.approvePromotion(id);
+    const data = await service.approvePromotion(id, req.user.id);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khuyến mãi' });
     }

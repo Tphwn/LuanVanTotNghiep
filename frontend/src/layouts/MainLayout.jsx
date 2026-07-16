@@ -51,19 +51,6 @@ const MainLayout = ({ children, fullBleed = false }) => {
              Khách sạn
           </Link>
           <Link
-            to={ROUTES.CUSTOMER.PROMOTIONS}
-            className={`header-nav-link${isActive(ROUTES.CUSTOMER.PROMOTIONS) ?' active':''}`}
-          >
-             Ưu đãi
-          </Link>
-          <Link
-            to={ROUTES.CUSTOMER.BOOKING_GUIDE}
-            className={`header-nav-link${isActive(ROUTES.CUSTOMER.BOOKING_GUIDE) ? ' active' : ''}`}
-          >
-            <span className="header-nav-text-full">Hướng dẫn đặt phòng</span>
-            <span className="header-nav-text-short">Hướng dẫn</span>
-          </Link>
-          <Link
             to={ROUTES.CUSTOMER.CONTACT}
             className={`header-nav-link${isActive(ROUTES.CUSTOMER.CONTACT) ? ' active' : ''}`}
           >
@@ -96,14 +83,24 @@ const MainLayout = ({ children, fullBleed = false }) => {
             </>
           ) : (
             <>
-            <Link to={ROUTES.LOGIN}>
-              <button type="button"className="logout-button">Đăng nhập</button>
-            </Link>
-            <Link to={ROUTES.REGISTER}>
-              <button type="button" className="header-register-btn">Đăng ký</button>
-            </Link>
+              <Link to={ROUTES.LOGIN}>
+                <button
+                  type="button"
+                  className={`logout-button${isActive(ROUTES.LOGIN) ? ' active' : ''}`}
+                >
+                  Đăng nhập
+                </button>
+              </Link>
+              <Link to={ROUTES.REGISTER}>
+                <button
+                  type="button"
+                  className={`header-register-btn${isActive(ROUTES.REGISTER) ? ' active' : ''}`}
+                >
+                  Đăng ký
+                </button>
+              </Link>
             </>
-          ) }
+          )}
         </div>
       </header>
 

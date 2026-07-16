@@ -151,7 +151,7 @@ const createPartner = async (req, res, next) => {
         dia_chi: dia_chi?.trim() || null,
         ma_so_thue: ma_so_thue?.trim() || null,
         phan_tram_hoa_hong: phan_tram_hoa_hong === '' || phan_tram_hoa_hong == null
-          ? null
+          ? 15
           : Number(phan_tram_hoa_hong),
         anh_dai_dien: req.file ? `/uploads/${req.file.filename}` : null,
       },

@@ -6,6 +6,8 @@ import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
 import PriceRangeSlider from '../../components/customer/search/PriceRangeSlider';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
+import CustomerPromotionStrip from '../../components/customer/CustomerPromotionStrip';
+import publicPromotionService from '../../services/publicPromotionService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
@@ -111,9 +113,16 @@ const FilterSidebar = ({
           {STAR_OPTIONS.map((star) => (
             <label key={star} className="search-filter-check">
               <input
-                type="checkbox"
+                type="radio"
+                name="hotel-star-filter"
                 checked={selectedStars.includes(star)}
                 onChange={() => onToggleStar(star)}
+                onClick={(e) => {
+                  if (selectedStars.includes(star)) {
+                    e.preventDefault();
+                    onToggleStar(star);
+                  }
+                }}
               />
               <span className="search-filter-stars">{stars(star)}</span>
             </label>
@@ -184,6 +193,7 @@ const HotelSearchPage = () => {
   const [priceMax, setPriceMax] = useState('');
   const [selectedStars, setSelectedStars] = useState([]);
   const [selectedAmenities, setSelectedAmenities] = useState([]);
+  const [systemPromotions, setSystemPromotions] = useState([]);
 
   const filters = useMemo(() => {
     const guests = normalizeSearchGuests({
@@ -236,6 +246,12 @@ const HotelSearchPage = () => {
         setAmenityCatalog(amenityRes.data?.data || []);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    publicPromotionService.getSystemPromotions()
+      .then((res) => setSystemPromotions(res.data?.data || []))
+      .catch(() => setSystemPromotions([]));
   }, []);
 
   useEffect(() => {
@@ -356,9 +372,7 @@ const HotelSearchPage = () => {
   };
 
   const toggleStar = (star) => {
-    setSelectedStars((prev) =>
-      prev.includes(star) ? prev.filter((s) => s !== star) : [...prev, star],
-    );
+    setSelectedStars((prev) => (prev.includes(star) ? [] : [star]));
   };
 
   const toggleAmenity = (id) => {
@@ -388,7 +402,7 @@ const HotelSearchPage = () => {
     ));
 
   const stickyBarRef = useRef(null);
-  const [stickyBarHeight, setStickyBarHeight] = useState(170);
+  const [stickyBarHeight, setStickyBarHeight] = useState(160);
 
   useLayoutEffect(() => {
     const el = stickyBarRef.current;
@@ -441,8 +455,16 @@ const HotelSearchPage = () => {
             initialValues={searchBarInitial}
             onSearch={handleBarSearch}
           />
+        </div>
+      </div>
+      <div className="search-page-sticky-spacer" aria-hidden="true" />
 
-          <div className="search-summary search-summary--sticky">
+      <div className="search-page">
+      <div className="search-layout">
+        <FilterSidebar {...sidebarProps} />
+
+        <div className="search-results-col">
+          <div className="search-summary">
             <div className="search-summary-main">
               <h1 className="search-summary-title">{locationName}</h1>
               <p className="search-summary-meta">
@@ -473,15 +495,9 @@ const HotelSearchPage = () => {
               </label>
             </div>
           </div>
-        </div>
-      </div>
-      <div className="search-page-sticky-spacer" aria-hidden="true" />
 
-      <div className="search-page">
-      <div className="search-layout">
-        <FilterSidebar {...sidebarProps} />
+          <CustomerPromotionStrip promotions={systemPromotions} variant="system" />
 
-        <div className="search-results-col">
           {loading && (
             <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>
               Đang tìm khách sạn phù hợp...

@@ -338,7 +338,7 @@ const HotelDetailPage = () => {
                   label: 'Hoa hồng',
                   value: hotel.phan_tram_hoa_hong != null
                     ? `${hotel.phan_tram_hoa_hong}%`
-                    : 'Mặc định hệ thống',
+                    : 'Mặc định hệ thống (15%)',
                 },
               ]}
             />

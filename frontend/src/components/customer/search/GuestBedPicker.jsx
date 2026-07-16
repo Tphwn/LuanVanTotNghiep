@@ -76,9 +76,9 @@ const GuestBedPicker = ({
       <button type="button" className="search-picker-trigger" onClick={handleToggle}>
         <Users size={18} className="search-picker-icon" />
         <span className="search-picker-label">
-          <span>{soKhach} người lớn, {treEm} trẻ em</span>
-          <span>{soPhong} phòng</span>
+          {soKhach} người lớn, {treEm} trẻ em, {soPhong} phòng
         </span>
+        <span className="search-picker-chevron" aria-hidden>▾</span>
       </button>
 
       {open && (

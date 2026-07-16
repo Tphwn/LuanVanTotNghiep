@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MapPin } from 'lucide-react';
 import DateRangePicker from './DateRangePicker';
 import GuestBedPicker from './GuestBedPicker';
 import CustomerSearchButton from '../CustomerSearchButton';
@@ -12,6 +13,7 @@ const HotelSearchBar = ({
   onSearch,
   variant = 'page',
   className = '',
+  searchButtonLabel = 'Tìm kiếm',
 }) => {
   const [dateOpen, setDateOpen] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
@@ -68,58 +70,64 @@ const HotelSearchBar = ({
   };
 
   const isHero = variant === 'hero';
-  const btnLabel = isHero ? 'Tìm kiếm' : 'Tìm khách sạn';
 
   const bar = (
-    <div className={`home-search-card${isHero ? '' : ' home-search-card--page'}`}>
+    <div className={`home-search-card home-search-card--split${isHero ? ' home-search-card--hero' : ''}`}>
       <div className="home-search-form">
         <div className="home-search-field home-search-field--location">
           <label className="home-search-label" htmlFor="hotel-search-location">
             Địa điểm
           </label>
-          <select
-            id="hotel-search-location"
-            className="home-search-select"
-            value={form.ma_dia_diem}
-            onChange={(e) => updateForm({ ma_dia_diem: e.target.value })}
-          >
-            <option value="">Tất cả địa điểm</option>
-            {locations.map((loc) => (
-              <option key={loc.ma_dia_diem} value={loc.ma_dia_diem}>
-                {loc.ten_dia_diem}{loc.tinh_thanh ? `, ${loc.tinh_thanh}` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="home-search-box">
+            <MapPin size={18} strokeWidth={1.75} className="home-search-box-icon" aria-hidden />
+            <select
+              id="hotel-search-location"
+              className="home-search-select"
+              value={form.ma_dia_diem}
+              onChange={(e) => updateForm({ ma_dia_diem: e.target.value })}
+            >
+              <option value="">Tất cả địa điểm</option>
+              {locations.map((loc) => (
+                <option key={loc.ma_dia_diem} value={loc.ma_dia_diem}>
+                  {loc.ten_dia_diem}{loc.tinh_thanh ? `, ${loc.tinh_thanh}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="home-search-field home-search-field--dates">
-          <span className="home-search-label">Ngày nhận & trả phòng</span>
-          <DateRangePicker
-            ngayNhan={form.ngay_nhan}
-            ngayTra={form.ngay_tra}
-            open={dateOpen}
-            onOpenChange={setDateOpen}
-            onChange={({ ngay_nhan, ngay_tra }) => updateForm({ ngay_nhan, ngay_tra })}
-            onCloseOther={() => setGuestOpen(false)}
-          />
+          <span className="home-search-label">Ngày nhận phòng và trả phòng</span>
+          <div className="home-search-box">
+            <DateRangePicker
+              ngayNhan={form.ngay_nhan}
+              ngayTra={form.ngay_tra}
+              open={dateOpen}
+              onOpenChange={setDateOpen}
+              onChange={({ ngay_nhan, ngay_tra }) => updateForm({ ngay_nhan, ngay_tra })}
+              onCloseOther={() => setGuestOpen(false)}
+            />
+          </div>
         </div>
 
         <div className="home-search-field home-search-field--guests">
-          <span className="home-search-label">Khách & phòng</span>
-          <GuestBedPicker
-            soKhach={form.so_khach}
-            treEm={form.tre_em}
-            soPhong={form.so_phong}
-            open={guestOpen}
-            onOpenChange={setGuestOpen}
-            onChange={(patch) => updateForm(patch)}
-            onCloseOther={() => setDateOpen(false)}
-          />
+          <span className="home-search-label">Khách và phòng</span>
+          <div className="home-search-box">
+            <GuestBedPicker
+              soKhach={form.so_khach}
+              treEm={form.tre_em}
+              soPhong={form.so_phong}
+              open={guestOpen}
+              onOpenChange={setGuestOpen}
+              onChange={(patch) => updateForm(patch)}
+              onCloseOther={() => setDateOpen(false)}
+            />
+          </div>
         </div>
 
         <div className="home-search-btn-wrap">
-          <CustomerSearchButton onClick={handleSubmit} showIcon={!isHero}>
-            {btnLabel}
+          <CustomerSearchButton onClick={handleSubmit} showIcon>
+            {searchButtonLabel}
           </CustomerSearchButton>
         </div>
       </div>

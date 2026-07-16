@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -7,20 +7,28 @@ import {
   fetchTransactions,
   fetchRefunds,
   fetchCommissions,
-  fetchCommissionPartner,
-  fetchReconciliations,
-  calculateReconciliation,
-  updateReconciliationStatus,
+  fetchCommissionStats,
   confirmCommission,
+  holdCommission,
+  releaseCommissionHold,
+  fetchPartnerPayouts,
+  fetchPartnerPayoutStats,
+  confirmPartnerPayout,
+  releasePartnerPayoutHold,
   clearMsg,
 } from '../../../store/slices/adminFinanceSlice';
-import { Eye, Check } from 'lucide-react';
+import { Eye, Check, Pause, Play } from 'lucide-react';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import { REFUND_TRANG_THAI } from '../../../utils/bookingDisplay';
 import TransactionDetailModal from './components/TransactionDetailModal';
 import RefundDetailModal from './components/RefundDetailModal';
+import CommissionDetailModal from './components/CommissionDetailModal';
+import PartnerPayoutDetailModal from './components/PartnerPayoutDetailModal';
+import PartnerPayoutConfirmModal from './components/PartnerPayoutConfirmModal';
+import ConfirmModal from '../../../components/common/ConfirmModal';
+import Toast from '../../../components/common/Toast';
 
 // ===== HELPERS =====
 const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(v || 0);
@@ -61,14 +69,16 @@ const TX_STATUS = {
 const REFUND_STATUS = REFUND_TRANG_THAI;
 
 const COMM_STATUS = {
-  chua_thu: { label:'Chưa thu', cls: 'badge-warning'},
-  da_thu:   { label:'Đã thu',   cls: 'badge-success'},
+  chua_thu: { label: 'Chờ đối soát', cls: 'badge-warning' },
+  da_thu: { label: 'Đã đối soát', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
+  da_thanh_toan: { label: 'Đã thanh toán ĐT', cls: 'badge-info' },
 };
 
-const RECONCILE_STATUS = {
-  chua_doi_soat: { label: 'Chưa đối soát', cls: 'badge-warning' },
-  da_doi_soat: { label: 'Chờ thanh toán', cls: 'badge-info' },
-  da_thanh_toan: { label: 'Đã giải ngân', cls: 'badge-success' },
+const PAYOUT_STATUS = {
+  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'badge-warning' },
+  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const StatCard = ({ title, value, subtitle }) => (
@@ -96,10 +106,10 @@ const AdminFinancePage = () => {
     transactions,
     refunds,
     commissions,
-    commByPartner,
-    reconciliations,
+    commissionStats,
+    partnerPayouts,
+    partnerPayoutStats,
     loading,
-    reconcileLoading,
     error,
     successMsg,
   } = useSelector((s) => s.adminFinance || {});
@@ -128,6 +138,13 @@ const AdminFinancePage = () => {
 
   const [txModalId, setTxModalId] = useState(null);
   const [refundModalId, setRefundModalId] = useState(null);
+  const [commModalId, setCommModalId] = useState(null);
+  const [commAction, setCommAction] = useState(null);
+  const [commActionLoading, setCommActionLoading] = useState(false);
+  const [payoutModalId, setPayoutModalId] = useState(null);
+  const [payoutAction, setPayoutAction] = useState(null);
+  const [payoutActionLoading, setPayoutActionLoading] = useState(false);
+  const [payoutFormError, setPayoutFormError] = useState('');
 
   const goToTransactionDetail = (id) => setTxModalId(id);
 
@@ -136,6 +153,30 @@ const AdminFinancePage = () => {
   // Filters
   const [txFilter, setTxFilter]   = useState({ trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''});
   const [rfFilter, setRfFilter]   = useState({ trang_thai:'all', tu_ngay:'', den_ngay:'', keyword:''});
+  const [commFilter, setCommFilter] = useState({
+    doi_tac_id: 'all',
+    khach_san_id: 'all',
+    trang_thai: 'all',
+    tu_ngay: '',
+    den_ngay: '',
+  });
+  const [payoutFilter, setPayoutFilter] = useState({
+    doi_tac_id: 'all',
+    khach_san_id: 'all',
+    trang_thai: 'all',
+    tu_ngay: '',
+    den_ngay: '',
+  });
+
+  const loadCommissions = (filters = commFilter) => {
+    dispatch(fetchCommissions(filters));
+    dispatch(fetchCommissionStats(filters));
+  };
+
+  const loadPartnerPayouts = (filters = payoutFilter) => {
+    dispatch(fetchPartnerPayouts(filters));
+    dispatch(fetchPartnerPayoutStats(filters));
+  };
 
   useEffect(() => {
     dispatch(fetchFinanceOverview());
@@ -143,8 +184,9 @@ const AdminFinancePage = () => {
     dispatch(fetchTransactions());
     dispatch(fetchRefunds());
     dispatch(fetchCommissions());
-    dispatch(fetchCommissionPartner());
-    dispatch(fetchReconciliations());
+    dispatch(fetchCommissionStats());
+    dispatch(fetchPartnerPayouts({ trang_thai: 'all' }));
+    dispatch(fetchPartnerPayoutStats({}));
   }, [dispatch]);
 
   useEffect(() => {
@@ -152,7 +194,66 @@ const AdminFinancePage = () => {
       const t = setTimeout(() => dispatch(clearMsg()), 4000);
       return () => clearTimeout(t);
     }
-  }, [successMsg, error]);
+  }, [successMsg, error, dispatch]);
+
+  useEffect(() => {
+    if (!successMsg) return;
+    if (tab === 'commissions') loadCommissions();
+    if (tab === 'partner') loadPartnerPayouts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [successMsg]);
+
+  const handleConfirmCommAction = async () => {
+    if (!commAction) return;
+    setCommActionLoading(true);
+    try {
+      if (commAction.type === 'confirm') {
+        await dispatch(confirmCommission(commAction.id)).unwrap();
+      } else if (commAction.type === 'hold') {
+        await dispatch(holdCommission(commAction.id)).unwrap();
+      } else if (commAction.type === 'release') {
+        await dispatch(releaseCommissionHold(commAction.id)).unwrap();
+      }
+      setCommAction(null);
+    } catch {
+      // error handled in slice
+    } finally {
+      setCommActionLoading(false);
+    }
+  };
+
+  const handleConfirmPayoutAction = async () => {
+    if (!payoutAction || payoutAction.type !== 'release') return;
+    setPayoutActionLoading(true);
+    try {
+      await dispatch(releasePartnerPayoutHold(payoutAction.id)).unwrap();
+      setPayoutAction(null);
+      loadPartnerPayouts();
+    } catch {
+      // handled in slice
+    } finally {
+      setPayoutActionLoading(false);
+    }
+  };
+
+  const handleConfirmPayoutPayment = async (form) => {
+    if (!payoutAction || payoutAction.type !== 'confirm') return;
+    setPayoutActionLoading(true);
+    setPayoutFormError('');
+    try {
+      await dispatch(confirmPartnerPayout({
+        maDoiTac: payoutAction.id,
+        ...form,
+      })).unwrap();
+      setPayoutAction(null);
+      loadPartnerPayouts();
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : (err?.message || 'Xác nhận thanh toán thất bại');
+      setPayoutFormError(msg);
+    } finally {
+      setPayoutActionLoading(false);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Tổng quan' },
@@ -166,9 +267,20 @@ const AdminFinancePage = () => {
 
   const txPg = useListPagination(transactions, 10, [transactions]);
   const rfPg = useListPagination(refunds, 10, [refunds]);
-  const commPartnerPg = useListPagination(commByPartner, 10, [commByPartner]);
   const commPg = useListPagination(commissions, 10, [commissions]);
-  const reconPg = useListPagination(reconciliations, 10, [reconciliations]);
+  const payoutPg = useListPagination(partnerPayouts || [], 10, [partnerPayouts]);
+
+  const payoutHotelsForPartner = useMemo(() => {
+    const hotels = partnerPayoutStats?.hotels || [];
+    if (!payoutFilter.doi_tac_id || payoutFilter.doi_tac_id === 'all') return [];
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(payoutFilter.doi_tac_id));
+  }, [partnerPayoutStats?.hotels, payoutFilter.doi_tac_id]);
+
+  const commissionHotelsForPartner = useMemo(() => {
+    const hotels = commissionStats?.hotels || [];
+    if (!commFilter.doi_tac_id || commFilter.doi_tac_id === 'all') return [];
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(commFilter.doi_tac_id));
+  }, [commissionStats?.hotels, commFilter.doi_tac_id]);
 
   return (
     <div>
@@ -179,16 +291,13 @@ const AdminFinancePage = () => {
           <p className="page-subtitle">Giao dịch, hoàn tiền, hoa hồng và thanh toán đối tác</p>
         </div>
       </div>
-      {(successMsg || error) && (
-        <div style={{
-          padding:'10px 16px', borderRadius:8, marginBottom:16, fontSize:14,
-          background: successMsg ? '#e8f5f1':'#fff0f0',
-          border:`1px solid ${successMsg ? '#8FD9C4':'#ffb3b3'}`,
-          color: successMsg ? '#3C7363':'#e05c5c',
-        }}>
-          {successMsg ? ` ${successMsg}` : ` ${error}`}
-        </div>
-      )}
+      <Toast
+        toast={
+          successMsg || error
+            ? { message: successMsg || error, type: successMsg ? 'success' : 'error' }
+            : null
+        }
+      />
 
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'0.5px solid #d4ede6', marginBottom:20 }}>
@@ -384,7 +493,6 @@ const AdminFinancePage = () => {
         </>
       )}
 
-      {/* ===== HOÀN TIỀN ===== */}
       {tab ==='refunds'&& (
         <>
           <div className="content-card"style={{ marginBottom:16 }}>
@@ -501,98 +609,222 @@ const AdminFinancePage = () => {
       )}
 
       {/* ===== HOA HỒNG ===== */}
-      {tab === 'commissions'&& (
+      {tab === 'commissions' && (
         <>
-          {/* Tổng hoa hồng theo đối tác */}
-          <div className="content-card"style={{ marginBottom:16 }}>
-            <div className="content-card-header">
-              <h3 className="content-card-title"> Tổng hoa hồng theo đối tác</h3>
-            </div>
-            {commByPartner.length === 0 ? (
-              <div className="empty-state"><p className="empty-state-text">Chưa có dữ liệu</p></div>
-            ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Đối tác</th>
-                    <th>Số đơn</th>
-                    <th>Tổng hoa hồng</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {commPartnerPg.pagedItems.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ fontWeight:500 }}>{r.doi_tac?.ten_cong_ty || `Đối tác #${r.ma_doi_tac}`}</td>
-                      <td>{r._count?.ma_hoa_hong || 0} đơn</td>
-                      <td style={{ fontWeight:500, color:'#b36b00'}}>{fmt(r._sum?.so_tien_hoa_hong)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {commPartnerPg.showPagination && (
-              <ListPagination
-                total={commByPartner.length}
-                currentPage={commPartnerPg.currentPage}
-                totalPages={commPartnerPg.totalPages}
-                rangeFrom={commPartnerPg.rangeFrom}
-                rangeTo={commPartnerPg.rangeTo}
-                pageNumbers={commPartnerPg.pageNumbers}
-                onPageChange={commPartnerPg.setPage}
-              />
-            )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <StatCard
+              title="Tổng hoa hồng hệ thống"
+              value={fmt(commissionStats?.tong_hoa_hong_he_thong)}
+              subtitle="Tiền hệ thống giữ lại"
+            />
+            <StatCard
+              title="Doanh thu hợp lệ"
+              value={fmt(commissionStats?.doanh_thu_hop_le)}
+              subtitle="Tổng tiền các đơn đã tính HH"
+            />
+            <StatCard
+              title="Số đơn tính hoa hồng"
+              value={`${commissionStats?.so_don_da_tinh || 0} đơn`}
+            />
+            <StatCard title="Chờ đối soát" value={`${commissionStats?.cho_doi_soat || 0}`} />
+            <StatCard title="Đã đối soát" value={`${commissionStats?.da_doi_soat || 0}`} />
+            <StatCard title="Tạm giữ" value={`${commissionStats?.tam_giu || 0}`} />
           </div>
 
-          {/* Hoa hồng từng đơn */}
+          <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đối tác</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={commFilter.doi_tac_id}
+                  onChange={(e) => setCommFilter({
+                    ...commFilter,
+                    doi_tac_id: e.target.value,
+                    khach_san_id: 'all',
+                  })}
+                >
+                  <option value="all">Tất cả</option>
+                  {(commissionStats?.partners || []).map((p) => (
+                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Khách sạn</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={commFilter.khach_san_id}
+                  disabled={commFilter.doi_tac_id === 'all'}
+                  title={commFilter.doi_tac_id === 'all' ? '' : undefined}
+                  onChange={(e) => setCommFilter({ ...commFilter, khach_san_id: e.target.value })}
+                >
+                  <option value="all">
+                    {commFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                  </option>
+                  {commissionHotelsForPartner.map((h) => (
+                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Trạng thái đối soát</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={commFilter.trang_thai}
+                  onChange={(e) => setCommFilter({ ...commFilter, trang_thai: e.target.value })}
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="chua_thu">Chờ đối soát</option>
+                  <option value="da_thu">Đã đối soát</option>
+                  <option value="tam_giu">Tạm giữ</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Từ ngày trả</label>
+                <input
+                  type="date"
+                  style={{ ...inputSt, width: '100%' }}
+                  value={commFilter.tu_ngay}
+                  onChange={(e) => setCommFilter({ ...commFilter, tu_ngay: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đến ngày trả</label>
+                <input
+                  type="date"
+                  style={{ ...inputSt, width: '100%' }}
+                  value={commFilter.den_ngay}
+                  onChange={(e) => setCommFilter({ ...commFilter, den_ngay: e.target.value })}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => loadCommissions(commFilter)}>
+                Lọc
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  const reset = {
+                    doi_tac_id: 'all',
+                    khach_san_id: 'all',
+                    trang_thai: 'all',
+                    tu_ngay: '',
+                    den_ngay: '',
+                  };
+                  setCommFilter(reset);
+                  loadCommissions(reset);
+                }}
+              >
+                Xóa lọc
+              </button>
+            </div>
+          </div>
+
           <div className="content-card">
             <div className="content-card-header">
-              <h3 className="content-card-title">Hoa hồng từng đơn ({commissions.length})</h3>
+              <h3 className="content-card-title">Danh sách hoa hồng ({commissions.length})</h3>
             </div>
             {commissions.length === 0 ? (
-              <div className="empty-state"><p className="empty-state-text">Chưa có hoa hồng</p></div>
+              <div className="empty-state">
+                <p className="empty-state-text">
+                  Chưa có hoa hồng. 
+                </p>
+              </div>
             ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Mã đơn</th>
-                    <th>Đối tác</th>
-                    <th>Khách sạn</th>
-                    <th>Doanh thu đơn</th>
-                    <th>Tỷ lệ HH</th>
-                    <th>Tiền HH</th>
-                    <th>Ngày tính</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {commPg.pagedItems.map(c => {
-                    const st = COMM_STATUS[c.trang_thai] || { label:c.trang_thai, cls:'badge-default'};
-                    return (
-                      <tr key={c.ma_hoa_hong}>
-                        <td style={{ color:'#3C7363', fontWeight:500 }}>#{c.dat_phong?.ma_don_hang}</td>
-                        <td>{c.doi_tac?.ten_cong_ty}</td>
-                        <td>{c.dat_phong?.loai_phong?.khach_san?.ten}</td>
-                        <td>{fmt(c.dat_phong?.thanh_toan_cuoi)}</td>
-                        <td>{c.ty_le_hoa_hong}%</td>
-                        <td style={{ fontWeight:500, color:'#b36b00'}}>{fmt(c.so_tien_hoa_hong)}</td>
-                        <td style={{ fontSize:13, color:'#5a7a72'}}>{fmtDate(c.ngay_tinh)}</td>
-                        <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                        <ActionCell>
-                          <ActionButton
-                            variant="confirm"
-                            iconOnly
-                            icon={Check}
-                            title="Xác nhận thu"
-                            disabled={c.trang_thai !== 'chua_thu'}
-                            onClick={() => dispatch(confirmCommission(c.ma_hoa_hong))}
-                          />
-                        </ActionCell>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="mgmt-table-scroll">
+                <table className="data-table data-table-grid admin-mgmt-table">
+                  <thead>
+                    <tr>
+                      <th>Mã đơn</th>
+                      <th>Khách sạn</th>
+                      <th>Đối tác</th>
+                      <th>Ngày hoàn</th>
+                      <th>Tổng tiền đơn</th>
+                      <th>Tỷ lệ HH</th>
+                      <th>Tiền hoa hồng</th>
+                      <th>Tiền đối tác nhận</th>
+                      <th>Trạng thái đối soát</th>
+                      <th className="table-action-cell--compact" scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commPg.pagedItems.map((c) => {
+                      const st = COMM_STATUS[c.trang_thai] || { label: c.trang_thai, cls: 'badge-default' };
+                      const doanhThu = c.doanh_thu_don ?? c.dat_phong?.thanh_toan_cuoi;
+                      const tienDoiTac = c.tien_doi_tac_nhan
+                        ?? Math.max(0, Number(doanhThu || 0) - Number(c.so_tien_hoa_hong || 0));
+                      const canConfirm = c.trang_thai === 'chua_thu';
+                      const canHold = c.trang_thai === 'chua_thu' || c.trang_thai === 'da_thu';
+                      const canRelease = c.trang_thai === 'tam_giu';
+                      return (
+                        <tr key={c.ma_hoa_hong}>
+                          <td className="mgmt-table-cell-code">#{c.dat_phong?.ma_don_hang}</td>
+                          <td>{c.dat_phong?.loai_phong?.khach_san?.ten || '—'}</td>
+                          <td>{c.doi_tac?.ten_cong_ty || '—'}</td>
+                          <td style={{ fontSize: 13, color: '#5a7a72' }}>
+                            {fmtDate(c.ngay_hoan_thanh || c.dat_phong?.ngay_tra_phong)}
+                          </td>
+                          <td>{fmt(doanhThu)}</td>
+                          <td>{c.ty_le_hoa_hong}%</td>
+                          <td style={{ fontWeight: 600, color: '#b36b00' }}>{fmt(c.so_tien_hoa_hong)}</td>
+                          <td style={{ fontWeight: 500, color: '#3C7363' }}>{fmt(tienDoiTac)}</td>
+                          <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                          <ActionCell>
+                            <ActionButton
+                              variant="view"
+                              iconOnly
+                              icon={Eye}
+                              title="Xem chi tiết"
+                              onClick={() => setCommModalId(c.ma_hoa_hong)}
+                            />
+                            <ActionButton
+                              variant="confirm"
+                              iconOnly
+                              icon={Check}
+                              title="Xác nhận đối soát"
+                              disabled={!canConfirm}
+                              onClick={() => canConfirm && setCommAction({
+                                type: 'confirm',
+                                id: c.ma_hoa_hong,
+                                code: c.dat_phong?.ma_don_hang,
+                              })}
+                            />
+                            {canRelease ? (
+                              <ActionButton
+                                variant="unlock"
+                                iconOnly
+                                icon={Play}
+                                title="Bỏ tạm giữ"
+                                onClick={() => setCommAction({
+                                  type: 'release',
+                                  id: c.ma_hoa_hong,
+                                  code: c.dat_phong?.ma_don_hang,
+                                })}
+                              />
+                            ) : (
+                              <ActionButton
+                                variant="lock"
+                                iconOnly
+                                icon={Pause}
+                                title="Tạm giữ"
+                                disabled={!canHold}
+                                onClick={() => canHold && setCommAction({
+                                  type: 'hold',
+                                  id: c.ma_hoa_hong,
+                                  code: c.dat_phong?.ma_don_hang,
+                                })}
+                              />
+                            )}
+                          </ActionCell>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
             {commPg.showPagination && (
               <ListPagination
@@ -611,96 +843,210 @@ const AdminFinancePage = () => {
 
       {/* ===== THANH TOÁN ĐỐI TÁC ===== */}
       {tab === 'partner' && (
-        <div className="content-card">
-          <div className="content-card-header">
-            <h3 className="content-card-title">Thanh Toán Đối Tác</h3>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                const maDoiTac = prompt('Nhập mã đối tác:');
-                const thangNam = prompt('Nhập tháng/năm (VD: 06/2026):');
-                if (maDoiTac && thangNam) {
-                  dispatch(calculateReconciliation({ ma_doi_tac: maDoiTac, thang_nam: thangNam }))
-                    .then((res) => {
-                      if (calculateReconciliation.fulfilled.match(res)) {
-                        dispatch(fetchReconciliations());
-                      }
-                    });
-                }
-              }}
-            >
-              Chốt sổ tháng
-            </button>
-          </div>
-          {reconcileLoading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải...</div>
-          ) : reconciliations.length === 0 ? (
-            <div className="empty-state"><p className="empty-state-text">Chưa có bản ghi thanh toán đối tác</p></div>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Tháng/Năm</th>
-                  <th>Đối tác</th>
-                  <th>Tổng GMV</th>
-                  <th>Hoa hồng</th>
-                  <th>Hoàn tiền</th>
-                  <th>Thực chuyển</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reconPg.pagedItems.map((item) => {
-                  const st = RECONCILE_STATUS[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
-                  return (
-                    <tr key={item.ma_doi_soat}>
-                      <td style={{ fontWeight: 600 }}>{item.thang_nam}</td>
-                      <td>{item.doi_tac?.ten_cong_ty || '—'}</td>
-                      <td>{fmt(item.tong_doanh_thu)}</td>
-                      <td style={{ color: '#2e7d32' }}>- {fmt(item.tong_hoa_hong)}</td>
-                      <td style={{ color: '#c62828' }}>- {fmt(item.tong_hoan_tien)}</td>
-                      <td style={{ fontWeight: 700, color: '#3C7363' }}>{fmt(item.thanh_toan_doi_tac)}</td>
-                      <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                      <td>
-                        {item.trang_thai === 'chua_doi_soat' && (
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => dispatch(updateReconciliationStatus({ id: item.ma_doi_soat, status: 'da_doi_soat' }))}
-                          >
-                            Xác nhận đối soát
-                          </button>
-                        )}
-                        {item.trang_thai === 'da_doi_soat' && (
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => dispatch(updateReconciliationStatus({ id: item.ma_doi_soat, status: 'da_thanh_toan' }))}
-                          >
-                            Đã chuyển tiền
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-          {reconPg.showPagination && (
-            <ListPagination
-              total={reconciliations.length}
-              currentPage={reconPg.currentPage}
-              totalPages={reconPg.totalPages}
-              rangeFrom={reconPg.rangeFrom}
-              rangeTo={reconPg.rangeTo}
-              pageNumbers={reconPg.pageNumbers}
-              onPageChange={reconPg.setPage}
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <StatCard
+              title="Tổng tiền chờ thanh toán"
+              value={fmt(partnerPayoutStats?.tong_cho_thanh_toan)}
+              subtitle="Sau khi trừ hoa hồng hệ thống"
             />
-          )}
-        </div>
+            <StatCard
+              title="Tổng tiền đã thanh toán"
+              value={fmt(partnerPayoutStats?.tong_da_thanh_toan)}
+            />
+            <StatCard
+              title="Số đối tác chờ thanh toán"
+              value={`${partnerPayoutStats?.so_doi_tac_cho || 0}`}
+            />
+            <StatCard
+              title="Số kỳ thanh toán tạm giữ"
+              value={`${partnerPayoutStats?.so_ky_tam_giu || 0}`}
+            />
+          </div>
+
+          <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đối tác</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={payoutFilter.doi_tac_id}
+                  onChange={(e) => setPayoutFilter({
+                    ...payoutFilter,
+                    doi_tac_id: e.target.value,
+                    khach_san_id: 'all',
+                  })}
+                >
+                  <option value="all">Tất cả</option>
+                  {(partnerPayoutStats?.partners || []).map((p) => (
+                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Khách sạn</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={payoutFilter.khach_san_id}
+                  disabled={payoutFilter.doi_tac_id === 'all'}
+                  title={payoutFilter.doi_tac_id === 'all' ? '' : undefined}
+                  onChange={(e) => setPayoutFilter({ ...payoutFilter, khach_san_id: e.target.value })}
+                >
+                  <option value="all">
+                    {payoutFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                  </option>
+                  {payoutHotelsForPartner.map((h) => (
+                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Trạng thái thanh toán</label>
+                <select
+                  style={{ ...inputSt, width: '100%' }}
+                  value={payoutFilter.trang_thai}
+                  onChange={(e) => setPayoutFilter({ ...payoutFilter, trang_thai: e.target.value })}
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="cho_thanh_toan">Chờ thanh toán</option>
+                  <option value="da_thanh_toan">Đã thanh toán</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Từ ngày trả</label>
+                <input
+                  type="date"
+                  style={{ ...inputSt, width: '100%' }}
+                  value={payoutFilter.tu_ngay}
+                  onChange={(e) => setPayoutFilter({ ...payoutFilter, tu_ngay: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đến ngày trả</label>
+                <input
+                  type="date"
+                  style={{ ...inputSt, width: '100%' }}
+                  value={payoutFilter.den_ngay}
+                  onChange={(e) => setPayoutFilter({ ...payoutFilter, den_ngay: e.target.value })}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => loadPartnerPayouts(payoutFilter)}>
+                Lọc
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  const reset = {
+                    doi_tac_id: 'all',
+                    khach_san_id: 'all',
+                    trang_thai: 'all',
+                    tu_ngay: '',
+                    den_ngay: '',
+                  };
+                  setPayoutFilter(reset);
+                  loadPartnerPayouts(reset);
+                }}
+              >
+                Xóa lọc
+              </button>
+            </div>
+          </div>
+
+          <div className="content-card">
+            <div className="content-card-header">
+              <h3 className="content-card-title">
+                Danh sách thanh toán đối tác ({partnerPayouts?.length || 0})
+              </h3>
+            </div>
+            {!partnerPayouts?.length ? (
+              <div className="empty-state">
+                <p className="empty-state-text">
+                  Chưa có đối tác cần thanh toán. Chỉ hiện đơn đã đối soát hoa hồng và chưa thanh toán / không tạm giữ.
+                </p>
+              </div>
+            ) : (
+              <div className="mgmt-table-scroll">
+                <table className="data-table data-table-grid admin-mgmt-table">
+                  <thead>
+                    <tr>
+                      <th>Mã đối tác</th>
+                      <th>Tên đối tác</th>
+                      <th>Số KS</th>
+                      <th>Số đơn đã đối soát</th>
+                      <th>Tổng doanh thu</th>
+                      <th>Hoa hồng hệ thống</th>
+                      <th>Số tiền cần TT</th>
+                      <th>Trạng thái</th>
+                      <th className="table-action-cell--compact" scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payoutPg.pagedItems.map((row) => {
+                      const st = PAYOUT_STATUS[row.trang_thai] || {
+                        label: row.trang_thai,
+                        cls: 'badge-default',
+                      };
+                      const canConfirm = row.trang_thai === 'cho_thanh_toan' && row.so_don_cho_tt > 0;
+                      const canRelease = row.trang_thai === 'tam_giu' || row.so_don_tam_giu > 0;
+                      return (
+                        <tr key={row.ma_doi_tac}>
+                          <td className="mgmt-table-cell-code">#{row.ma_doi_tac}</td>
+                          <td style={{ fontWeight: 500 }}>{row.ten_cong_ty}</td>
+                          <td>{row.so_khach_san}</td>
+                          <td>{row.so_don_da_doi_soat}</td>
+                          <td>{fmt(row.tong_doanh_thu)}</td>
+                          <td style={{ color: '#b36b00', fontWeight: 500 }}>{fmt(row.tong_hoa_hong)}</td>
+                          <td style={{ color: '#3C7363', fontWeight: 700 }}>{fmt(row.so_tien_can_thanh_toan)}</td>
+                          <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                          <ActionCell>
+                            <ActionButton
+                              variant="view"
+                              iconOnly
+                              icon={Eye}
+                              title="Xem chi tiết"
+                              onClick={() => setPayoutModalId(row.ma_doi_tac)}
+                            />
+                            <ActionButton
+                              variant="confirm"
+                              iconOnly
+                              icon={Check}
+                              title="Xác nhận thanh toán"
+                              disabled={!canConfirm}
+                              onClick={() => {
+                                if (!canConfirm) return;
+                                setPayoutFormError('');
+                                setPayoutAction({
+                                  type: 'confirm',
+                                  id: row.ma_doi_tac,
+                                  name: row.ten_cong_ty,
+                                  amount: row.so_tien_can_thanh_toan,
+                                });
+                              }}
+                            />
+                          </ActionCell>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {payoutPg.showPagination && (
+              <ListPagination
+                total={partnerPayouts.length}
+                currentPage={payoutPg.currentPage}
+                totalPages={payoutPg.totalPages}
+                rangeFrom={payoutPg.rangeFrom}
+                rangeTo={payoutPg.rangeTo}
+                pageNumbers={payoutPg.pageNumbers}
+                onPageChange={payoutPg.setPage}
+              />
+            )}
+          </div>
+        </>
       )}
 
       {txModalId && (
@@ -721,6 +1067,75 @@ const AdminFinancePage = () => {
         />
       )}
 
+      {commModalId && (
+        <CommissionDetailModal
+          commissionId={commModalId}
+          onClose={() => setCommModalId(null)}
+        />
+      )}
+
+      {payoutModalId && (
+        <PartnerPayoutDetailModal
+          maDoiTac={payoutModalId}
+          onClose={() => setPayoutModalId(null)}
+        />
+      )}
+
+      <ConfirmModal
+        open={!!commAction}
+        variant={commAction?.type === 'hold' ? 'danger' : 'primary'}
+        icon={
+          commAction?.type === 'hold' ? <Pause size={20} />
+            : commAction?.type === 'release' ? <Play size={20} />
+              : <Check size={20} />
+        }
+        title={
+          commAction?.type === 'hold' ? 'Xác nhận tạm giữ hoa hồng'
+            : commAction?.type === 'release' ? 'Xác nhận bỏ tạm giữ'
+              : 'Xác nhận đối soát hoa hồng'
+        }
+        intro={
+          commAction?.type === 'hold'
+            ? `Tạm giữ hoa hồng đơn #${commAction?.code || ''}? Đơn sẽ không được đối soát/thanh toán cho đến khi bỏ tạm giữ.`
+            : commAction?.type === 'release'
+              ? `Bỏ tạm giữ đơn #${commAction?.code || ''}?`
+              : `Xác nhận đối soát hoa hồng đơn #${commAction?.code || ''}? Đơn sẽ chuyển sang thanh toán đối tác.`
+        }
+        confirmText={
+          commAction?.type === 'hold' ? 'Tạm giữ'
+            : commAction?.type === 'release' ? 'Bỏ tạm giữ'
+              : 'Xác nhận đối soát'
+        }
+        loading={commActionLoading}
+        onClose={() => !commActionLoading && setCommAction(null)}
+        onConfirm={handleConfirmCommAction}
+      />
+
+      <ConfirmModal
+        open={!!payoutAction && payoutAction.type === 'release'}
+        variant="primary"
+        icon={<Play size={20} />}
+        title="Bỏ tạm giữ thanh toán đối tác"
+        intro={`Bỏ tạm giữ các đơn của đối tác "${payoutAction?.name || ''}"? Đơn sẽ quay lại chờ thanh toán.`}
+        confirmText="Bỏ tạm giữ"
+        loading={payoutActionLoading}
+        onClose={() => !payoutActionLoading && setPayoutAction(null)}
+        onConfirm={handleConfirmPayoutAction}
+      />
+
+      <PartnerPayoutConfirmModal
+        open={!!payoutAction && payoutAction.type === 'confirm'}
+        partnerName={payoutAction?.name}
+        amount={payoutAction?.amount}
+        loading={payoutActionLoading}
+        submitError={payoutFormError}
+        onClose={() => {
+          if (payoutActionLoading) return;
+          setPayoutAction(null);
+          setPayoutFormError('');
+        }}
+        onConfirm={handleConfirmPayoutPayment}
+      />
     </div>
   );
 };

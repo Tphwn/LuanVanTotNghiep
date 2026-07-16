@@ -12,6 +12,7 @@ import RoleRoute from './RoleRoute';
 
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import HomePage from '../pages/customer/HomePage';
 import HotelSearchPage from '../pages/customer/HotelSearchPage';
 import CustomerRoomDetailPage from '../pages/customer/CustomerRoomDetailPage';
@@ -74,6 +75,9 @@ const AppRoutes = () => {
         } />
         <Route path={ROUTES.REGISTER} element={
           token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><RegisterPage /></MainLayout>
+        } />
+        <Route path={ROUTES.FORGOT_PASSWORD} element={
+          token && user ? <Navigate to={getRedirectRoute(user)} replace /> : <MainLayout><ForgotPasswordPage /></MainLayout>
         } />
 
         <Route path={ROUTES.HOME} element={

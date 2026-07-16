@@ -65,7 +65,7 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
         ma_so_thue: formData.ma_so_thue.trim() || null,
         email_lien_he: formData.email_lien_he.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
-        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? null : Number(formData.phan_tram_hoa_hong),
+        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? 15 : Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
         so_dien_thoai: formData.so_dien_thoai.trim(),
         mat_khau: formData.mat_khau,
@@ -125,7 +125,7 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
             <div>
               <label style={labelStyle}>Tỉ lệ hoa hồng (%)</label>
-              <input type="number" min="0" max="100" step="0.01" placeholder="VD: 10" {...inputProps('phan_tram_hoa_hong')} />
+              <input type="number" min="0" max="100" step="0.01" placeholder="Mặc định 15%" {...inputProps('phan_tram_hoa_hong')} />
               {fieldErrors.phan_tram_hoa_hong && <p style={errStyle}>{fieldErrors.phan_tram_hoa_hong}</p>}
             </div>
             <div style={{ gridColumn: '1 / -1' }}>

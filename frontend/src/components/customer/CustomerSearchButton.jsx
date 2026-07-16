@@ -14,8 +14,8 @@ const CustomerSearchButton = ({
     onClick={onClick}
     {...rest}
   >
-    {showIcon && <Search size={18} strokeWidth={2.5} aria-hidden />}
-    {children}
+    <span>{children}</span>
+    {showIcon && <Search size={18} strokeWidth={2.25} aria-hidden />}
   </button>
 );
 

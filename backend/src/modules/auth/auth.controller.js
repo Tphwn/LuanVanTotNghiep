@@ -3,35 +3,72 @@ const { success, error } = require('../../utils/response');
 const MSG = require('../../constants/messages');
 const HTTP = require('../../constants/httpStatus');
 
-const register = async (req, res) => {
+const handle = (fn, successMsg, status = HTTP.OK) => async (req, res) => {
   try {
-    console.log('>>> Body:', req.body);
-    const data = await authService.register(req.body);
-    console.log('>>> Data:', data);
-    return success(res, data, MSG.REGISTER_SUCCESS, HTTP.CREATED);
+    const data = await fn(req);
+    return success(res, data, successMsg, status);
   } catch (err) {
-    console.log('>>> LỖI:', err);
-    return error(res, err.message, err.statusCode || HTTP.SERVER_ERROR);
+    const payload = { message: err.message };
+    if (err.code) payload.code = err.code;
+    if (err.email) payload.email = err.email;
+    return res.status(err.statusCode || HTTP.SERVER_ERROR).json({
+      success: false,
+      ...payload,
+    });
   }
 };
 
-const login = async (req, res) => {
+exports.register = handle(
+  (req) => authService.register(req.body),
+  'Đã gửi mã OTP tới email',
+  HTTP.CREATED,
+);
+
+exports.verifyRegisterOtp = handle(
+  (req) => authService.verifyRegisterOtp(req.body),
+  MSG.REGISTER_SUCCESS,
+);
+
+exports.resendOtp = handle(
+  (req) => authService.resendOtp(req.body),
+  'Đã gửi lại mã OTP',
+);
+
+exports.login = async (req, res) => {
   try {
     const data = await authService.login(req.body);
     return success(res, data, MSG.LOGIN_SUCCESS, HTTP.OK);
   } catch (err) {
-    console.log('>>> LỖI login:', err);
-    return error(res, err.message, err.statusCode || HTTP.SERVER_ERROR);
+    return res.status(err.statusCode || HTTP.SERVER_ERROR).json({
+      success: false,
+      message: err.message,
+      code: err.code,
+      email: err.email,
+    });
   }
 };
 
-const getMe = async (req, res) => {
-  try {
-    const data = await authService.getMe(req.user.id);
-    return success(res, data, MSG.SUCCESS, HTTP.OK);
-  } catch (err) {
-    return error(res, err.message, err.statusCode || HTTP.SERVER_ERROR);
-  }
-};
+exports.loginWithGoogle = handle(
+  (req) => authService.loginWithGoogle(req.body),
+  MSG.LOGIN_SUCCESS,
+);
 
-module.exports = { register, login, getMe };
+exports.forgotPassword = handle(
+  (req) => authService.forgotPassword(req.body),
+  'Nếu email tồn tại, mã OTP đã được gửi',
+);
+
+exports.verifyResetOtp = handle(
+  (req) => authService.verifyResetOtp(req.body),
+  'Xác thực OTP thành công',
+);
+
+exports.resetPassword = handle(
+  (req) => authService.resetPassword(req.body),
+  'Đặt lại mật khẩu thành công',
+);
+
+exports.getMe = handle(
+  (req) => authService.getMe(req.user.id),
+  MSG.SUCCESS,
+);

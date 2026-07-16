@@ -5,9 +5,14 @@ const {
   notifyPromotionLocked,
   notifyPromotionUnlocked,
 } = require('../../../utils/partnerNotify');
+const {
+  assertPromotionFormValues,
+  assertUniquePromotionCode,
+  syncExpiredPromotions,
+  isPastPromotionEndDate,
+} = require('../../../utils/promotionRules');
+const { Prisma } = require('@prisma/client');
 
-// nguoi_dung KHÔNG có cột ho_ten — tên người tạo lấy từ quan hệ doi_tac
-// (ten_cong_ty) hoặc khach_hang (ho_ten), fallback về email.
 const promotionInclude = {
   khach_san: {
     select: {
@@ -38,10 +43,8 @@ const buildWhere = (filters = {}) => {
   if (loai_giam && loai_giam !== 'all') where.loai_giam = loai_giam;
   if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
   if (ma_khach_san) where.ma_khach_san = Number(ma_khach_san);
-  // Lọc theo đối tác gián tiếp qua khách sạn (KM đối tác luôn gắn khách sạn)
   if (ma_doi_tac) where.khach_san = { ma_doi_tac: Number(ma_doi_tac) };
 
-  // Lọc theo thời gian áp dụng: KM có khoảng thời gian giao với [tu_ngay, den_ngay]
   if (tu_ngay) where.ngay_ket_thuc = { gte: new Date(tu_ngay) };
   if (den_ngay) where.ngay_bat_dau = { lte: new Date(den_ngay) };
 
@@ -67,16 +70,52 @@ const getNotifyContext = async (id) => prisma.khuyen_mai.findUnique({
   },
 });
 
+const enrichAuditFields = async (items) => {
+  const list = Array.isArray(items) ? items : [items];
+  if (!list.length) return items;
+
+  const ids = list.map((i) => Number(i.ma_khuyen_mai));
+  const rows = await prisma.$queryRaw`
+    SELECT km.ma_khuyen_mai, km.khoa_boi_admin, km.khoa_boi_doi_tac, km.khoa_boi_id, km.thoi_gian_khoa,
+           km.mo_khoa_boi_id, km.thoi_gian_mo_khoa,
+           kb.email AS khoa_boi_email
+    FROM khuyen_mai km
+    LEFT JOIN nguoi_dung kb ON kb.ma_nguoi_dung = km.khoa_boi_id
+    WHERE km.ma_khuyen_mai IN (${Prisma.join(ids)})
+  `;
+  const map = new Map(rows.map((r) => [Number(r.ma_khuyen_mai), r]));
+
+  const merged = list.map((item) => {
+    const audit = map.get(Number(item.ma_khuyen_mai));
+    if (!audit) return item;
+    return {
+      ...item,
+      khoa_boi_admin: Boolean(audit.khoa_boi_admin),
+      khoa_boi_doi_tac: Boolean(audit.khoa_boi_doi_tac),
+      khoa_boi_id: audit.khoa_boi_id,
+      thoi_gian_khoa: audit.thoi_gian_khoa,
+      mo_khoa_boi_id: audit.mo_khoa_boi_id,
+      thoi_gian_mo_khoa: audit.thoi_gian_mo_khoa,
+      khoa_boi: audit.khoa_boi_email ? { email: audit.khoa_boi_email } : null,
+    };
+  });
+
+  return Array.isArray(items) ? merged : merged[0];
+};
+
 const getPromotions = async (filters = {}) => {
+  await syncExpiredPromotions(prisma);
   const where = buildWhere(filters);
-  return prisma.khuyen_mai.findMany({
+  const rows = await prisma.khuyen_mai.findMany({
     where,
     include: promotionInclude,
     orderBy: [{ trang_thai: 'asc' }, { ngay_bat_dau: 'desc' }, { ma_khuyen_mai: 'desc' }],
   });
+  return enrichAuditFields(rows);
 };
 
 const getStats = async (filters = {}) => {
+  await syncExpiredPromotions(prisma);
   const baseWhere = buildWhere({ ...filters, trang_thai: 'all' });
   const [total, choDuyet, hoatDong, tuChoi, hetHan, an] = await Promise.all([
     prisma.khuyen_mai.count({ where: baseWhere }),
@@ -124,48 +163,14 @@ const getFilterHotels = async () => {
   });
 };
 
-const getPromotionById = async (id) => prisma.khuyen_mai.findUnique({
-  where: { ma_khuyen_mai: Number(id) },
-  include: promotionInclude,
-});
-
-// Ràng buộc giá trị dùng chung cho tạo/sửa (chặn cả khi gọi API trực tiếp)
-const assertValidValues = ({
-  loai_giam, gia_tri, giam_toi_da, don_hang_toi_thieu,
-  ngay_bat_dau, ngay_ket_thuc, so_luot_toi_da,
-}) => {
-  const MIN_TIEN = 1000;
-  const val = Number(gia_tri);
-  if (Number.isNaN(val) || val <= 0) {
-    throw { statusCode: 400, message: 'Giá trị giảm phải lớn hơn 0' };
-  }
-  if (loai_giam === 'phan_tram' && val > 100) {
-    throw { statusCode: 400, message: 'Phần trăm giảm không được vượt quá 100%' };
-  }
-  if (loai_giam !== 'phan_tram' && val < MIN_TIEN) {
-    throw { statusCode: 400, message: 'Số tiền giảm phải từ 1.000đ trở lên' };
-  }
-  if (giam_toi_da != null && giam_toi_da !== '' && Number(giam_toi_da) < MIN_TIEN) {
-    throw { statusCode: 400, message: 'Giảm tối đa phải từ 1.000đ trở lên' };
-  }
-  if (don_hang_toi_thieu != null && don_hang_toi_thieu !== '') {
-    const dh = Number(don_hang_toi_thieu);
-    if (Number.isNaN(dh) || dh < 0) {
-      throw { statusCode: 400, message: 'Đơn tối thiểu không hợp lệ' };
-    }
-    if (dh > 0 && dh < MIN_TIEN) {
-      throw { statusCode: 400, message: 'Đơn tối thiểu phải từ 1.000đ trở lên' };
-    }
-  }
-  if (ngay_bat_dau && ngay_ket_thuc && new Date(ngay_ket_thuc) <= new Date(ngay_bat_dau)) {
-    throw { statusCode: 400, message: 'Ngày kết thúc phải lớn hơn ngày bắt đầu' };
-  }
-  if (
-    so_luot_toi_da != null && so_luot_toi_da !== ''
-    && (!Number.isInteger(Number(so_luot_toi_da)) || Number(so_luot_toi_da) < 1)
-  ) {
-    throw { statusCode: 400, message: 'Số lượt tối đa phải là số nguyên ≥ 1' };
-  }
+const getPromotionById = async (id) => {
+  await syncExpiredPromotions(prisma);
+  const row = await prisma.khuyen_mai.findUnique({
+    where: { ma_khuyen_mai: Number(id) },
+    include: promotionInclude,
+  });
+  if (!row) return null;
+  return enrichAuditFields(row);
 };
 
 const createSystemPromotion = async (userId, payload) => {
@@ -181,31 +186,41 @@ const createSystemPromotion = async (userId, payload) => {
     so_luot_toi_da,
   } = payload;
 
-  if (!ma_code || !ten || !loai_giam || gia_tri == null || !ngay_bat_dau || !ngay_ket_thuc) {
+  assertPromotionFormValues({
+    ten,
+    ma_code,
+    loai_giam,
+    gia_tri,
+    giam_toi_da,
+    don_hang_toi_thieu,
+    ngay_bat_dau,
+    ngay_ket_thuc,
+    so_luot_toi_da,
+    loai_nguon: 'he_thong',
+    ma_khach_san: null,
+  }, { requireAll: true });
+
+  if (!loai_giam || gia_tri == null || !ngay_bat_dau || !ngay_ket_thuc) {
     throw { statusCode: 400, message: 'Thiếu thông tin khuyến mãi bắt buộc' };
   }
 
-  assertValidValues(payload);
-
-  const code = String(ma_code).trim().toUpperCase();
-  const existing = await prisma.khuyen_mai.findUnique({ where: { ma_code: code } });
-  if (existing) throw { statusCode: 400, message: 'Mã khuyến mãi đã tồn tại' };
+  const code = await assertUniquePromotionCode(prisma, ma_code);
 
   return prisma.khuyen_mai.create({
     data: {
       tao_boi_id: Number(userId),
-      ma_khach_san: null, 
+      ma_khach_san: null,
       ma_code: code,
       ten: String(ten).trim(),
       loai_nguon: 'he_thong',
       loai_giam,
       gia_tri: Number(gia_tri),
-      giam_toi_da: giam_toi_da != null ? Number(giam_toi_da) : null,
+      giam_toi_da: giam_toi_da != null && giam_toi_da !== '' ? Number(giam_toi_da) : null,
       don_hang_toi_thieu: Number(don_hang_toi_thieu || 0),
       ngay_bat_dau: new Date(ngay_bat_dau),
       ngay_ket_thuc: new Date(ngay_ket_thuc),
-      so_luot_toi_da: so_luot_toi_da != null ? Number(so_luot_toi_da) : null,
-      trang_thai: 'hoat_dong', 
+      so_luot_toi_da: so_luot_toi_da != null && so_luot_toi_da !== '' ? Number(so_luot_toi_da) : null,
+      trang_thai: 'hoat_dong',
     },
     include: promotionInclude,
   });
@@ -215,7 +230,9 @@ const updatePromotion = async (id, payload) => {
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
 
-  assertValidValues({
+  assertPromotionFormValues({
+    ten: payload.ten != null ? payload.ten : promo.ten,
+    ma_code: promo.ma_code,
     loai_giam: payload.loai_giam || promo.loai_giam,
     gia_tri: payload.gia_tri != null ? payload.gia_tri : promo.gia_tri,
     giam_toi_da: payload.giam_toi_da !== undefined ? payload.giam_toi_da : promo.giam_toi_da,
@@ -223,14 +240,16 @@ const updatePromotion = async (id, payload) => {
     ngay_bat_dau: payload.ngay_bat_dau || promo.ngay_bat_dau,
     ngay_ket_thuc: payload.ngay_ket_thuc || promo.ngay_ket_thuc,
     so_luot_toi_da: payload.so_luot_toi_da !== undefined ? payload.so_luot_toi_da : promo.so_luot_toi_da,
-  });
+    loai_nguon: promo.loai_nguon,
+    ma_khach_san: promo.ma_khach_san,
+  }, { existingNgayBatDau: promo.ngay_bat_dau });
 
   const data = {};
   if (payload.ten != null) data.ten = String(payload.ten).trim();
   if (payload.loai_giam) data.loai_giam = payload.loai_giam;
   if (payload.gia_tri != null) data.gia_tri = Number(payload.gia_tri);
   if (payload.giam_toi_da !== undefined) {
-    data.giam_toi_da = payload.giam_toi_da != null ? Number(payload.giam_toi_da) : null;
+    data.giam_toi_da = payload.giam_toi_da != null && payload.giam_toi_da !== '' ? Number(payload.giam_toi_da) : null;
   }
   if (payload.don_hang_toi_thieu != null) {
     data.don_hang_toi_thieu = Number(payload.don_hang_toi_thieu);
@@ -238,7 +257,7 @@ const updatePromotion = async (id, payload) => {
   if (payload.ngay_bat_dau) data.ngay_bat_dau = new Date(payload.ngay_bat_dau);
   if (payload.ngay_ket_thuc) data.ngay_ket_thuc = new Date(payload.ngay_ket_thuc);
   if (payload.so_luot_toi_da !== undefined) {
-    data.so_luot_toi_da = payload.so_luot_toi_da != null ? Number(payload.so_luot_toi_da) : null;
+    data.so_luot_toi_da = payload.so_luot_toi_da != null && payload.so_luot_toi_da !== '' ? Number(payload.so_luot_toi_da) : null;
   }
 
   return prisma.khuyen_mai.update({
@@ -247,18 +266,31 @@ const updatePromotion = async (id, payload) => {
     include: promotionInclude,
   });
 };
-const lockPromotion = async (id, lyDo) => {
+
+const lockPromotion = async (id, adminUserId, lyDo) => {
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
   if (promo.trang_thai === 'an') {
-    return prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) }, include: promotionInclude });
+    return getPromotionById(id);
   }
 
-  const updated = await prisma.khuyen_mai.update({
-    where: { ma_khuyen_mai: Number(id) },
-    data: { trang_thai: 'an', ly_do: lyDo || null },
-    include: promotionInclude,
-  });
+  const now = new Date();
+  const khoaBoiAdmin = promo.loai_nguon === 'doi_tac';
+
+  await prisma.$executeRaw`
+    UPDATE khuyen_mai
+    SET trang_thai = 'an',
+        ly_do = ${lyDo || null},
+        khoa_boi_admin = ${khoaBoiAdmin},
+        khoa_boi_doi_tac = FALSE,
+        khoa_boi_id = ${Number(adminUserId)},
+        thoi_gian_khoa = ${now},
+        mo_khoa_boi_id = NULL,
+        thoi_gian_mo_khoa = NULL
+    WHERE ma_khuyen_mai = ${Number(id)}
+  `;
+
+  const updated = await getPromotionById(id);
 
   const ctx = await getNotifyContext(id);
   if (ctx?.khach_san?.ma_doi_tac) {
@@ -268,39 +300,77 @@ const lockPromotion = async (id, lyDo) => {
   }
   return updated;
 };
-const restorePromotion = async (id) => {
+
+const restorePromotion = async (id, adminUserId) => {
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
   if (promo.trang_thai === 'hoat_dong') {
-    return prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) }, include: promotionInclude });
+    return getPromotionById(id);
+  }
+  if (!['an', 'tu_choi'].includes(promo.trang_thai)) {
+    throw { statusCode: 400, message: 'Không thể khôi phục khuyến mãi ở trạng thái hiện tại' };
   }
 
-  const updated = await prisma.khuyen_mai.update({
-    where: { ma_khuyen_mai: Number(id) },
-    data: { trang_thai: 'hoat_dong', ly_do: null },
-    include: promotionInclude,
-  });
+  const [audit] = await prisma.$queryRaw`
+    SELECT khoa_boi_doi_tac FROM khuyen_mai WHERE ma_khuyen_mai = ${Number(id)}
+  `;
+  if (audit?.khoa_boi_doi_tac) {
+    throw { statusCode: 400, message: 'Đối tác đã tạm ngưng khuyến mãi, admin không thể mở khóa' };
+  }
+
+  const nextStatus = isPastPromotionEndDate(promo.ngay_ket_thuc) ? 'het_han' : 'hoat_dong';
+  const now = new Date();
+  const nextLyDo = nextStatus === 'hoat_dong' ? null : promo.ly_do;
+
+  await prisma.$executeRaw`
+    UPDATE khuyen_mai
+    SET trang_thai = ${nextStatus},
+        ly_do = ${nextLyDo},
+        khoa_boi_admin = FALSE,
+        khoa_boi_doi_tac = FALSE,
+        mo_khoa_boi_id = ${Number(adminUserId)},
+        thoi_gian_mo_khoa = ${now}
+    WHERE ma_khuyen_mai = ${Number(id)}
+  `;
+
+  const updated = await getPromotionById(id);
 
   const ctx = await getNotifyContext(id);
-  if (ctx?.khach_san?.ma_doi_tac) {
+  if (ctx?.khach_san?.ma_doi_tac && nextStatus === 'hoat_dong') {
     await notifyPromotionUnlocked(ctx.khach_san.ma_doi_tac, {
       tenKhuyenMai: ctx.ten, maCode: ctx.ma_code,
     });
   }
   return updated;
 };
-const approvePromotion = async (id) => {
+
+const approvePromotion = async (id, adminUserId) => {
+  await syncExpiredPromotions(prisma);
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
   if (promo.trang_thai !== 'cho_duyet') {
     throw { statusCode: 400, message: 'Chỉ duyệt được khuyến mãi đang chờ duyệt' };
   }
+  if (isPastPromotionEndDate(promo.ngay_ket_thuc)) {
+    await prisma.khuyen_mai.update({
+      where: { ma_khuyen_mai: Number(id) },
+      data: { trang_thai: 'het_han' },
+    });
+    throw { statusCode: 400, message: 'Khuyến mãi đã hết hạn, không thể duyệt' };
+  }
 
-  const updated = await prisma.khuyen_mai.update({
-    where: { ma_khuyen_mai: Number(id) },
-    data: { trang_thai: 'hoat_dong', ly_do: null },
-    include: promotionInclude,
-  });
+  const now = new Date();
+  await prisma.$executeRaw`
+    UPDATE khuyen_mai
+    SET trang_thai = 'hoat_dong',
+        ly_do = NULL,
+        khoa_boi_doi_tac = FALSE,
+        mo_khoa_boi_id = ${Number(adminUserId)},
+        thoi_gian_mo_khoa = ${now}
+    WHERE ma_khuyen_mai = ${Number(id)}
+  `;
+
+  const updated = await getPromotionById(id);
 
   const ctx = await getNotifyContext(id);
   if (ctx?.khach_san?.ma_doi_tac) {

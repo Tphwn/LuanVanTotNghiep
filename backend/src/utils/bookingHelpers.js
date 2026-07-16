@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { ensureCommissionForBooking } = require('./commissionHelpers');
 
 const ACTIVE_BOOKING = ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'];
 const PENDING_CHECKIN_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
@@ -208,6 +209,12 @@ const autoCompleteExpiredCheckIns = async (where = {}) => {
       data: { trang_thai: 'hoan_thanh' },
     })),
   ]);
+
+  await Promise.all(
+    [...pendingExpired, ...checkedInExpired].map((booking) =>
+      ensureCommissionForBooking(booking.ma_dat_phong),
+    ),
+  );
 
   return pendingExpired.length + checkedInExpired.length;
 };

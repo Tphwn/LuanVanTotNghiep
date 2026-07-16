@@ -150,7 +150,7 @@ export default function UserDetailModal({ userId, onClose }) {
                   <InfoBlock label="Mã số thuế" value={partner.ma_so_thue} />
                   <InfoBlock
                     label="Tỉ lệ hoa hồng"
-                    value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` : 'Mặc định hệ thống'}
+                    value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` : 'Mặc định hệ thống (15%)'}
                   />
                   <InfoBlock
                     label="Trạng thái hợp tác"

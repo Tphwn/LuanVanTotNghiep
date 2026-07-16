@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Images } from 'lucide-react';
@@ -7,13 +7,16 @@ import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import RoomOfferCard from '../../components/customer/RoomOfferCard';
+import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
+import CustomerPromotionStrip from '../../components/customer/CustomerPromotionStrip';
 import publicHotelService from '../../services/publicHotelService';
+import publicPromotionService from '../../services/publicPromotionService';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
 import { formatHotelTime } from '../../utils/bookingDisplay';
 import { REQUIRED_DOC_LABELS } from '../../utils/hotelPolicyUtils';
 import { buildCustomerBookingUrl } from '../../utils/bookingNavigation';
-import { resolveSearchForm } from '../../utils/hotelSearchStorage';
+import { resolveSearchForm, saveSearchForm, searchFormToParams } from '../../utils/hotelSearchStorage';
 import '../../assets/styles/home.css';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
@@ -168,13 +171,42 @@ const CustomerHotelDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useSelector((state) => state.auth);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [hotel, setHotel] = useState(null);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [hotelPromotions, setHotelPromotions] = useState([]);
   const roomListRef = useRef(null);
+  const stickyBarRef = useRef(null);
+  const [stickyBarHeight, setStickyBarHeight] = useState(110);
+
+  useEffect(() => {
+    publicHotelService.getLocations()
+      .then((res) => setLocations(res.data?.data || []))
+      .catch(() => setLocations([]));
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = stickyBarRef.current;
+    if (!el) return undefined;
+
+    const updateHeight = () => {
+      setStickyBarHeight(el.getBoundingClientRect().height);
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(el);
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [hotel?.ma_khach_san, locations.length]);
 
   const query = useMemo(() => {
     const resolved = resolveSearchForm({
@@ -228,8 +260,40 @@ const CustomerHotelDetailPage = () => {
     load();
   }, [id, query]);
 
+  useEffect(() => {
+    if (!id) {
+      setHotelPromotions([]);
+      return;
+    }
+    publicPromotionService.getHotelPromotions(id)
+      .then((res) => setHotelPromotions(res.data?.data || []))
+      .catch(() => setHotelPromotions([]));
+  }, [id]);
+
   const scrollToRooms = () => {
     roomListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleSearchBar = (data) => {
+    saveSearchForm(data);
+    const hotelLocationId = String(hotel?.ma_dia_diem || hotel?.dia_diem?.ma_dia_diem || '');
+    const selectedLocationId = String(data.ma_dia_diem || '');
+
+    // Cùng địa điểm với khách sạn đang xem → cập nhật ngày/khách và cuộn tới phòng
+    if (selectedLocationId && selectedLocationId === hotelLocationId) {
+      setSearchParams({
+        ma_dia_diem: selectedLocationId,
+        ngay_nhan: data.ngay_nhan,
+        ngay_tra: data.ngay_tra,
+        so_khach: String(data.so_khach),
+        tre_em: String(data.tre_em || 0),
+        so_phong: String(data.so_phong || 1),
+      }, { replace: true });
+      setTimeout(() => scrollToRooms(), 120);
+      return;
+    }
+
+    navigate(`${ROUTES.CUSTOMER.ROOM_SEARCH}?${searchFormToParams(data).toString()}`);
   };
 
   const handleBookRoom = (roomId) => {
@@ -276,8 +340,32 @@ const CustomerHotelDetailPage = () => {
   ].filter(Boolean).join(' - ');
 
   return (
-    <div className="hotel-detail-page">
-      <BackButton to={backUrl} className="page-back-btn--standalone" />
+    <div
+      className="hotel-detail-shell"
+      style={{ '--hotel-sticky-bar-height': `${stickyBarHeight}px` }}
+    >
+      <div ref={stickyBarRef} className="hotel-detail-sticky-bar">
+        <div className="hotel-detail-sticky-inner">
+          <HotelSearchBar
+            variant="page"
+            locations={locations}
+            initialValues={{
+              ...query,
+              ma_dia_diem: String(
+                query.ma_dia_diem
+                || hotel.ma_dia_diem
+                || hotel.dia_diem?.ma_dia_diem
+                || '',
+              ),
+            }}
+            onSearch={handleSearchBar}
+          />
+        </div>
+      </div>
+      <div className="hotel-detail-sticky-spacer" aria-hidden="true" />
+
+      <div className="hotel-detail-page">
+        <BackButton to={backUrl} className="page-back-btn--standalone" />
 
       {images.length > 0 ? (
         <div className="hotel-gallery-mosaic hotel-gallery-mosaic--tall">
@@ -344,6 +432,8 @@ const CustomerHotelDetailPage = () => {
               <ExpandableIntro key={hotel.mo_ta} text={hotel.mo_ta} />
             </section>
           )}
+
+          <CustomerPromotionStrip promotions={hotelPromotions} variant="partner" />
         </div>
 
         <aside className="hotel-detail-booking-card">
@@ -527,6 +617,7 @@ const CustomerHotelDetailPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

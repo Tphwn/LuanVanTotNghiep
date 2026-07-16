@@ -16,6 +16,7 @@ const {
   autoCompleteExpiredCheckIns,
   isAutoCompletedBooking,
 } = require('../../utils/bookingHelpers');
+const { assertPromotionApplicable, syncExpiredPromotions } = require('../../utils/promotionRules');
 
 const BOOKING_STATUS = {
   cho_xac_nhan: 'Chờ check-in',
@@ -507,6 +508,7 @@ const customerBookingService = {
       sdt_nguoi_nhan,
       phuong_thuc_tt = 'truc_tuyen',
       ghi_chu,
+      ma_code,
     } = data;
 
     if (!ma_loai_phong || !ngay_nhan || !ngay_tra) {
@@ -562,15 +564,45 @@ const customerBookingService = {
     const tongTien = pricing.tong_luong_tru;
     const chiTietRows = await buildNightDetails(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
 
+    let promo = null;
+    let tienGiam = 0;
+    if (ma_code && String(ma_code).trim()) {
+      await syncExpiredPromotions(prisma);
+      promo = await prisma.khuyen_mai.findUnique({
+        where: { ma_code: String(ma_code).trim().toUpperCase() },
+      });
+      try {
+        tienGiam = assertPromotionApplicable(promo, {
+          maKhachSan: room.khach_san.ma_khach_san,
+          tongTien,
+        });
+      } catch (err) {
+        throw { statusCode: err.statusCode || 400, message: err.message };
+      }
+    }
+
     const paymentMethod = phuong_thuc_tt === 'tai_khach_san' ? 'Tại khách sạn' : 'Trực tuyến';
     const isOnline = phuong_thuc_tt === 'truc_tuyen';
     const now = new Date();
 
     const booking = await prisma.$transaction(async (tx) => {
+      if (promo) {
+        const freshPromo = await tx.khuyen_mai.findUnique({
+          where: { ma_khuyen_mai: promo.ma_khuyen_mai },
+        });
+        tienGiam = assertPromotionApplicable(freshPromo, {
+          maKhachSan: room.khach_san.ma_khach_san,
+          tongTien,
+        });
+      }
+
+      const finalThanhToan = Math.max(tongTien - tienGiam, 0);
+
       const created = await tx.dat_phong.create({
         data: {
           ma_khach_hang: khachHang.ma_khach_hang,
           ma_loai_phong: room.ma_loai_phong,
+          ma_khuyen_mai: promo ? promo.ma_khuyen_mai : null,
           ma_don_hang: generateOrderCode(),
           ngay_nhan_phong: checkIn,
           ngay_tra_phong: checkOut,
@@ -578,15 +610,15 @@ const customerBookingService = {
           ten_nguoi_nhan: ten_nguoi_nhan.trim(),
           sdt_nguoi_nhan: sdt_nguoi_nhan.trim(),
           tong_tien_goc: tongTien,
-          tien_giam: 0,
-          thanh_toan_cuoi: tongTien,
+          tien_giam: tienGiam,
+          thanh_toan_cuoi: finalThanhToan,
           phuong_thuc_tt,
           trang_thai: 'da_xac_nhan',
           ghi_chu: ghi_chu?.trim() || null,
           chi_tiet_dat_phong: { create: chiTietRows },
           thanh_toan: {
             create: {
-              so_tien: tongTien,
+              so_tien: finalThanhToan,
               phuong_thuc: paymentMethod,
               cong_thanh_toan: isOnline ? 'MoMo (Ví điện tử)' : 'Tại khách sạn',
               trang_thai: isOnline ? 'thanh_cong' : 'cho',
@@ -607,6 +639,13 @@ const customerBookingService = {
         },
       });
 
+      if (promo) {
+        await tx.khuyen_mai.update({
+          where: { ma_khuyen_mai: promo.ma_khuyen_mai },
+          data: { so_luot_da_dung: { increment: 1 } },
+        });
+      }
+
       if (created.thanh_toan) {
         await tx.thanh_toan.update({
           where: { ma_thanh_toan: created.thanh_toan.ma_thanh_toan },
@@ -625,6 +664,8 @@ const customerBookingService = {
       ngay_nhan_phong: booking.ngay_nhan_phong,
       ngay_tra_phong: booking.ngay_tra_phong,
       so_khach: booking.so_khach,
+      tong_tien_goc: Number(booking.tong_tien_goc),
+      tien_giam: Number(booking.tien_giam),
       thanh_toan_cuoi: Number(booking.thanh_toan_cuoi),
       trang_thai: booking.trang_thai,
       trang_thai_label: BOOKING_STATUS[booking.trang_thai],

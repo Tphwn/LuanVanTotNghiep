@@ -1,0 +1,254 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import authService from '../../services/authService';
+import ROUTES from '../../constants/routes';
+import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+import Card from '../../components/common/Card';
+
+const ForgotPasswordPage = () => {
+  const navigate = useNavigate();
+  const [step, setStep] = useState('email'); // email | otp | password
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [matKhau, setMatKhau] = useState('');
+  const [xacNhan, setXacNhan] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authService.forgotPassword({ email: email.trim() });
+      setInfo(res.data?.data?.message || res.data?.message || 'Nếu email tồn tại, mã OTP đã được gửi.');
+      setStep('otp');
+      setOtp('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không gửi được OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authService.verifyResetOtp({ email: email.trim(), otp: otp.trim() });
+      const token = res.data?.data?.reset_token || res.data?.reset_token;
+      if (!token) {
+        setError('Không nhận được token đặt lại mật khẩu');
+        return;
+      }
+      setResetToken(token);
+      setInfo('Xác thực thành công. Nhập mật khẩu mới.');
+      setStep('password');
+    } catch (err) {
+      setError(err.response?.data?.message || 'OTP không hợp lệ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (matKhau !== xacNhan) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (matKhau.length < 6) {
+      setError('Mật khẩu ít nhất 6 ký tự');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await authService.resetPassword({ reset_token: resetToken, mat_khau: matKhau });
+      navigate(ROUTES.LOGIN, {
+        replace: true,
+        state: { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.' },
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đặt lại mật khẩu thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authService.resendOtp({ email: email.trim(), purpose: 'reset' });
+      setInfo(res.data?.data?.message || res.data?.message || 'Đã gửi lại mã OTP.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không gửi lại được OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const titles = {
+    email: 'Quên mật khẩu',
+    otp: 'Nhập mã OTP',
+    password: 'Đặt mật khẩu mới',
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #e6f4ff 0%, #f0f2f5 100%)',
+      padding: 'var(--spacing-lg)',
+    }}
+    >
+      <Card style={{ width: '100%', maxWidth: '420px', textAlign: 'left' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
+            {titles[step]}
+          </h2>
+          <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-md)' }}>
+            {step === 'email' && 'Nhập email đã đăng ký để nhận mã OTP'}
+            {step === 'otp' && `Mã OTP đã gửi tới ${email}`}
+            {step === 'password' && 'Mật khẩu mới tối thiểu 6 ký tự'}
+          </p>
+        </div>
+
+        {error && (
+          <div style={{
+            background: '#fff2f0',
+            border: '1px solid #ffccc7',
+            color: 'var(--color-danger)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--spacing-md)',
+            fontSize: 'var(--font-size-md)',
+          }}
+          >
+            {error}
+          </div>
+        )}
+
+        {info && (
+          <div style={{
+            background: '#f6ffed',
+            border: '1px solid #b7eb8f',
+            color: '#389e0d',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--spacing-md)',
+            fontSize: 'var(--font-size-md)',
+          }}
+          >
+            {info}
+          </div>
+        )}
+
+        {step === 'email' && (
+          <form onSubmit={handleSendOtp}>
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError('');
+              }}
+              placeholder="example@gmail.com"
+              required
+            />
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Gửi mã OTP
+            </Button>
+          </form>
+        )}
+
+        {step === 'otp' && (
+          <form onSubmit={handleVerifyOtp}>
+            <Input
+              label="Mã OTP"
+              name="otp"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => {
+                setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                setError('');
+              }}
+              placeholder="6 chữ số"
+              required
+            />
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Xác thực OTP
+            </Button>
+            <Button
+              type="button"
+              fullWidth
+              variant="outline"
+              loading={loading}
+              onClick={handleResendOtp}
+              style={{ marginTop: 10 }}
+            >
+              Gửi lại mã
+            </Button>
+          </form>
+        )}
+
+        {step === 'password' && (
+          <form onSubmit={handleResetPassword}>
+            <Input
+              label="Mật khẩu mới"
+              name="mat_khau"
+              type="password"
+              value={matKhau}
+              onChange={(e) => {
+                setMatKhau(e.target.value);
+                setError('');
+              }}
+              placeholder="Tối thiểu 6 ký tự"
+              required
+            />
+            <Input
+              label="Xác nhận mật khẩu"
+              name="xac_nhan"
+              type="password"
+              value={xacNhan}
+              onChange={(e) => {
+                setXacNhan(e.target.value);
+                setError('');
+              }}
+              placeholder="Nhập lại mật khẩu"
+              required
+            />
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Đặt lại mật khẩu
+            </Button>
+          </form>
+        )}
+
+        <p style={{
+          textAlign: 'center',
+          marginTop: 'var(--spacing-lg)',
+          fontSize: 'var(--font-size-md)',
+          color: 'var(--color-text-secondary)',
+        }}
+        >
+          <Link to={ROUTES.LOGIN} style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+            Quay lại đăng nhập
+          </Link>
+        </p>
+      </Card>
+    </div>
+  );
+};
+
+export default ForgotPasswordPage;

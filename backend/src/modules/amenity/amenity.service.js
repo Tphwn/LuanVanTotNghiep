@@ -46,9 +46,34 @@ const findRequestById = async (id) => {
   return mapRequestRow(row);
 };
 
+const withUsageFlags = (row) => {
+  if (!row) return null;
+  const { _count, ...rest } = row;
+  const soLanSuDung =
+    (_count?.khach_san_tien_nghi || 0) + (_count?.loai_phong_tien_nghi || 0);
+  return {
+    ...rest,
+    dang_su_dung: soLanSuDung > 0,
+    so_lan_su_dung: soLanSuDung,
+  };
+};
+
+const amenityUsageInclude = {
+  _count: {
+    select: {
+      khach_san_tien_nghi: true,
+      loai_phong_tien_nghi: true,
+    },
+  },
+};
+
 const amenityService = {
   findAll: async () => {
-    return await prisma.tien_nghi.findMany({ orderBy: { ma_tien_nghi: "desc" } });
+    const rows = await prisma.tien_nghi.findMany({
+      orderBy: { ma_tien_nghi: 'desc' },
+      include: amenityUsageInclude,
+    });
+    return rows.map(withUsageFlags);
   },
 
   create: async (data) => {
@@ -85,15 +110,31 @@ const amenityService = {
     if (!['hoat_dong', 'an'].includes(trang_thai)) {
       throw new Error('Trạng thái không hợp lệ');
     }
+    const maTienNghi = Number(id);
     const found = await prisma.tien_nghi.findUnique({
-      where: { ma_tien_nghi: Number(id) },
+      where: { ma_tien_nghi: maTienNghi },
+      include: amenityUsageInclude,
     });
     if (!found) throw new Error('Không tìm thấy tiện nghi');
 
-    return await prisma.tien_nghi.update({
-      where: { ma_tien_nghi: Number(id) },
+    // Chỉ khóa khi chưa có đối tác nào gắn tiện nghi vào KS / loại phòng
+    if (trang_thai === 'an') {
+      const soLanSuDung =
+        (found._count?.khach_san_tien_nghi || 0)
+        + (found._count?.loai_phong_tien_nghi || 0);
+      if (soLanSuDung > 0) {
+        throw new Error(
+          'Không thể khóa tiện nghi này vì đã có đối tác chọn. Chỉ khóa khi chưa có đối tác nào sử dụng.',
+        );
+      }
+    }
+
+    const updated = await prisma.tien_nghi.update({
+      where: { ma_tien_nghi: maTienNghi },
       data: { trang_thai },
+      include: amenityUsageInclude,
     });
+    return withUsageFlags(updated);
   },
 
   getRequests: async () => {

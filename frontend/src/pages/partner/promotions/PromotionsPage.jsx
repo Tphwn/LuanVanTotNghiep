@@ -1,32 +1,86 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Eye, Pencil, Lock, Unlock } from 'lucide-react';
 import api from '../../../services/api';
-import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
+import { PROMOTION_BADGE } from '../../../constants/statusConfig';
+
+const PAGE_SIZE = 10;
+
+const EMPTY_STATS = {
+  total: 0, cho_duyet: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
+};
 
 const LOAI_GIAM = {
   phan_tram: 'Phần trăm (%)',
   so_tien: 'Số tiền (VNĐ)',
 };
 
-const TRANG_THAI = {
-  hoat_dong: { label: 'Đang hoạt động', cls: 'mgmt-status-text--active' },
-  het_han: { label: 'Hết hạn', cls: 'mgmt-status-text--pending' },
-  an: { label: 'Đã ẩn', cls: 'mgmt-status-text--locked' },
+const TIME_PRESETS = [
+  { value: 'all', label: 'Tất cả thời gian' },
+  { value: '7', label: '7 ngày qua' },
+  { value: '30', label: '30 ngày qua' },
+  { value: 'custom', label: 'Tùy chọn' },
+];
+
+const CONFIRM_CONFIG = {
+  lock: {
+    title: 'Tạm ngưng khuyến mãi',
+    intro: 'Khuyến mãi sẽ ngừng hiển thị với khách hàng. Admin không thể tự mở khóa.',
+    variant: 'danger',
+    confirmText: 'Tạm ngưng',
+    icon: <Lock size={20} />,
+    reason: { required: true, label: 'Lý do tạm ngưng', id: 'partner-promo-lock-reason' },
+    endpoint: (id) => ({ url: `/partner/promotions/${id}/lock`, withReason: true }),
+  },
+  restore: {
+    title: 'Kích hoạt lại khuyến mãi',
+    intro: 'Khuyến mãi sẽ hoạt động trở lại sau khi được kích hoạt.',
+    variant: 'primary',
+    confirmText: 'Kích hoạt',
+    icon: <Unlock size={20} />,
+    endpoint: (id) => ({ url: `/partner/promotions/${id}/restore`, withReason: false }),
+  },
 };
 
-const formatCurrency = (v) =>
-  new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
-
-const formatDate = (d) => {
-  if (!d) return '—';
-  const dt = new Date(d);
-  return `${dt.getDate()}/${dt.getMonth() + 1}/${dt.getFullYear()}`;
+const getDateRange = (preset, customFrom, customTo) => {
+  if (preset === 'all') return {};
+  if (preset === 'custom') {
+    const r = {};
+    if (customFrom) r.tu_ngay = customFrom;
+    if (customTo) r.den_ngay = customTo;
+    return r;
+  }
+  const days = Number(preset);
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+  return { tu_ngay: from.toISOString().slice(0, 10) };
 };
+
+const formatCurrency = (v) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+const formatGiaTri = (item) => (item.loai_giam === 'phan_tram'
+  ? `${item.gia_tri}%`
+  : `${formatCurrency(item.gia_tri)} đ`);
+const todayLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const maxDate = (a, b) => (!a ? b : !b ? a : a >= b ? a : b);
+
+const canPartnerRestore = (item) => (
+  item.trang_thai === 'an' && item.khoa_boi_doi_tac && !item.khoa_boi_admin
+);
+
+const canPartnerLock = (item) => item.trang_thai === 'hoat_dong' && !item.khoa_boi_admin;
+
+const canPartnerEdit = (item) => !item.khoa_boi_admin;
 
 const emptyForm = {
   ma_khach_san: '',
@@ -41,31 +95,291 @@ const emptyForm = {
   so_luot_toi_da: '',
 };
 
+const InfoRow = ({ label, value }) => (
+  <div className="user-lock-confirm-modal-row">
+    <span>{label}</span>
+    <strong>{value ?? '—'}</strong>
+  </div>
+);
+
+const FieldError = ({ msg }) => (msg ? <p className="form-field-error">{msg}</p> : null);
+const inputCls = (err) => `search-input${err ? ' input-invalid' : ''}`;
+const onlyDigits = (v) => String(v ?? '').replace(/\D/g, '');
+const formatThousandInput = (v) => {
+  const digits = onlyDigits(v);
+  return digits ? new Intl.NumberFormat('vi-VN').format(Number(digits)) : '';
+};
+
+const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
+  if (!item) return null;
+  const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div className="modal-header">
+          <h3 className="modal-title">Chi tiết khuyến mãi</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Đóng">×</button>
+        </div>
+        <div className="user-lock-confirm-modal-body">
+          <div style={{ marginBottom: 12 }}>
+            <span className={`badge ${st.cls}`}>{st.label}</span>
+          </div>
+          <div className="user-lock-confirm-modal-info">
+            <InfoRow label="Mã khuyến mãi" value={item.ma_code} />
+            <InfoRow label="Tên chương trình" value={item.ten} />
+            <InfoRow label="Khách sạn" value={item.khach_san?.ten} />
+            <InfoRow label="Loại giảm" value={LOAI_GIAM[item.loai_giam] || item.loai_giam} />
+            <InfoRow label="Giá trị giảm" value={formatGiaTri(item)} />
+            {item.giam_toi_da != null && (
+              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} đ`} />
+            )}
+            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} đ`} />
+            <InfoRow
+              label="Thời gian áp dụng"
+              value={`${formatDate(item.ngay_bat_dau)} – ${formatDate(item.ngay_ket_thuc)}`}
+            />
+            <InfoRow
+              label="Số lượt sử dụng"
+              value={`${item.so_luot_da_dung}${item.so_luot_toi_da != null ? ` / ${item.so_luot_toi_da}` : ''}`}
+            />
+            {item.ly_do && <InfoRow label="Lý do" value={item.ly_do} />}
+            {item.khoa_boi_admin && (
+              <InfoRow label="Khóa bởi admin" value="Bạn không thể tự mở khóa" />
+            )}
+            {item.khoa_boi_doi_tac && !item.khoa_boi_admin && (
+              <InfoRow label="Tạm ngưng" value="Do bạn tạm ngưng" />
+            )}
+            {item.trang_thai === 'cho_duyet' && (
+              <InfoRow label="Trạng thái duyệt" value="Đang chờ admin duyệt" />
+            )}
+          </div>
+        </div>
+        <div className="user-lock-confirm-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
+          {canPartnerEdit(item) && (
+            <ActionButton variant="edit" icon={Pencil} disabled={actionLoading} onClick={() => onEdit(item)}>
+              Sửa
+            </ActionButton>
+          )}
+          {canPartnerLock(item) && (
+            <ActionButton variant="lock" icon={Lock} disabled={actionLoading} onClick={() => onAction(item, 'lock')}>
+              Tạm ngưng
+            </ActionButton>
+          )}
+          {canPartnerRestore(item) && (
+            <ActionButton variant="unlock" icon={Unlock} disabled={actionLoading} onClick={() => onAction(item, 'restore')}>
+              Kích hoạt
+            </ActionButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FormModal = ({
+  editing, form, updateField, errors, saving, onClose, onSubmit, hotels,
+}) => {
+  const isPercent = form.loai_giam === 'phan_tram';
+  const today = todayLocal();
+  const minStart = today;
+  const minEnd = maxDate(today, form.ngay_bat_dau);
+  return (
+    <div className="modal-overlay" onClick={() => !saving && onClose()} role="presentation">
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <h2 className="modal-title">{editing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi'}</h2>
+        <p style={{ fontSize: 13, color: '#5a7a72', marginBottom: 16 }}>
+          {editing
+            ? 'Thay đổi sẽ được gửi lại cho admin duyệt trước khi hiển thị với khách hàng.'
+            : 'Mã khuyến mãi sẽ được gửi cho admin duyệt trước khi hiển thị với khách hàng.'}
+        </p>
+        <form onSubmit={onSubmit} noValidate>
+          <div className="form-group">
+            <label>Khách sạn</label>
+            <select
+              className={inputCls(errors.ma_khach_san)}
+              value={form.ma_khach_san}
+              onChange={(e) => updateField('ma_khach_san', e.target.value)}
+              disabled={!!editing}
+            >
+              <option value="">-- Chọn khách sạn --</option>
+              {hotels.map((h) => (
+                <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+              ))}
+            </select>
+            <FieldError msg={errors.ma_khach_san} />
+          </div>
+          <div className="form-group">
+            <label>Mã khuyến mãi</label>
+            <input
+              className={inputCls(errors.ma_code)}
+              value={form.ma_code}
+              onChange={(e) => updateField('ma_code', e.target.value.toUpperCase())}
+              disabled={!!editing}
+              placeholder="VD: SUMMER2026"
+            />
+            <FieldError msg={errors.ma_code} />
+          </div>
+          <div className="form-group">
+            <label>Tên chương trình</label>
+            <input
+              className={inputCls(errors.ten)}
+              value={form.ten}
+              onChange={(e) => updateField('ten', e.target.value)}
+            />
+            <FieldError msg={errors.ten} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label>Loại giảm</label>
+              <select
+                className="search-input"
+                value={form.loai_giam}
+                onChange={(e) => updateField('loai_giam', e.target.value)}
+              >
+                {Object.entries(LOAI_GIAM).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>{isPercent ? 'Giá trị giảm (%)' : 'Số tiền giảm (VNĐ)'}</label>
+              {isPercent ? (
+                <input
+                  className={inputCls(errors.gia_tri)}
+                  type="number"
+                  value={form.gia_tri}
+                  onChange={(e) => updateField('gia_tri', e.target.value)}
+                />
+              ) : (
+                <input
+                  className={inputCls(errors.gia_tri)}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatThousandInput(form.gia_tri)}
+                  onChange={(e) => updateField('gia_tri', onlyDigits(e.target.value))}
+                  placeholder="VD: 50.000"
+                />
+              )}
+              <FieldError msg={errors.gia_tri} />
+            </div>
+          </div>
+          {isPercent && (
+            <div className="form-group">
+              <label>Giảm tối đa (VNĐ)</label>
+              <input
+                className={inputCls(errors.giam_toi_da)}
+                type="text"
+                inputMode="numeric"
+                value={formatThousandInput(form.giam_toi_da)}
+                onChange={(e) => updateField('giam_toi_da', onlyDigits(e.target.value))}
+                placeholder="Không bắt buộc"
+              />
+              <FieldError msg={errors.giam_toi_da} />
+            </div>
+          )}
+          <div className="form-group">
+            <label>Đơn tối thiểu (VNĐ)</label>
+            <input
+              className={inputCls(errors.don_hang_toi_thieu)}
+              type="text"
+              inputMode="numeric"
+              value={formatThousandInput(form.don_hang_toi_thieu)}
+              onChange={(e) => updateField('don_hang_toi_thieu', onlyDigits(e.target.value))}
+            />
+            <FieldError msg={errors.don_hang_toi_thieu} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label>Từ ngày</label>
+              <input
+                className={inputCls(errors.ngay_bat_dau)}
+                type="date"
+                value={form.ngay_bat_dau}
+                min={minStart}
+                onChange={(e) => updateField('ngay_bat_dau', e.target.value)}
+              />
+              <FieldError msg={errors.ngay_bat_dau} />
+            </div>
+            <div className="form-group">
+              <label>Đến ngày</label>
+              <input
+                className={inputCls(errors.ngay_ket_thuc)}
+                type="date"
+                value={form.ngay_ket_thuc}
+                min={minEnd}
+                onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
+              />
+              <FieldError msg={errors.ngay_ket_thuc} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Số lượt tối đa (để trống = không giới hạn)</label>
+            <input
+              className={inputCls(errors.so_luot_toi_da)}
+              type="number"
+              value={form.so_luot_toi_da}
+              onChange={(e) => updateField('so_luot_toi_da', e.target.value)}
+            />
+            <FieldError msg={errors.so_luot_toi_da} />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Hủy</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Đang lưu...' : editing ? 'Gửi duyệt lại' : 'Gửi duyệt'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const PartnerPromotionsPage = () => {
   const [hotels, setHotels] = useState([]);
   const [items, setItems] = useState([]);
-  const [hotelFilter, setHotelFilter] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(EMPTY_STATS);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const { toast, showToast } = useToast();
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [hotelFilter, setHotelFilter] = useState('');
+  const [loaiGiamFilter, setLoaiGiamFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [timePreset, setTimePreset] = useState('all');
+  const [tuNgay, setTuNgay] = useState('');
+  const [denNgay, setDenNgay] = useState('');
+
+  const [detailItem, setDetailItem] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const loadPromotions = async () => {
+  const firstLoad = useRef(true);
+
+  const loadPromotions = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { ...getDateRange(timePreset, tuNgay, denNgay) };
       if (hotelFilter) params.ma_khach_san = hotelFilter;
+      if (loaiGiamFilter !== 'all') params.loai_giam = loaiGiamFilter;
+      if (statusFilter !== 'all') params.trang_thai = statusFilter;
+
       const res = await api.get('/partner/promotions', { params });
       setItems(res.data.data || []);
+      setStats(res.data.stats || EMPTY_STATS);
     } catch (err) {
       showToast(err.response?.data?.message || 'Lỗi tải khuyến mãi', 'error');
+      setItems([]);
+      setStats(EMPTY_STATS);
     } finally {
       setLoading(false);
     }
-  };
+  }, [hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay, showToast]);
 
   useEffect(() => {
     api.get('/partner/promotions/hotels').then((res) => {
@@ -74,20 +388,81 @@ const PartnerPromotionsPage = () => {
   }, []);
 
   useEffect(() => {
-    loadPromotions();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hotelFilter]);
+    const t = setTimeout(loadPromotions, firstLoad.current ? 0 : 300);
+    firstLoad.current = false;
+    return () => clearTimeout(t);
+  }, [loadPromotions]);
 
-  const stats = useMemo(() => ({
-    total: items.length,
-    active: items.filter((i) => i.trang_thai === 'hoat_dong').length,
-    hidden: items.filter((i) => i.trang_thai === 'an').length,
-  }), [items]);
-
-  const hasActiveFilter = Boolean(hotelFilter);
+  const hasActiveFilter = Boolean(
+    hotelFilter || loaiGiamFilter !== 'all' || statusFilter !== 'all' || timePreset !== 'all',
+  );
 
   const clearFilters = () => {
     setHotelFilter('');
+    setLoaiGiamFilter('all');
+    setStatusFilter('all');
+    setTimePreset('all');
+    setTuNgay('');
+    setDenNgay('');
+  };
+
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFormErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validateForm = (f) => {
+    const e = {};
+    const today = todayLocal();
+    const isPercent = f.loai_giam === 'phan_tram';
+    const originalStart = editing?.ngay_bat_dau?.slice?.(0, 10) || '';
+
+    if (!f.ma_khach_san) e.ma_khach_san = 'Vui lòng chọn khách sạn.';
+    if (!f.ten.trim()) e.ten = 'Tên khuyến mãi không được để trống.';
+    if (!f.ma_code.trim()) e.ma_code = 'Mã khuyến mãi không được để trống.';
+
+    const giaTri = Number(f.gia_tri);
+    if (f.gia_tri === '' || Number.isNaN(giaTri) || giaTri <= 0) {
+      e.gia_tri = isPercent ? 'Giá trị giảm phải lớn hơn 0.' : 'Số tiền giảm phải lớn hơn 0.';
+    } else if (isPercent && giaTri > 100) {
+      e.gia_tri = 'Phần trăm giảm không được vượt quá 100%.';
+    } else if (!isPercent && giaTri < 0) {
+      e.gia_tri = 'Số tiền giảm không được âm.';
+    }
+
+    if (isPercent && f.giam_toi_da !== '') {
+      const gtd = Number(f.giam_toi_da);
+      if (Number.isNaN(gtd) || gtd <= 0) e.giam_toi_da = 'Giảm tối đa phải lớn hơn 0.';
+    }
+
+    if (f.don_hang_toi_thieu !== '') {
+      const dh = Number(f.don_hang_toi_thieu);
+      if (Number.isNaN(dh) || dh < 0) e.don_hang_toi_thieu = 'Đơn tối thiểu không được âm.';
+    }
+
+    if (!f.ngay_bat_dau) e.ngay_bat_dau = 'Vui lòng chọn ngày bắt đầu.';
+    if (!f.ngay_ket_thuc) e.ngay_ket_thuc = 'Vui lòng chọn ngày kết thúc.';
+    if (f.ngay_bat_dau && f.ngay_ket_thuc && f.ngay_ket_thuc < f.ngay_bat_dau) {
+      e.ngay_ket_thuc = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+    }
+    if (f.ngay_bat_dau && f.ngay_bat_dau < today && f.ngay_bat_dau !== originalStart) {
+      e.ngay_bat_dau = 'Ngày bắt đầu không được nằm trong quá khứ.';
+    }
+    if (f.ngay_ket_thuc && f.ngay_ket_thuc < today) {
+      e.ngay_ket_thuc = 'Ngày kết thúc không được nằm trong quá khứ.';
+    }
+
+    if (f.so_luot_toi_da !== '') {
+      const sl = Number(f.so_luot_toi_da);
+      if (!Number.isInteger(sl) || sl < 1) e.so_luot_toi_da = 'Số lượt tối đa phải là số nguyên ≥ 1.';
+    }
+
+    return e;
   };
 
   const openCreate = () => {
@@ -96,11 +471,14 @@ const PartnerPromotionsPage = () => {
       ...emptyForm,
       ma_khach_san: hotelFilter || (hotels[0] ? String(hotels[0].ma_khach_san) : ''),
     });
-    setModalOpen(true);
+    setFormErrors({});
+    setFormOpen(true);
   };
 
   const openEdit = (item) => {
+    setDetailItem(null);
     setEditing(item);
+    setFormErrors({});
     setForm({
       ma_khach_san: String(item.ma_khach_san || ''),
       ma_code: item.ma_code,
@@ -113,15 +491,18 @@ const PartnerPromotionsPage = () => {
       ngay_ket_thuc: item.ngay_ket_thuc?.slice?.(0, 10) || '',
       so_luot_toi_da: item.so_luot_toi_da != null ? String(item.so_luot_toi_da) : '',
     });
-    setModalOpen(true);
+    setFormOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.ma_khach_san || !form.ma_code || !form.ten) {
-      return showToast('Vui lòng điền đủ thông tin', 'error');
+    const errs = validateForm(form);
+    if (Object.keys(errs).length) {
+      setFormErrors(errs);
+      showToast('Vui lòng kiểm tra lại thông tin khuyến mãi', 'error');
+      return;
     }
-
+    setFormErrors({});
     setSaving(true);
     try {
       const payload = {
@@ -137,85 +518,166 @@ const PartnerPromotionsPage = () => {
         so_luot_toi_da: form.so_luot_toi_da ? Number(form.so_luot_toi_da) : null,
       };
 
-      if (editing) {
-        await api.put(`/partner/promotions/${editing.ma_khuyen_mai}`, payload);
-        showToast('Đã cập nhật khuyến mãi');
-      } else {
-        await api.post('/partner/promotions', payload);
-        showToast('Đã tạo khuyến mãi');
-      }
+      const res = editing
+        ? await api.put(`/partner/promotions/${editing.ma_khuyen_mai}`, payload)
+        : await api.post('/partner/promotions', payload);
 
-      setModalOpen(false);
+      showToast(res.data.message || 'Thành công');
+      setFormOpen(false);
       loadPromotions();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Lỗi lưu khuyến mãi', 'error');
+      const msg = err.response?.data?.message || 'Lỗi lưu khuyến mãi';
+      if (/tồn tại|trùng/i.test(msg)) {
+        setFormErrors((prev) => ({ ...prev, ma_code: msg }));
+      }
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleStatus = async (item) => {
-    const next = item.trang_thai === 'hoat_dong' ? 'an' : 'hoat_dong';
-    const msg = next === 'an'
-      ? `Ẩn khuyến mãi "${item.ten}"?`
-      : `Kích hoạt lại khuyến mãi "${item.ten}"?`;
-    if (!window.confirm(msg)) return;
+  const handleConfirm = async (reasonValue) => {
+    if (!confirmTarget) return;
+    const { item, action } = confirmTarget;
+    const cfg = CONFIRM_CONFIG[action];
+    const { url, withReason } = cfg.endpoint(item.ma_khuyen_mai);
 
+    setActionLoading(true);
     try {
-      await api.put(`/partner/promotions/${item.ma_khuyen_mai}`, { trang_thai: next });
-      showToast(next === 'an' ? 'Đã ẩn khuyến mãi' : 'Đã kích hoạt khuyến mãi');
+      const res = withReason
+        ? await api.patch(url, { ly_do: reasonValue })
+        : await api.patch(url);
+      showToast(res.data.message || 'Thành công');
+      setConfirmTarget(null);
+      setDetailItem(null);
       loadPromotions();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Lỗi cập nhật', 'error');
+      showToast(err.response?.data?.message || 'Thao tác thất bại', 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const formatGiaTri = (item) => {
-    if (item.loai_giam === 'phan_tram') return `${item.gia_tri}%`;
-    return `${formatCurrency(item.gia_tri)} đ`;
-  };
+  const statItems = useMemo(() => [
+    { label: 'Tổng khuyến mãi', value: stats.total ?? 0, tone: 'neutral' },
+    { label: 'Chờ duyệt', value: stats.cho_duyet ?? 0, tone: 'warning' },
+    { label: 'Đang hoạt động', value: stats.hoat_dong ?? 0, tone: 'success' },
+    { label: 'Bị khóa', value: stats.an ?? 0, tone: 'muted' },
+  ], [stats]);
 
   const {
-    pagedItems: pagedPromotions,
-    currentPage,
-    totalPages,
-    setPage,
-    pageNumbers,
-    rangeFrom,
-    rangeTo,
-    showPagination,
-  } = useListPagination(items, 10, [hotelFilter]);
+    pagedItems, currentPage, totalPages, setPage, pageNumbers, rangeFrom, rangeTo, showPagination,
+  } = useListPagination(items, PAGE_SIZE, [
+    hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay,
+  ]);
+
+  const confirmCfg = confirmTarget ? CONFIRM_CONFIG[confirmTarget.action] : null;
 
   return (
     <div className="mgmt-page">
       <ManagementHeader
         title="Khuyến mãi"
-        subtitle="Tạo và quản lý mã giảm giá cho khách sạn của bạn"
+        subtitle="Tạo và quản lý mã giảm giá — cần admin duyệt trước khi hiển thị với khách hàng"
         actionLabel="Tạo khuyến mãi"
         onAction={openCreate}
       />
 
       <Toast toast={toast} />
 
-      <div className="mgmt-toolbar" style={{ marginBottom: 16 }}>
-        <select
-          className="search-input"
-          value={hotelFilter}
-          onChange={(e) => setHotelFilter(e.target.value)}
-        >
-          <option value="">Tất cả khách sạn</option>
-          {hotels.map((h) => (
-            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-          ))}
-        </select>
+      <SummaryStats items={statItems} />
+
+      <div className="mgmt-toolbar mgmt-toolbar--filters">
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-promo-hotel">Khách sạn</label>
+          <select
+            id="partner-promo-hotel"
+            className="mgmt-select-inline"
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
+          >
+            <option value="">Tất cả khách sạn</option>
+            {hotels.map((h) => (
+              <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-promo-loaigiam">Loại khuyến mãi</label>
+          <select
+            id="partner-promo-loaigiam"
+            className="mgmt-select-inline"
+            value={loaiGiamFilter}
+            onChange={(e) => setLoaiGiamFilter(e.target.value)}
+          >
+            <option value="all">Tất cả loại</option>
+            <option value="phan_tram">Phần trăm (%)</option>
+            <option value="so_tien">Số tiền (VNĐ)</option>
+          </select>
+        </div>
+
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-promo-status">Trạng thái</label>
+          <select
+            id="partner-promo-status"
+            className="mgmt-select-inline"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="cho_duyet">Chờ duyệt</option>
+            <option value="hoat_dong">Đang hoạt động</option>
+            <option value="an">Bị khóa</option>
+            <option value="tu_choi">Từ chối</option>
+            <option value="het_han">Hết hạn</option>
+          </select>
+        </div>
+
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-promo-time">Thời gian</label>
+          <select
+            id="partner-promo-time"
+            className="mgmt-select-inline"
+            value={timePreset}
+            onChange={(e) => setTimePreset(e.target.value)}
+          >
+            {TIME_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {timePreset === 'custom' && (
+          <>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
+              <input
+                id="partner-promo-from"
+                type="date"
+                className="mgmt-select-inline"
+                value={tuNgay}
+                onChange={(e) => setTuNgay(e.target.value)}
+              />
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="partner-promo-to">Đến ngày</label>
+              <input
+                id="partner-promo-to"
+                type="date"
+                className="mgmt-select-inline"
+                value={denNgay}
+                min={tuNgay}
+                onChange={(e) => setDenNgay(e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
         {hasActiveFilter && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
             Xóa bộ lọc
           </button>
         )}
-        <span style={{ fontSize: 13, color: '#5a7a72', marginLeft: 'auto' }}>
-          {stats.active} đang hoạt động / {stats.total} mã
-        </span>
       </div>
 
       <div className="content-card">
@@ -230,194 +692,118 @@ const PartnerPromotionsPage = () => {
           </div>
         ) : (
           <>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Mã</th>
-                <th>Tên chương trình</th>
-                <th>Khách sạn</th>
-                <th>Giảm</th>
-                <th>Thời hạn</th>
-                <th>Đã dùng</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedPromotions.map((item) => {
-                const st = TRANG_THAI[item.trang_thai] || { label: item.trang_thai, cls: '' };
-                return (
-                  <tr key={item.ma_khuyen_mai}>
-                    <td><strong>{item.ma_code}</strong></td>
-                    <td>{item.ten}</td>
-                    <td>{item.khach_san?.ten || '—'}</td>
-                    <td>{formatGiaTri(item)}</td>
-                    <td>{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
-                    <td>
-                      {item.so_luot_da_dung}
-                      {item.so_luot_toi_da != null ? ` / ${item.so_luot_toi_da}` : ''}
-                    </td>
-                    <td><span className={`mgmt-status-text ${st.cls}`}>{st.label}</span></td>
-                    <td>
-                      <ActionCell>
-                        <ActionButton icon={Pencil} label="Sửa" onClick={() => openEdit(item)} />
-                        <ActionButton
-                          label={item.trang_thai === 'hoat_dong' ? 'Ẩn' : 'Bật'}
-                          onClick={() => toggleStatus(item)}
-                        />
-                      </ActionCell>
-                    </td>
+            <div className="mgmt-table-scroll">
+              <table className="data-table data-table-grid admin-mgmt-table">
+                <thead>
+                  <tr>
+                    <th>Mã khuyến mãi</th>
+                    <th>Tên khuyến mãi</th>
+                    <th>Khách sạn</th>
+                    <th>Loại giảm</th>
+                    <th>Thời gian áp dụng</th>
+                    <th>Lượt sử dụng</th>
+                    <th>Trạng thái</th>
+                    <th style={{ width: 150 }}>Thao tác</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {showPagination && (
-            <ListPagination
-              total={items.length}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              rangeFrom={rangeFrom}
-              rangeTo={rangeTo}
-              pageNumbers={pageNumbers}
-              onPageChange={setPage}
-            />
-          )}
+                </thead>
+                <tbody>
+                  {pagedItems.map((item) => {
+                    const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+                    return (
+                      <tr key={item.ma_khuyen_mai}>
+                        <td><strong>{item.ma_code}</strong></td>
+                        <td>{item.ten}</td>
+                        <td>{item.khach_san?.ten || '—'}</td>
+                        <td>{LOAI_GIAM[item.loai_giam] || item.loai_giam}</td>
+                        <td>{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
+                        <td>
+                          {item.so_luot_toi_da != null
+                            ? `${item.so_luot_da_dung} / ${item.so_luot_toi_da}`
+                            : item.so_luot_da_dung}
+                        </td>
+                        <td>
+                          <span className={`badge ${st.cls}`}>{st.label}</span>
+                          {item.khoa_boi_admin && (
+                            <div style={{ fontSize: 11, color: '#c0392b', marginTop: 4 }}>Admin đã khóa</div>
+                          )}
+                          {item.khoa_boi_doi_tac && !item.khoa_boi_admin && (
+                            <div style={{ fontSize: 11, color: '#856404', marginTop: 4 }}>Bạn đã tạm ngưng</div>
+                          )}
+                        </td>
+                        <ActionCell>
+                          <ActionButton variant="view" iconOnly icon={Eye} title="Chi tiết" onClick={() => setDetailItem(item)} />
+                          {canPartnerEdit(item) && (
+                            <ActionButton variant="edit" iconOnly icon={Pencil} title="Sửa" onClick={() => openEdit(item)} />
+                          )}
+                          {canPartnerLock(item) && (
+                            <ActionButton variant="lock" iconOnly icon={Lock} title="Tạm ngưng" onClick={() => setConfirmTarget({ item, action: 'lock' })} />
+                          )}
+                          {canPartnerRestore(item) && (
+                            <ActionButton variant="unlock" iconOnly icon={Unlock} title="Kích hoạt" onClick={() => setConfirmTarget({ item, action: 'restore' })} />
+                          )}
+                        </ActionCell>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {showPagination && (
+              <ListPagination
+                total={items.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                rangeFrom={rangeFrom}
+                rangeTo={rangeTo}
+                pageNumbers={pageNumbers}
+                onPageChange={setPage}
+              />
+            )}
           </>
         )}
       </div>
 
-      {modalOpen && (
-        <div className="modal-overlay" onClick={() => !saving && setModalOpen(false)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <h2 className="modal-title">{editing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi'}</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Khách sạn</label>
-                <select
-                  className="search-input"
-                  value={form.ma_khach_san}
-                  onChange={(e) => setForm({ ...form, ma_khach_san: e.target.value })}
-                  required
-                  disabled={!!editing}
-                >
-                  <option value="">-- Chọn --</option>
-                  {hotels.map((h) => (
-                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Mã khuyến mãi</label>
-                <input
-                  className="search-input"
-                  value={form.ma_code}
-                  onChange={(e) => setForm({ ...form, ma_code: e.target.value.toUpperCase() })}
-                  required
-                  disabled={!!editing}
-                  placeholder="VD: SUMMER26"
-                />
-              </div>
-              <div className="form-group">
-                <label>Tên chương trình</label>
-                <input
-                  className="search-input"
-                  value={form.ten}
-                  onChange={(e) => setForm({ ...form, ten: e.target.value })}
-                  required
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label>Loại giảm</label>
-                  <select
-                    className="search-input"
-                    value={form.loai_giam}
-                    onChange={(e) => setForm({ ...form, loai_giam: e.target.value })}
-                  >
-                    {Object.entries(LOAI_GIAM).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Giá trị</label>
-                  <input
-                    className="search-input"
-                    type="number"
-                    min={0}
-                    value={form.gia_tri}
-                    onChange={(e) => setForm({ ...form, gia_tri: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              {form.loai_giam === 'phan_tram' && (
-                <div className="form-group">
-                  <label>Giảm tối đa (VNĐ)</label>
-                  <input
-                    className="search-input"
-                    type="number"
-                    min={0}
-                    value={form.giam_toi_da}
-                    onChange={(e) => setForm({ ...form, giam_toi_da: e.target.value })}
-                  />
-                </div>
-              )}
-              <div className="form-group">
-                <label>Đơn tối thiểu (VNĐ)</label>
-                <input
-                  className="search-input"
-                  type="number"
-                  min={0}
-                  value={form.don_hang_toi_thieu}
-                  onChange={(e) => setForm({ ...form, don_hang_toi_thieu: e.target.value })}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label>Từ ngày</label>
-                  <input
-                    className="search-input"
-                    type="date"
-                    value={form.ngay_bat_dau}
-                    onChange={(e) => setForm({ ...form, ngay_bat_dau: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Đến ngày</label>
-                  <input
-                    className="search-input"
-                    type="date"
-                    value={form.ngay_ket_thuc}
-                    min={form.ngay_bat_dau}
-                    onChange={(e) => setForm({ ...form, ngay_ket_thuc: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Số lượt tối đa (để trống = không giới hạn)</label>
-                <input
-                  className="search-input"
-                  type="number"
-                  min={1}
-                  value={form.so_luot_toi_da}
-                  onChange={(e) => setForm({ ...form, so_luot_toi_da: e.target.value })}
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)} disabled={saving}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mã'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {detailItem && (
+        <DetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onAction={(item, action) => setConfirmTarget({ item, action })}
+          onEdit={openEdit}
+          actionLoading={actionLoading}
+        />
+      )}
+
+      {formOpen && (
+        <FormModal
+          editing={editing}
+          form={form}
+          updateField={updateField}
+          errors={formErrors}
+          saving={saving}
+          hotels={hotels}
+          onClose={() => !saving && setFormOpen(false)}
+          onSubmit={handleSubmit}
+        />
+      )}
+
+      {confirmTarget && confirmCfg && (
+        <ConfirmModal
+          open
+          title={confirmCfg.title}
+          intro={confirmCfg.intro}
+          variant={confirmCfg.variant}
+          confirmText={confirmCfg.confirmText}
+          icon={confirmCfg.icon}
+          reason={confirmCfg.reason}
+          loading={actionLoading}
+          onClose={() => !actionLoading && setConfirmTarget(null)}
+          onConfirm={handleConfirm}
+          details={[
+            { label: 'Mã khuyến mãi', value: confirmTarget.item.ma_code },
+            { label: 'Tên chương trình', value: confirmTarget.item.ten },
+          ]}
+        />
       )}
     </div>
   );

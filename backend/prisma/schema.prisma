@@ -156,10 +156,18 @@ model hoa_hong {
   so_tien_hoa_hong Decimal             @db.Decimal(12, 0)
   trang_thai       hoa_hong_trang_thai @default(chua_thu)
   ngay_tinh        DateTime            @default(now()) @db.DateTime(0)
+  ngay_doi_soat    DateTime?           @db.DateTime(0)
+  doi_soat_boi_id  Int?
+  ghi_chu          String?             @db.Text
+  ngay_thanh_toan_doi_tac DateTime?    @db.DateTime(0)
+  phuong_thuc_tt_doi_tac String?       @db.VarChar(80)
+  ma_gd_doi_tac    String?             @db.VarChar(100)
   dat_phong        dat_phong           @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_hh_dp")
   doi_tac          doi_tac             @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_hh_dt")
+  doi_soat_boi     nguoi_dung?         @relation("hoa_hong_doi_soat_boi", fields: [doi_soat_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_hh_admin")
 
   @@index([ma_doi_tac], map: "fk_hh_dt")
+  @@index([doi_soat_boi_id], map: "fk_hh_admin")
 }
 
 model hoan_tien {
@@ -283,13 +291,23 @@ model khuyen_mai {
   so_luot_da_dung       Int                     @default(0)
   trang_thai            khuyen_mai_trang_thai   @default(hoat_dong)
   ly_do                 String?                 @db.VarChar(255)
+  khoa_boi_admin        Boolean                 @default(false)
+  khoa_boi_doi_tac      Boolean                 @default(false)
+  khoa_boi_id           Int?
+  thoi_gian_khoa        DateTime?               @db.DateTime(0)
+  mo_khoa_boi_id        Int?
+  thoi_gian_mo_khoa     DateTime?               @db.DateTime(0)
   dat_phong             dat_phong[]
   khach_hang_khuyen_mai khach_hang_khuyen_mai[]
   khach_san             khach_san?              @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_ks")
-  nguoi_dung            nguoi_dung              @relation(fields: [tao_boi_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_km_taoboi")
+  nguoi_dung            nguoi_dung              @relation("km_tao_boi", fields: [tao_boi_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_km_taoboi")
+  khoa_boi              nguoi_dung?             @relation("km_khoa_boi", fields: [khoa_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_khoaboi")
+  mo_khoa_boi           nguoi_dung?             @relation("km_mo_khoa_boi", fields: [mo_khoa_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_mokhoaboi")
 
   @@index([ma_khach_san], map: "fk_km_ks")
   @@index([tao_boi_id], map: "fk_km_taoboi")
+  @@index([khoa_boi_id], map: "fk_km_khoaboi")
+  @@index([mo_khoa_boi_id], map: "fk_km_mokhoaboi")
 }
 
 model loai_phong {
@@ -331,6 +349,7 @@ model nguoi_dung {
   email                                     String                @unique(map: "email") @db.VarChar(100)
   so_dien_thoai                             String                @unique(map: "so_dien_thoai") @db.VarChar(15)
   mat_khau                                  String                @db.VarChar(255)
+  google_id                                 String?               @unique(map: "uq_nguoi_dung_google_id") @db.VarChar(64)
   vai_tro                                   nguoi_dung_vai_tro
   trang_thai                                nguoi_dung_trang_thai @default(hoat_dong)
   otp_code                                  String?               @db.VarChar(10)
@@ -345,11 +364,14 @@ model nguoi_dung {
   hoan_tien                                 hoan_tien[]
   khach_hang                                khach_hang?
   khach_san                                 khach_san[]
-  khuyen_mai                                khuyen_mai[]
+  khuyen_mai_tao_boi                        khuyen_mai[]          @relation("km_tao_boi")
+  khuyen_mai_khoa_boi                       khuyen_mai[]          @relation("km_khoa_boi")
+  khuyen_mai_mo_khoa_boi                    khuyen_mai[]          @relation("km_mo_khoa_boi")
   thong_bao                                 thong_bao[]
   yeu_cau_tien_nghi                         yeu_cau_tien_nghi[]
   bao_cao_xu_ly                             bao_cao[]             @relation("bao_cao_admin")
   yeu_cau_hop_tac_xu_ly                     yeu_cau_hop_tac[]     @relation("yeu_cau_hop_tac_admin")
+  hoa_hong_doi_soat                         hoa_hong[]            @relation("hoa_hong_doi_soat_boi")
 }
 
 model thanh_toan {
@@ -541,6 +563,8 @@ enum chinh_sach_huy_trang_thai {
 enum hoa_hong_trang_thai {
   chua_thu
   da_thu
+  tam_giu
+  da_thanh_toan
 }
 
 enum khach_hang_gioi_tinh {
