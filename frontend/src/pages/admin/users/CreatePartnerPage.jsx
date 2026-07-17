@@ -8,7 +8,6 @@ import adminUserService from '../../../services/adminUserService';
 const INITIAL_FORM = {
   ten_cong_ty: '',
   ma_so_thue: '',
-  email_lien_he: '',
   dia_chi: '',
   phan_tram_hoa_hong: '',
   email: '',
@@ -50,9 +49,6 @@ const CreatePartnerPage = () => {
     if (!formData.ten_cong_ty.trim()) errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
     if (!formData.email.trim()) errors.email = 'Email đăng nhập là bắt buộc';
     else if (!emailRegex.test(formData.email.trim())) errors.email = 'Email đăng nhập không hợp lệ';
-    if (formData.email_lien_he.trim() && !emailRegex.test(formData.email_lien_he.trim())) {
-      errors.email_lien_he = 'Email liên hệ không hợp lệ';
-    }
     if (!formData.so_dien_thoai.trim()) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
     if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
     else if (formData.mat_khau.length < 6) errors.mat_khau = '';
@@ -81,7 +77,6 @@ const CreatePartnerPage = () => {
       await adminUserService.createPartner({
         ten_cong_ty: formData.ten_cong_ty.trim(),
         ma_so_thue: formData.ma_so_thue.trim() || null,
-        email_lien_he: formData.email_lien_he.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
         phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? 15 : Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
@@ -144,17 +139,6 @@ const CreatePartnerPage = () => {
                 value={formData.ma_so_thue}
                 onChange={handleChange}
                 placeholder="VD: 0312345678"
-              />
-            </Field>
-
-            <Field label="Email liên hệ" error={fieldErrors.email_lien_he} hint="Email hiển thị để khách/hệ thống liên hệ (khác email đăng nhập).">
-              <input
-                type="email"
-                name="email_lien_he"
-                className="search-input create-partner-input"
-                value={formData.email_lien_he}
-                onChange={handleChange}
-                placeholder="lienhe@congty.com"
               />
             </Field>
 

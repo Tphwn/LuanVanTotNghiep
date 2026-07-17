@@ -72,34 +72,6 @@ export const fetchCommissionPartner = createAsyncThunk(
   async () => (await api.get(`${PAYMENTS_API}/commissions/by-partner`)).data.data,
 );
 
-export const fetchReconciliations = createAsyncThunk(
-  'adminFinance/reconciliations',
-  async () => (await api.get(`${FINANCE_API}/reconciliations`)).data.data,
-);
-
-export const calculateReconciliation = createAsyncThunk(
-  'adminFinance/calcReconcile',
-  async ({ ma_doi_tac, thang_nam }, { rejectWithValue }) => {
-    try {
-      await api.post(`${FINANCE_API}/reconciliations/calculate`, { ma_doi_tac, thang_nam });
-      return true;
-    } catch (e) {
-      return rejectWithValue(e.response?.data?.message || 'Lỗi đối soát');
-    }
-  },
-);
-
-export const updateReconciliationStatus = createAsyncThunk(
-  'adminFinance/updateReconcile',
-  async ({ id, status }, { rejectWithValue }) => {
-    try {
-      return (await api.patch(`${FINANCE_API}/reconciliations/${id}`, { status })).data.data;
-    } catch (e) {
-      return rejectWithValue(e.response?.data?.message || 'Lỗi cập nhật');
-    }
-  },
-);
-
 export const approveRefund = createAsyncThunk('adminFinance/approveRefund', async (id, { rejectWithValue }) => {
   try {
     return (await api.patch(`${PAYMENTS_API}/refunds/${id}/approve`)).data.data;
@@ -215,9 +187,7 @@ const adminFinanceSlice = createSlice({
     partnerPayoutStats: null,
     partnerPayoutDetail: null,
     partnerPayoutDetailLoading: false,
-    reconciliations: [],
     loading: false,
-    reconcileLoading: false,
     error: null,
     successMsg: null,
   },
@@ -270,24 +240,6 @@ const adminFinanceSlice = createSlice({
       })
       .addCase(fetchCommissionById.rejected, (st) => { st.commissionDetailLoading = false; })
       .addCase(fetchCommissionPartner.fulfilled, (st, a) => { st.commByPartner = a.payload; })
-      .addCase(fetchReconciliations.pending, (st) => { st.reconcileLoading = true; })
-      .addCase(fetchReconciliations.fulfilled, (st, a) => {
-        st.reconcileLoading = false;
-        st.reconciliations = a.payload;
-      })
-      .addCase(fetchReconciliations.rejected, (st) => { st.reconcileLoading = false; })
-
-      .addCase(calculateReconciliation.fulfilled, (st) => {
-        st.successMsg = 'Đã tính toán đối soát thành công';
-      })
-      .addCase(calculateReconciliation.rejected, (st, a) => { st.error = a.payload; })
-
-      .addCase(updateReconciliationStatus.fulfilled, (st, a) => {
-        st.successMsg = 'Đã cập nhật trạng thái đối soát';
-        const i = st.reconciliations.findIndex((x) => x.ma_doi_soat === a.payload.ma_doi_soat);
-        if (i !== -1) st.reconciliations[i] = a.payload;
-      })
-      .addCase(updateReconciliationStatus.rejected, (st, a) => { st.error = a.payload; })
 
       .addCase(approveRefund.fulfilled, (st, a) => {
         st.successMsg = 'Đã hoàn tiền thành công!';

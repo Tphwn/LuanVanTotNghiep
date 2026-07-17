@@ -3,6 +3,7 @@ import { Eye, MessageSquareOff, MessageSquare } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
@@ -196,6 +197,14 @@ const ReviewsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
 
+  const [draftPartnerFilter, setDraftPartnerFilter] = useState('');
+  const [draftHotelFilter, setDraftHotelFilter] = useState('');
+  const [draftStarFilter, setDraftStarFilter] = useState('all');
+  const [draftStatusFilter, setDraftStatusFilter] = useState('all');
+  const [draftTimePreset, setDraftTimePreset] = useState('all');
+  const [draftTuNgay, setDraftTuNgay] = useState('');
+  const [draftDenNgay, setDraftDenNgay] = useState('');
+
   const [detailReview, setDetailReview] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [toast, setToast] = useState(null);
@@ -238,9 +247,9 @@ const ReviewsPage = () => {
   }, []);
 
   const hotelOptions = useMemo(() => hotels.filter((hotel) => {
-    if (!partnerFilter) return true;
-    return String(hotel.ma_doi_tac) === partnerFilter;
-  }), [hotels, partnerFilter]);
+    if (!draftPartnerFilter) return true;
+    return String(hotel.ma_doi_tac) === draftPartnerFilter;
+  }), [hotels, draftPartnerFilter]);
 
   const loadReviews = useCallback(async () => {
     if (loadingMeta) return;
@@ -285,13 +294,13 @@ const ReviewsPage = () => {
   }, [loadReviews, loadingMeta]);
 
   const handlePartnerChange = (value) => {
-    setPartnerFilter(value);
-    if (!value || !hotelFilter) return;
+    setDraftPartnerFilter(value);
+    if (!value || !draftHotelFilter) return;
     const hotelStillValid = hotels.some(
-      (h) => String(h.ma_khach_san) === hotelFilter
+      (h) => String(h.ma_khach_san) === draftHotelFilter
         && String(h.ma_doi_tac) === value,
     );
-    if (!hotelStillValid) setHotelFilter('');
+    if (!hotelStillValid) setDraftHotelFilter('');
   };
 
   const handleRequestAction = (review, action) => {
@@ -329,13 +338,15 @@ const ReviewsPage = () => {
     }
   };
 
-  const hasActiveFilter = Boolean(
-    partnerFilter
-    || hotelFilter
-    || starFilter !== 'all'
-    || statusFilter !== 'all'
-    || timePreset !== 'all',
-  );
+  const applyFilters = () => {
+    setPartnerFilter(draftPartnerFilter);
+    setHotelFilter(draftHotelFilter);
+    setStarFilter(draftStarFilter);
+    setStatusFilter(draftStatusFilter);
+    setTimePreset(draftTimePreset);
+    setTuNgay(draftTuNgay);
+    setDenNgay(draftDenNgay);
+  };
 
   const clearFilters = () => {
     setPartnerFilter('');
@@ -345,6 +356,13 @@ const ReviewsPage = () => {
     setTimePreset('all');
     setTuNgay('');
     setDenNgay('');
+    setDraftPartnerFilter('');
+    setDraftHotelFilter('');
+    setDraftStarFilter('all');
+    setDraftStatusFilter('all');
+    setDraftTimePreset('all');
+    setDraftTuNgay('');
+    setDraftDenNgay('');
   };
 
   const statItems = useMemo(() => [
@@ -394,7 +412,7 @@ const ReviewsPage = () => {
           <select
             id="review-partner-filter"
             className="mgmt-select-inline"
-            value={partnerFilter}
+            value={draftPartnerFilter}
             onChange={(e) => handlePartnerChange(e.target.value)}
           >
             <option value="">Tất cả đối tác</option>
@@ -409,8 +427,8 @@ const ReviewsPage = () => {
           <select
             id="review-hotel-filter"
             className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
+            value={draftHotelFilter}
+            onChange={(e) => setDraftHotelFilter(e.target.value)}
           >
             <option value="">Tất cả khách sạn</option>
             {hotelOptions.map((h) => (
@@ -424,8 +442,8 @@ const ReviewsPage = () => {
           <select
             id="review-star-filter"
             className="mgmt-select-inline"
-            value={starFilter}
-            onChange={(e) => setStarFilter(e.target.value)}
+            value={draftStarFilter}
+            onChange={(e) => setDraftStarFilter(e.target.value)}
           >
             <option value="all">Tất cả sao</option>
             {[5, 4, 3, 2, 1].map((s) => (
@@ -439,8 +457,8 @@ const ReviewsPage = () => {
           <select
             id="review-status-filter"
             className="mgmt-select-inline"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            value={draftStatusFilter}
+            onChange={(e) => setDraftStatusFilter(e.target.value)}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="hien_thi">Hiển thị</option>
@@ -453,8 +471,8 @@ const ReviewsPage = () => {
           <select
             id="review-time-filter"
             className="mgmt-select-inline"
-            value={timePreset}
-            onChange={(e) => setTimePreset(e.target.value)}
+            value={draftTimePreset}
+            onChange={(e) => setDraftTimePreset(e.target.value)}
           >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -462,7 +480,7 @@ const ReviewsPage = () => {
           </select>
         </div>
 
-        {timePreset === 'custom' && (
+        {draftTimePreset === 'custom' && (
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="review-from-date">Từ ngày</label>
@@ -470,8 +488,8 @@ const ReviewsPage = () => {
                 id="review-from-date"
                 type="date"
                 className="mgmt-select-inline"
-                value={tuNgay}
-                onChange={(e) => setTuNgay(e.target.value)}
+                value={draftTuNgay}
+                onChange={(e) => setDraftTuNgay(e.target.value)}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -480,21 +498,17 @@ const ReviewsPage = () => {
                 id="review-to-date"
                 type="date"
                 className="mgmt-select-inline"
-                value={denNgay}
-                min={tuNgay}
-                onChange={(e) => setDenNgay(e.target.value)}
+                value={draftDenNgay}
+                min={draftTuNgay}
+                onChange={(e) => setDraftDenNgay(e.target.value)}
               />
             </div>
           </>
         )}
 
-        {hasActiveFilter && (
-          <div className="mgmt-filter-field mgmt-filter-field--action">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          </div>
-        )}
+        <div className="mgmt-filter-field mgmt-filter-field--action">
+          <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        </div>
       </div>
 
       <SummaryStats items={statItems} />

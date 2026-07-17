@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import FilterActions from '../../../components/common/management/FilterActions';
 import ListPagination from '../../../components/common/management/ListPagination';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import adminPartnerRequestService from '../../../services/adminPartnerRequestService';
@@ -28,15 +29,10 @@ const PartnerRequestsPage = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const [draftKeyword, setDraftKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedKeyword(keyword.trim()), 350);
-    return () => clearTimeout(timer);
-  }, [keyword]);
 
   useEffect(() => {
     adminPartnerRequestService.getStats()
@@ -51,7 +47,7 @@ const PartnerRequestsPage = () => {
       try {
         const params = { limit: 100 };
         if (statusFilter !== 'all') params.trang_thai = statusFilter;
-        if (debouncedKeyword) params.keyword = debouncedKeyword;
+        if (keyword.trim()) params.keyword = keyword.trim();
 
         const res = await adminPartnerRequestService.getList(params);
         setItems(res.data?.data?.items || []);
@@ -64,7 +60,7 @@ const PartnerRequestsPage = () => {
     };
 
     load();
-  }, [statusFilter, debouncedKeyword, refreshTick]);
+  }, [statusFilter, keyword, refreshTick]);
 
   useEffect(() => {
     if (!successMsg) return undefined;
@@ -80,9 +76,12 @@ const PartnerRequestsPage = () => {
     { id: 'tu_choi', label: 'Từ chối', count: stats?.tu_choi ?? 0, tone: 'danger' },
   ], [stats, items.length]);
 
-  const hasActiveFilter = Boolean(keyword.trim() || statusFilter !== 'all');
+  const applyFilters = () => {
+    setKeyword(draftKeyword);
+  };
 
   const clearFilters = () => {
+    setDraftKeyword('');
     setKeyword('');
     setStatusFilter('all');
   };
@@ -96,7 +95,7 @@ const PartnerRequestsPage = () => {
     rangeFrom,
     rangeTo,
     showPagination,
-  } = useListPagination(items, PAGE_SIZE, [statusFilter, debouncedKeyword]);
+  } = useListPagination(items, PAGE_SIZE, [statusFilter, keyword]);
 
   return (
     <div className="mgmt-page">
@@ -123,21 +122,15 @@ const PartnerRequestsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={keyword}
-        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchValue={draftKeyword}
+        onSearchChange={(e) => setDraftKeyword(e.target.value)}
         searchPlaceholder="Tìm mã, tên, SĐT, khách sạn, email..."
         tabs={filterTabs}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
-      />
-
-      {hasActiveFilter && (
-        <div className="mgmt-filter-clear-row">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        </div>
-      )}
+      >
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+      </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
@@ -165,49 +158,49 @@ const PartnerRequestsPage = () => {
                 </thead>
                 <tbody>
                   {pagedItems.map((item) => {
-                  const st = STATUS_MAP[item.trang_thai] || {
-                    label: item.trang_thai,
-                    cls: 'badge-default',
-                  };
+                    const st = STATUS_MAP[item.trang_thai] || {
+                      label: item.trang_thai,
+                      cls: 'badge-default',
+                    };
 
-                  return (
-                    <tr key={item.ma_yeu_cau}>
-                      <td>
-                        <div style={{ fontWeight: 600, color: '#1a2e28' }}>
-                          #{item.ma_yeu_cau}
-                        </div>
-                      </td>
-                      <td>
-                      <div style={{ fontSize: 12, color: '#5a7a72', marginTop: 4 }}>
-                          {formatDateTime(item.ngay_yeu_cau)}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{item.ho_ten}</div>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 13, color: '#5a7a72', marginTop: 4 }}>
-                          {item.so_dien_thoai}
-                        </div>
-                      </td>
-                      <td>{item.ten_co_so}</td>
-                      <td>
-                        <span className={`badge ${st.cls}`}>{st.label}</span>
-                      </td>
-                      <ActionCell>
-                        <ActionButton
-                          variant="view"
-                          icon={Eye}
-                          iconOnly
-                          title="Xem chi tiết"
-                          onClick={() => setSelectedId(item.ma_yeu_cau)}
-                        />
-                      </ActionCell>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    return (
+                      <tr key={item.ma_yeu_cau}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#1a2e28' }}>
+                            #{item.ma_yeu_cau}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: 12, color: '#5a7a72', marginTop: 4 }}>
+                            {formatDateTime(item.ngay_yeu_cau)}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 500 }}>{item.ho_ten}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: 13, color: '#5a7a72', marginTop: 4 }}>
+                            {item.so_dien_thoai}
+                          </div>
+                        </td>
+                        <td>{item.ten_co_so}</td>
+                        <td>
+                          <span className={`badge ${st.cls}`}>{st.label}</span>
+                        </td>
+                        <ActionCell>
+                          <ActionButton
+                            variant="view"
+                            icon={Eye}
+                            iconOnly
+                            title="Xem chi tiết"
+                            onClick={() => setSelectedId(item.ma_yeu_cau)}
+                          />
+                        </ActionCell>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {showPagination && (

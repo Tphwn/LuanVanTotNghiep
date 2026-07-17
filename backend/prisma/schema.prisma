@@ -36,7 +36,6 @@ model chinh_sach_huy {
   ma_khach_san   Int
   so_ngay_truoc  Int
   phan_tram_hoan Decimal                   @db.Decimal(5, 2)
-  mo_ta          String?                   @db.Text
   trang_thai     chinh_sach_huy_trang_thai @default(hoat_dong)
   khach_san      khach_san                 @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_csh_ks")
 
@@ -47,7 +46,6 @@ model danh_gia {
   ma_danh_gia      Int                 @id @default(autoincrement())
   ma_dat_phong     Int                 @unique(map: "ma_dat_phong")
   ma_khach_hang    Int
-  duyet_boi_id     Int?
   so_sao           Int                 @db.TinyInt
   diem_sach_se     Int?                @db.TinyInt
   diem_dich_vu     Int?                @db.TinyInt
@@ -61,12 +59,9 @@ model danh_gia {
   ly_do_an_phan_hoi String?            @db.Text
   trang_thai       danh_gia_trang_thai @default(hien_thi)
   ngay_danh_gia    DateTime            @default(now()) @db.DateTime(0)
-  ngay_duyet       DateTime?           @db.DateTime(0)
-  nguoi_dung       nguoi_dung?         @relation(fields: [duyet_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_dg_admin")
   dat_phong        dat_phong           @relation(fields: [ma_dat_phong], references: [ma_dat_phong], onUpdate: Restrict, map: "fk_dg_dp")
   khach_hang       khach_hang          @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_dg_kh")
 
-  @@index([duyet_boi_id], map: "fk_dg_admin")
   @@index([ma_khach_hang], map: "fk_dg_kh")
 }
 
@@ -76,7 +71,6 @@ model dat_phong {
   ma_loai_phong      Int
   ma_khuyen_mai      Int?
   ma_don_hang        String                   @unique(map: "ma_don_hang") @db.VarChar(20)
-  ma_xac_nhan        String?                  @db.VarChar(20)
   ngay_nhan_phong    DateTime                 @db.Date
   ngay_tra_phong     DateTime                 @db.Date
   so_khach           Int
@@ -108,10 +102,8 @@ model dat_phong {
 model dia_diem {
   ma_dia_diem  Int         @id @default(autoincrement())
   ten_dia_diem String      @db.VarChar(100)
-  slug         String?     @db.VarChar(100)
   tinh_thanh   String?     @db.VarChar(100)
   quoc_gia     String?     @db.VarChar(100)
-  mo_ta        String?     @db.Text
   khach_san    khach_san[]
 }
 
@@ -120,15 +112,12 @@ model doi_tac {
   ma_nguoi_dung                                Int                 @unique(map: "ma_nguoi_dung")
   nguoi_cap_id                                 Int
   ten_cong_ty                                  String              @db.VarChar(150)
-  email_lien_he                                String?             @db.VarChar(100)
   anh_dai_dien                                 String?             @db.VarChar(255)
   ma_so_thue                                   String?             @db.VarChar(20)
-  so_dien_thoai                                String?             @db.VarChar(15)
   dia_chi                                      String?             @db.Text
   trang_thai                                   doi_tac_trang_thai  @default(hoat_dong)
   ngay_cap_tai_khoan                           DateTime            @default(now()) @db.DateTime(0)
   phan_tram_hoa_hong                           Decimal?            @db.Decimal(5, 2)
-  doi_soat                                     doi_soat[]
   nguoi_dung_doi_tac_nguoi_cap_idTonguoi_dung  nguoi_dung          @relation("doi_tac_nguoi_cap_idTonguoi_dung", fields: [nguoi_cap_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoicap")
   nguoi_dung_doi_tac_ma_nguoi_dungTonguoi_dung nguoi_dung          @relation("doi_tac_ma_nguoi_dungTonguoi_dung", fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_dt_nguoidung")
   hoa_hong                                     hoa_hong[]
@@ -201,21 +190,6 @@ model khach_hang {
   bao_cao               bao_cao[]
   dat_phong             dat_phong[]
   nguoi_dung            nguoi_dung              @relation(fields: [ma_nguoi_dung], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_kh_nguoidung")
-  khach_hang_khuyen_mai khach_hang_khuyen_mai[]
-}
-
-model khach_hang_khuyen_mai {
-  ma_kh_km      Int                              @id @default(autoincrement())
-  ma_khach_hang Int
-  ma_khuyen_mai Int
-  trang_thai    khach_hang_khuyen_mai_trang_thai @default(chua_dung)
-  ngay_cap      DateTime                         @default(now()) @db.DateTime(0)
-  ngay_su_dung  DateTime?                        @db.DateTime(0)
-  khach_hang    khach_hang                       @relation(fields: [ma_khach_hang], references: [ma_khach_hang], onUpdate: Restrict, map: "fk_khkm_kh")
-  khuyen_mai    khuyen_mai                       @relation(fields: [ma_khuyen_mai], references: [ma_khuyen_mai], onUpdate: Restrict, map: "fk_khkm_km")
-
-  @@unique([ma_khach_hang, ma_khuyen_mai], map: "uq_kh_km")
-  @@index([ma_khuyen_mai], map: "fk_khkm_km")
 }
 
 model khach_san {
@@ -284,7 +258,6 @@ model khuyen_mai {
   gia_tri               Decimal                 @db.Decimal(10, 2)
   giam_toi_da           Decimal?                @db.Decimal(12, 0)
   don_hang_toi_thieu    Decimal                 @default(0) @db.Decimal(12, 0)
-  nguong_ap_dung        Decimal?                @db.Decimal(12, 0)
   ngay_bat_dau          DateTime                @db.Date
   ngay_ket_thuc         DateTime                @db.Date
   so_luot_toi_da        Int?
@@ -298,7 +271,6 @@ model khuyen_mai {
   mo_khoa_boi_id        Int?
   thoi_gian_mo_khoa     DateTime?               @db.DateTime(0)
   dat_phong             dat_phong[]
-  khach_hang_khuyen_mai khach_hang_khuyen_mai[]
   khach_san             khach_san?              @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_ks")
   nguoi_dung            nguoi_dung              @relation("km_tao_boi", fields: [tao_boi_id], references: [ma_nguoi_dung], onUpdate: Restrict, map: "fk_km_taoboi")
   khoa_boi              nguoi_dung?             @relation("km_khoa_boi", fields: [khoa_boi_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_km_khoaboi")
@@ -358,7 +330,6 @@ model nguoi_dung {
   token_het_han                             DateTime?             @db.DateTime(0)
   ngay_tao                                  DateTime              @default(now()) @db.DateTime(0)
   dang_nhap_cuoi                            DateTime?             @db.DateTime(0)
-  danh_gia                                  danh_gia[]
   doi_tac_doi_tac_nguoi_cap_idTonguoi_dung  doi_tac[]             @relation("doi_tac_nguoi_cap_idTonguoi_dung")
   doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung doi_tac?              @relation("doi_tac_ma_nguoi_dungTonguoi_dung")
   hoan_tien                                 hoan_tien[]
@@ -468,31 +439,6 @@ model bao_cao {
   @@index([trang_thai], map: "idx_bc_trang_thai")
 }
 
-model cau_hinh_he_thong {
-  ma_cau_hinh Int     @id @default(autoincrement())
-  tu_khoa     String  @unique(map: "tu_khoa") @db.VarChar(100)
-  gia_tri     String  @db.VarChar(255)
-  mo_ta       String? @db.Text
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model doi_soat {
-  ma_doi_soat        Int                 @id @default(autoincrement())
-  ma_doi_tac         Int
-  thang_nam          String              @db.VarChar(10)
-  tong_doanh_thu     Decimal             @default(0) @db.Decimal(12, 0)
-  tong_hoa_hong      Decimal             @default(0) @db.Decimal(12, 0)
-  tong_hoan_tien     Decimal             @default(0) @db.Decimal(12, 0)
-  thanh_toan_doi_tac Decimal             @default(0) @db.Decimal(12, 0)
-  trang_thai         doi_soat_trang_thai @default(chua_doi_soat)
-  ghi_chu            String?             @db.Text
-  ngay_tinh_toan     DateTime            @default(now()) @db.DateTime(0)
-  ngay_thanh_toan    DateTime?           @db.DateTime(0)
-  doi_tac            doi_tac             @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_ds_dt")
-
-  @@unique([ma_doi_tac, thang_nam], map: "uq_doi_soat")
-}
-
 model yeu_cau_hop_tac {
   ma_yeu_cau     Int                         @id @default(autoincrement())
   ho_ten         String                      @db.VarChar(100)
@@ -527,12 +473,6 @@ enum trang_thai_enum {
 enum hinh_anh_loai_doi_tuong {
   khach_san
   loai_phong
-}
-
-enum khach_hang_khuyen_mai_trang_thai {
-  chua_dung
-  da_dung
-  het_han
 }
 
 enum bang_gia_phong_loai_gia {
@@ -636,7 +576,6 @@ enum khach_san_trang_thai {
 }
 
 enum danh_gia_trang_thai {
-  cho_duyet
   hien_thi
   an
 }
@@ -675,12 +614,6 @@ enum khuyen_mai_trang_thai {
   tu_choi
   het_han
   an
-}
-
-enum doi_soat_trang_thai {
-  chua_doi_soat
-  da_doi_soat
-  da_thanh_toan
 }
 
 enum yeu_cau_hop_tac_trang_thai {

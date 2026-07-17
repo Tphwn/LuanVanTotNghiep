@@ -1,9 +1,8 @@
  import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchFinanceOverview,
-  fetchPaymentStats,
   fetchTransactions,
   fetchRefunds,
   fetchCommissions,
@@ -25,14 +24,13 @@ import { REFUND_TRANG_THAI } from '../../../utils/bookingDisplay';
 import TransactionDetailModal from './components/TransactionDetailModal';
 import RefundDetailModal from './components/RefundDetailModal';
 import CommissionDetailModal from './components/CommissionDetailModal';
-import PartnerPayoutDetailModal from './components/PartnerPayoutDetailModal';
 import PartnerPayoutConfirmModal from './components/PartnerPayoutConfirmModal';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
+import AdminFinanceOverviewPanel from './AdminFinanceOverviewPanel';
 
 // ===== HELPERS =====
 const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(v || 0);
-const fmtCompact = (v) => new Intl.NumberFormat('vi-VN', { notation: 'compact'}).format(v || 0) +'₫';
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 
 const fmtPaymentDateTime = (d) => {
@@ -81,11 +79,13 @@ const PAYOUT_STATUS = {
   tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
-const StatCard = ({ title, value, subtitle }) => (
-  <div className="content-card" style={{ flex: '1 1 200px', padding: '16px 20px', marginBottom: 0 }}>
-    <div style={{ fontSize: 12, color: '#5a7a72', marginBottom: 6, fontWeight: 600 }}>{title}</div>
-    <div style={{ fontSize: 20, fontWeight: 700, color: '#1a2e28' }}>{value}</div>
-    {subtitle && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{subtitle}</div>}
+const StatCard = ({ title, value, subtitle, tone }) => (
+  <div className={`admin-finance-metric${tone ? ` admin-finance-metric--${tone}` : ''}`}>
+    <span className="admin-finance-metric-label">{title}</span>
+    <strong className="admin-finance-metric-value">{value}</strong>
+    <span className={`admin-finance-metric-sub${subtitle ? '' : ' is-empty'}`}>
+      {subtitle || '\u00A0'}
+    </span>
   </div>
 );
 
@@ -99,10 +99,10 @@ const FINANCE_TABS = ['overview', 'transactions', 'refunds', 'commissions', 'par
 
 const AdminFinancePage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     overview,
-    stats,
     transactions,
     refunds,
     commissions,
@@ -115,20 +115,9 @@ const AdminFinancePage = () => {
   } = useSelector((s) => s.adminFinance || {});
 
   const initialTab = searchParams.get('tab');
-  const [tab, setTab] = useState(FINANCE_TABS.includes(initialTab) ? initialTab : 'overview');
-
-  useEffect(() => {
-    const urlTab = searchParams.get('tab');
-    if (urlTab && FINANCE_TABS.includes(urlTab) && urlTab !== tab) {
-      setTab(urlTab);
-    }
-    if (!urlTab && tab !== 'overview') {
-      setTab('overview');
-    }
-  }, [searchParams, tab]);
+  const tab = FINANCE_TABS.includes(initialTab) ? initialTab : 'overview';
 
   const handleTabChange = (tabId) => {
-    setTab(tabId);
     if (tabId === 'overview') {
       setSearchParams({}, { replace: true });
     } else {
@@ -141,7 +130,6 @@ const AdminFinancePage = () => {
   const [commModalId, setCommModalId] = useState(null);
   const [commAction, setCommAction] = useState(null);
   const [commActionLoading, setCommActionLoading] = useState(false);
-  const [payoutModalId, setPayoutModalId] = useState(null);
   const [payoutAction, setPayoutAction] = useState(null);
   const [payoutActionLoading, setPayoutActionLoading] = useState(false);
   const [payoutFormError, setPayoutFormError] = useState('');
@@ -180,7 +168,6 @@ const AdminFinancePage = () => {
 
   useEffect(() => {
     dispatch(fetchFinanceOverview());
-    dispatch(fetchPaymentStats());
     dispatch(fetchTransactions());
     dispatch(fetchRefunds());
     dispatch(fetchCommissions());
@@ -287,8 +274,8 @@ const AdminFinancePage = () => {
       {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Quản lý Tài chính</h1>
-          <p className="page-subtitle">Giao dịch, hoàn tiền, hoa hồng và thanh toán đối tác</p>
+          <h1 className="page-title">Quản lý tài chính</h1>
+          <p className="page-subtitle">Theo dõi doanh thu, giao dịch, hoàn tiền, hoa hồng và thanh toán đối tác.</p>
         </div>
       </div>
       <Toast
@@ -320,55 +307,13 @@ const AdminFinancePage = () => {
         ))}
       </div>
       {tab === 'overview' && (
-        <>
-          {overview && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
-              <StatCard title="Tổng doanh thu (GMV)" value={fmt(overview.tong_doanh_thu)} subtitle="Giá trị đơn đặt phòng" />
-              <StatCard title="Hoa hồng đã thu" value={fmt(overview.tong_hoa_hong)} subtitle="Lợi nhuận từ đối tác" />
-              <StatCard title="Đã hoàn trả khách" value={fmt(overview.tong_hoan_tien)} />
-              <StatCard title="Đơn hoàn thành" value={`${overview.so_don_thanh_cong || 0} đơn`} />
-            </div>
-          )}
-
-          {stats && (
-          <div className="content-card">
-            <h3 className="content-card-title"style={{ marginBottom:16 }}> Doanh thu 6 tháng gần nhất</h3>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:12, height:160, padding:'0 8px'}}>
-              {stats.bieu_do_thang?.map((m, i) => {
-                const max = Math.max(...stats.bieu_do_thang.map(x => Number(x.doanh_thu)));
-                const h = max > 0 ? (Number(m.doanh_thu) / max) * 130 : 0;
-                return (
-                  <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-                    <div style={{ fontSize:11, color:'#3C7363', fontWeight:500 }}>
-                      {fmtCompact(m.doanh_thu)}
-                    </div>
-                    <div style={{
-                      width:'100%', height: h || 4, borderRadius:'6px 6px 0 0',
-                      background: i === stats.bieu_do_thang.length - 1 ? '#3C7363':'#8FD9C4',
-                      transition:'height .3s',
-                      minHeight:4,
-                    }} />
-                    <div style={{ fontSize:11, color:'#5a7a72'}}>{m.thang}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          )}
-
-          {pendingRefunds > 0 && (
-            <div style={{
-              marginTop:16, padding:'12px 16px', background:'#fff8e6',
-              border:'1px solid #fac775', borderRadius:10, fontSize:14, color:'#854F0B',
-              display:'flex', justifyContent:'space-between', alignItems:'center',
-            }}>
-              <span> Có <strong>{pendingRefunds}</strong> yêu cầu hoàn tiền đang chờ xử lý</span>
-              <button className="btn btn-outline btn-sm"onClick={() => setTab('refunds')}>
-                Xử lý ngay →
-              </button>
-            </div>
-          )}
-        </>
+        <AdminFinanceOverviewPanel
+          overview={overview}
+          onGoRefunds={() => handleTabChange('refunds')}
+          onGoCommissions={() => handleTabChange('commissions')}
+          onGoPartner={() => handleTabChange('partner')}
+          onViewTransaction={(id) => setTxModalId(id)}
+        />
       )}
 
       {/* ===== GIAO DỊCH ===== */}
@@ -416,9 +361,9 @@ const AdminFinancePage = () => {
                   onChange={e => setTxFilter({...txFilter, den_ngay:e.target.value})} />
               </div>
             </div>
-            <div style={{ display:'flex', gap:8 }}>
-              <button className="btn btn-primary"onClick={() => dispatch(fetchTransactions(txFilter))}> Tìm</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setTxFilter({trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''}); dispatch(fetchTransactions()); }}>Xóa bộ lọc</button>
+            <div className="mgmt-filter-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => dispatch(fetchTransactions(txFilter))}>Lọc</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setTxFilter({trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''}); dispatch(fetchTransactions()); }}>Xóa lọc</button>
             </div>
           </div>
 
@@ -529,12 +474,12 @@ const AdminFinancePage = () => {
                   onChange={e => setRfFilter({...rfFilter, den_ngay:e.target.value})} />
               </div>
             </div>
-            <div style={{ display:'flex', gap:8 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => dispatch(fetchRefunds(rfFilter))}>Tìm</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => {
+            <div className="mgmt-filter-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => dispatch(fetchRefunds(rfFilter))}>Lọc</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
                 setRfFilter({ trang_thai:'all', tu_ngay:'', den_ngay:'', keyword:'' });
                 dispatch(fetchRefunds());
-              }}>Xóa bộ lọc</button>
+              }}>Xóa lọc</button>
             </div>
           </div>
 
@@ -611,24 +556,42 @@ const AdminFinancePage = () => {
       {/* ===== HOA HỒNG ===== */}
       {tab === 'commissions' && (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div className="admin-finance-metrics admin-finance-metrics--6">
             <StatCard
               title="Tổng hoa hồng hệ thống"
               value={fmt(commissionStats?.tong_hoa_hong_he_thong)}
               subtitle="Tiền hệ thống giữ lại"
+              tone="neutral"
             />
             <StatCard
               title="Doanh thu hợp lệ"
               value={fmt(commissionStats?.doanh_thu_hop_le)}
-              subtitle="Tổng tiền các đơn đã tính HH"
+              subtitle="Đơn đã tính hoa hồng"
+              tone="info"
             />
             <StatCard
               title="Số đơn tính hoa hồng"
-              value={`${commissionStats?.so_don_da_tinh || 0} đơn`}
+              value={`${commissionStats?.so_don_da_tinh || 0}`}
+              subtitle="Đơn hoàn thành hợp lệ"
             />
-            <StatCard title="Chờ đối soát" value={`${commissionStats?.cho_doi_soat || 0}`} />
-            <StatCard title="Đã đối soát" value={`${commissionStats?.da_doi_soat || 0}`} />
-            <StatCard title="Tạm giữ" value={`${commissionStats?.tam_giu || 0}`} />
+            <StatCard
+              title="Chờ đối soát"
+              value={`${commissionStats?.cho_doi_soat || 0}`}
+              subtitle="Chưa xác nhận"
+              tone="warning"
+            />
+            <StatCard
+              title="Đã đối soát"
+              value={`${commissionStats?.da_doi_soat || 0}`}
+              subtitle="Chờ thanh toán đối tác"
+              tone="success"
+            />
+            <StatCard
+              title="Tạm giữ"
+              value={`${commissionStats?.tam_giu || 0}`}
+              subtitle="Đang tạm khóa"
+              tone="danger"
+            />
           </div>
 
           <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
@@ -699,7 +662,7 @@ const AdminFinancePage = () => {
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="mgmt-filter-actions">
               <button type="button" className="btn btn-primary btn-sm" onClick={() => loadCommissions(commFilter)}>
                 Lọc
               </button>
@@ -844,23 +807,30 @@ const AdminFinancePage = () => {
       {/* ===== THANH TOÁN ĐỐI TÁC ===== */}
       {tab === 'partner' && (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div className="admin-finance-metrics admin-finance-metrics--4">
             <StatCard
               title="Tổng tiền chờ thanh toán"
               value={fmt(partnerPayoutStats?.tong_cho_thanh_toan)}
               subtitle="Sau khi trừ hoa hồng hệ thống"
+              tone="warning"
             />
             <StatCard
               title="Tổng tiền đã thanh toán"
               value={fmt(partnerPayoutStats?.tong_da_thanh_toan)}
+              subtitle="Các đợt đã chuyển đối tác"
+              tone="success"
             />
             <StatCard
               title="Số đối tác chờ thanh toán"
               value={`${partnerPayoutStats?.so_doi_tac_cho || 0}`}
+              subtitle="Có đợt chờ xử lý"
+              tone="info"
             />
             <StatCard
               title="Số kỳ thanh toán tạm giữ"
               value={`${partnerPayoutStats?.so_ky_tam_giu || 0}`}
+              subtitle="Đơn đang tạm khóa"
+              tone="danger"
             />
           </div>
 
@@ -931,7 +901,7 @@ const AdminFinancePage = () => {
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="mgmt-filter-actions">
               <button type="button" className="btn btn-primary btn-sm" onClick={() => loadPartnerPayouts(payoutFilter)}>
                 Lọc
               </button>
@@ -958,13 +928,13 @@ const AdminFinancePage = () => {
           <div className="content-card">
             <div className="content-card-header">
               <h3 className="content-card-title">
-                Danh sách thanh toán đối tác ({partnerPayouts?.length || 0})
+                Danh sách đợt thanh toán đối tác ({partnerPayouts?.length || 0})
               </h3>
             </div>
             {!partnerPayouts?.length ? (
               <div className="empty-state">
                 <p className="empty-state-text">
-                  Chưa có đối tác cần thanh toán. Chỉ hiện đơn đã đối soát hoa hồng và chưa thanh toán / không tạm giữ.
+                  Chưa có đợt thanh toán. Sau khi đối soát hoa hồng, các đơn sẽ gom thành một đợt chờ thanh toán.
                 </p>
               </div>
             ) : (
@@ -974,11 +944,12 @@ const AdminFinancePage = () => {
                     <tr>
                       <th>Mã đối tác</th>
                       <th>Tên đối tác</th>
-                      <th>Số KS</th>
-                      <th>Số đơn đã đối soát</th>
+                      <th>Đợt</th>
+                      <th>Mã thanh toán</th>
+                      <th>Số đơn</th>
                       <th>Tổng doanh thu</th>
                       <th>Hoa hồng hệ thống</th>
-                      <th>Số tiền cần TT</th>
+                      <th>Số tiền TT</th>
                       <th>Trạng thái</th>
                       <th className="table-action-cell--compact" scope="col">Thao tác</th>
                     </tr>
@@ -990,16 +961,21 @@ const AdminFinancePage = () => {
                         cls: 'badge-default',
                       };
                       const canConfirm = row.trang_thai === 'cho_thanh_toan' && row.so_don_cho_tt > 0;
-                      const canRelease = row.trang_thai === 'tam_giu' || row.so_don_tam_giu > 0;
+                      const amount = canConfirm
+                        ? row.so_tien_can_thanh_toan
+                        : row.so_tien_thanh_toan;
                       return (
-                        <tr key={row.ma_doi_tac}>
+                        <tr key={row.ma_dot || `${row.ma_doi_tac}-${row.ma_gd_doi_tac || row.trang_thai}`}>
                           <td className="mgmt-table-cell-code">#{row.ma_doi_tac}</td>
                           <td style={{ fontWeight: 500 }}>{row.ten_cong_ty}</td>
-                          <td>{row.so_khach_san}</td>
-                          <td>{row.so_don_da_doi_soat}</td>
+                          <td>{row.ten_dot || '—'}</td>
+                          <td className="mgmt-table-cell-code">
+                            {row.ma_gd_doi_tac || (canConfirm ? '—' : '—')}
+                          </td>
+                          <td>{row.so_don ?? row.so_don_da_doi_soat}</td>
                           <td>{fmt(row.tong_doanh_thu)}</td>
                           <td style={{ color: '#b36b00', fontWeight: 500 }}>{fmt(row.tong_hoa_hong)}</td>
-                          <td style={{ color: '#3C7363', fontWeight: 700 }}>{fmt(row.so_tien_can_thanh_toan)}</td>
+                          <td style={{ color: '#3C7363', fontWeight: 700 }}>{fmt(amount)}</td>
                           <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                           <ActionCell>
                             <ActionButton
@@ -1007,13 +983,15 @@ const AdminFinancePage = () => {
                               iconOnly
                               icon={Eye}
                               title="Xem chi tiết"
-                              onClick={() => setPayoutModalId(row.ma_doi_tac)}
+                              onClick={() => navigate(`/admin/finance/partner-payouts/${row.ma_doi_tac}`)}
                             />
                             <ActionButton
                               variant="confirm"
                               iconOnly
                               icon={Check}
-                              title="Xác nhận thanh toán"
+                              title={canConfirm
+                                ? `Thanh toán ${row.so_don_cho_tt} đơn trong đợt này`
+                                : 'Chỉ thanh toán được đợt chờ'}
                               disabled={!canConfirm}
                               onClick={() => {
                                 if (!canConfirm) return;
@@ -1023,6 +1001,7 @@ const AdminFinancePage = () => {
                                   id: row.ma_doi_tac,
                                   name: row.ten_cong_ty,
                                   amount: row.so_tien_can_thanh_toan,
+                                  soDon: row.so_don_cho_tt,
                                 });
                               }}
                             />
@@ -1074,13 +1053,6 @@ const AdminFinancePage = () => {
         />
       )}
 
-      {payoutModalId && (
-        <PartnerPayoutDetailModal
-          maDoiTac={payoutModalId}
-          onClose={() => setPayoutModalId(null)}
-        />
-      )}
-
       <ConfirmModal
         open={!!commAction}
         variant={commAction?.type === 'hold' ? 'danger' : 'primary'}
@@ -1127,6 +1099,7 @@ const AdminFinancePage = () => {
         open={!!payoutAction && payoutAction.type === 'confirm'}
         partnerName={payoutAction?.name}
         amount={payoutAction?.amount}
+        soDon={payoutAction?.soDon}
         loading={payoutActionLoading}
         submitError={payoutFormError}
         onClose={() => {

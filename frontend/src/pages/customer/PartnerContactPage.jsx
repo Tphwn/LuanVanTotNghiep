@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import partnerContactService from '../../services/partnerContactService';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
+import { validateEmail, validatePhone } from '../../utils/authValidation';
 import '../../assets/styles/partner-contact.css';
 
 const INITIAL_FORM = {
@@ -12,22 +15,90 @@ const INITIAL_FORM = {
   notes: '',
 };
 
+const SCALE_OPTIONS = ['Dưới 10 phòng', '10 - 30 phòng', 'Trên 30 phòng'];
+
+const FIELD_KEY_MAP = {
+  ho_ten: 'fullName',
+  so_dien_thoai: 'phone',
+  email: 'email',
+  ten_co_so: 'hotelName',
+  quy_mo: 'scale',
+  tinh_thanh: 'city',
+  ghi_chu: 'notes',
+};
+
 const PartnerContactPage = () => {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [sent, setSent] = useState(false);
+  const { toast, showToast } = useToast();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (error) setError('');
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    const fullName = formData.fullName.trim();
+    const hotelName = formData.hotelName.trim();
+    const city = formData.city.trim();
+    const notes = formData.notes.trim();
+
+    if (!fullName) {
+      errors.fullName = 'Họ và tên không được để trống.';
+    } else if (fullName.length < 2) {
+      errors.fullName = 'Họ và tên tối thiểu 2 ký tự.';
+    } else if (fullName.length > 30) {
+      errors.fullName = 'Họ và tên tối đa 30 ký tự.';
+    }
+
+    const phoneErr = validatePhone(formData.phone);
+    if (phoneErr) errors.phone = phoneErr;
+
+    const emailErr = validateEmail(formData.email);
+    if (emailErr) errors.email = emailErr;
+
+    if (!hotelName) {
+      errors.hotelName = 'Tên khách sạn/homestay không được để trống.';
+    } else if (hotelName.length < 2) {
+      errors.hotelName = 'Tên cơ sở tối thiểu 2 ký tự.';
+    } else if (hotelName.length > 150) {
+      errors.hotelName = 'Tên cơ sở tối đa 150 ký tự.';
+    }
+
+    if (!formData.scale || !SCALE_OPTIONS.includes(formData.scale)) {
+      errors.scale = 'Vui lòng chọn quy mô số phòng.';
+    }
+
+    if (!city) {
+      errors.city = 'Tỉnh / Thành phố không được để trống.';
+    } else if (city.length > 100) {
+      errors.city = 'Tỉnh / Thành phố tối đa 100 ký tự.';
+    }
+
+    if (notes.length > 500) {
+      errors.notes = 'Ghi chú tối đa 500 ký tự.';
+    }
+
+    return errors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Gửi yêu cầu không thành công. Vui lòng điền đầy đủ và đúng thông tin.', 'error');
+      return;
+    }
+
+    setFieldErrors({});
     setLoading(true);
-    setError('');
 
     try {
       await partnerContactService.submitRequest({
@@ -41,21 +112,35 @@ const PartnerContactPage = () => {
       });
       setSent(true);
       setFormData(INITIAL_FORM);
+      showToast('Gửi yêu cầu hợp tác thành công');
     } catch (err) {
       const data = err.response?.data;
-      const fieldErrors = data?.errors;
-      let msg = data?.message || 'Không thể gửi yêu cầu. Vui lòng thử lại sau.';
-      if (fieldErrors && typeof fieldErrors === 'object') {
-        msg = Object.values(fieldErrors)[0] || msg;
+      const serverErrors = data?.errors;
+      if (serverErrors && typeof serverErrors === 'object') {
+        const mapped = {};
+        Object.entries(serverErrors).forEach(([key, message]) => {
+          const feKey = FIELD_KEY_MAP[key] || key;
+          mapped[feKey] = message;
+        });
+        setFieldErrors(mapped);
       }
-      setError(msg);
+      showToast(
+        data?.message || 'Gửi yêu cầu không thành công. Vui lòng kiểm tra lại thông tin.',
+        'error',
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const renderFieldError = (name) => (
+    fieldErrors[name] ? <p className="form-field-error">{fieldErrors[name]}</p> : null
+  );
+
   return (
     <div className="partner-wrapper">
+      <Toast toast={toast} />
+
       <div className="partner-header">
         <h1>Hợp tác cùng Hotel Booking</h1>
         <p>Mở rộng tập khách hàng và tối ưu hóa doanh thu cho cơ sở lưu trú của bạn</p>
@@ -64,17 +149,17 @@ const PartnerContactPage = () => {
       <h2 className="section-title">1. Lợi ích nổi bật</h2>
       <div className="benefits-container">
         <div className="benefit-card">
-          <div className="benefit-icon"></div>
+          <div className="benefit-icon" />
           <h3>Tăng Công Suất Phòng</h3>
           <p>Tiếp cận hàng ngàn khách hàng tiềm năng truy cập nền tảng mỗi ngày.</p>
         </div>
         <div className="benefit-card">
-          <div className="benefit-icon"></div>
+          <div className="benefit-icon" />
           <h3>Quản Lý Thông Minh</h3>
           <p>Hệ thống quản lý phòng, giá cả và đánh giá trực quan, dễ sử dụng.</p>
         </div>
         <div className="benefit-card">
-          <div className="benefit-icon"></div>
+          <div className="benefit-icon" />
           <h3>Chi Phí Minh Bạch</h3>
           <p>Chỉ thu hoa hồng khi có đơn hàng thành công. Hỗ trợ đối tác 24/7.</p>
         </div>
@@ -119,7 +204,7 @@ const PartnerContactPage = () => {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <h3 className="form-group-title">Thông tin người đại diện</h3>
             <div className="form-grid">
               <div className="form-group">
@@ -130,10 +215,10 @@ const PartnerContactPage = () => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.fullName ? ' input-invalid' : ''}`}
                   placeholder="VD: Nguyễn Văn A"
-                  required
                 />
+                {renderFieldError('fullName')}
               </div>
 
               <div className="form-group">
@@ -144,10 +229,10 @@ const PartnerContactPage = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.phone ? ' input-invalid' : ''}`}
                   placeholder="0909xxxxxx"
-                  required
                 />
+                {renderFieldError('phone')}
               </div>
 
               <div className="form-group full-width">
@@ -158,10 +243,10 @@ const PartnerContactPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.email ? ' input-invalid' : ''}`}
                   placeholder="email@domain.com"
-                  required
                 />
+                {renderFieldError('email')}
               </div>
             </div>
 
@@ -175,25 +260,26 @@ const PartnerContactPage = () => {
                   name="hotelName"
                   value={formData.hotelName}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.hotelName ? ' input-invalid' : ''}`}
                   placeholder="VD: Canary Gold"
-                  required
                 />
+                {renderFieldError('hotelName')}
               </div>
 
               <div className="form-group">
-                <label htmlFor="scale">Quy mô số phòng</label>
+                <label htmlFor="scale">Quy mô số phòng *</label>
                 <select
                   id="scale"
                   name="scale"
                   value={formData.scale}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.scale ? ' input-invalid' : ''}`}
                 >
-                  <option value="Dưới 10 phòng">Dưới 10 phòng</option>
-                  <option value="10 - 30 phòng">Từ 10 - 30 phòng</option>
-                  <option value="Trên 30 phòng">Trên 30 phòng</option>
+                  {SCALE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
+                {renderFieldError('scale')}
               </div>
 
               <div className="form-group full-width">
@@ -204,10 +290,10 @@ const PartnerContactPage = () => {
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.city ? ' input-invalid' : ''}`}
                   placeholder="VD: Đà Lạt"
-                  required
                 />
+                {renderFieldError('city')}
               </div>
 
               <div className="form-group full-width">
@@ -217,13 +303,12 @@ const PartnerContactPage = () => {
                   name="notes"
                   value={formData.notes}
                   onChange={handleInputChange}
-                  className="form-control"
+                  className={`form-control${fieldErrors.notes ? ' input-invalid' : ''}`}
                   rows="4"
                   placeholder="Nhập câu hỏi hoặc yêu cầu cụ thể của bạn..."
                 />
+                {renderFieldError('notes')}
               </div>
-
-              {error && <p className="form-error full-width">{error}</p>}
 
               <button type="submit" className="submit-btn" disabled={loading}>
                 {loading ? 'Đang gửi...' : 'GỬI YÊU CẦU HỢP TÁC'}
@@ -237,9 +322,13 @@ const PartnerContactPage = () => {
         <h3>Cam Kết Của Chúng Tôi</h3>
         <p>Đội ngũ phát triển đối tác sẽ xem xét thông tin và liên hệ lại với bạn trong vòng 24 giờ làm việc.</p>
         <p>
-          Hotline hỗ trợ: <strong>0777443085</strong>
+          Hotline hỗ trợ:
+          {' '}
+          <strong>0777443085</strong>
           {' | '}
-          Email: <strong>Hotelbooking@gmail.com</strong>
+          Email:
+          {' '}
+          <strong>Hotelbooking@gmail.com</strong>
         </p>
       </div>
     </div>

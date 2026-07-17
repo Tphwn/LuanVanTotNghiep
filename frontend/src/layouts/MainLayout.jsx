@@ -6,6 +6,7 @@ import ROLES from '../constants/roles';
 import getRedirectRoute from '../utils/redirect';
 import { resolveUploadUrl } from '../utils/media';
 import CustomerUserMenu from '../components/customer/CustomerUserMenu';
+import FlashToastHost from '../components/common/FlashToastHost';
 const MainLayout = ({ children, fullBleed = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const MainLayout = ({ children, fullBleed = false }) => {
 
   return (
     <div className="app-shell">
+      <FlashToastHost />
       <header className="layout-header">
       <Link to={ROUTES.HOME} className="header-brand" style={{ textDecoration: 'none' }}>
           <img

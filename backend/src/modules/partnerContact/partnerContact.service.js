@@ -1,4 +1,8 @@
 const prisma = require('../../config/prisma');
+const {
+  validateEmail,
+  validatePhone,
+} = require('../../utils/authValidation');
 
 const SCALE_OPTIONS = ['Dưới 10 phòng', '10 - 30 phòng', 'Trên 30 phòng'];
 
@@ -12,24 +16,46 @@ const validatePayload = (data) => {
   const tinhThanh = (data.tinh_thanh || '').trim();
   const ghiChu = (data.ghi_chu || '').trim();
 
-  if (!hoTen) errors.ho_ten = 'Họ và tên là bắt buộc';
-  if (!soDienThoai) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
-  else if (!/^[0-9+\-\s()]{8,15}$/.test(soDienThoai)) {
-    errors.so_dien_thoai = 'Số điện thoại không hợp lệ';
+  if (!hoTen) {
+    errors.ho_ten = 'Họ và tên không được để trống.';
+  } else if (hoTen.length < 2) {
+    errors.ho_ten = 'Họ và tên tối thiểu 2 ký tự.';
+  } else if (hoTen.length > 30) {
+    errors.ho_ten = 'Họ và tên tối đa 30 ký tự.';
   }
-  if (!email) errors.email = 'Email là bắt buộc';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = 'Email không hợp lệ';
+
+  const phoneErr = validatePhone(soDienThoai);
+  if (phoneErr) errors.so_dien_thoai = phoneErr;
+
+  const emailErr = validateEmail(email);
+  if (emailErr) errors.email = emailErr;
+
+  if (!tenCoSo) {
+    errors.ten_co_so = 'Tên khách sạn/homestay không được để trống.';
+  } else if (tenCoSo.length < 2) {
+    errors.ten_co_so = 'Tên cơ sở tối thiểu 2 ký tự.';
+  } else if (tenCoSo.length > 150) {
+    errors.ten_co_so = 'Tên cơ sở tối đa 150 ký tự.';
   }
-  if (!tenCoSo) errors.ten_co_so = 'Tên cơ sở lưu trú là bắt buộc';
-  if (!quyMo) errors.quy_mo = 'Quy mô phòng là bắt buộc';
-  else if (!SCALE_OPTIONS.includes(quyMo)) {
-    errors.quy_mo = 'Quy mô phòng không hợp lệ';
+
+  if (!quyMo) {
+    errors.quy_mo = 'Vui lòng chọn quy mô số phòng.';
+  } else if (!SCALE_OPTIONS.includes(quyMo)) {
+    errors.quy_mo = 'Quy mô phòng không hợp lệ.';
   }
-  if (!tinhThanh) errors.tinh_thanh = 'Tỉnh/Thành phố là bắt buộc';
+
+  if (!tinhThanh) {
+    errors.tinh_thanh = 'Tỉnh / Thành phố không được để trống.';
+  } else if (tinhThanh.length > 100) {
+    errors.tinh_thanh = 'Tỉnh / Thành phố tối đa 100 ký tự.';
+  }
+
+  if (ghiChu.length > 500) {
+    errors.ghi_chu = 'Ghi chú tối đa 500 ký tự.';
+  }
 
   if (Object.keys(errors).length) {
-    const err = new Error('Dữ liệu không hợp lệ');
+    const err = new Error('Gửi yêu cầu không thành công. Vui lòng điền đầy đủ và đúng thông tin.');
     err.status = 400;
     err.errors = errors;
     throw err;
@@ -37,7 +63,7 @@ const validatePayload = (data) => {
 
   return {
     ho_ten: hoTen,
-    so_dien_thoai: soDienThoai.replace(/\s/g, ''),
+    so_dien_thoai: soDienThoai,
     email,
     ten_co_so: tenCoSo,
     quy_mo: quyMo,

@@ -84,7 +84,14 @@ const buildPartnerRefundInfo = (booking) => {
       ? Number(booking.thanh_toan_cuoi)
       : calc.so_tien_hoan);
   const phanTram = adminCancelled && paid ? 100 : calc.phan_tram_hoan;
-  const trangThaiHoan = hoanTien?.trang_thai || (paid ? 'cho_xu_ly' : null);
+  // Chỉ dùng trạng thái thật từ DB — không bịa "chờ xử lý" khi chưa có bản ghi hoàn tiền
+  const trangThaiHoan = (() => {
+    if (!hoanTien?.trang_thai) return null;
+    if (['cho_xu_ly', 'dang_xu_ly'].includes(hoanTien.trang_thai) && soTienHoan <= 0) {
+      return null;
+    }
+    return hoanTien.trang_thai;
+  })();
 
   const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
   const trangThaiMsg = buildRefundStatusMessage(trangThaiHoan);
@@ -137,30 +144,79 @@ const processRefundOnCancel = async (tx, bookingId, lyDo, options = {}) => {
     },
   });
 
-  if (!booking?.thanh_toan || booking.hoan_tien) return;
-  if (!wasBookingPaid(booking)) return;
+  if (!booking || booking.hoan_tien) return null;
+  if (!wasBookingPaid(booking)) return null;
+
+  let payment = booking.thanh_toan;
+  // Đơn online/đã thanh toán nhưng thiếu bản ghi thanh_toan → tạo để gắn yêu cầu hoàn
+  if (!payment) {
+    payment = await tx.thanh_toan.create({
+      data: {
+        ma_dat_phong: booking.ma_dat_phong,
+        so_tien: Number(booking.thanh_toan_cuoi) || 0,
+        phuong_thuc: booking.phuong_thuc_tt === 'truc_tuyen' ? 'Trực tuyến' : 'Tại khách sạn',
+        trang_thai: 'thanh_cong',
+      },
+    });
+  }
 
   const cancelDate = new Date();
   const policies = booking.loai_phong?.khach_san?.chinh_sach_huy || [];
-  const total = Number(booking.thanh_toan_cuoi) || 0;
+  const total = Number(booking.thanh_toan_cuoi) || Number(payment.so_tien) || 0;
   const soTienHoan = fullRefund
     ? total
     : calcRefundFromPolicy(
       policies,
       booking.ngay_nhan_phong,
       cancelDate,
-      booking.thanh_toan_cuoi,
+      total,
     ).so_tien_hoan;
 
-  await tx.hoan_tien.create({
+  // Không tạo yêu cầu hoàn khi số tiền = 0 (tránh lệch với trang Hoàn tiền)
+  if (soTienHoan <= 0) return null;
+
+  return tx.hoan_tien.create({
     data: {
       ma_dat_phong: booking.ma_dat_phong,
-      ma_thanh_toan: booking.thanh_toan.ma_thanh_toan,
+      ma_thanh_toan: payment.ma_thanh_toan,
       so_tien_hoan: soTienHoan,
       ly_do: lyDo || 'Hủy đơn đặt phòng',
       trang_thai: 'cho_xu_ly',
     },
   });
+};
+
+/** Bổ sung bản ghi hoàn tiền cho đơn đã hủy nhưng trước đó chưa tạo được yêu cầu */
+const syncMissingCancelRefunds = async (prismaClient, limit = 50) => {
+  const candidates = await prismaClient.dat_phong.findMany({
+    where: {
+      trang_thai: { in: ['da_huy', 'tu_choi'] },
+      hoan_tien: null,
+      OR: [
+        { phuong_thuc_tt: 'truc_tuyen' },
+        { thanh_toan: { trang_thai: 'thanh_cong' } },
+      ],
+    },
+    select: {
+      ma_dat_phong: true,
+      ghi_chu: true,
+    },
+    take: limit,
+  });
+
+  for (const row of candidates) {
+    const fullRefund = isAdminCancelledBooking(row);
+    await prismaClient.$transaction(async (tx) => {
+      await processRefundOnCancel(
+        tx,
+        row.ma_dat_phong,
+        extractCancelReason(row.ghi_chu),
+        { fullRefund },
+      );
+    });
+  }
+
+  return candidates.length;
 };
 
 module.exports = {
@@ -173,4 +229,5 @@ module.exports = {
   getRefundStatusLabel,
   buildPartnerRefundInfo,
   processRefundOnCancel,
+  syncMissingCancelRefunds,
 };

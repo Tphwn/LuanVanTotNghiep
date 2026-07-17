@@ -18,6 +18,7 @@ import ROUTES from '../constants/routes';
 import { isPartnerMenuActive } from '../utils/sidebarActive';
 import PartnerNotificationBell from '../components/partner/PartnerNotificationBell';
 import { resolveUploadUrl } from '../utils/media';
+import FlashToastHost from '../components/common/FlashToastHost';
 
 const partnerMenus = [
   { title: 'Tổng quan', path: '/partner/dashboard', icon: LayoutDashboard },
@@ -52,6 +53,7 @@ const PartnerLayout = () => {
 
   return (
     <div className="app-shell app-shell-admin">
+      <FlashToastHost />
       <div className="layout-body layout-body-admin">
         {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
 

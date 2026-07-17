@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../../services/api";
 import { Eye } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
+import FilterActions from "../../../components/common/management/FilterActions";
 import ListPagination from "../../../components/common/management/ListPagination";
 import useListPagination from "../../../hooks/useListPagination";
 import Toast from "../../../components/common/Toast";
@@ -181,6 +182,12 @@ const ReportsPage = () => {
   const [tuNgay, setTuNgay] = useState("");
   const [denNgay, setDenNgay] = useState("");
 
+  const [draftStatusFilter, setDraftStatusFilter] = useState("all");
+  const [draftTypeFilter, setDraftTypeFilter] = useState("all");
+  const [draftTimePreset, setDraftTimePreset] = useState("all");
+  const [draftTuNgay, setDraftTuNgay] = useState("");
+  const [draftDenNgay, setDraftDenNgay] = useState("");
+
   const loadDashboard = async () => {
     try {
       const res = await api.get("/admin/reports/dashboard");
@@ -255,7 +262,26 @@ const ReportsPage = () => {
     }
   };
 
-  const hasActiveFilter = statusFilter !== "all"|| typeFilter !=="all"|| timePreset !=="all";
+  const applyFilters = () => {
+    setStatusFilter(draftStatusFilter);
+    setTypeFilter(draftTypeFilter);
+    setTimePreset(draftTimePreset);
+    setTuNgay(draftTuNgay);
+    setDenNgay(draftDenNgay);
+  };
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setTimePreset("all");
+    setTuNgay("");
+    setDenNgay("");
+    setDraftStatusFilter("all");
+    setDraftTypeFilter("all");
+    setDraftTimePreset("all");
+    setDraftTuNgay("");
+    setDraftDenNgay("");
+  };
   const dash = dashboard || {};
 
   const {
@@ -383,7 +409,7 @@ const ReportsPage = () => {
             <div style={{ display:"grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end"}}>
               <div>
                 <label style={{ fontSize: 12, color:"#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Trạng thái</label>
-                <select className="search-input"style={{ width:"100%"}} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <select className="search-input"style={{ width:"100%"}} value={draftStatusFilter} onChange={(e) => setDraftStatusFilter(e.target.value)}>
                   <option value="all">Tất cả</option>
                   <option value="cho_xu_ly">Chờ xử lý</option>
                   <option value="da_chap_nhan">Đã chấp nhận</option>
@@ -392,7 +418,7 @@ const ReportsPage = () => {
               </div>
               <div>
                 <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Loại báo cáo</label>
-                <select className="search-input"style={{ width:"100%"}} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <select className="search-input"style={{ width:"100%"}} value={draftTypeFilter} onChange={(e) => setDraftTypeFilter(e.target.value)}>
                   <option value="all">Tất cả loại</option>
                   {Object.entries(REPORT_TYPE).map(([k, v]) => (
                     <option key={k} value={k}>{v.label}</option>
@@ -401,38 +427,25 @@ const ReportsPage = () => {
               </div>
               <div>
                 <label style={{ fontSize: 12, color: "#5a7a72", fontWeight: 500, display: "block", marginBottom: 6 }}>Thời gian</label>
-                <select className="search-input"style={{ width:"100%"}} value={timePreset} onChange={(e) => setTimePreset(e.target.value)}>
+                <select className="search-input"style={{ width:"100%"}} value={draftTimePreset} onChange={(e) => setDraftTimePreset(e.target.value)}>
                   {TIME_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
-              {timePreset ==="custom"&& (
+              {draftTimePreset ==="custom"&& (
                 <>
                   <div>
                     <label style={{ fontSize: 12, color:"#5a7a72", display: "block", marginBottom: 6 }}>Từ ngày</label>
-                    <input type="date"className="search-input"style={{ width:"100%"}} value={tuNgay} onChange={(e) => setTuNgay(e.target.value)} />
+                    <input type="date"className="search-input"style={{ width:"100%"}} value={draftTuNgay} onChange={(e) => setDraftTuNgay(e.target.value)} />
                   </div>
                   <div>
                     <label style={{ fontSize: 12, color:"#5a7a72", display: "block", marginBottom: 6 }}>Đến ngày</label>
-                    <input type="date"className="search-input"style={{ width:"100%"}} value={denNgay} min={tuNgay} onChange={(e) => setDenNgay(e.target.value)} />
+                    <input type="date"className="search-input"style={{ width:"100%"}} value={draftDenNgay} min={draftTuNgay} onChange={(e) => setDraftDenNgay(e.target.value)} />
                   </div>
                 </>
               )}
-              {hasActiveFilter && (
-                <div>
-                  <button
-                    type="button"className="btn btn-ghost btn-sm"style={{ width:"100%"}}
-                    onClick={() => {
-                      setStatusFilter("all");
-                      setTypeFilter("all");
-                      setTimePreset("all");
-                      setTuNgay("");
-                      setDenNgay("");
-                    }}
-                  >
-                    Xóa bộ lọc
-                  </button>
-                </div>
-              )}
+              <div>
+                <FilterActions onApply={applyFilters} onClear={clearFilters} />
+              </div>
             </div>
           </div>
 

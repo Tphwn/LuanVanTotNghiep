@@ -5,6 +5,7 @@ const PARTNER_PAGE_TITLES = [
   { prefix: '/partner/bookings', title: 'Đặt phòng' },
   { prefix: '/partner/pricing', title: 'Quản lý giá và kho phòng' },
   { prefix: '/partner/promotions', title: 'Khuyến mãi' },
+  { prefix: '/partner/finance/payouts', title: 'Chi tiết thanh toán' },
   { prefix: '/partner/finance', title: 'Tài chính' },
   { prefix: '/partner/reviews', title: 'Đánh giá' },
   { prefix: '/partner/account', title: 'Tài khoản' },

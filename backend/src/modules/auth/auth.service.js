@@ -5,6 +5,9 @@ const { hash, compare } = require('../../utils/hashPassword');
 const { generateToken } = require('../../utils/jwt');
 const { sendOtpEmail } = require('../../utils/mailer');
 const MSG = require('../../constants/messages');
+const {
+  validatePassword,
+} = require('../../utils/authValidation');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -32,7 +35,6 @@ const setUserOtp = async (maNguoiDung, otp, purpose) => {
     data: {
       otp_code: otp,
       otp_het_han: hetHan,
-      // Đánh dấu mục đích OTP: register | reset
       reset_token: purpose === 'reset' ? null : purpose,
       token_het_han: purpose === 'reset' ? null : hetHan,
     },
@@ -65,7 +67,6 @@ const clearOtp = async (maNguoiDung) => {
 const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
   const emailExists = await prisma.nguoi_dung.findUnique({ where: { email } });
   if (emailExists) {
-    // Cho phép gửi lại OTP nếu chưa xác thực
     if (emailExists.reset_token === 'register' && emailExists.vai_tro === 'khach_hang') {
       const otp = generateOtp();
       await setUserOtp(emailExists.ma_nguoi_dung, otp, 'register');
@@ -108,7 +109,6 @@ const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
   try {
     await sendOtpEmail({ to: email, otp, purpose: 'register' });
   } catch (err) {
-    // Rollback nhẹ: xóa user vừa tạo nếu gửi mail thất bại
     await prisma.khach_hang.deleteMany({ where: { ma_nguoi_dung: nguoiDung.ma_nguoi_dung } });
     await prisma.nguoi_dung.delete({ where: { ma_nguoi_dung: nguoiDung.ma_nguoi_dung } });
     throw {
@@ -161,7 +161,6 @@ const verifyRegisterOtp = async ({ email, otp }) => {
 const resendOtp = async ({ email, purpose = 'register' }) => {
   const nguoiDung = await prisma.nguoi_dung.findUnique({ where: { email } });
   if (!nguoiDung) {
-    // Không lộ email tồn tại với reset; với register thì báo
     if (purpose === 'register') {
       throw { statusCode: 404, message: 'Không tìm thấy tài khoản cần xác thực' };
     }
@@ -357,12 +356,9 @@ const forgotPassword = async ({ email }) => {
   if (!nguoiDung) return generic;
   if (nguoiDung.trang_thai === 'bi_khoa') return generic;
   if (nguoiDung.vai_tro !== 'khach_hang') {
-    // Chỉ hỗ trợ quên MK cho khách hàng qua OTP email
     return generic;
   }
-
-  // Tài khoản Google thuần (placeholder phone bắt đầu bằng g) vẫn cho reset nếu có email/pass
-  const otp = generateOtp();
+ const otp = generateOtp();
   await prisma.nguoi_dung.update({
     where: { ma_nguoi_dung: nguoiDung.ma_nguoi_dung },
     data: {
@@ -416,12 +412,12 @@ const verifyResetOtp = async ({ email, otp }) => {
 };
 
 const resetPassword = async ({ reset_token: resetToken, mat_khau }) => {
-  if (!resetToken || !mat_khau) {
+  if (!resetToken) {
     throw { statusCode: 400, message: 'Thiếu thông tin đặt lại mật khẩu' };
   }
-  if (String(mat_khau).length < 6) {
-    throw { statusCode: 400, message: 'Mật khẩu ít nhất 6 ký tự' };
-  }
+
+  const pwdErr = validatePassword(mat_khau);
+  if (pwdErr) throw { statusCode: 400, message: pwdErr };
 
   const nguoiDung = await prisma.nguoi_dung.findFirst({
     where: { reset_token: resetToken },

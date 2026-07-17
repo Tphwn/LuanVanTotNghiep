@@ -2,6 +2,7 @@ import { Eye } from 'lucide-react';
 import { resolveUploadUrl } from '../../../../utils/media';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
 import FilterTabs from '../../../../components/common/management/FilterTabs';
+import FilterActions from '../../../../components/common/management/FilterActions';
 import ListPagination from '../../../../components/common/management/ListPagination';
 import { HOTEL_STATUS } from '../constants';
 import { getMainImage } from '../utils';
@@ -34,7 +35,7 @@ export default function HotelListSection({
   filterTabs,
   filteredHotels,
   onViewHotel,
-  hasActiveFilter,
+  onApplyFilters,
   onClearFilters,
   pagination,
 }) {
@@ -97,13 +98,12 @@ export default function HotelListSection({
             ))}
           </select>
         </div>
-        {hasActiveFilter && (
-          <div className="partner-room-filter-field partner-room-filter-field--action">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onClearFilters}>
-              Xóa bộ lọc
-            </button>
-          </div>
-        )}
+        <div className="partner-room-filter-field partner-room-filter-field--action">
+          <FilterActions
+            onApply={onApplyFilters || (() => {})}
+            onClear={onClearFilters}
+          />
+        </div>
       </div>
 
       <div className="mgmt-table-card partner-room-table-card">

@@ -12,6 +12,7 @@ import { fetchHotels } from "../../../store/slices/adminHotelSlice";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
+import FilterActions from "../../../components/common/management/FilterActions";
 import CreatePartnerModal from "./components/CreatePartnerModal";
 import UserLockConfirmModal from "./components/UserLockConfirmModal";
 import { ACCOUNT_TEXT } from "../../../constants/statusConfig";
@@ -60,17 +61,15 @@ const UsersPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [keyword, setKeyword] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
+
+  const [draftKeyword, setDraftKeyword] = useState("");
+  const [draftRoleFilter, setDraftRoleFilter] = useState("all");
+
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
-    return () => clearTimeout(t);
-  }, [keyword]);
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -92,7 +91,7 @@ const UsersPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [activeTab, roleFilter, debouncedKeyword]);
+  }, [activeTab, roleFilter, keyword]);
 
   const nonAdminUsers = useMemo(
     () => users.filter((u) => u.vai_tro !== "admin"),
@@ -114,7 +113,7 @@ const UsersPage = () => {
   const filteredUsers = useMemo(() => {
     const tabFilter = TAB_FILTER[activeTab] || TAB_FILTER.all;
     const roleFn = ROLE_FILTER[roleFilter] || ROLE_FILTER.all;
-    const searchText = debouncedKeyword.toLowerCase().trim();
+    const searchText = keyword.toLowerCase().trim();
     return nonAdminUsers.filter((user) => {
       if (!tabFilter(user)) return false;
       if (!roleFn(user)) return false;
@@ -126,7 +125,7 @@ const UsersPage = () => {
         || name.includes(searchText)
       );
     });
-  }, [nonAdminUsers, activeTab, roleFilter, debouncedKeyword]);
+  }, [nonAdminUsers, activeTab, roleFilter, keyword]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -186,16 +185,17 @@ const UsersPage = () => {
   const rangeFrom = filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredUsers.length);
 
-  const hasActiveFilter = Boolean(
-    keyword.trim()
-    || activeTab !== 'all'
-    || roleFilter !== 'all',
-  );
+  const applyFilters = () => {
+    setKeyword(draftKeyword);
+    setRoleFilter(draftRoleFilter);
+  };
 
   const clearFilters = () => {
     setKeyword('');
     setActiveTab('all');
     setRoleFilter('all');
+    setDraftKeyword('');
+    setDraftRoleFilter('all');
   };
 
   return (
@@ -234,8 +234,8 @@ const UsersPage = () => {
       )}
 
       <ManagementToolbar
-        searchValue={keyword}
-        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchValue={draftKeyword}
+        onSearchChange={(e) => setDraftKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên, email, SĐT..."
         tabs={filterTabs}
         activeTab={activeTab}
@@ -243,21 +243,15 @@ const UsersPage = () => {
       >
         <select
           className="mgmt-select-inline"
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
+          value={draftRoleFilter}
+          onChange={(e) => setDraftRoleFilter(e.target.value)}
           aria-label="Lọc theo vai trò"
         >
           <option value="all">Tất cả vai trò</option>
           <option value="khach_hang">Khách hàng</option>
           <option value="doi_tac">Đối tác</option>
         </select>
-        <span className="mgmt-toolbar-clear-slot">
-          {hasActiveFilter && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          )}
-        </span>
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

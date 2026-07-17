@@ -259,6 +259,31 @@ const bookingService = {
   },
 
   getDetailForAdmin: async (id) => {
+    const { processRefundOnCancel, isAdminCancelledBooking, extractCancelReason } = require('../../utils/refundHelpers');
+    const existing = await prisma.dat_phong.findUnique({
+      where: { ma_dat_phong: Number(id) },
+      select: {
+        ma_dat_phong: true,
+        trang_thai: true,
+        ghi_chu: true,
+        hoan_tien: { select: { ma_hoan_tien: true } },
+      },
+    });
+    if (
+      existing
+      && ['da_huy', 'tu_choi'].includes(existing.trang_thai)
+      && !existing.hoan_tien
+    ) {
+      await prisma.$transaction(async (tx) => {
+        await processRefundOnCancel(
+          tx,
+          existing.ma_dat_phong,
+          extractCancelReason(existing.ghi_chu),
+          { fullRefund: isAdminCancelledBooking(existing) },
+        );
+      });
+    }
+
     return prisma.dat_phong.findUnique({
       where: { ma_dat_phong: Number(id) },
       include: {

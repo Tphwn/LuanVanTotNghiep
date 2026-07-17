@@ -12,6 +12,7 @@ import {
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
 import ManagementHeader from "../../../components/common/management/ManagementHeader";
 import ManagementToolbar from "../../../components/common/management/ManagementToolbar";
+import FilterActions from "../../../components/common/management/FilterActions";
 import StarRating from "../../../components/common/management/StarRating";
 import HotelThumb from "../../../components/common/management/HotelThumb";
 import HotelLockConfirmModal from "./components/HotelLockConfirmModal";
@@ -33,11 +34,16 @@ const HotelsPage = () => {
   const { hotels = [], loading = false } = useSelector((state) => state.adminHotels || {});
 
   const [keyword, setKeyword] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [starFilter, setStarFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+
+  const [draftKeyword, setDraftKeyword] = useState("");
+  const [draftStarFilter, setDraftStarFilter] = useState("all");
+  const [draftPartnerFilter, setDraftPartnerFilter] = useState("all");
+  const [draftLocationFilter, setDraftLocationFilter] = useState("all");
+
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -46,17 +52,12 @@ const HotelsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedKeyword(keyword), 300);
-    return () => clearTimeout(t);
-  }, [keyword]);
-
-  useEffect(() => {
     dispatch(fetchHotels());
   }, [dispatch]);
 
   useEffect(() => {
     setPage(1);
-  }, [activeTab, starFilter, partnerFilter, locationFilter, debouncedKeyword]);
+  }, [activeTab, starFilter, partnerFilter, locationFilter, keyword]);
 
   const stats = useMemo(() => ({
     total: hotels.length,
@@ -98,7 +99,7 @@ const HotelsPage = () => {
 
   const filteredHotels = useMemo(() => {
     const statusFilter = TAB_STATUS_MAP[activeTab];
-    const text = debouncedKeyword.toLowerCase().trim();
+    const text = keyword.toLowerCase().trim();
     return (hotels || []).filter((hotel) => {
       let matchStatus = true;
       if (activeTab === "tu_choi") {
@@ -122,7 +123,7 @@ const HotelsPage = () => {
         || loc?.toLowerCase().includes(text);
       return matchStatus && matchStar && matchPartner && matchLocation && matchKeyword;
     });
-  }, [hotels, activeTab, starFilter, partnerFilter, locationFilter, debouncedKeyword]);
+  }, [hotels, activeTab, starFilter, partnerFilter, locationFilter, keyword]);
 
   const totalPages = Math.max(1, Math.ceil(filteredHotels.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -214,13 +215,12 @@ const HotelsPage = () => {
   const rangeFrom = filteredHotels.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredHotels.length);
 
-  const hasActiveFilter = Boolean(
-    keyword.trim()
-    || activeTab !== 'all'
-    || partnerFilter !== 'all'
-    || locationFilter !== 'all'
-    || starFilter !== 'all',
-  );
+  const applyFilters = () => {
+    setKeyword(draftKeyword);
+    setStarFilter(draftStarFilter);
+    setPartnerFilter(draftPartnerFilter);
+    setLocationFilter(draftLocationFilter);
+  };
 
   const clearFilters = () => {
     setKeyword('');
@@ -228,6 +228,10 @@ const HotelsPage = () => {
     setPartnerFilter('all');
     setLocationFilter('all');
     setStarFilter('all');
+    setDraftKeyword('');
+    setDraftStarFilter('all');
+    setDraftPartnerFilter('all');
+    setDraftLocationFilter('all');
   };
 
   return (
@@ -272,8 +276,8 @@ const HotelsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={keyword}
-        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchValue={draftKeyword}
+        onSearchChange={(e) => setDraftKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
         tabs={filterTabs}
         activeTab={activeTab}
@@ -281,8 +285,8 @@ const HotelsPage = () => {
       >
         <select
           className="mgmt-select-inline"
-          value={partnerFilter}
-          onChange={(e) => setPartnerFilter(e.target.value)}
+          value={draftPartnerFilter}
+          onChange={(e) => setDraftPartnerFilter(e.target.value)}
           aria-label="Lọc theo đối tác"
         >
           <option value="all">Tất cả đối tác</option>
@@ -294,8 +298,8 @@ const HotelsPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
+          value={draftLocationFilter}
+          onChange={(e) => setDraftLocationFilter(e.target.value)}
           aria-label="Lọc theo địa điểm"
         >
           <option value="all">Tất cả địa điểm</option>
@@ -307,8 +311,8 @@ const HotelsPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={starFilter}
-          onChange={(e) => setStarFilter(e.target.value)}
+          value={draftStarFilter}
+          onChange={(e) => setDraftStarFilter(e.target.value)}
           aria-label="Lọc theo hạng sao"
         >
           <option value="all">Tất cả hạng sao</option>
@@ -316,13 +320,7 @@ const HotelsPage = () => {
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
-        <span className="mgmt-toolbar-clear-slot">
-          {hasActiveFilter && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          )}
-        </span>
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

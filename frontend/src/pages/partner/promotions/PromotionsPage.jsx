@@ -3,6 +3,7 @@ import { Eye, Pencil, Lock, Unlock } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
@@ -351,6 +352,13 @@ const PartnerPromotionsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
 
+  const [draftHotelFilter, setDraftHotelFilter] = useState('');
+  const [draftLoaiGiamFilter, setDraftLoaiGiamFilter] = useState('all');
+  const [draftStatusFilter, setDraftStatusFilter] = useState('all');
+  const [draftTimePreset, setDraftTimePreset] = useState('all');
+  const [draftTuNgay, setDraftTuNgay] = useState('');
+  const [draftDenNgay, setDraftDenNgay] = useState('');
+
   const [detailItem, setDetailItem] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -393,9 +401,14 @@ const PartnerPromotionsPage = () => {
     return () => clearTimeout(t);
   }, [loadPromotions]);
 
-  const hasActiveFilter = Boolean(
-    hotelFilter || loaiGiamFilter !== 'all' || statusFilter !== 'all' || timePreset !== 'all',
-  );
+  const applyFilters = () => {
+    setHotelFilter(draftHotelFilter);
+    setLoaiGiamFilter(draftLoaiGiamFilter);
+    setStatusFilter(draftStatusFilter);
+    setTimePreset(draftTimePreset);
+    setTuNgay(draftTuNgay);
+    setDenNgay(draftDenNgay);
+  };
 
   const clearFilters = () => {
     setHotelFilter('');
@@ -404,6 +417,12 @@ const PartnerPromotionsPage = () => {
     setTimePreset('all');
     setTuNgay('');
     setDenNgay('');
+    setDraftHotelFilter('');
+    setDraftLoaiGiamFilter('all');
+    setDraftStatusFilter('all');
+    setDraftTimePreset('all');
+    setDraftTuNgay('');
+    setDraftDenNgay('');
   };
 
   const updateField = (key, value) => {
@@ -592,8 +611,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-hotel"
             className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
+            value={draftHotelFilter}
+            onChange={(e) => setDraftHotelFilter(e.target.value)}
           >
             <option value="">Tất cả khách sạn</option>
             {hotels.map((h) => (
@@ -607,8 +626,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-loaigiam"
             className="mgmt-select-inline"
-            value={loaiGiamFilter}
-            onChange={(e) => setLoaiGiamFilter(e.target.value)}
+            value={draftLoaiGiamFilter}
+            onChange={(e) => setDraftLoaiGiamFilter(e.target.value)}
           >
             <option value="all">Tất cả loại</option>
             <option value="phan_tram">Phần trăm (%)</option>
@@ -621,8 +640,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-status"
             className="mgmt-select-inline"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            value={draftStatusFilter}
+            onChange={(e) => setDraftStatusFilter(e.target.value)}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="cho_duyet">Chờ duyệt</option>
@@ -638,8 +657,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-time"
             className="mgmt-select-inline"
-            value={timePreset}
-            onChange={(e) => setTimePreset(e.target.value)}
+            value={draftTimePreset}
+            onChange={(e) => setDraftTimePreset(e.target.value)}
           >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -647,7 +666,7 @@ const PartnerPromotionsPage = () => {
           </select>
         </div>
 
-        {timePreset === 'custom' && (
+        {draftTimePreset === 'custom' && (
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
@@ -655,8 +674,8 @@ const PartnerPromotionsPage = () => {
                 id="partner-promo-from"
                 type="date"
                 className="mgmt-select-inline"
-                value={tuNgay}
-                onChange={(e) => setTuNgay(e.target.value)}
+                value={draftTuNgay}
+                onChange={(e) => setDraftTuNgay(e.target.value)}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -665,19 +684,17 @@ const PartnerPromotionsPage = () => {
                 id="partner-promo-to"
                 type="date"
                 className="mgmt-select-inline"
-                value={denNgay}
-                min={tuNgay}
-                onChange={(e) => setDenNgay(e.target.value)}
+                value={draftDenNgay}
+                min={draftTuNgay}
+                onChange={(e) => setDraftDenNgay(e.target.value)}
               />
             </div>
           </>
         )}
 
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
+        <div className="mgmt-filter-field mgmt-filter-field--action">
+          <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        </div>
       </div>
 
       <div className="content-card">

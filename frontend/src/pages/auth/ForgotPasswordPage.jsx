@@ -5,6 +5,11 @@ import ROUTES from '../../constants/routes';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
+import {
+  validateEmail,
+  validatePassword,
+  validatePasswordConfirm,
+} from '../../utils/authValidation';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -20,6 +25,11 @@ const ForgotPasswordPage = () => {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -57,12 +67,10 @@ const ForgotPasswordPage = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (matKhau !== xacNhan) {
-      setError('Mật khẩu xác nhận không khớp');
-      return;
-    }
-    if (matKhau.length < 6) {
-      setError('Mật khẩu ít nhất 6 ký tự');
+    const pwdErr = validatePassword(matKhau)
+      || validatePasswordConfirm(matKhau, xacNhan);
+    if (pwdErr) {
+      setError(pwdErr);
       return;
     }
     setLoading(true);

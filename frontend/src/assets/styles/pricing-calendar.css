@@ -2,26 +2,77 @@
 .price-inv-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .price-inv-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px 12px;
   align-items: flex-end;
+  margin-bottom: 4px;
+}
+
+.price-inv-editing-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #3C7363;
+  padding-bottom: 10px;
+  white-space: nowrap;
 }
 
 .price-inv-toolbar .field {
-  min-width: 200px;
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 180px;
+}
+
+.price-inv-toolbar .field--hotel {
+  width: min(320px, 100%);
+}
+
+.price-inv-toolbar .field--room {
+  width: min(240px, 100%);
 }
 
 .price-inv-toolbar label {
   display: block;
   font-size: 12px;
+  font-weight: 600;
   color: #5a7a72;
   margin-bottom: 4px;
+}
+
+.price-inv-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.price-inv-stat {
+  background: #f4faf8;
+  border: 1px solid #d4ede6;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.price-inv-stat-label {
+  display: block;
+  font-size: 12px;
+  color: #5a7a72;
+  margin-bottom: 4px;
+}
+
+.price-inv-stat-value {
+  font-size: 15px;
+  color: #1a2e28;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .price-inv-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .price-inv-body {
@@ -253,6 +304,7 @@
   font-weight: 500;
 }
 
+.price-inv-date-row input[type="text"],
 .price-inv-date-row input[type="date"] {
   flex: 1;
   padding: 8px 10px;
@@ -262,6 +314,7 @@
   font-family: inherit;
 }
 
+.price-inv-date-row input.input-invalid,
 .price-inv-date-row input[type="date"].input-invalid,
 .price-inv-panel .form-row input.input-invalid {
   border-color: #e05c5c;

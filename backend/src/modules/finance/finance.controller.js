@@ -1,89 +1,105 @@
-const prisma = require('../../config/prisma');
+const financeService = require('./finance.service');
 
-const REVENUE_BOOKING_STATUS = [
-  'cho_xac_nhan',
-  'da_xac_nhan',
-  'da_checkin',
-  'hoan_thanh',
-  'da_huy',
-];
-
-const getDoiTacId = async (userId) => {
-  const dt = await prisma.doi_tac.findUnique({ where: { ma_nguoi_dung: userId } });
-  return dt?.ma_doi_tac;
+const ensurePartner = async (req, res) => {
+  const doiTacId = await financeService.getDoiTacId(req.user.id);
+  if (!doiTacId) {
+    res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
+    return null;
+  }
+  return doiTacId;
 };
 
-const calcBookingFinance = (booking) => {
-  const gross = Number(booking.thanh_toan_cuoi) || 0;
-  const commission = booking.hoa_hong ? Number(booking.hoa_hong.so_tien_hoa_hong) : 0;
-  const refund = booking.hoan_tien ? Number(booking.hoan_tien.so_tien_hoan) : 0;
-  const net = gross - commission - refund;
+exports.getHotels = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getHotels(doiTacId);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-  return { gross, commission, refund, net };
+exports.getOverview = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getOverview(doiTacId, req.query);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 exports.getFinanceSummary = async (req, res) => {
   try {
-    const doiTacId = await getDoiTacId(req.user.id);
-    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
-
-    const { startDate, endDate, ma_khach_san } = req.query;
-
-    const whereCondition = {
-      loai_phong: {
-        khach_san: {
-          ma_doi_tac: doiTacId,
-          ...(ma_khach_san ? { ma_khach_san: Number(ma_khach_san) } : {}),
-        },
-      },
-      trang_thai: { in: REVENUE_BOOKING_STATUS },
-      ngay_dat: {
-        gte: startDate ? new Date(startDate) : new Date(new Date().setDate(1)),
-        lte: endDate ? new Date(endDate) : new Date(),
-      },
-    };
-
-    const bookings = await prisma.dat_phong.findMany({
-      where: whereCondition,
-      include: {
-        hoa_hong: true,
-        hoan_tien: true,
-      },
-      orderBy: { ngay_dat: 'asc' },
-    });
-
-    let totalGross = 0;
-    let totalCommission = 0;
-    let totalRefund = 0;
-    const chartDataMap = {};
-
-    bookings.forEach((booking) => {
-      const { gross, commission, refund, net } = calcBookingFinance(booking);
-
-      totalGross += gross;
-      totalCommission += commission;
-      totalRefund += refund;
-
-      const dateKey = new Date(booking.ngay_dat).toISOString().split('T')[0];
-      if (!chartDataMap[dateKey]) {
-        chartDataMap[dateKey] = { date: dateKey, doanh_thu: 0, thuc_nhan: 0 };
-      }
-      chartDataMap[dateKey].doanh_thu += gross;
-      chartDataMap[dateKey].thuc_nhan += net;
-    });
-
-    res.json({
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getOverview(doiTacId, req.query);
+    res.status(200).json({
       success: true,
       data: {
         summary: {
-          gross: totalGross,
-          commission: totalCommission,
-          refund: totalRefund,
-          net: totalGross - totalCommission - totalRefund,
+          gross: data.overview.tong_doanh_thu,
+          commission: data.overview.hoa_hong_he_thong,
+          refund: 0,
+          net: data.overview.tien_doi_tac_nhan,
         },
-        chartData: Object.values(chartDataMap),
+        chartData: [],
+        ...data,
       },
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRevenue = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getRevenueBookings(doiTacId, req.query);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getCommissions = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getCommissions(doiTacId, req.query);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getPayouts = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const data = await financeService.getPayouts(doiTacId, req.query);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getPayoutDetail = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+
+    const maDot = req.query.ma_dot || req.query.thang_nam || null;
+
+    const data = await financeService.getPayoutDetail(doiTacId, maDot);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đợt thanh toán' });
+    }
+
+    res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

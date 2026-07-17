@@ -9,6 +9,7 @@ import {
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import FilterActions from '../../../components/common/management/FilterActions';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
@@ -29,6 +30,8 @@ const HotelsPage = () => {
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [diaDiemFilter, setDiaDiemFilter] = useState('all');
+  const [draftKeyword, setDraftKeyword] = useState('');
+  const [draftDiaDiemFilter, setDraftDiaDiemFilter] = useState('all');
   const [confirmAction, setConfirmAction] = useState(null);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
@@ -126,16 +129,17 @@ const HotelsPage = () => {
   const canToggle = (status) => status === 'hoat_dong' || status === 'bi_khoa';
   const canDelete = (status) => status === 'cho_duyet';
 
-  const hasActiveFilter = Boolean(
-    keyword.trim()
-    || activeTab !== 'all'
-    || diaDiemFilter !== 'all',
-  );
+  const applyFilters = () => {
+    setKeyword(draftKeyword);
+    setDiaDiemFilter(draftDiaDiemFilter);
+  };
 
   const clearFilters = () => {
     setKeyword('');
     setActiveTab('all');
     setDiaDiemFilter('all');
+    setDraftKeyword('');
+    setDraftDiaDiemFilter('all');
   };
 
   const handleDelete = (hotel) => {
@@ -170,8 +174,8 @@ const HotelsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={keyword}
-        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchValue={draftKeyword}
+        onSearchChange={(e) => setDraftKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
         tabs={filterTabs}
         activeTab={activeTab}
@@ -179,8 +183,8 @@ const HotelsPage = () => {
       >
         <select
           className="mgmt-select-inline partner-hotels-location-filter"
-          value={diaDiemFilter}
-          onChange={(e) => setDiaDiemFilter(e.target.value)}
+          value={draftDiaDiemFilter}
+          onChange={(e) => setDraftDiaDiemFilter(e.target.value)}
           aria-label="Lọc theo địa điểm"
         >
           <option value="all">Tất cả địa điểm</option>
@@ -188,13 +192,7 @@ const HotelsPage = () => {
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
         </select>
-        <span className="partner-hotels-clear-slot">
-          {hasActiveFilter && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          )}
-        </span>
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

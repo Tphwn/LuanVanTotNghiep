@@ -4,6 +4,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login, loginWithGoogle, clearError } from '../../store/slices/authSlice';
 import ROUTES from '../../constants/routes';
 import getRedirectRoute from '../../utils/redirect';
+import { validateEmail } from '../../utils/authValidation';
+import { setFlashToast } from '../../utils/flashToast';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -20,29 +22,35 @@ const LoginPage = () => {
   const googleBtnRef = useRef(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleError, setGoogleError] = useState('');
+  const [localLoginError, setLocalLoginError] = useState('');
 
   const [formData, setFormData] = useState({ email: '', mat_khau: '' });
 
   const isAccountLocked = Boolean(
-    error && (
-      error.includes('bị khóa')
-      || error.toLowerCase().includes('account locked')
+    (error || localLoginError) && (
+      String(error || localLoginError).includes('bị khóa')
+      || String(error || localLoginError).toLowerCase().includes('account locked')
     ),
   );
 
   const handleGoogleCredential = useCallback(async (response) => {
     if (!response?.credential) {
-      setGoogleError('Không nhận được thông tin từ Google');
+      setGoogleError('Đăng nhập thất bại. Không nhận được thông tin từ Google.');
       return;
     }
     setGoogleError('');
     try {
       const result = await dispatch(loginWithGoogle(response.credential)).unwrap();
       if (result?.user) {
+        setFlashToast('Đăng nhập thành công');
         navigate(from || getRedirectRoute(result.user), { replace: true });
       }
     } catch (err) {
-      setGoogleError(typeof err === 'string' ? err : 'Đăng nhập Google thất bại');
+      setGoogleError(
+        typeof err === 'string'
+          ? `Đăng nhập thất bại. ${err}`
+          : 'Đăng nhập thất bại.',
+      );
     }
   }, [dispatch, navigate, from]);
 
@@ -86,7 +94,7 @@ const LoginPage = () => {
     script.async = true;
     script.defer = true;
     script.onload = renderButton;
-    script.onerror = () => setGoogleError('Không tải được Google Sign-In');
+    script.onerror = () => setGoogleError('Đăng nhập thất bại. Không tải được Google Sign-In.');
     document.body.appendChild(script);
     return undefined;
   }, [handleGoogleCredential]);
@@ -94,13 +102,30 @@ const LoginPage = () => {
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) dispatch(clearError());
+    if (localLoginError) setLocalLoginError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const emailErr = validateEmail(formData.email);
+    const pwdEmpty = !String(formData.mat_khau || '');
+    if (emailErr || pwdEmpty) {
+      setLocalLoginError('Thông tin đăng nhập không hợp lệ.');
+      return;
+    }
+    // Login chỉ kiểm tra tối thiểu; ràng buộc chi tiết chỉ áp dụng khi đăng ký
+    if (formData.mat_khau.length < 6) {
+      setLocalLoginError('Thông tin đăng nhập không hợp lệ.');
+      return;
+    }
+    setLocalLoginError('');
     try {
-      const result = await dispatch(login(formData)).unwrap();
+      const result = await dispatch(login({
+        email: formData.email.trim(),
+        mat_khau: formData.mat_khau,
+      })).unwrap();
       if (result?.user) {
+        setFlashToast('Đăng nhập thành công');
         navigate(from || getRedirectRoute(result.user), { replace: true });
       }
     } catch (err) {
@@ -113,6 +138,14 @@ const LoginPage = () => {
             info: err.message || 'Email chưa xác thực. Vui lòng nhập mã OTP.',
           },
         });
+        return;
+      }
+      if (typeof err === 'string') {
+        setLocalLoginError(err);
+      } else if (err?.message) {
+        setLocalLoginError(err.message);
+      } else {
+        setLocalLoginError('Email hoặc mật khẩu không đúng');
       }
     }
   };
@@ -123,7 +156,7 @@ const LoginPage = () => {
     }
   }, [user, navigate, from]);
 
-  const displayError = error || googleError;
+  const displayError = localLoginError || error || googleError;
 
   return (
     <div style={{

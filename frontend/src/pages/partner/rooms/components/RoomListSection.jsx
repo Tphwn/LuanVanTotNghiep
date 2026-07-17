@@ -2,6 +2,7 @@ import { Eye, Pencil, Lock, Unlock } from 'lucide-react';
 import { resolveUploadUrl } from '../../../../utils/media';
 import ActionButton, { ActionCell } from '../../../../components/common/ActionButton';
 import FilterTabs from '../../../../components/common/management/FilterTabs';
+import FilterActions from '../../../../components/common/management/FilterActions';
 import ListPagination from '../../../../components/common/management/ListPagination';
 import { TRANG_THAI } from '../constants';
 import { getMainImage } from '../utils';
@@ -18,7 +19,7 @@ export default function RoomListSection({
   onViewRoom,
   onEditRoom,
   onToggleRoom,
-  hasActiveFilter,
+  onApplyFilters,
   onClearFilters,
   variant = 'partner',
   pagination,
@@ -64,13 +65,12 @@ export default function RoomListSection({
             </select>
           </div>
         )}
-        {hasActiveFilter && (
-          <div className="partner-room-filter-field partner-room-filter-field--action">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onClearFilters}>
-              Xóa bộ lọc
-            </button>
-          </div>
-        )}
+        <div className="partner-room-filter-field partner-room-filter-field--action">
+          <FilterActions
+            onApply={onApplyFilters || (() => {})}
+            onClear={onClearFilters}
+          />
+        </div>
       </div>
 
       <div className="mgmt-table-card partner-room-table-card">

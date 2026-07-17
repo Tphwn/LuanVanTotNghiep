@@ -5,6 +5,12 @@ import { register, verifyRegisterOtp, clearError } from '../../store/slices/auth
 import authService from '../../services/authService';
 import ROUTES from '../../constants/routes';
 import getRedirectRoute from '../../utils/redirect';
+import {
+  validateEmail,
+  validatePhone,
+  validatePassword,
+  validatePasswordConfirm,
+} from '../../utils/authValidation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -19,7 +25,8 @@ const RegisterPage = () => {
   const [pendingEmail, setPendingEmail] = useState(location.state?.pendingEmail || '');
   const [otp, setOtp] = useState('');
   const [info, setInfo] = useState(location.state?.info || '');
-  const [localError, setLocalError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [resendLoading, setResendLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -27,34 +34,78 @@ const RegisterPage = () => {
   });
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) dispatch(clearError());
-    if (localError) setLocalError('');
+    if (formError) setFormError('');
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateRegisterFields = () => {
+    const errors = {};
+    if (!formData.ho_ten.trim() || formData.ho_ten.trim().length < 2) {
+      errors.ho_ten = 'Họ tên không được để trống (tối thiểu 2 ký tự).';
+    }
+
+    const emailErr = validateEmail(formData.email);
+    if (emailErr) errors.email = emailErr;
+
+    const phoneErr = validatePhone(formData.so_dien_thoai);
+    if (phoneErr) errors.so_dien_thoai = phoneErr;
+
+    const pwdErr = validatePassword(formData.mat_khau);
+    if (pwdErr) errors.mat_khau = pwdErr;
+
+    const confirmErr = validatePasswordConfirm(formData.mat_khau, formData.xac_nhan_mat_khau);
+    if (confirmErr) errors.xac_nhan_mat_khau = confirmErr;
+
+    return errors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.mat_khau !== formData.xac_nhan_mat_khau) {
-      setLocalError('Mật khẩu xác nhận không khớp');
+    const errors = validateRegisterFields();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormError('Đăng ký không thành công. Vui lòng điền đúng các ràng buộc.');
       return;
     }
+
+    setFieldErrors({});
+    setFormError('');
     const { xac_nhan_mat_khau, ...dataToSend } = formData;
     try {
-      const result = await dispatch(register(dataToSend)).unwrap();
+      const result = await dispatch(register({
+        ...dataToSend,
+        email: dataToSend.email.trim(),
+        so_dien_thoai: dataToSend.so_dien_thoai.trim(),
+        ho_ten: dataToSend.ho_ten.trim(),
+      })).unwrap();
       if (result?.needs_otp) {
-        setPendingEmail(result.email || dataToSend.email);
+        setPendingEmail(result.email || dataToSend.email.trim());
         setInfo(result.message || 'Đã gửi mã OTP tới email của bạn.');
         setStep('otp');
         setOtp('');
       }
     } catch (err) {
-      setLocalError(typeof err === 'string' ? err : 'Đăng ký thất bại');
+      const msg = typeof err === 'string' ? err : 'Đăng ký thất bại';
+      if (msg.includes('Email')) setFieldErrors({ email: msg });
+      else if (msg.includes('điện thoại') || msg.includes('Số điện thoại')) {
+        setFieldErrors({ so_dien_thoai: msg });
+      }
+      setFormError(msg);
     }
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    setLocalError('');
+    setFormError('');
+    if (!otp.trim() || otp.trim().length !== 6) {
+      setFormError('Mã OTP gồm 6 chữ số.');
+      return;
+    }
     try {
       const result = await dispatch(verifyRegisterOtp({
         email: pendingEmail,
@@ -64,18 +115,18 @@ const RegisterPage = () => {
         navigate(getRedirectRoute(result.user), { replace: true });
       }
     } catch (err) {
-      setLocalError(typeof err === 'string' ? err : 'Xác thực OTP thất bại');
+      setFormError(typeof err === 'string' ? err : 'Xác thực OTP thất bại');
     }
   };
 
   const handleResendOtp = async () => {
     setResendLoading(true);
-    setLocalError('');
+    setFormError('');
     try {
       const res = await authService.resendOtp({ email: pendingEmail, purpose: 'register' });
       setInfo(res.data?.data?.message || res.data?.message || 'Đã gửi lại mã OTP.');
     } catch (err) {
-      setLocalError(err.response?.data?.message || 'Không gửi lại được OTP');
+      setFormError(err.response?.data?.message || 'Không gửi lại được OTP');
     } finally {
       setResendLoading(false);
     }
@@ -86,6 +137,8 @@ const RegisterPage = () => {
       navigate(getRedirectRoute(user), { replace: true });
     }
   }, [user, navigate, step]);
+
+  const displayError = formError || error;
 
   return (
     <div style={{
@@ -109,7 +162,7 @@ const RegisterPage = () => {
           </p>
         </div>
 
-        {(error || localError) && (
+        {displayError && (
           <div style={{
             background: '#fff2f0',
             border: '1px solid #ffccc7',
@@ -120,7 +173,8 @@ const RegisterPage = () => {
             fontSize: 'var(--font-size-md)',
           }}
           >
-            {error || localError}
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Đăng ký thất bại</div>
+            <div>{displayError}</div>
           </div>
         )}
 
@@ -140,46 +194,87 @@ const RegisterPage = () => {
         )}
 
         {step === 'form' ? (
-          <form onSubmit={handleSubmit}>
-            <Input label="Họ tên" name="ho_ten" type="text" value={formData.ho_ten} onChange={handleChange}
-              placeholder="Nguyễn Văn A" required
+          <form onSubmit={handleSubmit} noValidate>
+            <Input
+              label="Họ tên"
+              name="ho_ten"
+              type="text"
+              value={formData.ho_ten}
+              onChange={handleChange}
+              placeholder="Nguyễn Văn A"
+              error={fieldErrors.ho_ten}
+              required
             />
-            <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange}
-              placeholder="example@gmail.com" required
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="example@gmail.com"
+              error={fieldErrors.email}
+              required
             />
-            <Input label="Số điện thoại" name="so_dien_thoai" type="tel" value={formData.so_dien_thoai} onChange={handleChange}
-              placeholder="09xxxxxxxx" required
+            <Input
+              label="Số điện thoại"
+              name="so_dien_thoai"
+              type="tel"
+              value={formData.so_dien_thoai}
+              onChange={handleChange}
+              placeholder="09xxxxxxxx"
+              error={fieldErrors.so_dien_thoai}
+              required
             />
-            <Input label="Mật khẩu" name="mat_khau" type="password" value={formData.mat_khau} onChange={handleChange}
-              placeholder="Tối thiểu 6 ký tự" required
+            <Input
+              label="Mật khẩu"
+              name="mat_khau"
+              type="password"
+              value={formData.mat_khau}
+              onChange={handleChange}
+              placeholder="Tối thiểu 6 ký tự, có chữ và số"
+              error={fieldErrors.mat_khau}
+              required
             />
-            <Input label="Xác nhận mật khẩu" name="xac_nhan_mat_khau" type="password" value={formData.xac_nhan_mat_khau} onChange={handleChange}
-              placeholder="Nhập lại mật khẩu" required
+            <Input
+              label="Xác nhận mật khẩu"
+              name="xac_nhan_mat_khau"
+              type="password"
+              value={formData.xac_nhan_mat_khau}
+              onChange={handleChange}
+              placeholder="Nhập lại mật khẩu"
+              error={fieldErrors.xac_nhan_mat_khau}
+              required
             />
-            <Button type="submit" fullWidth loading={loading} size="lg"
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              size="lg"
               style={{ marginTop: 'var(--spacing-sm)' }}
             >
               Đăng ký
             </Button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp}>
+          <form onSubmit={handleVerifyOtp} noValidate>
             <Input
               label="Mã OTP"
               name="otp"
               type="text"
-              inputMode="numeric"
-              maxLength={6}
               value={otp}
               onChange={(e) => {
                 setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
                 if (error) dispatch(clearError());
-                if (localError) setLocalError('');
+                if (formError) setFormError('');
               }}
               placeholder="6 chữ số"
               required
             />
-            <Button type="submit" fullWidth loading={loading} size="lg"
+            <Button
+              type="submit"
+              fullWidth
+              loading={loading}
+              size="lg"
               style={{ marginTop: 'var(--spacing-sm)' }}
             >
               Xác thực
@@ -200,6 +295,8 @@ const RegisterPage = () => {
                 setStep('form');
                 setInfo('');
                 setOtp('');
+                setFormError('');
+                setFieldErrors({});
                 dispatch(clearError());
               }}
               style={{
@@ -218,7 +315,13 @@ const RegisterPage = () => {
           </form>
         )}
 
-        <p style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)', fontSize: 'var(--font-size-md)', color: 'var(--color-text-secondary)' }}>
+        <p style={{
+          textAlign: 'center',
+          marginTop: 'var(--spacing-lg)',
+          fontSize: 'var(--font-size-md)',
+          color: 'var(--color-text-secondary)',
+        }}
+        >
           Đã có tài khoản?
           {' '}
           <Link to={ROUTES.LOGIN} style={{ color: 'var(--color-primary)', fontWeight: 500 }}>

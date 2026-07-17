@@ -3,6 +3,7 @@ import { Eye } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
+import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
@@ -32,6 +33,12 @@ const ReviewsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
 
+  const [draftHotelFilter, setDraftHotelFilter] = useState('');
+  const [draftRoomFilter, setDraftRoomFilter] = useState('');
+  const [draftStarFilter, setDraftStarFilter] = useState('');
+  const [draftTuNgay, setDraftTuNgay] = useState('');
+  const [draftDenNgay, setDraftDenNgay] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -55,17 +62,17 @@ const ReviewsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!hotelFilter) {
+    if (!draftHotelFilter) {
       setRoomTypes([]);
       return;
     }
-    api.get('/partner/reviews/room-types', { params: { ma_khach_san: hotelFilter } })
+    api.get('/partner/reviews/room-types', { params: { ma_khach_san: draftHotelFilter } })
       .then((res) => setRoomTypes(res.data.data || []));
-  }, [hotelFilter]);
+  }, [draftHotelFilter]);
 
   useEffect(() => {
-    setRoomFilter('');
-  }, [hotelFilter]);
+    setDraftRoomFilter('');
+  }, [draftHotelFilter]);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -97,7 +104,13 @@ const ReviewsPage = () => {
     loadReviews();
   }, [hotelFilter, roomFilter, starFilter, tuNgay, denNgay]);
 
-  const hasActiveFilter = Boolean(hotelFilter || roomFilter || starFilter || tuNgay || denNgay);
+  const applyFilters = () => {
+    setHotelFilter(draftHotelFilter);
+    setRoomFilter(draftRoomFilter);
+    setStarFilter(draftStarFilter);
+    setTuNgay(draftTuNgay);
+    setDenNgay(draftDenNgay);
+  };
 
   const clearFilters = () => {
     setHotelFilter('');
@@ -105,6 +118,11 @@ const ReviewsPage = () => {
     setStarFilter('');
     setTuNgay('');
     setDenNgay('');
+    setDraftHotelFilter('');
+    setDraftRoomFilter('');
+    setDraftStarFilter('');
+    setDraftTuNgay('');
+    setDraftDenNgay('');
   };
 
   const fetchReviewDetail = async (reviewId) => {
@@ -194,8 +212,8 @@ const ReviewsPage = () => {
       <div className="search-bar partner-reviews-filters">
         <select
           className="search-input"
-          value={hotelFilter}
-          onChange={(e) => setHotelFilter(e.target.value)}
+          value={draftHotelFilter}
+          onChange={(e) => setDraftHotelFilter(e.target.value)}
         >
           <option value="">Tất cả khách sạn</option>
           {hotels.map((h) => (
@@ -204,9 +222,9 @@ const ReviewsPage = () => {
         </select>
         <select
           className="search-input"
-          value={roomFilter}
-          onChange={(e) => setRoomFilter(e.target.value)}
-          disabled={!hotelFilter}
+          value={draftRoomFilter}
+          onChange={(e) => setDraftRoomFilter(e.target.value)}
+          disabled={!draftHotelFilter}
         >
           <option value="">Tất cả loại phòng</option>
           {roomTypes.map((r) => (
@@ -215,8 +233,8 @@ const ReviewsPage = () => {
         </select>
         <select
           className="search-input"
-          value={starFilter}
-          onChange={(e) => setStarFilter(e.target.value)}
+          value={draftStarFilter}
+          onChange={(e) => setDraftStarFilter(e.target.value)}
         >
           <option value="">Tất cả sao</option>
           {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s} sao</option>)}
@@ -224,23 +242,19 @@ const ReviewsPage = () => {
         <input
           type="date"
           className="search-input"
-          value={tuNgay}
-          onChange={(e) => setTuNgay(e.target.value)}
+          value={draftTuNgay}
+          onChange={(e) => setDraftTuNgay(e.target.value)}
           title="Từ ngày"
         />
         <input
           type="date"
           className="search-input"
-          value={denNgay}
-          min={tuNgay}
-          onChange={(e) => setDenNgay(e.target.value)}
+          value={draftDenNgay}
+          min={draftTuNgay}
+          onChange={(e) => setDraftDenNgay(e.target.value)}
           title="Đến ngày"
         />
-        {hasActiveFilter && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
-        )}
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
       </div>
 
       <div className="mgmt-table-card">

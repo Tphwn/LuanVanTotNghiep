@@ -156,8 +156,24 @@
   border-color: #3C7363;
 }
 
+.form-control.input-invalid {
+  border-color: #e05c5c;
+  background: #fff5f5;
+}
+
+.form-control.input-invalid:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 92, 92, 0.18);
+}
+
 textarea.form-control {
   resize: vertical;
+}
+
+.form-field-error {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: #cf1322;
 }
 
 .form-error {

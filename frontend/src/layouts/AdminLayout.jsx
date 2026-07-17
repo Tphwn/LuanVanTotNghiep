@@ -20,6 +20,7 @@ import { logout } from '../store/slices/authSlice';
 import ROUTES from '../constants/routes';
 import { isAdminMenuActive } from '../utils/sidebarActive';
 import { resolveUploadUrl } from '../utils/media';
+import FlashToastHost from '../components/common/FlashToastHost';
 
 const adminMenus = [
   { title: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
@@ -56,6 +57,7 @@ const AdminLayout = () => {
 
   return (
     <div className="app-shell app-shell-admin">
+      <FlashToastHost />
       <div className="layout-body layout-body-admin">
         {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
 

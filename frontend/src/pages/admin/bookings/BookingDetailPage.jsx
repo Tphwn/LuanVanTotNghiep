@@ -159,7 +159,8 @@ export default function BookingDetailPage() {
     }
   };
 
-  const refundPending = ['cho_xu_ly', 'dang_xu_ly'].includes(detail?.hoan_tien?.trang_thai);
+  const refundPending = ['cho_xu_ly', 'dang_xu_ly'].includes(detail?.hoan_tien?.trang_thai)
+    && Number(detail?.hoan_tien?.so_tien_hoan) > 0;
 
   const handleCancelBooking = async () => {
     if (!detail) return;

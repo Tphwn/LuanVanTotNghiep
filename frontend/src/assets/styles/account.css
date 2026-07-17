@@ -271,6 +271,55 @@
   color: #94a8a2;
 }
 
+.customer-card-desc {
+  margin: -8px 0 18px;
+  font-size: 13px;
+  color: #5a7a72;
+}
+
+.customer-form-group input.input-invalid {
+  border-color: #e05c5c;
+  background: #fff5f5;
+}
+
+.customer-form-group input.input-invalid:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 92, 92, 0.18);
+}
+
+.customer-form-group .form-field-error {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: #cf1322;
+}
+
+.customer-pwd-wrap {
+  position: relative;
+}
+
+.customer-pwd-wrap input {
+  padding-right: 44px;
+}
+
+.customer-pwd-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #5a7a72;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.customer-pwd-toggle:hover {
+  color: #3C7363;
+}
+
 .customer-avatar-row {
   display: flex;
   align-items: center;

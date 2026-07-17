@@ -23,6 +23,7 @@ const PartnerPayoutConfirmModal = ({
   open,
   partnerName,
   amount,
+  soDon,
   loading,
   submitError,
   onClose,
@@ -71,9 +72,15 @@ const PartnerPayoutConfirmModal = ({
         </div>
 
         <p style={{ fontSize: 14, color: '#5a7a72', marginBottom: 14, lineHeight: 1.5 }}>
-          Xác nhận thanh toán cho đối tác
+          Thanh toán một lần toàn bộ
           {' '}
-          <strong style={{ color: '#1a2e28' }}>{partnerName || '—'}</strong>.
+          <strong style={{ color: '#1a2e28' }}>{soDon || 0} đơn</strong>
+          {' '}
+          đang chờ của đối tác
+          {' '}
+          <strong style={{ color: '#1a2e28' }}>{partnerName || '—'}</strong>
+          .
+          Hệ thống sẽ tạo mã thanh toán mới cho đợt này.
         </p>
 
         <div style={{ marginBottom: 14 }}>

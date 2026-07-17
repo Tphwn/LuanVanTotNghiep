@@ -131,10 +131,14 @@ const getRefundStatus = (booking) =>
 export const getPaymentDisplay = (booking) => {
   if (isCancelledBooking(booking)) {
     const refundStatus = getRefundStatus(booking);
-    const refundInfo = booking?.thong_tin_hoan_tien;
-    const hasRefundAmount = Number(refundInfo?.so_tien_hoan || booking?.hoan_tien?.so_tien_hoan) > 0;
+    const refundAmount = Number(
+      booking?.thong_tin_hoan_tien?.so_tien_hoan
+      ?? booking?.hoan_tien?.so_tien_hoan
+      ?? 0,
+    );
+    const hasPendingRefund = ['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus) && refundAmount > 0;
 
-    if (refundStatus === 'da_hoan') {
+    if (refundStatus === 'da_hoan' && refundAmount > 0) {
       const meta = REFUND_BADGE.da_hoan;
       return {
         shortLabel: 'Đã hoàn',
@@ -144,17 +148,7 @@ export const getPaymentDisplay = (booking) => {
       };
     }
 
-    if (['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus)) {
-      const meta = REFUND_BADGE.cho_xu_ly;
-      return {
-        shortLabel: 'Chờ xử lý',
-        label: meta.label,
-        cls: 'mgmt-status-text--pending',
-        badge: meta.cls,
-      };
-    }
-
-    if (hasRefundAmount && !refundStatus) {
+    if (hasPendingRefund) {
       const meta = REFUND_BADGE.cho_xu_ly;
       return {
         shortLabel: 'Chờ xử lý',
@@ -174,18 +168,7 @@ export const getPaymentDisplay = (booking) => {
       };
     }
 
-    const paidOnline = booking?.phuong_thuc_tt === 'truc_tuyen'
-      || booking?.thanh_toan?.trang_thai === 'thanh_cong';
-    if (paidOnline) {
-      const meta = REFUND_BADGE.cho_xu_ly;
-      return {
-        shortLabel: 'Chờ xử lý',
-        label: meta.label,
-        cls: 'mgmt-status-text--pending',
-        badge: meta.cls,
-      };
-    }
-
+    // Đã hủy nhưng không phát sinh số tiền hoàn (> 0) → không hiện "Chờ xử lý"
     return {
       shortLabel: 'Không hoàn',
       label: 'Không hoàn tiền',

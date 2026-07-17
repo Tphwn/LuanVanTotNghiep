@@ -1,25 +1,60 @@
 const Joi = require('joi');
+const {
+  MSG,
+  EMAIL_MAX,
+  PASSWORD_MIN,
+  PASSWORD_MAX,
+  PHONE_REGEX,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+} = require('../../utils/authValidation');
+
+const emailField = Joi.string()
+  .required()
+  .custom((value, helpers) => {
+    const err = validateEmail(value);
+    if (err) return helpers.message(err);
+    return value.trim();
+  });
+
+const passwordField = Joi.string()
+  .required()
+  .custom((value, helpers) => {
+    const err = validatePassword(value);
+    if (err) return helpers.message(err);
+    return value;
+  });
+
+const loginPasswordField = Joi.string()
+  .required()
+  .custom((value, helpers) => {
+    const err = validatePassword(value, { checkComplexity: false });
+    if (err) return helpers.message(err);
+    return value;
+  });
+
+const phoneField = Joi.string()
+  .required()
+  .custom((value, helpers) => {
+    const err = validatePhone(value);
+    if (err) return helpers.message(err);
+    return String(value).trim();
+  });
 
 const registerSchema = Joi.object({
-  email: Joi.string().email().required().messages({
-    'string.email': 'Email không hợp lệ',
-    'any.required': 'Email là bắt buộc',
-  }),
-  so_dien_thoai: Joi.string().min(9).max(15).required().messages({
-    'any.required': 'Số điện thoại là bắt buộc',
-  }),
-  mat_khau: Joi.string().min(6).required().messages({
-    'string.min': 'Mật khẩu ít nhất 6 ký tự',
-    'any.required': 'Mật khẩu là bắt buộc',
-  }),
+  email: emailField.max(EMAIL_MAX),
+  so_dien_thoai: phoneField.pattern(PHONE_REGEX),
+  mat_khau: passwordField.min(PASSWORD_MIN).max(PASSWORD_MAX),
   ho_ten: Joi.string().min(2).max(100).required().messages({
     'any.required': 'Họ tên là bắt buộc',
+    'string.min': 'Họ tên tối thiểu 2 ký tự',
   }),
 });
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
-  mat_khau: Joi.string().required(),
+  email: emailField,
+  mat_khau: loginPasswordField,
 });
 
 const googleLoginSchema = Joi.object({
@@ -29,26 +64,24 @@ const googleLoginSchema = Joi.object({
 });
 
 const emailOtpSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: emailField,
   otp: Joi.string().length(6).required().messages({
     'string.length': 'Mã OTP gồm 6 chữ số',
   }),
 });
 
 const resendOtpSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: emailField,
   purpose: Joi.string().valid('register', 'reset').default('register'),
 });
 
 const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: emailField,
 });
 
 const resetPasswordSchema = Joi.object({
   reset_token: Joi.string().required(),
-  mat_khau: Joi.string().min(6).required().messages({
-    'string.min': 'Mật khẩu ít nhất 6 ký tự',
-  }),
+  mat_khau: passwordField,
 });
 
 const validate = (schema) => (req, res, next) => {
@@ -72,4 +105,5 @@ module.exports = {
   forgotPasswordSchema,
   resetPasswordSchema,
   validate,
+  MSG,
 };

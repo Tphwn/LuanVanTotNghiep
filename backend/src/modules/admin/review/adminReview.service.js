@@ -9,7 +9,6 @@ const {
 
 const reviewInclude = {
   khach_hang: { select: { ho_ten: true, ma_khach_hang: true } },
-  nguoi_dung: { select: { email: true, ma_nguoi_dung: true } },
   dat_phong: {
     select: {
       ma_don_hang: true,
@@ -57,11 +56,9 @@ const mapReview = (dg) => ({
   ly_do_an_phan_hoi: dg.ly_do_an_phan_hoi,
   ngay_danh_gia: dg.ngay_danh_gia,
   ngay_phan_hoi: dg.ngay_phan_hoi,
-  ngay_duyet: dg.ngay_duyet,
   trang_thai: dg.trang_thai,
   da_phan_hoi: !!dg.phan_hoi_doi_tac,
   khach_hang: dg.khach_hang ? { ho_ten: dg.khach_hang.ho_ten, ma_khach_hang: dg.khach_hang.ma_khach_hang } : null,
-  admin_duyet: dg.nguoi_dung ? { email: dg.nguoi_dung.email } : null,
   ma_don_hang: dg.dat_phong?.ma_don_hang,
   ma_dat_phong: dg.ma_dat_phong,
   ngay_nhan_phong: dg.dat_phong?.ngay_nhan_phong,

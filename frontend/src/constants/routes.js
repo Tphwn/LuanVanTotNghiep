@@ -27,6 +27,7 @@ const ROUTES = {
     BOOKINGS: '/partner/bookings',
     REVIEWS: '/partner/reviews',
     FINANCE: '/partner/finance',
+    FINANCE_PAYOUT_DETAIL: '/partner/finance/payouts/:thangNam',
   },
   ADMIN: {
     DASHBOARD: '/admin/dashboard',
@@ -37,6 +38,7 @@ const ROUTES = {
     ROOM_TYPES: '/admin/room-types',
     REVIEWS: '/admin/reviews',
     FINANCE: '/admin/finance',
+    FINANCE_PARTNER_PAYOUT_DETAIL: '/admin/finance/partner-payouts/:maDoiTac',
     REPORTS: '/admin/reports',
     PARTNER_REQUESTS: '/admin/partner-requests',
   },

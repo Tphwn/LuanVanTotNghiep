@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Tag } from 'lucide-react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ListPagination from '../../../components/common/management/ListPagination';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 import useListPagination from '../../../hooks/useListPagination';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
@@ -12,6 +13,7 @@ import { getHotelStatusMeta } from '../../../constants/statusConfig';
 import '../../../assets/styles/pricing-calendar.css';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const MIN_UNIT_PRICE = 50000;
 
 const formatPriceShort = (v) => {
   const n = Number(v) || 0;
@@ -54,7 +56,26 @@ const getDefaultLoaiGia = (dateStr) => {
 
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '—';
-  return new Date(`${dateStr}T12:00:00`).toLocaleDateString('vi-VN');
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-');
+  if (!y || !m || !d) return '—';
+  return `${d}/${m}/${y}`;
+};
+
+/** Parse dd/mm/yyyy → yyyy-mm-dd; return null nếu không hợp lệ */
+const parseDisplayDate = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(year, month - 1, day);
+  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) {
+    return null;
+  }
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
 const getDatesInRange = (from, to) => {
@@ -192,10 +213,13 @@ const PricingPage = () => {
   const [rangeAnchor, setRangeAnchor] = useState(null);
   const [selectedFrom, setSelectedFrom] = useState('');
   const [selectedTo, setSelectedTo] = useState('');
+  const [fromText, setFromText] = useState('');
+  const [toText, setToText] = useState('');
 
   const [donGia, setDonGia] = useState('');
   const [moBan, setMoBan] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const { toast, showToast } = useToast();
 
@@ -209,12 +233,36 @@ const PricingPage = () => {
   };
 
   useEffect(() => {
-    setListLoading(true);
+    let cancelled = false;
     api.get('/partner/pricing/hotels')
-      .then((res) => setHotels(res.data.data || []))
-      .catch(() => showToast('Không tải được danh sách khách sạn', 'error'))
-      .finally(() => setListLoading(false));
+      .then((res) => {
+        if (!cancelled) setHotels(res.data.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Không tải được danh sách khách sạn', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setListLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [showToast]);
+
+  const syncFromDate = (iso) => {
+    setSelectedFrom(iso || '');
+    setFromText(iso ? formatDisplayDate(iso) : '');
+  };
+
+  const syncToDate = (iso) => {
+    setSelectedTo(iso || '');
+    setToText(iso ? formatDisplayDate(iso) : '');
+  };
+
+  const clearDateRange = () => {
+    syncFromDate('');
+    syncToDate('');
+  };
 
   const detailHotel = useMemo(
     () => hotels.find((h) => h.ma_khach_san === Number(detailHotelId)) || null,
@@ -249,8 +297,7 @@ const PricingPage = () => {
     setDetailHotelId(hotel.ma_khach_san);
     setSelectedRoom(activeRooms[0] ? String(activeRooms[0].ma_loai_phong) : '');
     setRangeAnchor(null);
-    setSelectedFrom('');
-    setSelectedTo('');
+    clearDateRange();
     setDonGia('');
     setFieldErrors({});
     setViewYear(now.getFullYear());
@@ -268,8 +315,7 @@ const PricingPage = () => {
     setSelectedRoom('');
     setCalendarData({ room: null, days: [] });
     setRangeAnchor(null);
-    setSelectedFrom('');
-    setSelectedTo('');
+    clearDateRange();
     setDonGia('');
     setFieldErrors({});
   };
@@ -288,7 +334,7 @@ const PricingPage = () => {
 
   const monthLabel = `Tháng ${viewMonth + 1} / ${viewYear}`;
 
-  const loadCalendar = useCallback(async () => {
+  const loadCalendar = async () => {
     if (!selectedRoom) {
       setCalendarData({ room: null, days: [] });
       return;
@@ -313,11 +359,49 @@ const PricingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedRoom, rangeStart, rangeEnd, showToast]);
+  };
 
   useEffect(() => {
-    if (detailHotelId) loadCalendar();
-  }, [detailHotelId, loadCalendar]);
+    if (!detailHotelId) return undefined;
+    let cancelled = false;
+
+    const run = async () => {
+      if (!selectedRoom) {
+        setCalendarData({ room: null, days: [] });
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await api.get('/partner/pricing/management-calendar', {
+          params: {
+            maLoaiPhong: selectedRoom,
+            tuNgay: rangeStart,
+            denNgay: rangeEnd,
+          },
+        });
+        if (cancelled) return;
+        const data = res.data.data || { room: null, days: [] };
+        setCalendarData(data);
+        if (data.room) {
+          const defaultQty = data.room.mo_ban > 0 ? data.room.mo_ban : data.room.tong_phong;
+          setMoBan(String(defaultQty));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          showToast(err.response?.data?.message || 'Lỗi tải lịch', 'error');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    // Tránh setState đồng bộ trong thân effect (React Compiler)
+    const timer = window.setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [detailHotelId, selectedRoom, rangeStart, rangeEnd, showToast]);
 
   const dayMap = useMemo(() => {
     const map = {};
@@ -333,23 +417,69 @@ const PricingPage = () => {
   );
 
   const handleFromDateChange = (value) => {
-    setSelectedFrom(value);
+    syncFromDate(value);
     clearFieldError('selectedFrom');
     clearFieldError('selectedTo');
     setRangeAnchor(null);
     if (value && selectedTo && value > selectedTo) {
-      setSelectedTo(value);
+      syncToDate(value);
     }
   };
 
   const handleToDateChange = (value) => {
-    setSelectedTo(value);
+    syncToDate(value);
     clearFieldError('selectedFrom');
     clearFieldError('selectedTo');
     setRangeAnchor(null);
     if (value && selectedFrom && value < selectedFrom) {
-      setSelectedFrom(value);
+      syncFromDate(value);
     }
+  };
+
+  const commitFromText = (raw) => {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) {
+      syncFromDate('');
+      clearFieldError('selectedFrom');
+      return;
+    }
+    const iso = parseDisplayDate(trimmed);
+    if (!iso) {
+      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
+      return;
+    }
+    if (iso < today) {
+      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày bắt đầu không được trước hôm nay' }));
+      setFromText(formatDisplayDate(iso));
+      return;
+    }
+    handleFromDateChange(iso);
+  };
+
+  const commitToText = (raw) => {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) {
+      syncToDate('');
+      clearFieldError('selectedTo');
+      return;
+    }
+    const iso = parseDisplayDate(trimmed);
+    if (!iso) {
+      setFieldErrors((prev) => ({ ...prev, selectedTo: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
+      return;
+    }
+    const minDate = selectedFrom || today;
+    if (iso < minDate) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        selectedTo: selectedFrom
+          ? 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'
+          : 'Ngày kết thúc không được trước hôm nay',
+      }));
+      setToText(formatDisplayDate(iso));
+      return;
+    }
+    handleToDateChange(iso);
   };
 
   const handleDayClick = (dateStr) => {
@@ -357,8 +487,8 @@ const PricingPage = () => {
     clearFieldError('selectedTo');
     if (!rangeAnchor) {
       setRangeAnchor(dateStr);
-      setSelectedFrom(dateStr);
-      setSelectedTo(dateStr);
+      syncFromDate(dateStr);
+      syncToDate(dateStr);
       const info = dayMap[dateStr];
       if (info) {
         setDonGia(formatCurrency(info.don_gia));
@@ -372,11 +502,11 @@ const PricingPage = () => {
     }
 
     if (dateStr < rangeAnchor) {
-      setSelectedFrom(dateStr);
-      setSelectedTo(rangeAnchor);
+      syncFromDate(dateStr);
+      syncToDate(rangeAnchor);
     } else {
-      setSelectedFrom(rangeAnchor);
-      setSelectedTo(dateStr);
+      syncFromDate(rangeAnchor);
+      syncToDate(dateStr);
     }
     setRangeAnchor(null);
 
@@ -411,24 +541,26 @@ const PricingPage = () => {
     setRangeAnchor(null);
   };
 
-  const validateSave = () => {
+  const validateSave = (fromOverride, toOverride) => {
+    const from = fromOverride !== undefined ? fromOverride : selectedFrom;
+    const to = toOverride !== undefined ? toOverride : selectedTo;
     const errors = {};
 
     if (!selectedRoom) {
       errors.selectedRoom = 'Loại phòng là bắt buộc';
     }
 
-    if (!selectedFrom) {
+    if (!from) {
       errors.selectedFrom = 'Ngày bắt đầu là bắt buộc';
-    } else if (selectedFrom < today) {
+    } else if (from < today) {
       errors.selectedFrom = 'Không thể chọn ngày đã qua';
     }
 
-    if (!selectedTo) {
+    if (!to) {
       errors.selectedTo = 'Ngày kết thúc là bắt buộc';
     }
 
-    if (selectedFrom && selectedTo && selectedFrom > selectedTo) {
+    if (from && to && from > to) {
       errors.selectedTo = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu';
     }
 
@@ -439,8 +571,8 @@ const PricingPage = () => {
       const priceValue = parseCurrency(priceRaw);
       if (!Number.isFinite(priceValue) || priceValue <= 0) {
         errors.donGia = 'Đơn giá không hợp lệ';
-      } else if (priceValue < 1000) {
-        errors.donGia = 'Đơn giá phải từ 1.000 VNĐ trở lên';
+      } else if (priceValue < MIN_UNIT_PRICE) {
+        errors.donGia = `Đơn giá phải từ ${formatCurrency(MIN_UNIT_PRICE)} VNĐ trở lên`;
       }
     }
 
@@ -462,10 +594,42 @@ const PricingPage = () => {
     return errors;
   };
 
+  const handleSaveClick = () => {
+    const fromIso = fromText.trim() ? parseDisplayDate(fromText) : '';
+    const toIso = toText.trim() ? parseDisplayDate(toText) : '';
+
+    if (fromText.trim() && fromIso === null) {
+      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
+      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
+      return;
+    }
+    if (toText.trim() && toIso === null) {
+      setFieldErrors((prev) => ({ ...prev, selectedTo: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
+      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
+      return;
+    }
+
+    const nextFrom = fromIso || '';
+    const nextTo = toIso || '';
+    syncFromDate(nextFrom);
+    syncToDate(nextTo);
+    setRangeAnchor(null);
+
+    const errors = validateSave(nextFrom, nextTo);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
+      return;
+    }
+    setFieldErrors({});
+    setShowSaveConfirm(true);
+  };
+
   const handleSave = async () => {
     const errors = validateSave();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      setShowSaveConfirm(false);
       showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
       return;
     }
@@ -503,6 +667,7 @@ const PricingPage = () => {
         await api.post('/partner/pricing/delete-bulk', { items: toDelete });
       }
 
+      setShowSaveConfirm(false);
       showToast('Lưu thay đổi thành công');
       setRangeAnchor(null);
       await loadCalendar();
@@ -514,6 +679,38 @@ const PricingPage = () => {
   };
 
   const tongPhong = calendarData.room?.tong_phong ?? 0;
+  const giaCoBan = Number(calendarData.room?.gia_co_ban || 0);
+
+  const selectedRoomName = useMemo(() => {
+    const room = rooms.find((r) => String(r.ma_loai_phong) === String(selectedRoom));
+    return room?.ten_loai || '—';
+  }, [rooms, selectedRoom]);
+
+  const lowestOpenRooms = useMemo(() => {
+    const days = calendarData.days || [];
+    if (!days.length) return null;
+    let min = Infinity;
+    days.forEach((d) => {
+      const value = d.so_luong_ap_dung ?? d.con_lai;
+      if (value != null && Number.isFinite(Number(value))) {
+        min = Math.min(min, Number(value));
+      }
+    });
+    return min === Infinity ? null : min;
+  }, [calendarData.days]);
+
+  const ngayChinhGiaLabel = selectedFrom && selectedTo
+    ? `${formatDisplayDate(selectedFrom)} – ${formatDisplayDate(selectedTo)}`
+    : 'Chưa chọn';
+
+  const saveConfirmRows = [
+    { label: 'Khách sạn', value: detailHotel?.ten || '—' },
+    { label: 'Loại phòng', value: selectedRoomName },
+    { label: 'Từ ngày', value: formatDisplayDate(selectedFrom) },
+    { label: 'Đến ngày', value: formatDisplayDate(selectedTo) },
+    { label: 'Đơn giá', value: `${formatCurrency(parseCurrency(donGia))}đ` },
+    { label: 'Số phòng mở bán', value: String(moBan || '—') },
+  ];
 
   if (!detailHotelId) {
     return (
@@ -524,12 +721,6 @@ const PricingPage = () => {
         />
 
         <Toast toast={toast} />
-
-        <ManagementToolbar
-          searchValue={keyword}
-          onSearchChange={(e) => setKeyword(e.target.value)}
-          searchPlaceholder="Tìm theo tên khách sạn, địa điểm hoặc địa chỉ..."
-        />
 
         <div className="mgmt-table-card mgmt-table-card--grid">
           {listLoading ? (
@@ -551,9 +742,9 @@ const PricingPage = () => {
                       <th>Tên khách sạn</th>
                       <th>Địa điểm</th>
                       <th>Địa chỉ</th>
-                      <th style={{ width: 120 }}>Loại phòng</th>
+                      <th style={{ width: 120 }}>Số Loại phòng</th>
                       <th style={{ width: 140 }}>Trạng thái</th>
-                      <th style={{ width: 100 }}>Thao tác</th>
+                      <th style={{ width: 140 }}>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -580,13 +771,13 @@ const PricingPage = () => {
                           </td>
                           <ActionCell>
                             <ActionButton
-                              variant="view"
-                              iconOnly
-                              icon={Eye}
-                              title="Xem chi tiết"
+                              variant="edit"
+                              title="Quản lý giá"
                               onClick={() => openDetail(hotel)}
                               disabled={activeCount === 0}
-                            />
+                            >
+                              Quản lý giá
+                            </ActionButton>
                           </ActionCell>
                         </tr>
                       );
@@ -616,13 +807,14 @@ const PricingPage = () => {
     <div className="mgmt-page price-inv-page">
       <ManagementHeader
         title="Quản lý giá và kho phòng"
-        subtitle={detailHotel?.ten || 'Chi tiết lịch giá'}
+        subtitle="Quản lý giá bán và số phòng mở bán theo ngày cho từng loại phòng."
         onBack={closeDetail}
       />
       <Toast toast={toast} />
 
       <div className="price-inv-toolbar">
-        <div className="field">
+        <div className="price-inv-editing-label">Đang chỉnh giá</div>
+        <div className="field field--hotel">
           <label>Khách sạn</label>
           <select
             className="search-input"
@@ -634,8 +826,8 @@ const PricingPage = () => {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label>Chọn loại phòng <span style={{ color: '#e05c5c' }}>*</span></label>
+        <div className="field field--room">
+          <label>Loại phòng <span style={{ color: '#e05c5c' }}>*</span></label>
           <select
             className={`search-input${fieldErrors.selectedRoom ? ' input-invalid' : ''}`}
             value={selectedRoom}
@@ -643,8 +835,7 @@ const PricingPage = () => {
               setSelectedRoom(e.target.value);
               clearFieldError('selectedRoom');
               setRangeAnchor(null);
-              setSelectedFrom('');
-              setSelectedTo('');
+              clearDateRange();
               setFieldErrors((prev) => {
                 const next = { ...prev };
                 delete next.selectedFrom;
@@ -673,6 +864,29 @@ const PricingPage = () => {
       ) : (
         <div className="price-inv-body">
           <div className="price-inv-calendar-wrap">
+            <div className="price-inv-stats">
+              <div className="price-inv-stat">
+                <span className="price-inv-stat-label">Giá cơ bản</span>
+                <strong className="price-inv-stat-value">
+                  {giaCoBan > 0 ? `${formatCurrency(giaCoBan)}đ` : '—'}
+                </strong>
+              </div>
+              <div className="price-inv-stat">
+                <span className="price-inv-stat-label">Tổng phòng</span>
+                <strong className="price-inv-stat-value">{tongPhong || '—'}</strong>
+              </div>
+              <div className="price-inv-stat">
+                <span className="price-inv-stat-label">Ngày chỉnh giá</span>
+                <strong className="price-inv-stat-value">{ngayChinhGiaLabel}</strong>
+              </div>
+              <div className="price-inv-stat">
+                <span className="price-inv-stat-label">Phòng mở bán thấp nhất</span>
+                <strong className="price-inv-stat-value">
+                  {lowestOpenRooms != null ? lowestOpenRooms : '—'}
+                </strong>
+              </div>
+            </div>
+
             <div className="price-inv-nav">
               <button type="button" onClick={prevMonth}>← Tháng trước</button>
               <div className="price-inv-nav-center">
@@ -718,11 +932,22 @@ const PricingPage = () => {
               <div className="price-inv-date-row">
                 <span>Từ <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="dd/mm/yyyy"
                   className={fieldErrors.selectedFrom ? 'input-invalid' : ''}
-                  value={selectedFrom}
-                  min={today}
-                  onChange={(e) => handleFromDateChange(e.target.value)}
+                  value={fromText}
+                  onChange={(e) => {
+                    setFromText(e.target.value);
+                    clearFieldError('selectedFrom');
+                  }}
+                  onBlur={() => commitFromText(fromText)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitFromText(fromText);
+                    }
+                  }}
                 />
               </div>
               {fieldErrors.selectedFrom && (
@@ -731,11 +956,22 @@ const PricingPage = () => {
               <div className="price-inv-date-row">
                 <span>Đến <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="dd/mm/yyyy"
                   className={fieldErrors.selectedTo ? 'input-invalid' : ''}
-                  value={selectedTo}
-                  min={selectedFrom || today}
-                  onChange={(e) => handleToDateChange(e.target.value)}
+                  value={toText}
+                  onChange={(e) => {
+                    setToText(e.target.value);
+                    clearFieldError('selectedTo');
+                  }}
+                  onBlur={() => commitToText(toText)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitToText(toText);
+                    }
+                  }}
                 />
               </div>
               {fieldErrors.selectedTo && (
@@ -761,20 +997,21 @@ const PricingPage = () => {
                     setDonGia(formatCurrency(parseCurrency(e.target.value)));
                     clearFieldError('donGia');
                   }}
-                  placeholder="Tối thiểu 1.000"
+                  placeholder={`Tối thiểu ${formatCurrency(MIN_UNIT_PRICE)}`}
                 />
                 {fieldErrors.donGia ? (
                   <p className="form-field-error">{fieldErrors.donGia}</p>
                 ) : (
                   <p className="price-inv-hint">
-                    {calendarData.room ? ` · Giá cơ bản: ${formatCurrency(calendarData.room.gia_co_ban)} đ` : ''}
+                    Tối thiểu {formatCurrency(MIN_UNIT_PRICE)}đ
+                    {calendarData.room ? ` · Giá cơ bản: ${formatCurrency(giaCoBan)}đ` : ''}
                   </p>
                 )}
               </div>
             </div>
 
             <div className="price-inv-panel-section">
-              <h3>Sét phòng áp dụng giá</h3>
+              <h3>Số phòng mở bán</h3>
               <div className="form-row">
                 <label>Số phòng <span style={{ color: '#e05c5c' }}>*</span></label>
                 <input
@@ -793,9 +1030,7 @@ const PricingPage = () => {
                   <p className="form-field-error">{fieldErrors.moBan}</p>
                 ) : (
                   <p className="price-inv-hint">
-                    Số phòng phải &gt; 0
-                    {tongPhong > 0 ? ` và ≤ ${tongPhong}` : ''}
-                    {' · '}Áp dụng: {moBan || '—'} / {tongPhong || '—'} phòng
+                    Áp dụng: {moBan || '—'} / {tongPhong || '—'} phòng
                   </p>
                 )}
               </div>
@@ -805,7 +1040,7 @@ const PricingPage = () => {
               type="button"
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={saving}
             >
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
@@ -813,6 +1048,20 @@ const PricingPage = () => {
           </aside>
         </div>
       )}
+
+      <ConfirmModal
+        open={showSaveConfirm}
+        title="Xác nhận cập nhật giá"
+        intro="Bạn có chắc muốn cập nhật giá và số phòng mở bán cho khoảng ngày đã chọn không?"
+        icon={<Tag size={20} />}
+        variant="primary"
+        infoRows={saveConfirmRows}
+        confirmText="Xác nhận"
+        cancelText="Hủy"
+        loading={saving}
+        onClose={() => !saving && setShowSaveConfirm(false)}
+        onConfirm={handleSave}
+      />
     </div>
   );
 };

@@ -71,7 +71,6 @@ const createPartner = async (req, res, next) => {
   try {
     const {
       email,
-      email_lien_he,
       so_dien_thoai,
       mat_khau,
       trang_thai,
@@ -95,38 +94,33 @@ const createPartner = async (req, res, next) => {
       errors.email = 'Email đăng nhập không hợp lệ';
     }
 
-    // 3. Kiểm tra Email liên hệ (Nếu có nhập mới test)
-    if (email_lien_he?.trim() && !emailRegex.test(email_lien_he.trim())) {
-      errors.email_lien_he = 'Email liên hệ không hợp lệ';
-    }
-
-    // 4. Kiểm tra Số điện thoại
+    // 3. Kiểm tra Số điện thoại
     if (!so_dien_thoai?.trim()) {
       errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
     } else if (!phoneRegex.test(so_dien_thoai.trim())) {
       errors.so_dien_thoai = 'SĐT không hợp lệ (Phải gồm 10 số, bắt đầu bằng 03,05,07,08,09)';
     }
 
-    // 5. Kiểm tra Mật khẩu
+    // 4. Kiểm tra Mật khẩu
     if (!mat_khau) {
       errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
     } else if (!passwordRegex.test(mat_khau)) {
       errors.mat_khau = 'Mật khẩu tối thiểu 8 ký tự, bao gồm cả chữ và số';
     }
 
-    // 6. Kiểm tra Tên công ty / Đối tác
+    // 5. Kiểm tra Tên công ty / Đối tác
     if (!ten_cong_ty?.trim()) {
       errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
     } else if (ten_cong_ty.trim().length < 2) {
       errors.ten_cong_ty = 'Tên công ty phải có ít nhất 2 ký tự';
     }
 
-    // 7. Kiểm tra Trạng thái
+    // 6. Kiểm tra Trạng thái
     if (trang_thai && !['hoat_dong', 'bi_khoa'].includes(trang_thai)) {
       errors.trang_thai = 'Trạng thái không hợp lệ';
     }
 
-    // 8. Kiểm tra Hoa hồng
+    // 7. Kiểm tra Hoa hồng
     if (phan_tram_hoa_hong !== undefined && phan_tram_hoa_hong !== null && phan_tram_hoa_hong !== '') {
       const pct = Number(phan_tram_hoa_hong);
       if (Number.isNaN(pct) || pct < 0 || pct > 100) {
@@ -143,7 +137,6 @@ const createPartner = async (req, res, next) => {
     const result = await userService.createPartner(
       {
         email: email.trim(),
-        email_lien_he: email_lien_he?.trim() || null,
         so_dien_thoai: so_dien_thoai.trim(),
         mat_khau,
         trang_thai: trang_thai || 'hoat_dong',

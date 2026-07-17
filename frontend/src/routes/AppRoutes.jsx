@@ -37,6 +37,7 @@ import PartnerRoomsPage from '../pages/partner/rooms/RoomTypePage';
 import PartnerRoomFormPage from '../pages/partner/rooms/RoomFormPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
+import PartnerPayoutDetailPage from '../pages/partner/finance/PayoutDetailPage';
 import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
@@ -51,6 +52,7 @@ import AdminBookingsPage from '../pages/admin/bookings/BookingsPage';
 import AdminFinancePage from '../pages/admin/finance/AdminFinancePage';
 import TransactionDetailPage from '../pages/admin/finance/TransactionDetailPage';
 import RefundDetailPage from '../pages/admin/finance/RefundDetailPage';
+import AdminPartnerPayoutDetailPage from '../pages/admin/finance/PartnerPayoutDetailPage';
 import AdminReportsPage from '../pages/admin/reports/ReportsPage';
 import AdminAmenitiesPage from '../pages/admin/amenities/AmenitiesPage';
 import AmenityFormPage from '../pages/admin/amenities/AmenityFormPage';
@@ -148,6 +150,7 @@ const AppRoutes = () => {
           <Route path="bookings/:id" element={<PartnerBookingsPage />} />
           <Route path="reviews" element={<PartnerReviewsPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
+          <Route path="finance/payouts/:maDot" element={<PartnerPayoutDetailPage />} />
           <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
           <Route path="pricing" element={<PricingPage />} />
@@ -180,6 +183,7 @@ const AppRoutes = () => {
           <Route path="reviews" element={<AdminReviewsPage />} />
           <Route path="promotions" element={<AdminPromotionsPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
+          <Route path="finance/partner-payouts/:maDoiTac" element={<AdminPartnerPayoutDetailPage />} />
           <Route path="finance/transactions/:id" element={<TransactionDetailPage />} />
           <Route path="finance/refunds/:id" element={<RefundDetailPage />} />
           <Route path="reports" element={<AdminReportsPage />} />

@@ -1,5 +1,10 @@
 const prisma = require('../../config/prisma');
 const { hash, compare } = require('../../utils/hashPassword');
+const {
+  MSG,
+  validatePassword,
+  validatePhone,
+} = require('../../utils/authValidation');
 
 const getCustomerProfile = async (userId) => {
   const user = await prisma.nguoi_dung.findUnique({
@@ -44,14 +49,19 @@ const updateProfile = async (userId, data, avatarUrl) => {
 
   const { ho_ten, so_dien_thoai } = data;
 
+  if (so_dien_thoai !== undefined) {
+    const phoneErr = validatePhone(so_dien_thoai);
+    if (phoneErr) throw new Error(phoneErr);
+  }
+
   if (so_dien_thoai && so_dien_thoai !== user.so_dien_thoai) {
     const phoneExists = await prisma.nguoi_dung.findFirst({
       where: {
-        so_dien_thoai,
+        so_dien_thoai: String(so_dien_thoai).trim(),
         NOT: { ma_nguoi_dung: user.ma_nguoi_dung },
       },
     });
-    if (phoneExists) throw new Error('Số điện thoại đã được sử dụng');
+    if (phoneExists) throw new Error(MSG.PHONE_EXISTS);
   }
 
   const customerUpdate = {};
@@ -85,11 +95,10 @@ const changePassword = async (userId, { mat_khau_cu, mat_khau_moi }) => {
   if (!user) throw new Error('Không tìm thấy tài khoản');
 
   const isMatch = await compare(mat_khau_cu, user.mat_khau);
-  if (!isMatch) throw new Error('Mật khẩu hiện tại không đúng');
+  if (!isMatch) throw new Error(MSG.PASSWORD_CURRENT_WRONG);
 
-  if (!mat_khau_moi || mat_khau_moi.length < 6) {
-    throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
-  }
+  const pwdErr = validatePassword(mat_khau_moi);
+  if (pwdErr) throw new Error(pwdErr);
 
   const matKhauHash = await hash(mat_khau_moi);
   await prisma.nguoi_dung.update({
@@ -101,9 +110,10 @@ const changePassword = async (userId, { mat_khau_cu, mat_khau_moi }) => {
 };
 
 const changePhone = async (userId, so_dien_thoai) => {
-  if (!so_dien_thoai?.trim()) throw new Error('Số điện thoại không được để trống');
+  const phoneErr = validatePhone(so_dien_thoai);
+  if (phoneErr) throw new Error(phoneErr);
 
-  const phone = so_dien_thoai.trim();
+  const phone = String(so_dien_thoai).trim();
   const user = await prisma.nguoi_dung.findUnique({
     where: { ma_nguoi_dung: parseInt(userId, 10) },
     include: { khach_hang: true },
@@ -119,7 +129,7 @@ const changePhone = async (userId, so_dien_thoai) => {
       NOT: { ma_nguoi_dung: user.ma_nguoi_dung },
     },
   });
-  if (phoneExists) throw new Error('Số điện thoại đã được sử dụng');
+  if (phoneExists) throw new Error(MSG.PHONE_EXISTS);
 
   await prisma.nguoi_dung.update({
     where: { ma_nguoi_dung: user.ma_nguoi_dung },

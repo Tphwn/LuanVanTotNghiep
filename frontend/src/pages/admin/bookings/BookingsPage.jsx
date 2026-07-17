@@ -12,6 +12,7 @@ import {
 } from '../../../store/slices/adminBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import FilterActions from '../../../components/common/management/FilterActions';
 import BookingTable from '../../../components/booking/BookingTable';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 import AdminBookingCancelModal from './components/AdminBookingCancelModal';
@@ -27,12 +28,18 @@ const AdminBookingsPage = () => {
   );
 
   const [keyword, setKeyword] = useState('');
-  const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [partnerFilter, setPartnerFilter] = useState('all');
   const [hotelFilter, setHotelFilter] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
+
+  const [draftKeyword, setDraftKeyword] = useState('');
+  const [draftPartnerFilter, setDraftPartnerFilter] = useState('all');
+  const [draftHotelFilter, setDraftHotelFilter] = useState('all');
+  const [draftTuNgay, setDraftTuNgay] = useState('');
+  const [draftDenNgay, setDraftDenNgay] = useState('');
+
   const [page, setPage] = useState(1);
   const [cancelBooking, setCancelBooking] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -44,35 +51,30 @@ const AdminBookingsPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedKeyword(keyword), 350);
-    return () => clearTimeout(timer);
-  }, [keyword]);
-
-  useEffect(() => {
     dispatch(fetchAdminBookings({
-      keyword: debouncedKeyword,
+      keyword,
       trang_thai: statusFilter,
       ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
       ks_id: hotelFilter !== 'all' ? hotelFilter : '',
       tu_ngay: tuNgay,
       den_ngay: denNgay,
     }));
-  }, [dispatch, debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+  }, [dispatch, keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
 
   const filteredHotels = useMemo(() => {
-    if (partnerFilter === 'all') return hotels;
-    return hotels.filter((h) => String(h.ma_doi_tac) === String(partnerFilter));
-  }, [hotels, partnerFilter]);
+    if (draftPartnerFilter === 'all') return hotels;
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(draftPartnerFilter));
+  }, [hotels, draftPartnerFilter]);
 
   const handlePartnerChange = (value) => {
-    setPartnerFilter(value);
+    setDraftPartnerFilter(value);
     if (value === 'all') return;
     const hotelStillValid = hotels.some(
-      (h) => String(h.ma_khach_san) === String(hotelFilter)
+      (h) => String(h.ma_khach_san) === String(draftHotelFilter)
         && String(h.ma_doi_tac) === String(value),
     );
-    if (hotelFilter !== 'all' && !hotelStillValid) {
-      setHotelFilter('all');
+    if (draftHotelFilter !== 'all' && !hotelStillValid) {
+      setDraftHotelFilter('all');
     }
   };
 
@@ -85,7 +87,7 @@ const AdminBookingsPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+  }, [keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
 
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -109,13 +111,13 @@ const AdminBookingsPage = () => {
   const rangeTo = Math.min(currentPage * PAGE_SIZE, list.length);
 
   const listFilters = useMemo(() => ({
-    keyword: debouncedKeyword,
+    keyword,
     trang_thai: statusFilter,
     ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
     ks_id: hotelFilter !== 'all' ? hotelFilter : '',
     tu_ngay: tuNgay,
     den_ngay: denNgay,
-  }), [debouncedKeyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+  }), [keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
 
   const handleViewDetail = (id) => {
     navigate(`/admin/bookings/${id}`);
@@ -164,14 +166,13 @@ const AdminBookingsPage = () => {
     { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0, tone: 'danger' },
   ], [stats, list.length]);
 
-  const hasActiveFilter = Boolean(
-    keyword.trim()
-    || statusFilter !== 'all'
-    || partnerFilter !== 'all'
-    || hotelFilter !== 'all'
-    || tuNgay
-    || denNgay,
-  );
+  const applyFilters = () => {
+    setKeyword(draftKeyword);
+    setPartnerFilter(draftPartnerFilter);
+    setHotelFilter(draftHotelFilter);
+    setTuNgay(draftTuNgay);
+    setDenNgay(draftDenNgay);
+  };
 
   const clearFilters = () => {
     setKeyword('');
@@ -180,6 +181,11 @@ const AdminBookingsPage = () => {
     setHotelFilter('all');
     setTuNgay('');
     setDenNgay('');
+    setDraftKeyword('');
+    setDraftPartnerFilter('all');
+    setDraftHotelFilter('all');
+    setDraftTuNgay('');
+    setDraftDenNgay('');
   };
 
   return (
@@ -202,8 +208,8 @@ const AdminBookingsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={keyword}
-        onSearchChange={(e) => setKeyword(e.target.value)}
+        searchValue={draftKeyword}
+        onSearchChange={(e) => setDraftKeyword(e.target.value)}
         searchPlaceholder="Tìm mã đơn, tên khách, SĐT..."
         tabs={filterTabs}
         activeTab={statusFilter}
@@ -211,7 +217,7 @@ const AdminBookingsPage = () => {
       >
         <select
           className="mgmt-select-inline"
-          value={partnerFilter}
+          value={draftPartnerFilter}
           onChange={(e) => handlePartnerChange(e.target.value)}
           aria-label="Lọc theo đối tác"
         >
@@ -222,8 +228,8 @@ const AdminBookingsPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={hotelFilter}
-          onChange={(e) => setHotelFilter(e.target.value)}
+          value={draftHotelFilter}
+          onChange={(e) => setDraftHotelFilter(e.target.value)}
           aria-label="Lọc theo khách sạn"
         >
           <option value="all">Tất cả khách sạn</option>
@@ -238,26 +244,20 @@ const AdminBookingsPage = () => {
         <input
           type="date"
           className="mgmt-select-inline admin-bookings-date-filter"
-          value={tuNgay}
-          onChange={(e) => setTuNgay(e.target.value)}
+          value={draftTuNgay}
+          onChange={(e) => setDraftTuNgay(e.target.value)}
           aria-label="Ngày nhận"
         />
         <span className="mgmt-toolbar-label">Ngày check-out</span>
         <input
           type="date"
           className="mgmt-select-inline admin-bookings-date-filter"
-          value={denNgay}
-          min={tuNgay}
-          onChange={(e) => setDenNgay(e.target.value)}
+          value={draftDenNgay}
+          min={draftTuNgay}
+          onChange={(e) => setDraftDenNgay(e.target.value)}
           aria-label="Ngày trả"
         />
-        <span className="mgmt-toolbar-clear-slot">
-          {hasActiveFilter && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>
-              Xóa bộ lọc
-            </button>
-          )}
-        </span>
+        <FilterActions onApply={applyFilters} onClear={clearFilters} />
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
