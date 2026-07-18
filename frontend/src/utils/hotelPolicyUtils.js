@@ -97,20 +97,5 @@ export const buildCancellationPolicyItems = (hotel) => {
     .sort((a, b) => b.so_ngay_truoc - a.so_ngay_truoc)
     .map((p) => `Hủy trước ${p.so_ngay_truoc} ngày: hoàn ${Number(p.phan_tram_hoan)}% tiền đặt cọc`);
 
-  const notes = [];
-
-  if (hotel.hoan_khi_benh) {
-    notes.push('Được xem xét hoàn tiền khi khách bị bệnh (có minh chứng y tế)');
-  }
-  if (hotel.hoan_cong_viec_dot_xuat) {
-    notes.push('Được xem xét hoàn tiền khi có việc công tác đột xuất');
-  }
-  if (hotel.yeu_cau_minh_chung_huy) {
-    notes.push('Yêu cầu minh chứng khi yêu cầu hủy / hoàn tiền');
-  }
-  if (hotel.mo_ta_chinh_sach_huy?.trim()) {
-    notes.push(hotel.mo_ta_chinh_sach_huy.trim());
-  }
-
-  return { rules, notes };
+  return { rules, notes: [] };
 };

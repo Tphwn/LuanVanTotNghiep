@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Star } from 'lucide-react';
 import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerStarRating from '../../components/customer/CustomerStarRating';
@@ -8,6 +9,7 @@ import ReviewModerationNotice from '../../components/review/ReviewModerationNoti
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { formatBookingDate } from '../../utils/bookingDisplay';
+import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/home.css';
 
 const REVIEW_CRITERIA = [
@@ -50,13 +52,6 @@ const EMPTY_SCORES = {
   diem_vi_tri: 0,
   diem_tien_nghi: 0,
 };
-
-const OrderInfoRow = ({ label, value }) => (
-  <div className="customer-review-order-row">
-    <span>{label}</span>
-    <strong>{value ?? '—'}</strong>
-  </div>
-);
 
 export default function CustomerBookingReviewPage({ viewMode = false }) {
   const { id } = useParams();
@@ -132,7 +127,9 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
     e.preventDefault();
     setError('');
 
-    const missing = REVIEW_CRITERIA.find((item) => !scores[item.key] || scores[item.key] < 1);
+    const missing = REVIEW_CRITERIA.find(
+      (item) => item.required && (!scores[item.key] || scores[item.key] < 1),
+    );
     if (missing) {
       setError(`Vui lòng chọn điểm cho mục "${missing.label}"`);
       return;
@@ -149,7 +146,7 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
         ...scores,
         noi_dung: noiDung.trim(),
       });
-      showToast('Đã gửi đánh giá. Cảm ơn bạn!');
+      showToast('Đánh giá thành công!');
       setTimeout(() => navigate(ROUTES.CUSTOMER.MY_BOOKINGS), 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể gửi đánh giá');
@@ -188,11 +185,32 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
   }
 
   const { khach_san, loai_phong, luu_tru } = booking;
+  const hotelImage = resolveUploadUrl(khach_san?.anh_dai_dien);
+  const stayRange = `${formatBookingDate(luu_tru?.ngay_nhan)} → ${formatBookingDate(luu_tru?.ngay_tra)}`;
+
+  const criteriaList = (
+    <div className="customer-review-criteria-list">
+      {REVIEW_CRITERIA.map((item) => (
+        <CustomerStarRating
+          key={item.key}
+          label={item.label}
+          hint={item.hint}
+          required={item.required}
+          value={scores[item.key]}
+          readOnly={showReadOnly}
+          onChange={(val) => {
+            setScores((prev) => ({ ...prev, [item.key]: val }));
+            if (error) setError('');
+          }}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="customer-review-page">
       {toast && (
-        <div className={`mgmt-toast ${toast.type}`} style={{ marginBottom: 16 }}>
+        <div className={`mgmt-toast ${toast.type}`}>
           {toast.msg}
         </div>
       )}
@@ -215,116 +233,112 @@ export default function CustomerBookingReviewPage({ viewMode = false }) {
       </header>
 
       <div className="customer-review-layout">
-        <aside className="customer-review-panel customer-review-panel--info">
-          <h2 className="customer-review-panel-title">Thông tin đơn</h2>
-          <OrderInfoRow label="Khách sạn" value={khach_san?.ten} />
-          <OrderInfoRow label="Địa chỉ" value={khach_san?.dia_chi} />
-          <OrderInfoRow label="Loại phòng" value={loai_phong?.ten_loai} />
-          <div className="customer-review-order-grid">
-            <OrderInfoRow label="Số phòng" value={luu_tru?.so_phong ?? 1} />
-            <OrderInfoRow
-              label="Diện tích"
-              value={loai_phong?.dien_tich != null ? `${loai_phong.dien_tich}m²` : '—'}
-            />
-            <OrderInfoRow
-              label="Sức chứa"
-              value={loai_phong?.suc_chua ? `${loai_phong.suc_chua} Khách` : '—'}
-            />
-            <OrderInfoRow label="Số giường" value={loai_phong?.loai_giuong} />
-            <OrderInfoRow label="Người lớn" value={luu_tru?.so_nguoi_lon ?? 0} />
-            <OrderInfoRow label="Trẻ em" value={luu_tru?.so_tre_em ?? 0} />
-            <OrderInfoRow label="Nhận phòng" value={formatBookingDate(luu_tru?.ngay_nhan)} />
-            <OrderInfoRow label="Trả phòng" value={formatBookingDate(luu_tru?.ngay_tra)} />
+        <aside className="customer-review-summary-card">
+          <div className="customer-review-summary-media">
+            {hotelImage ? (
+              <img src={hotelImage} alt={khach_san?.ten || 'Khách sạn'} />
+            ) : (
+              <div className="customer-review-summary-media-fallback" aria-hidden>
+                {(khach_san?.ten || 'KS').slice(0, 1)}
+              </div>
+            )}
           </div>
+
+          <div className="customer-review-summary-body">
+            <h2 className="customer-review-summary-hotel">{khach_san?.ten || '—'}</h2>
+            <p className="customer-review-summary-room">{loai_phong?.ten_loai || '—'}</p>
+            <p className="customer-review-summary-dates">{stayRange}</p>
+            <p className="customer-review-summary-meta">
+              Mã đơn #{booking.ma_don || booking.ma_dat_phong}
+            </p>
+            {khach_san?.dia_chi && (
+              <p className="customer-review-summary-meta">{khach_san.dia_chi}</p>
+            )}
+          </div>
+
+          {showReadOnly && scores.so_sao > 0 && (
+            <div className="customer-review-summary-score">
+              <span>Điểm TB</span>
+              <strong>
+                <Star size={14} fill="currentColor" strokeWidth={2} />
+                {Number(scores.so_sao).toFixed(1)}
+              </strong>
+            </div>
+          )}
         </aside>
 
-        <section className="customer-review-panel customer-review-panel--form">
-          {showReadOnly ? (
-            <div className="customer-review-form">
-              <div className="customer-review-form-scroll">
-                {REVIEW_CRITERIA.map((item) => (
-                  <CustomerStarRating
-                    key={item.key}
-                    label={item.label}
-                    required={item.required}
-                    value={scores[item.key]}
-                    readOnly
-                  />
-                ))}
+        {showReadOnly ? (
+          <section className="customer-review-form-block">
+            {criteriaList}
 
-                <div className="customer-review-field">
-                  <span>Nhận xét của bạn về khách sạn</span>
-                  <p className="customer-review-readonly-text">
-                    {noiDung?.trim() || 'Không có nhận xét'}
-                  </p>
-                </div>
-
-                {review?.trang_thai === 'an' && (
-                  <ReviewModerationNotice
-                    variant="hidden"
-                    title="Đánh giá đã bị ẩn bởi admin"
-                    reasonLabel="Lý do"
-                    reason={review.ly_do_an || '—'}
-                  />
-                )}
-
-                {review?.phan_hoi_doi_tac && (
-                  <div className="customer-review-partner-reply">
-                    <span>Phản hồi từ khách sạn</span>
-                    <p>{review.phan_hoi_doi_tac}</p>
-                  </div>
-                )}
-
-                {review?.ngay_danh_gia && (
-                  <p className="customer-review-submitted-at">
-                    Gửi ngày {formatBookingDate(review.ngay_danh_gia)}
-                  </p>
-                )}
-              </div>
+            <div className="customer-review-comment-card">
+              <span>Nhận xét của bạn về khách sạn</span>
+              <p className="customer-review-readonly-text">
+                {noiDung?.trim() || 'Không có nhận xét'}
+              </p>
             </div>
-          ) : (
-            <form className="customer-review-form" onSubmit={handleSubmit}>
-              <div className="customer-review-form-scroll">
-                {REVIEW_CRITERIA.map((item) => (
-                  <CustomerStarRating
-                    key={item.key}
-                    label={item.label}
-                    hint={item.hint}
-                    required={item.required}
-                    value={scores[item.key]}
-                    onChange={(val) => setScores((prev) => ({ ...prev, [item.key]: val }))}
-                  />
-                ))}
 
-                <label className="customer-review-field" htmlFor="review-content">
-                  <span className="required">Nhận xét của bạn về khách sạn</span>
-                  <textarea
-                    id="review-content"
-                    className="customer-review-textarea"
-                    value={noiDung}
-                    onChange={(e) => setNoiDung(e.target.value)}
-                    placeholder="Chia sẻ chi tiết trải nghiệm của bạn..."
-                    maxLength={2000}
-                    required
-                  />
-                </label>
+            {review?.trang_thai === 'an' && (
+              <ReviewModerationNotice
+                variant="hidden"
+                title="Đánh giá đã bị ẩn bởi admin"
+                reasonLabel="Lý do"
+                reason={review.ly_do_an || '—'}
+              />
+            )}
 
-                {error && <p className="customer-review-error">{error}</p>}
+            {review?.phan_hoi_doi_tac && (
+              <div className="customer-review-partner-reply">
+                <span>Phản hồi từ khách sạn</span>
+                <p>{review.phan_hoi_doi_tac}</p>
               </div>
+            )}
 
-              <div className="customer-review-form-footer">
-                <CustomerButton
-                  type="submit"
-                  className="customer-review-submit"
-                  fullWidth
-                  disabled={submitting}
-                >
-                  {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
-                </CustomerButton>
-              </div>
-            </form>
-          )}
-        </section>
+            {review?.ngay_danh_gia && (
+              <p className="customer-review-submitted-at">
+                Gửi ngày {formatBookingDate(review.ngay_danh_gia)}
+              </p>
+            )}
+          </section>
+        ) : (
+          <form className="customer-review-form-block" onSubmit={handleSubmit} noValidate>
+            {criteriaList}
+
+            <div className="customer-review-comment-card">
+              <label className="customer-review-field" htmlFor="review-content">
+                <span className="required">Nhận xét của bạn về khách sạn</span>
+                <textarea
+                  id="review-content"
+                  className={`customer-review-textarea${error ? ' input-invalid' : ''}`}
+                  value={noiDung}
+                  onChange={(e) => {
+                    setNoiDung(e.target.value);
+                    if (error) setError('');
+                  }}
+                  placeholder="Chia sẻ chi tiết trải nghiệm của bạn..."
+                  maxLength={2000}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? 'review-content-error' : undefined}
+                />
+              </label>
+              {error && (
+                <p id="review-content-error" className="form-field-error" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <div className="customer-review-form-footer">
+              <CustomerButton
+                type="submit"
+                className="customer-review-submit"
+                disabled={submitting}
+              >
+                {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+              </CustomerButton>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

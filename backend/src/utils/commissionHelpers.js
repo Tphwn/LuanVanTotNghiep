@@ -15,10 +15,7 @@ const hasBlockingRefund = (hoanTien) => {
   return ['cho_xu_ly', 'dang_xu_ly', 'da_hoan'].includes(hoanTien.trang_thai);
 };
 
-const resolveCommissionRate = (hotel, partner) => {
-  if (hotel?.phan_tram_hoa_hong != null && hotel.phan_tram_hoa_hong !== '') {
-    return Number(hotel.phan_tram_hoa_hong);
-  }
+const resolveCommissionRate = (_hotel, partner) => {
   if (partner?.phan_tram_hoa_hong != null && partner.phan_tram_hoa_hong !== '') {
     return Number(partner.phan_tram_hoa_hong);
   }

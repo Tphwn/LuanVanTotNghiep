@@ -1,7 +1,7 @@
 const prisma = require('../../config/prisma');
 
 const listNotifications = async (userId, { loai } = {}) => {
-  const where = { ma_nguoi_dung: parseInt(userId) };
+  const where = { ma_nguoi_dung: parseInt(userId, 10) };
   if (loai) where.loai = loai;
 
   const [items, unreadCount] = await Promise.all([
@@ -20,7 +20,7 @@ const listNotifications = async (userId, { loai } = {}) => {
 
 const markRead = async (userId, id) => {
   const item = await prisma.thong_bao.findFirst({
-    where: { ma_thong_bao: Number(id), ma_nguoi_dung: parseInt(userId) },
+    where: { ma_thong_bao: Number(id), ma_nguoi_dung: parseInt(userId, 10) },
   });
   if (!item) throw new Error('Không tìm thấy thông báo');
 
@@ -31,7 +31,7 @@ const markRead = async (userId, id) => {
 };
 
 const markAllRead = async (userId, loai) => {
-  const where = { ma_nguoi_dung: parseInt(userId), da_doc: false };
+  const where = { ma_nguoi_dung: parseInt(userId, 10), da_doc: false };
   if (loai) where.loai = loai;
 
   await prisma.thong_bao.updateMany({

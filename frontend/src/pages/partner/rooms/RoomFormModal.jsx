@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { X, Star } from 'lucide-react';
 import api from '../../../services/api';
-import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { RoomAmenityPicker } from './components/RoomAmenityGroups';
@@ -55,7 +54,6 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   );
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [requestRefresh, setRequestRefresh] = useState(0);
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '' });
   const [toast, setToast] = useState(null);
@@ -115,10 +113,9 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
         loai_de_xuat: 'phong',
         mo_ta: `${contextTag} Đối tác yêu cầu tiện nghi cho loại phòng này`,
       });
-      showToast('Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
+      showToast('Đã gửi đề xuất! Admin sẽ nhận thông báo để xem xét thêm vào danh mục.');
       setProposeForm({ ten_de_xuat: '' });
       setShowPropose(false);
-      setRequestRefresh((k) => k + 1);
     } catch (err) {
       showToast(err.response?.data?.message || 'Gửi đề xuất thất bại', 'error');
     }
@@ -309,8 +306,6 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   const labelSt = { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' };
   const errSt = { margin: '4px 0 0', fontSize: 12, color: '#e05c5c' };
 
-  const roomContextName = form.ten_loai?.trim() || room?.ten_loai || '';
-
   return (
     <div>
       {formAlert && (
@@ -427,13 +422,6 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
             {fieldErrors.gia_co_ban && <p style={errSt}>{fieldErrors.gia_co_ban}</p>}
           </div>
         </div>
-
-        <AmenityRequestStatus
-          loaiFilter="phong"
-          refreshKey={requestRefresh}
-          contextId={room?.ma_loai_phong || null}
-          contextName={roomContextName}
-        />
 
         <div style={{ marginBottom: 16 }}>
           <label style={labelSt}>Tiện nghi loại phòng</label>

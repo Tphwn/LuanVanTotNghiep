@@ -28,19 +28,38 @@ const notifyPartner = async (maDoiTac, { tieu_de, noi_dung, loai = 'tien_nghi' }
   });
 };
 
-const notifyAmenityApproved = async (req) => {
-  const phamVi = LOAI_LABEL[req.loai_de_xuat] || 'hệ thống';
-  return notifyPartner(req.ma_doi_tac, {
-    tieu_de: 'Yêu cầu tiện nghi đã được duyệt',
-    noi_dung: `Yêu cầu "${req.ten_de_xuat}" (${phamVi}) đã được admin duyệt. Tiện nghi sẽ được thêm vào danh mục. Bạn có thể chọn được tiện nghi`,
-  });
-};
+const notifyAmenityAdded = async ({
+  tenTienNghi,
+  loai,
+  notifyScope = 'none',
+  maDoiTac = null,
+}) => {
+  const phamVi = LOAI_LABEL[loai] || 'hệ thống';
+  const payload = {
+    tieu_de: 'Tiện nghi mới đã được thêm',
+    noi_dung: `Admin đã thêm tiện nghi "${tenTienNghi}" (${phamVi}) vào danh mục. Bạn có thể gắn vào khách sạn/loại phòng.`,
+    loai: 'tien_nghi',
+  };
 
-const notifyAmenityRejected = async (req, phan_hoi) => {
-  return notifyPartner(req.ma_doi_tac, {
-    tieu_de: 'Đề xuất tiện nghi bị từ chối',
-    noi_dung: `Tiện nghi "${req.ten_de_xuat}" không được duyệt.${phan_hoi ? ` Lý do: ${phan_hoi}` : ''}`,
-  });
+  if (notifyScope === 'one' && maDoiTac) {
+    return notifyPartner(maDoiTac, payload);
+  }
+
+  if (notifyScope === 'all') {
+    const partners = await prisma.doi_tac.findMany({
+      where: { trang_thai: 'hoat_dong' },
+      select: { ma_doi_tac: true },
+    });
+    const results = [];
+    for (const p of partners) {
+      // eslint-disable-next-line no-await-in-loop
+      const row = await notifyPartner(p.ma_doi_tac, payload);
+      if (row) results.push(row);
+    }
+    return results;
+  }
+
+  return null;
 };
 
 const notifyHotelLocked = async (maDoiTac, { tenKhachSan, lyDo }) => {
@@ -141,8 +160,7 @@ const notifyPromotionUnlocked = async (maDoiTac, { tenKhuyenMai, maCode }) => {
 
 module.exports = {
   notifyPartner,
-  notifyAmenityApproved,
-  notifyAmenityRejected,
+  notifyAmenityAdded,
   notifyHotelLocked,
   notifyHotelUnlocked,
   notifyRoomTypeLocked,

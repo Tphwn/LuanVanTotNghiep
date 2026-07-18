@@ -336,8 +336,8 @@ const HotelDetailPage = () => {
                 { label: 'Ngày duyệt', value: formatDateTime(hotel.ngay_duyet) },
                 {
                   label: 'Hoa hồng',
-                  value: hotel.phan_tram_hoa_hong != null
-                    ? `${hotel.phan_tram_hoa_hong}%`
+                  value: partner?.phan_tram_hoa_hong != null
+                    ? `${partner.phan_tram_hoa_hong}%`
                     : 'Mặc định hệ thống (15%)',
                 },
               ]}

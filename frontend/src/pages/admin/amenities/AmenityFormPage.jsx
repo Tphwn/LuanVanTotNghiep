@@ -1,6 +1,6 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addAmenity, updateAmenity, fetchAmenities } from '../../../store/slices/amenitySlice';
 import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug } from '../../../utils/amenityIcons';
 import EditField from '../users/components/EditField';
@@ -14,6 +14,7 @@ import {
   ROOM_CATEGORY_GROUPS,
 } from './constants';
 import { findCategoryForAmenity } from './utils';
+import api from '../../../services/api';
 
 const inputStyle = {
   width: '100%',
@@ -69,7 +70,7 @@ const buildEditInitialState = (existing) => {
   };
 };
 
-const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
+const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedName = '' }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -77,13 +78,29 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
   const [showCategories, setShowCategories] = useState(() => editInitial?.showCategories ?? false);
   const [categoryId, setCategoryId] = useState(() => editInitial?.categoryId ?? null);
   const [form, setForm] = useState(() => editInitial?.form ?? {
-    ten: '',
-    bieu_tuong: 'wifi',
+    ten: suggestedName || '',
+    bieu_tuong: suggestIconSlugFromName(suggestedName || '') || 'wifi',
     loai: '',
   });
   const iconManual = editInitial?.iconManual ?? false;
   const [submitting, setSubmitting] = useState(false);
+  const [notifyScope, setNotifyScope] = useState('none');
+  const [partnerId, setPartnerId] = useState('');
+  const [partners, setPartners] = useState([]);
   const { toast, showToast } = useToast();
+
+  useEffect(() => {
+    if (isEdit) return undefined;
+    let cancelled = false;
+    api.get('/amenities/partners-for-notify')
+      .then((res) => {
+        if (!cancelled) setPartners(res.data.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setPartners([]);
+      });
+    return () => { cancelled = true; };
+  }, [isEdit]);
 
   const categoryGroups = useMemo(
     () => (scope ? getGroupsForScope(scope) : []),
@@ -119,6 +136,9 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
     if (!categoryId) return showToast('Vui lòng chọn danh mục chi tiết', 'error');
     if (!form.ten.trim()) return showToast('Vui lòng nhập tên tiện nghi', 'error');
     if (!form.loai) return showToast('Vui lòng chọn danh mục để xác định loại tiện nghi', 'error');
+    if (!isEdit && notifyScope === 'one' && !partnerId) {
+      return showToast('Vui lòng chọn đối tác để thông báo', 'error');
+    }
 
     setSubmitting(true);
     const iconSlug = resolveIconSlug(form.bieu_tuong, form.ten);
@@ -128,6 +148,11 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
       bieu_tuong: iconSlug,
       danh_muc: categoryId,
     };
+
+    if (!isEdit) {
+      payload.notify_scope = notifyScope;
+      if (notifyScope === 'one') payload.ma_doi_tac = Number(partnerId);
+    }
 
     try {
       if (isEdit) {
@@ -235,6 +260,48 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
             </EditField>
           ) : null}
         </div>
+
+        {!isEdit && (
+          <div className="content-card" style={{ gridColumn: '1 / -1' }}>
+            <h3 className="content-card-title" style={{ marginBottom: 12 }}>Thông báo đối tác</h3>
+            <EditField label="Gửi thông báo sau khi thêm">
+              <div className="amenity-form-scope-row" style={{ marginTop: 4 }}>
+                {[
+                  { key: 'none', label: 'Không gửi', desc: 'Chỉ thêm vào danh mục' },
+                  { key: 'all', label: 'Tất cả đối tác', desc: 'Thông báo toàn bộ đối tác đang hoạt động' },
+                  { key: 'one', label: 'Một đối tác', desc: 'Chọn đối tác cụ thể' },
+                ].map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={`amenity-scope-btn${notifyScope === opt.key ? ' active' : ''}`}
+                    onClick={() => setNotifyScope(opt.key)}
+                  >
+                    <span className="amenity-scope-label">{opt.label}</span>
+                    <span className="amenity-scope-desc">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </EditField>
+            {notifyScope === 'one' && (
+              <EditField label="Chọn đối tác" required>
+                <select
+                  className="search-input"
+                  value={partnerId}
+                  onChange={(e) => setPartnerId(e.target.value)}
+                  style={{ width: '100%', marginTop: 4 }}
+                >
+                  <option value="">-- Chọn đối tác --</option>
+                  {partners.map((p) => (
+                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>
+                      {p.ten_cong_ty}
+                    </option>
+                  ))}
+                </select>
+              </EditField>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="amenity-form-actions">
@@ -252,10 +319,12 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone }) => {
 export default function AmenityFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { list = [], loading = false } = useSelector((state) => state.amenities || {});
 
   const isEdit = Boolean(id);
+  const suggestedName = location.state?.suggestedName || '';
 
   const existing = useMemo(
     () => (isEdit ? list.find((item) => String(item.ma_tien_nghi) === String(id)) : null),
@@ -299,6 +368,7 @@ export default function AmenityFormPage() {
         isEdit={isEdit}
         editInitial={editInitial}
         amenityId={id}
+        suggestedName={suggestedName}
       />
 
       <style>{`

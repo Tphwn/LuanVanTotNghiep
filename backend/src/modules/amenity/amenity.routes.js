@@ -1,16 +1,13 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const controller = require("./amenity.controller");
+const controller = require('./amenity.controller');
 
-router.get("/",        controller.getAll);
-router.post("/",       controller.create);
-router.put("/:id",     controller.update);
-router.patch("/:id/lock",   controller.lock);
-router.patch("/:id/unlock", controller.unlock);
-router.delete("/:id",  controller.delete);
-
-router.get("/requests",              controller.getRequests);
-router.patch("/requests/:id/approve", controller.approveRequest);
-router.patch("/requests/:id/reject",  controller.rejectRequest);
+router.get('/', controller.getAll);
+router.get('/partners-for-notify', controller.listPartnersForNotify);
+router.post('/', controller.create);
+router.put('/:id', controller.update);
+router.patch('/:id/lock', controller.lock);
+router.patch('/:id/unlock', controller.unlock);
+router.delete('/:id', controller.delete);
 
 module.exports = router;

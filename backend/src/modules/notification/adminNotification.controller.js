@@ -1,4 +1,4 @@
-const service = require('./partnerNotification.service');
+const service = require('./adminNotification.service');
 
 exports.getNotifications = async (req, res) => {
   try {

@@ -542,10 +542,6 @@ const publicHotelService = {
       phu_thu_thu_cung: hotel.phu_thu_thu_cung != null ? Number(hotel.phu_thu_thu_cung) : null,
       tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi,
       phu_thu_tre_em: hotel.phu_thu_tre_em != null ? Number(hotel.phu_thu_tre_em) : null,
-      hoan_khi_benh: hotel.hoan_khi_benh,
-      hoan_cong_viec_dot_xuat: hotel.hoan_cong_viec_dot_xuat,
-      yeu_cau_minh_chung_huy: hotel.yeu_cau_minh_chung_huy,
-      mo_ta_chinh_sach_huy: hotel.mo_ta_chinh_sach_huy,
       chinh_sach_huy: hotel.chinh_sach_huy.map((p) => ({
         ma_chinh_sach: p.ma_chinh_sach,
         so_ngay_truoc: p.so_ngay_truoc,

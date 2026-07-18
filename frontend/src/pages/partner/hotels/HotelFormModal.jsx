@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import api from '../../../services/api';
-import AmenityRequestStatus from '../../../components/partner/AmenityRequestStatus';
 import { resolveUploadUrl } from '../../../utils/media';
 import { HotelAmenityPicker } from './components/HotelAmenityGroups';
 import PartnerHotelSubmitConfirmModal from './components/PartnerHotelSubmitConfirmModal';
@@ -96,7 +95,6 @@ const HotelFormContent = ({
 
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '', mo_ta: ''});
-  const [requestRefresh, setRequestRefresh] = useState(0);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formAlert, setFormAlert] = useState('');
   const [toast, setToast] = useState(null);
@@ -201,10 +199,9 @@ const HotelFormContent = ({
         loai_de_xuat: 'khach_san',
         mo_ta: `${contextTag} ${proposeForm.mo_ta || 'Đối tác yêu cầu tiện nghi cho khách sạn này'}`,
       });
-      showToast('Đã gửi đề xuất! Bạn sẽ nhận thông báo khi admin duyệt hoặc từ chối.');
+      showToast('Đã gửi đề xuất!');
       setProposeForm({ ten_de_xuat: '', mo_ta: ''});
       setShowPropose(false);
-      setRequestRefresh((k) => k + 1);
     } catch {
       showToast('Gửi đề xuất thất bại', 'error');
     }
@@ -401,13 +398,6 @@ const HotelFormContent = ({
                 <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Mô tả</label>
                 <textarea className="search-input"rows={3} style={{ resize:'vertical', width: '100%', boxSizing: 'border-box'}} value={form.mo_ta} onChange={(e) => setForm({ ...form, mo_ta: e.target.value })} placeholder="Giới thiệu về khách sạn..."/>
               </div>
-
-              <AmenityRequestStatus
-                loaiFilter="khach_san"
-                refreshKey={requestRefresh}
-                contextId={hotel?.ma_khach_san || null}
-                contextName={form.ten?.trim() || ''}
-              />
 
               <div>
                 <label style={{ display:'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28'}}>Tiện nghi khách sạn</label>

@@ -37,20 +37,6 @@ const parseHotelRulesInput = (body) => {
     rules.phu_thu_tre_em = parseMoneyInt(body.phu_thu_tre_em);
   }
 
-  if (body.hoan_khi_benh !== undefined) {
-    rules.hoan_khi_benh = toBool(body.hoan_khi_benh);
-  }
-  if (body.hoan_cong_viec_dot_xuat !== undefined) {
-    rules.hoan_cong_viec_dot_xuat = toBool(body.hoan_cong_viec_dot_xuat);
-  }
-  if (body.yeu_cau_minh_chung_huy !== undefined) {
-    rules.yeu_cau_minh_chung_huy = toBool(body.yeu_cau_minh_chung_huy);
-  }
-  if (body.mo_ta_chinh_sach_huy !== undefined) {
-    const val = String(body.mo_ta_chinh_sach_huy).trim();
-    rules.mo_ta_chinh_sach_huy = val === '' ? null : val;
-  }
-
   if (body.noi_quy_khac !== undefined) {
     const parsed = parseJsonField(body.noi_quy_khac, []);
     const list = Array.isArray(parsed)

@@ -3,22 +3,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   fetchAmenities,
-  fetchRequests,
-  approveRequest,
-  rejectRequest,
+  fetchAmenityProposals,
   lockAmenity,
   unlockAmenity,
 } from '../../../store/slices/amenitySlice';
 import { Plus, Bell, Building2, BedDouble, Lock, Unlock } from 'lucide-react';
 import { HOTEL_CATEGORY_GROUPS, ROOM_CATEGORY_GROUPS } from './constants';
-import { groupAmenitiesByCategory, inferLoaiDeXuat } from './utils';
+import { groupAmenitiesByCategory } from './utils';
 import { AmenityListSection } from './components/AmenityListSection';
 import { RequestsSection } from './components/RequestsSection';
-import { ApproveRequestModal } from './components/ApproveRequestModal';
-import { RejectRequestModal } from './components/RejectRequestModal';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
+import api from '../../../services/api';
 
 const pickDefaultCategory = (availableGroups, prev) => {
   if (availableGroups.length === 0) return '';
@@ -29,18 +26,13 @@ const AmenitiesPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { list = [], requests = [], loading = false } = useSelector(
+  const { list = [], proposals = [], loading = false } = useSelector(
     (state) => state.amenities || {},
   );
 
   const [viewMode, setViewMode] = useState(
     () => (location.state?.tab === 'requests' ? 'requests' : 'main'),
   );
-  const [rejectModal, setRejectModal] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [approveModal, setApproveModal] = useState(null);
-  const [requestFilter, setRequestFilter] = useState('cho_xu_ly');
-  const [requestLoaiFilter, setRequestLoaiFilter] = useState('all');
   const [hotelCategoryFilter, setHotelCategoryFilter] = useState('');
   const [roomCategoryFilter, setRoomCategoryFilter] = useState('');
   const [lockTarget, setLockTarget] = useState(null);
@@ -49,18 +41,19 @@ const AmenitiesPage = () => {
 
   useEffect(() => {
     dispatch(fetchAmenities());
-    dispatch(fetchRequests());
+    dispatch(fetchAmenityProposals());
   }, [dispatch]);
 
   useEffect(() => {
+    if (location.state?.tab === 'requests') setViewMode('requests');
     if (location.state?.toast) {
       showToast(location.state.toast);
-      navigate(location.pathname, { replace: true, state: {} });
+      navigate(location.pathname, { replace: true, state: { tab: location.state?.tab } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pendingCount = requests.filter((r) => r.trang_thai === 'cho_xu_ly').length;
+  const unreadProposalCount = proposals.filter((p) => !p.da_doc).length;
 
   const hotelAmenities = useMemo(
     () => list.filter((item) => item.loai === 'khach_san' || item.loai === 'ca_hai'),
@@ -107,35 +100,6 @@ const AmenitiesPage = () => {
     return roomGroups.find((g) => g.id === roomCategoryFilter)?.items || [];
   }, [roomCategoryFilter, roomGroups]);
 
-  const scopedRequests = useMemo(
-    () => requests.filter((req) => {
-      const loai = inferLoaiDeXuat(req);
-      if (requestLoaiFilter === 'khach_san') return loai === 'khach_san';
-      if (requestLoaiFilter === 'phong') return loai === 'phong';
-      return true;
-    }),
-    [requests, requestLoaiFilter],
-  );
-
-  const approvedCount = scopedRequests.filter((r) => r.trang_thai === 'da_tao').length;
-  const rejectedCount = scopedRequests.filter((r) => r.trang_thai === 'tu_choi').length;
-  const scopedPendingCount = scopedRequests.filter((r) => r.trang_thai === 'cho_xu_ly').length;
-
-  const filteredRequests = scopedRequests.filter((req) => {
-    if (requestFilter === 'all') return true;
-    return req.trang_thai === requestFilter;
-  });
-
-  const handleRequestLoaiChange = (loai) => {
-    setRequestLoaiFilter(loai);
-    setRequestFilter('cho_xu_ly');
-  };
-
-  const openRequestsView = () => {
-    setViewMode('requests');
-    setRequestFilter('cho_xu_ly');
-  };
-
   const handleEdit = (item) => {
     navigate(`/admin/amenities/${item.ma_tien_nghi}/edit`);
   };
@@ -177,45 +141,20 @@ const AmenitiesPage = () => {
     }
   };
 
-  const openAddPage = () => {
-    navigate('/admin/amenities/create');
-  };
-
-  const openApprove = (req) => {
-    setApproveModal(req);
-  };
-
-  const handleApproveSubmit = async () => {
-    if (!approveModal) return;
-    const ten = approveModal.ten_de_xuat || 'tiện nghi';
+  const handleMarkProposalRead = async (id) => {
     try {
-      await dispatch(approveRequest({ id: approveModal.ma_yeu_cau })).unwrap();
-      await dispatch(fetchRequests());
-      setApproveModal(null);
-      showToast(`Đã duyệt yêu cầu tiện nghi "${ten}"`);
-    } catch (err) {
-      const msg = err?.message || err?.response?.data?.message || 'Duyệt yêu cầu thất bại';
-      showToast(msg, 'error');
+      await api.patch(`/admin/notifications/${id}/read`);
+      await dispatch(fetchAmenityProposals());
+    } catch {
+      showToast('Không thể đánh dấu đã xem', 'error');
     }
   };
 
-  const handleRejectSubmit = async () => {
-    if (!rejectReason.trim()) return showToast('Vui lòng nhập lý do từ chối', 'error');
-    if (!rejectModal) return;
-    const ten = rejectModal.ten_de_xuat || 'tiện nghi';
-    try {
-      await dispatch(rejectRequest({
-        id: rejectModal.ma_yeu_cau,
-        phan_hoi: rejectReason.trim(),
-      })).unwrap();
-      await dispatch(fetchRequests());
-      setRejectModal(null);
-      setRejectReason('');
-      showToast(`Đã từ chối yêu cầu tiện nghi "${ten}"`);
-    } catch (err) {
-      const msg = err?.message || err?.response?.data?.message || 'Từ chối yêu cầu thất bại';
-      showToast(msg, 'error');
-    }
+  const handleAddFromProposal = (proposal) => {
+    const match = String(proposal.tieu_de || '').match(/Đề xuất tiện nghi mới:\s*(.+)$/i);
+    navigate('/admin/amenities/create', {
+      state: { suggestedName: match?.[1]?.trim() || '' },
+    });
   };
 
   return (
@@ -229,16 +168,20 @@ const AmenitiesPage = () => {
             <button
               type="button"
               className={`amenity-requests-link${viewMode === 'requests' ? ' active' : ''}`}
-              onClick={openRequestsView}
+              onClick={() => setViewMode('requests')}
             >
               <Bell size={16} strokeWidth={1.8} />
-              Yêu cầu từ đối tác
-              {pendingCount > 0 && (
-                <span className="amenity-header-badge">{pendingCount}</span>
+              Đề xuất từ đối tác
+              {unreadProposalCount > 0 && (
+                <span className="amenity-header-badge">{unreadProposalCount}</span>
               )}
             </button>
             {viewMode === 'main' ? (
-              <button type="button" className="btn btn-primary mgmt-header-action" onClick={openAddPage}>
+              <button
+                type="button"
+                className="btn btn-primary mgmt-header-action"
+                onClick={() => navigate('/admin/amenities/create')}
+              >
                 <Plus size={18} strokeWidth={2.5} />
                 Thêm tiện nghi
               </button>
@@ -284,39 +227,12 @@ const AmenitiesPage = () => {
         </div>
       ) : (
         <RequestsSection
-          requestLoaiFilter={requestLoaiFilter}
-          onLoaiFilterChange={handleRequestLoaiChange}
-          requestFilter={requestFilter}
-          onFilterChange={setRequestFilter}
-          pendingCount={scopedPendingCount}
-          approvedCount={approvedCount}
-          rejectedCount={rejectedCount}
-          totalCount={scopedRequests.length}
-          filteredRequests={filteredRequests}
-          onApprove={openApprove}
-          onReject={(req) => {
-            setRejectModal(req);
-            setRejectReason('');
-          }}
+          proposals={proposals}
+          loading={false}
+          onMarkRead={handleMarkProposalRead}
+          onAddAmenity={handleAddFromProposal}
         />
       )}
-
-      <ApproveRequestModal
-        request={approveModal}
-        onClose={() => setApproveModal(null)}
-        onSubmit={handleApproveSubmit}
-      />
-
-      <RejectRequestModal
-        request={rejectModal}
-        rejectReason={rejectReason}
-        onClose={() => {
-          setRejectModal(null);
-          setRejectReason('');
-        }}
-        onSubmit={handleRejectSubmit}
-        onReasonChange={setRejectReason}
-      />
 
       <ConfirmModal
         open={!!lockTarget}

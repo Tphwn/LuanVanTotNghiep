@@ -1,6 +1,5 @@
-const amenityService = require("./amenity.service");
+const amenityService = require('./amenity.service');
 
-// GET ALL
 exports.getAll = async (req, res) => {
   try {
     const data = await amenityService.findAll(req.query);
@@ -10,17 +9,24 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// CREATE
-exports.create = async (req, res) => {
+exports.listPartnersForNotify = async (req, res) => {
   try {
-    const data = await amenityService.create(req.body);
-    res.status(201).json({ success: true, data });
+    const data = await amenityService.listPartnersForNotify();
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// UPDATE
+exports.create = async (req, res) => {
+  try {
+    const data = await amenityService.create(req.body);
+    res.status(201).json({ success: true, data });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 exports.update = async (req, res) => {
   try {
     const data = await amenityService.update(req.params.id, req.body);
@@ -30,68 +36,29 @@ exports.update = async (req, res) => {
   }
 };
 
-// DELETE
 exports.delete = async (req, res) => {
   try {
     await amenityService.delete(req.params.id);
-    res.json({ success: true, message: "Xóa thành công" });
+    res.json({ success: true, message: 'Xóa thành công' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// LOCK (ẩn)
 exports.lock = async (req, res) => {
   try {
-    const data = await amenityService.setStatus(req.params.id, "an");
-    res.json({ success: true, data, message: "Đã khóa tiện nghi" });
+    const data = await amenityService.setStatus(req.params.id, 'an');
+    res.json({ success: true, data, message: 'Đã khóa tiện nghi' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
 
-// UNLOCK (mở lại)
 exports.unlock = async (req, res) => {
   try {
-    const data = await amenityService.setStatus(req.params.id, "hoat_dong");
-    res.json({ success: true, data, message: "Đã mở khóa tiện nghi" });
+    const data = await amenityService.setStatus(req.params.id, 'hoat_dong');
+    res.json({ success: true, data, message: 'Đã mở khóa tiện nghi' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
-  }
-};
-// GET yêu cầu tiện nghi
-exports.getRequests = async (req, res) => {
-  try {
-    const data = await amenityService.getRequests();
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// Duyệt yêu cầu
-exports.approveRequest = async (req, res) => {
-  try {
-    const data = await amenityService.approveRequest(
-      req.params.id,
-      req.user?.id || 1,
-    );
-    res.json({ success: true, data, message: 'Đã duyệt yêu cầu' });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-// Từ chối yêu cầu
-exports.rejectRequest = async (req, res) => {
-  try {
-    const data = await amenityService.rejectRequest(
-      req.params.id,
-      req.user?.id || 1,
-      req.body.phan_hoi
-    );
-    res.json({ success: true, data, message: 'Đã từ chối yêu cầu' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
   }
 };

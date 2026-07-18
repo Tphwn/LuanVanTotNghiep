@@ -13,7 +13,6 @@ import {
   FileBarChart,
   Handshake,
   Ticket,
-  Bell,
   LogOut,
 } from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
@@ -21,6 +20,7 @@ import ROUTES from '../constants/routes';
 import { isAdminMenuActive } from '../utils/sidebarActive';
 import { resolveUploadUrl } from '../utils/media';
 import FlashToastHost from '../components/common/FlashToastHost';
+import AdminNotificationBell from '../components/admin/AdminNotificationBell';
 
 const adminMenus = [
   { title: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
@@ -107,10 +107,7 @@ const AdminLayout = () => {
             </button>
 
             <div className="admin-topbar-actions">
-              <button type="button" className="admin-notify-btn" aria-label="Thông báo">
-                <Bell size={20} strokeWidth={1.8} />
-                <span className="admin-notify-dot" />
-              </button>
+              <AdminNotificationBell />
 
               <div className="admin-user-block">
                 <div className="admin-user-text">

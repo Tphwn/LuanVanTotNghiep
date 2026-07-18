@@ -129,7 +129,6 @@ const COMMISSION_INCLUDE = {
             select: {
               ma_khach_san: true,
               ten: true,
-              phan_tram_hoa_hong: true,
             },
           },
         },

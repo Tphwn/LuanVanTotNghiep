@@ -24,6 +24,7 @@ const registerRoutes = (app) => {
   app.use('/api/customer/account', require('../modules/account/customerAccount.routes'));
   app.use('/api/partner/finance', require('../modules/finance/finance.routes'));
   app.use('/api/partner/notifications', require('../modules/notification/partnerNotification.routes'));
+  app.use('/api/admin/notifications', ...adminGuard, require('../modules/notification/adminNotification.routes'));
 
   app.use('/api/amenities/requests', require('../modules/amenity/amenityRequest.routes'));
   app.use('/api/amenities', require('../modules/amenity/amenity.routes'));
