@@ -28,19 +28,7 @@ const notifyPartner = async (maDoiTac, { tieu_de, noi_dung, loai = 'tien_nghi' }
   });
 };
 
-const notifyAmenityAdded = async ({
-  tenTienNghi,
-  loai,
-  notifyScope = 'none',
-  maDoiTac = null,
-}) => {
-  const phamVi = LOAI_LABEL[loai] || 'hệ thống';
-  const payload = {
-    tieu_de: 'Tiện nghi mới đã được thêm',
-    noi_dung: `Admin đã thêm tiện nghi "${tenTienNghi}" (${phamVi}) vào danh mục. Bạn có thể gắn vào khách sạn/loại phòng.`,
-    loai: 'tien_nghi',
-  };
-
+const broadcastToPartners = async ({ notifyScope = 'none', maDoiTac = null, payload }) => {
   if (notifyScope === 'one' && maDoiTac) {
     return notifyPartner(maDoiTac, payload);
   }
@@ -60,6 +48,69 @@ const notifyAmenityAdded = async ({
   }
 
   return null;
+};
+
+const notifyAmenityAdded = async ({
+  tenTienNghi,
+  loai,
+  notifyScope = 'none',
+  maDoiTac = null,
+}) => {
+  const phamVi = LOAI_LABEL[loai] || 'hệ thống';
+  return broadcastToPartners({
+    notifyScope,
+    maDoiTac,
+    payload: {
+      tieu_de: 'Tiện nghi mới đã được thêm',
+      noi_dung: `Admin đã thêm tiện nghi "${tenTienNghi}" (${phamVi}) vào danh mục. Bạn có thể gắn vào khách sạn/loại phòng.`,
+      loai: 'tien_nghi',
+    },
+  });
+};
+
+const notifyAmenityLocked = async ({
+  tenTienNghi,
+  lyDo,
+  notifyScope = 'none',
+  maDoiTac = null,
+}) => broadcastToPartners({
+  notifyScope,
+  maDoiTac,
+  payload: {
+    tieu_de: 'Tiện nghi đã bị khóa',
+    noi_dung: `Admin đã khóa tiện nghi "${tenTienNghi}". Lý do: ${lyDo}. Tiện nghi này tạm thời không thể gắn mới.`,
+    loai: 'tien_nghi',
+  },
+});
+
+const notifyAmenityUnlocked = async ({
+  tenTienNghi,
+  notifyScope = 'none',
+  maDoiTac = null,
+}) => broadcastToPartners({
+  notifyScope,
+  maDoiTac,
+  payload: {
+    tieu_de: 'Tiện nghi đã được mở khóa',
+    noi_dung: `Admin đã mở khóa tiện nghi "${tenTienNghi}". Bạn có thể gắn lại vào khách sạn/loại phòng.`,
+    loai: 'tien_nghi',
+  },
+});
+
+const notifyHotelApproved = async (maDoiTac, { tenKhachSan }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khách sạn đã được duyệt',
+    noi_dung: `Khách sạn "${tenKhachSan}" đã được quản trị viên duyệt và đang hoạt động trên sàn.`,
+    loai: 'he_thong',
+  });
+};
+
+const notifyHotelRejected = async (maDoiTac, { tenKhachSan, lyDo }) => {
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khách sạn bị từ chối',
+    noi_dung: `Khách sạn "${tenKhachSan}" không được duyệt.${lyDo ? ` Lý do: ${lyDo}` : ''}`,
+    loai: 'he_thong',
+  });
 };
 
 const notifyHotelLocked = async (maDoiTac, { tenKhachSan, lyDo }) => {
@@ -161,6 +212,10 @@ const notifyPromotionUnlocked = async (maDoiTac, { tenKhuyenMai, maCode }) => {
 module.exports = {
   notifyPartner,
   notifyAmenityAdded,
+  notifyAmenityLocked,
+  notifyAmenityUnlocked,
+  notifyHotelApproved,
+  notifyHotelRejected,
   notifyHotelLocked,
   notifyHotelUnlocked,
   notifyRoomTypeLocked,

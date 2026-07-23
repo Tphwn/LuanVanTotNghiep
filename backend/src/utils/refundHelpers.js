@@ -84,17 +84,15 @@ const buildPartnerRefundInfo = (booking) => {
       ? Number(booking.thanh_toan_cuoi)
       : calc.so_tien_hoan);
   const phanTram = adminCancelled && paid ? 100 : calc.phan_tram_hoan;
-  // Chỉ dùng trạng thái thật từ DB — không bịa "chờ xử lý" khi chưa có bản ghi hoàn tiền
+  const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
+  // Chỉ gắn trạng thái hoàn khi thực sự có số tiền cần hoàn
   const trangThaiHoan = (() => {
     if (!hoanTien?.trang_thai) return null;
-    if (['cho_xu_ly', 'dang_xu_ly'].includes(hoanTien.trang_thai) && soTienHoan <= 0) {
-      return null;
-    }
+    if (soTienHoan <= 0) return null;
     return hoanTien.trang_thai;
   })();
 
-  const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
-  const trangThaiMsg = buildRefundStatusMessage(trangThaiHoan);
+  const trangThaiMsg = soTienHoan > 0 ? buildRefundStatusMessage(trangThaiHoan) : null;
 
   let tomTat = null;
   if (adminCancelled && paid && soTienHoan > 0) {
@@ -105,7 +103,6 @@ const buildPartnerRefundInfo = (booking) => {
     if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
   } else if (paid) {
     tomTat = 'Theo chính sách hủy, khách không được hoàn tiền cho đơn này.';
-    if (trangThaiMsg) tomTat += ` ${trangThaiMsg}`;
   } else {
     tomTat = 'Khách chưa thanh toán online nên không phát sinh hoàn tiền.';
   }

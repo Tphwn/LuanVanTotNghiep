@@ -26,6 +26,10 @@ const getRoomLockState = async (tx, roomId) => {
   });
 };
 
+/**
+ * Admin khóa KS: chỉ ẩn khỏi trang khách (trang_thai = bi_khoa).
+ * Không cascade ẩn/đóng bán loại phòng — đối tác vẫn quản lý giá & kho bình thường.
+ */
 const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
   const id = Number(hotelId);
   const hotel = await getHotelLockState(tx, id);
@@ -41,17 +45,6 @@ const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
     };
   }
 
-  await tx.$executeRaw`
-    UPDATE loai_phong
-    SET
-      trang_thai = 'an',
-      so_luong_mo_ban_truoc_khoa = so_luong_mo_ban,
-      so_luong_mo_ban = 0
-    WHERE ma_khach_san = ${id}
-      AND trang_thai = 'hoat_dong'
-      AND khoa_do_doi_tac = false
-  `;
-
   return tx.khach_san.update({
     where: { ma_khach_san: id },
     data: {
@@ -65,6 +58,25 @@ const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
       ma_doi_tac: true,
     },
   });
+};
+
+/**
+ * Khôi phục loại phòng từng bị cascade khi admin khóa KS (logic cũ).
+ * Giữ nguyên loại phòng đối tác tự khóa (khoa_do_doi_tac = true).
+ */
+const restoreRoomsCascadeLockedByAdminHotel = async (tx, hotelId) => {
+  const id = Number(hotelId);
+  await tx.$executeRaw`
+    UPDATE loai_phong
+    SET
+      trang_thai = 'hoat_dong',
+      so_luong_mo_ban = COALESCE(so_luong_mo_ban_truoc_khoa, so_luong_phong),
+      so_luong_mo_ban_truoc_khoa = NULL
+    WHERE ma_khach_san = ${id}
+      AND trang_thai = 'an'
+      AND khoa_do_doi_tac = false
+      AND so_luong_mo_ban_truoc_khoa IS NOT NULL
+  `;
 };
 
 const unlockAdminHotelResources = async (tx, hotelId) => {
@@ -82,17 +94,8 @@ const unlockAdminHotelResources = async (tx, hotelId) => {
     };
   }
 
-  await tx.$executeRaw`
-    UPDATE loai_phong
-    SET
-      trang_thai = 'hoat_dong',
-      so_luong_mo_ban = COALESCE(so_luong_mo_ban_truoc_khoa, so_luong_phong),
-      so_luong_mo_ban_truoc_khoa = NULL
-    WHERE ma_khach_san = ${id}
-      AND trang_thai = 'an'
-      AND khoa_do_doi_tac = false
-      AND so_luong_mo_ban_truoc_khoa IS NOT NULL
-  `;
+  // Dọn dữ liệu cũ (nếu còn) — lock mới không còn cascade xuống loại phòng
+  await restoreRoomsCascadeLockedByAdminHotel(tx, id);
 
   return tx.khach_san.update({
     where: { ma_khach_san: id },
@@ -107,6 +110,24 @@ const unlockAdminHotelResources = async (tx, hotelId) => {
       ma_doi_tac: true,
     },
   });
+};
+
+/** Sửa dữ liệu KS đang bị admin khóa nhưng loại phòng vẫn bị cascade ẩn (logic cũ) */
+const repairRoomsUnderAdminLockedHotels = async (prismaClient) => {
+  const result = await prismaClient.$executeRaw`
+    UPDATE loai_phong lp
+    INNER JOIN khach_san ks ON ks.ma_khach_san = lp.ma_khach_san
+    SET
+      lp.trang_thai = 'hoat_dong',
+      lp.so_luong_mo_ban = COALESCE(lp.so_luong_mo_ban_truoc_khoa, lp.so_luong_phong),
+      lp.so_luong_mo_ban_truoc_khoa = NULL
+    WHERE ks.trang_thai = 'bi_khoa'
+      AND ks.khoa_do_doi_tac = false
+      AND lp.trang_thai = 'an'
+      AND lp.khoa_do_doi_tac = false
+      AND lp.so_luong_mo_ban_truoc_khoa IS NOT NULL
+  `;
+  return Number(result) || 0;
 };
 
 const lockPartnerResources = async (tx, maDoiTac) => {
@@ -197,6 +218,8 @@ module.exports = {
   unlockPartnerResources,
   lockAdminHotelResources,
   unlockAdminHotelResources,
+  restoreRoomsCascadeLockedByAdminHotel,
+  repairRoomsUnderAdminLockedHotels,
   syncAllLockedPartners,
   isLockedByPartner,
   isLockedByAdminHotel,

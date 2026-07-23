@@ -4,27 +4,35 @@ const {
   lockAdminHotelResources,
   unlockAdminHotelResources,
 } = require('../../utils/partnerLockHelpers');
-const { notifyHotelLocked, notifyHotelUnlocked } = require('../../utils/partnerNotify');
+const {
+  notifyHotelApproved,
+  notifyHotelRejected,
+  notifyHotelLocked,
+  notifyHotelUnlocked,
+} = require('../../utils/partnerNotify');
+const { flattenHotelPolicy, flattenHotelsPolicy } = require('../../utils/hotelRules');
 
 const hotelService = {
-  // ── Partner ──────────────────────────────────────────────
   getMyHotels: async (doiTacId) => {
-    return prisma.khach_san.findMany({
+    const hotels = await prisma.khach_san.findMany({
       where: { ma_doi_tac: doiTacId },
       include: {
         dia_diem: true,
         khach_san_tien_nghi: { include: { tien_nghi: true } },
+        chinh_sach_khach_san: true,
       },
       orderBy: { ngay_tao: 'desc' },
     });
+    return flattenHotelsPolicy(hotels);
   },
 
   getById: async (id) => {
-    return prisma.khach_san.findUnique({
+    const hotel = await prisma.khach_san.findUnique({
       where: { ma_khach_san: Number(id) },
       include: {
         dia_diem: true,
         khach_san_tien_nghi: { include: { tien_nghi: true } },
+        chinh_sach_khach_san: true,
         chinh_sach_huy: true,
         loai_phong: {
           where: { trang_thai: 'hoat_dong' },
@@ -34,6 +42,7 @@ const hotelService = {
         },
       },
     });
+    return flattenHotelPolicy(hotel);
   },
 
   create: async (data, doiTacId) => {
@@ -146,6 +155,7 @@ const hotelService = {
           },
         },
         khach_san_tien_nghi: { include: { tien_nghi: true } },
+        chinh_sach_khach_san: true,
         loai_phong: {
           select: {
             ma_loai_phong: true,
@@ -164,6 +174,7 @@ const hotelService = {
     });
     if (!hotel) return null;
 
+    const flatHotel = flattenHotelPolicy(hotel);
     const [hinh_anh, dat_phong, danh_gia, bookingAgg, reviewAgg] = await Promise.all([
       prisma.hinh_anh.findMany({
         where: { loai_doi_tuong: 'khach_san', ma_doi_tuong: hotelId },
@@ -222,12 +233,12 @@ const hotelService = {
       : null;
 
     return {
-      ...hotel,
+      ...flatHotel,
       hinh_anh,
       dat_phong,
       danh_gia,
       thong_ke_nhanh: {
-        tong_loai_phong: hotel.loai_phong?.length || hotel._count?.loai_phong || 0,
+        tong_loai_phong: flatHotel.loai_phong?.length || flatHotel._count?.loai_phong || 0,
         tong_don_dat: bookingAgg._count.ma_dat_phong || 0,
         tong_doanh_thu: Number(bookingAgg._sum.thanh_toan_cuoi || 0),
         tong_danh_gia: reviewAgg._count.ma_danh_gia || 0,
@@ -275,23 +286,27 @@ const hotelService = {
   },
 
   approveHotel: async (id, adminId) => {
-    return prisma.$transaction(async (tx) => {
-      const hotel = await tx.khach_san.update({
+    const hotel = await prisma.$transaction(async (tx) => {
+      const updated = await tx.khach_san.update({
         where: { ma_khach_san: Number(id) },
         data: {
           trang_thai: 'hoat_dong',
+          ly_do_tu_choi: null,
           duyet_boi_admin_id: Number(adminId),
           ngay_duyet: new Date(),
         },
       });
 
       await hotelService.activateRoomsAfterHotelApproval(id, tx);
-      return hotel;
+      return updated;
     });
+
+    await notifyHotelApproved(hotel.ma_doi_tac, { tenKhachSan: hotel.ten });
+    return hotel;
   },
 
   rejectHotel: async (id, adminId, lyDo) => {
-    return prisma.khach_san.update({
+    const hotel = await prisma.khach_san.update({
       where: { ma_khach_san: Number(id) },
       data: {
         trang_thai: 'tu_choi',
@@ -300,6 +315,12 @@ const hotelService = {
         ngay_duyet: new Date(),
       },
     });
+
+    await notifyHotelRejected(hotel.ma_doi_tac, {
+      tenKhachSan: hotel.ten,
+      lyDo,
+    });
+    return hotel;
   },
 
   requestInfoHotel: async (id, adminId, ghiChu) => {

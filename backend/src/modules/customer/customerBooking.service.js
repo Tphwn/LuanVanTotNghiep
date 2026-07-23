@@ -17,6 +17,7 @@ const {
   isAutoCompletedBooking,
 } = require('../../utils/bookingHelpers');
 const { assertPromotionApplicable, syncExpiredPromotions } = require('../../utils/promotionRules');
+const { validateEmail } = require('../../utils/authValidation');
 
 const BOOKING_STATUS = {
   cho_xac_nhan: 'Chờ check-in',
@@ -28,10 +29,82 @@ const BOOKING_STATUS = {
 };
 
 const CANCELLABLE_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
+const PAY_HOLD_MS = 30 * 60 * 1000;
+const PAY_TIMEOUT_MARKER = '[Hết hạn thanh toán]';
 
 const REVIEW_STATUS_LABEL = {
   hien_thi: 'Hiển thị',
   an: 'Đã ẩn',
+};
+
+const isPaymentTimeoutBooking = (booking) => (
+  Boolean(booking?.ghi_chu?.trim().startsWith(PAY_TIMEOUT_MARKER))
+);
+
+const isUnpaidOnlineHold = (booking) => (
+  booking?.phuong_thuc_tt === 'truc_tuyen'
+  && booking?.thanh_toan?.trang_thai === 'cho'
+  && CANCELLABLE_STATUS.includes(booking?.trang_thai)
+);
+
+const getPayDeadline = (booking) => {
+  const created = booking?.ngay_dat ? new Date(booking.ngay_dat).getTime() : NaN;
+  if (Number.isNaN(created)) return null;
+  return new Date(created + PAY_HOLD_MS);
+};
+
+const canPayOnline = (booking) => {
+  if (!isUnpaidOnlineHold(booking)) return false;
+  const deadline = getPayDeadline(booking);
+  if (!deadline) return false;
+  return Date.now() < deadline.getTime();
+};
+
+/** Hủy giữ chỗ online quá 30 phút chưa thanh toán — giải phóng phòng. */
+const expireUnpaidOnlineHolds = async ({ ma_khach_hang, ma_dat_phong } = {}) => {
+  const cutoff = new Date(Date.now() - PAY_HOLD_MS);
+  const where = {
+    phuong_thuc_tt: 'truc_tuyen',
+    trang_thai: { in: CANCELLABLE_STATUS },
+    ngay_dat: { lt: cutoff },
+    thanh_toan: { is: { trang_thai: 'cho' } },
+  };
+  if (ma_khach_hang) where.ma_khach_hang = Number(ma_khach_hang);
+  if (ma_dat_phong) where.ma_dat_phong = Number(ma_dat_phong);
+
+  const expired = await prisma.dat_phong.findMany({
+    where,
+    select: {
+      ma_dat_phong: true,
+      thanh_toan: { select: { ma_thanh_toan: true } },
+    },
+  });
+
+  if (!expired.length) return 0;
+
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    for (const row of expired) {
+      await tx.dat_phong.update({
+        where: { ma_dat_phong: row.ma_dat_phong },
+        data: {
+          trang_thai: 'da_huy',
+          ghi_chu: PAY_TIMEOUT_MARKER,
+        },
+      });
+      if (row.thanh_toan?.ma_thanh_toan) {
+        await tx.thanh_toan.update({
+          where: { ma_thanh_toan: row.thanh_toan.ma_thanh_toan },
+          data: {
+            trang_thai: 'that_bai',
+            ngay_cap_nhat: now,
+          },
+        });
+      }
+    }
+  });
+
+  return expired.length;
 };
 
 const mapCustomerReview = (dg) => {
@@ -87,6 +160,7 @@ const mapCustomerCancelReason = (booking) => {
 
 const mapCustomerStatusLabel = (booking) => {
   if (booking.ghi_chu?.trim().startsWith('[Admin hủy]')) return 'Bị hủy bởi admin';
+  if (canPayOnline(booking)) return 'Chờ thanh toán';
   return BOOKING_STATUS[booking.trang_thai] || booking.trang_thai;
 };
 
@@ -120,33 +194,47 @@ const mapCustomerRefundSummary = (booking) => {
   return 'Bạn chưa thanh toán online nên không phát sinh hoàn tiền.';
 };
 
-const mapCustomerBooking = (b) => ({
-  ma_dat_phong: b.ma_dat_phong,
-  ma_don_hang: b.ma_don_hang,
-  ngay_nhan_phong: b.ngay_nhan_phong,
-  ngay_tra_phong: b.ngay_tra_phong,
-  so_khach: b.so_khach,
-  thanh_toan_cuoi: Number(b.thanh_toan_cuoi),
-  trang_thai: b.trang_thai,
-  trang_thai_label: mapCustomerStatusLabel(b),
-  ly_do_huy: mapCustomerCancelReason(b),
-  huy_boi_admin: Boolean(b.ghi_chu?.trim().startsWith('[Admin hủy]')),
-  tom_tat_hoan_tien: mapCustomerRefundSummary(b),
-  co_the_danh_gia: canCustomerReviewBooking(b).ok,
-  da_danh_gia: !!b.danh_gia,
-  danh_gia: mapCustomerReview(b.danh_gia),
-  co_the_huy: CANCELLABLE_STATUS.includes(b.trang_thai),
-  khach_san: b.loai_phong?.khach_san,
-  ten_loai_phong: b.loai_phong?.ten_loai,
-  hoan_tien: b.hoan_tien
-    ? {
-      ma_hoan_tien: b.hoan_tien.ma_hoan_tien,
-      trang_thai: b.hoan_tien.trang_thai,
-      so_tien_hoan: Number(b.hoan_tien.so_tien_hoan),
-      trang_thai_label: getRefundStatusLabel(b.hoan_tien.trang_thai),
-    }
-    : null,
-});
+const mapPaymentStatus = (ttStatus, bookingStatus) => {
+  if (ttStatus === 'thanh_cong') return 'da_thanh_toan';
+  if (ttStatus === 'that_bai') return 'that_bai';
+  if (bookingStatus === 'da_huy' || bookingStatus === 'tu_choi') return 'da_huy';
+  return 'cho_thanh_toan';
+};
+
+const mapCustomerBooking = (b) => {
+  const canPay = canPayOnline(b);
+  return {
+    ma_dat_phong: b.ma_dat_phong,
+    ma_don_hang: b.ma_don_hang,
+    ngay_dat: b.ngay_dat,
+    ngay_nhan_phong: b.ngay_nhan_phong,
+    ngay_tra_phong: b.ngay_tra_phong,
+    so_khach: b.so_khach,
+    thanh_toan_cuoi: Number(b.thanh_toan_cuoi),
+    trang_thai: b.trang_thai,
+    trang_thai_label: mapCustomerStatusLabel(b),
+    ly_do_huy: mapCustomerCancelReason(b),
+    huy_boi_admin: Boolean(b.ghi_chu?.trim().startsWith('[Admin hủy]')),
+    tom_tat_hoan_tien: mapCustomerRefundSummary(b),
+    co_the_danh_gia: canCustomerReviewBooking(b).ok,
+    da_danh_gia: !!b.danh_gia,
+    danh_gia: mapCustomerReview(b.danh_gia),
+    co_the_huy: CANCELLABLE_STATUS.includes(b.trang_thai),
+    can_thanh_toan: canPay,
+    thanh_toan_trang_thai: mapPaymentStatus(b.thanh_toan?.trang_thai, b.trang_thai),
+    han_thanh_toan: canPay ? getPayDeadline(b)?.toISOString() || null : null,
+    khach_san: b.loai_phong?.khach_san,
+    ten_loai_phong: b.loai_phong?.ten_loai,
+    hoan_tien: b.hoan_tien
+      ? {
+        ma_hoan_tien: b.hoan_tien.ma_hoan_tien,
+        trang_thai: b.hoan_tien.trang_thai,
+        so_tien_hoan: Number(b.hoan_tien.so_tien_hoan),
+        trang_thai_label: getRefundStatusLabel(b.hoan_tien.trang_thai),
+      }
+      : null,
+  };
+};
 const toDateStr =(d) => {
   if (!d) return null;
   return new Date(d).toISOString().slice(0, 10);
@@ -161,12 +249,6 @@ const getLoaiGiuongLabel = (soGiuong, sucChua) => {
   }
   return `${n} giường đơn`;
 };
-const mapPaymentStatus = (ttStatus, bookingStatus) => {
-  if (ttStatus === 'thanh_cong') return 'da_thanh_toan';
-  if (ttStatus === 'that_bai') return 'that_bai';
-  if (bookingStatus === 'da_huy' || bookingStatus === 'tu_choi') return 'da_huy';
-  return 'cho_thanh_toan';
-};
 const mapPaymentMethod = (phuongThucTt) => (
   phuongThucTt === 'truc_tuyen' ? 'online' : 'tai_khach_san'
 );
@@ -180,6 +262,7 @@ const mapCustomerBookingDetail = (booking) => {
   const room = booking.loai_phong;
   const nights = booking.chi_tiet_dat_phong || [];
   const soDem = nights.length || 0;
+  const canPay = canPayOnline(booking);
   // Giá mỗi đêm: trung bình (hoặc đêm đầu nếu bạn thích)
   const giaMoiDem = soDem > 0
     ? Math.round(nights.reduce((s, n) => s + Number(n.don_gia), 0) / soDem)
@@ -193,6 +276,8 @@ const mapCustomerBookingDetail = (booking) => {
     huy_boi_admin: Boolean(booking.ghi_chu?.trim().startsWith('[Admin hủy]')),
     tom_tat_hoan_tien: mapCustomerRefundSummary(booking),
     co_the_huy: CANCELLABLE_STATUS.includes(booking.trang_thai),
+    can_thanh_toan: canPay,
+    han_thanh_toan: canPay ? getPayDeadline(booking)?.toISOString() || null : null,
     co_the_danh_gia: canCustomerReviewBooking(booking).ok,
     da_danh_gia: !!booking.danh_gia,
     danh_gia: mapCustomerReview(booking.danh_gia),
@@ -214,14 +299,14 @@ const mapCustomerBookingDetail = (booking) => {
       ngay_nhan: toDateStr(booking.ngay_nhan_phong),
       ngay_tra: toDateStr(booking.ngay_tra_phong),
       so_dem: soDem,
-      so_phong: 1,              // chưa lưu DB — mặc định 1
+      so_phong: Math.max(Number(booking.so_phong) || 1, 1),
       so_nguoi_lon: booking.so_khach,
-      so_tre_em: 0,             // chưa lưu DB — mặc định 0
+      so_tre_em: 0,
     },
     nguoi_dat: {
       ho_ten: booking.ten_nguoi_nhan,
       so_dien_thoai: booking.sdt_nguoi_nhan,
-      email: booking.khach_hang?.nguoi_dung?.email || null,
+      email: booking.email_nguoi_nhan || booking.khach_hang?.nguoi_dung?.email || null,
       ghi_chu: booking.ghi_chu,
     },
     thanh_toan: {
@@ -232,6 +317,8 @@ const mapCustomerBookingDetail = (booking) => {
       trang_thai: mapPaymentStatus(booking.thanh_toan?.trang_thai, booking.trang_thai),
       phuong_thuc: mapPaymentMethod(booking.phuong_thuc_tt),
       ma_giao_dich: booking.thanh_toan?.ma_giao_dich || null,
+      ma_khuyen_mai: booking.khuyen_mai?.ma_code || null,
+      ten_khuyen_mai: booking.khuyen_mai?.ten || null,
     },
     hoan_tien: booking.hoan_tien
       ? {
@@ -283,6 +370,7 @@ const customerBookingService = {
     });
     if (!khachHang) return [];
 
+    await expireUnpaidOnlineHolds({ ma_khach_hang: khachHang.ma_khach_hang });
     await autoCompleteExpiredCheckIns({ ma_khach_hang: khachHang.ma_khach_hang });
 
     const bookings = await prisma.dat_phong.findMany({
@@ -329,7 +417,10 @@ const customerBookingService = {
       orderBy: { ngay_dat: 'desc' },
     });
 
-    return bookings.map(mapCustomerBooking);
+    // Hết hạn thanh toán: không hiện trong "Đặt phòng của tôi"
+    return bookings
+      .filter((b) => !isPaymentTimeoutBooking(b))
+      .map(mapCustomerBooking);
   },
 
   getCancelPreview: async (userId, maDatPhong) => {
@@ -423,6 +514,10 @@ const customerBookingService = {
       throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
     }
 
+    await expireUnpaidOnlineHolds({
+      ma_dat_phong: id,
+      ma_khach_hang: khachHang.ma_khach_hang,
+    });
     await autoCompleteExpiredCheckIns({
       ma_dat_phong: id,
       ma_khach_hang: khachHang.ma_khach_hang,
@@ -458,6 +553,7 @@ const customerBookingService = {
         },
         chi_tiet_dat_phong: { orderBy: { ngay: 'asc' } },
         thanh_toan: true,
+        khuyen_mai: { select: { ma_khuyen_mai: true, ma_code: true, ten: true } },
         hoan_tien: {
           select: {
             ma_hoan_tien: true,
@@ -487,6 +583,10 @@ const customerBookingService = {
     if (!booking) {
       throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
     }
+
+    if (isPaymentTimeoutBooking(booking)) {
+      throw { statusCode: 410, message: 'Đơn đã hết hạn thanh toán và không còn hiệu lực' };
+    }
   
     // 3) Gắn ảnh khách sạn (bảng hinh_anh)
     const hotel = booking.loai_phong?.khach_san;
@@ -504,8 +604,10 @@ const customerBookingService = {
       ngay_nhan,
       ngay_tra,
       so_khach,
+      so_phong = 1,
       ten_nguoi_nhan,
       sdt_nguoi_nhan,
+      email,
       phuong_thuc_tt = 'truc_tuyen',
       ghi_chu,
       ma_code,
@@ -518,9 +620,16 @@ const customerBookingService = {
       throw { statusCode: 400, message: 'Vui lòng nhập họ tên và số điện thoại người nhận phòng' };
     }
 
+    const emailErr = validateEmail(email, { required: true });
+    if (emailErr) {
+      throw { statusCode: 400, message: emailErr };
+    }
+
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
     const guests = Math.max(Number(so_khach) || 0, 0);
+    const roomCount = Math.max(Number(so_phong) || 1, 1);
+    const guestsPerRoom = Math.ceil(guests / roomCount);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -532,6 +641,9 @@ const customerBookingService = {
     }
     if (guests <= 0) {
       throw { statusCode: 400, message: 'Số khách phải lớn hơn 0' };
+    }
+    if (roomCount > guests) {
+      throw { statusCode: 400, message: 'Số phòng không được lớn hơn số khách' };
     }
 
     const khachHang = await prisma.khach_hang.findUnique({
@@ -551,18 +663,34 @@ const customerBookingService = {
     if (!room || room.khach_san.trang_thai !== 'hoat_dong') {
       throw { statusCode: 404, message: 'Loại phòng không khả dụng' };
     }
-    if (room.suc_chua < guests) {
-      throw { statusCode: 400, message: `Phòng chỉ chứa tối đa ${room.suc_chua} khách` };
+    if (room.suc_chua < guestsPerRoom) {
+      throw {
+        statusCode: 400,
+        message: `Mỗi phòng chỉ chứa tối đa ${room.suc_chua} khách (cần ${guestsPerRoom} khách/phòng)`,
+      };
     }
 
+    // Giải phóng các giữ chỗ online quá hạn trước khi kiểm tra còn phòng
+    await expireUnpaidOnlineHolds();
+
     const booked = await countOverlappingBookings(room.ma_loai_phong, checkIn, checkOut);
-    if (Number(room.so_luong_mo_ban) - booked <= 0) {
-      throw { statusCode: 409, message: 'Phòng đã hết chỗ trong khoảng thời gian này' };
+    const conLai = Number(room.so_luong_mo_ban) - booked;
+    if (conLai < roomCount) {
+      throw {
+        statusCode: 409,
+        message: conLai <= 0
+          ? 'Phòng đã hết chỗ trong khoảng thời gian này'
+          : `Chỉ còn ${conLai} phòng trống, không đủ ${roomCount} phòng`,
+      };
     }
 
     const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-    const tongTien = pricing.tong_luong_tru;
-    const chiTietRows = await buildNightDetails(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
+    const tongTien = pricing.tong_luong_tru * roomCount;
+    const chiTietRows = (await buildNightDetails(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut))
+      .map((row) => ({
+        ...row,
+        don_gia: Number(row.don_gia) * roomCount,
+      }));
 
     let promo = null;
     let tienGiam = 0;
@@ -607,8 +735,10 @@ const customerBookingService = {
           ngay_nhan_phong: checkIn,
           ngay_tra_phong: checkOut,
           so_khach: guests,
+          so_phong: roomCount,
           ten_nguoi_nhan: ten_nguoi_nhan.trim(),
           sdt_nguoi_nhan: sdt_nguoi_nhan.trim(),
+          email_nguoi_nhan: String(email).trim(),
           tong_tien_goc: tongTien,
           tien_giam: tienGiam,
           thanh_toan_cuoi: finalThanhToan,
@@ -620,11 +750,11 @@ const customerBookingService = {
             create: {
               so_tien: finalThanhToan,
               phuong_thuc: paymentMethod,
-              cong_thanh_toan: isOnline ? 'MoMo (Ví điện tử)' : 'Tại khách sạn',
-              trang_thai: isOnline ? 'thanh_cong' : 'cho',
+              cong_thanh_toan: isOnline ? null : 'Tại khách sạn',
+              trang_thai: 'cho',
               thoi_gian: now,
-              ngay_cap_nhat: isOnline ? new Date(now.getTime() + 120000) : null,
-              ma_tham_chieu: isOnline ? String(3145689000 + Math.floor(Math.random() * 999999)) : null,
+              ngay_cap_nhat: null,
+              ma_tham_chieu: null,
             },
           },
         },
@@ -669,8 +799,178 @@ const customerBookingService = {
       thanh_toan_cuoi: Number(booking.thanh_toan_cuoi),
       trang_thai: booking.trang_thai,
       trang_thai_label: BOOKING_STATUS[booking.trang_thai],
+      can_thanh_toan: isOnline,
       ten_loai_phong: booking.loai_phong?.ten_loai,
       ten_khach_san: booking.loai_phong?.khach_san?.ten,
+    };
+  },
+
+  applyPromo: async (userId, maDatPhong, data = {}) => {
+    const maCode = String(data.ma_code || '').trim().toUpperCase();
+    if (!maCode) {
+      throw { statusCode: 400, message: 'Vui lòng nhập mã khuyến mãi' };
+    }
+
+    const khachHang = await prisma.khach_hang.findUnique({
+      where: { ma_nguoi_dung: Number(userId) },
+    });
+    if (!khachHang) {
+      throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
+    }
+
+    await expireUnpaidOnlineHolds({
+      ma_dat_phong: Number(maDatPhong),
+      ma_khach_hang: khachHang.ma_khach_hang,
+    });
+
+    const booking = await prisma.dat_phong.findFirst({
+      where: {
+        ma_dat_phong: Number(maDatPhong),
+        ma_khach_hang: khachHang.ma_khach_hang,
+      },
+      include: {
+        thanh_toan: true,
+        loai_phong: { select: { ma_khach_san: true } },
+        khuyen_mai: { select: { ma_khuyen_mai: true, ma_code: true } },
+      },
+    });
+
+    if (!booking) {
+      throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
+    }
+    if (!canPayOnline(booking)) {
+      throw { statusCode: 400, message: 'Chỉ áp mã khi đơn đang chờ thanh toán trong 30 phút' };
+    }
+    if (booking.khuyen_mai?.ma_code === maCode) {
+      throw { statusCode: 400, message: 'Mã khuyến mãi đã được áp dụng cho đơn này' };
+    }
+
+    await syncExpiredPromotions(prisma);
+    const promo = await prisma.khuyen_mai.findUnique({
+      where: { ma_code: maCode },
+    });
+
+    const tongTien = Number(booking.tong_tien_goc);
+    assertPromotionApplicable(promo, {
+      maKhachSan: booking.loai_phong?.ma_khach_san,
+      tongTien,
+    });
+    const oldPromoId = booking.ma_khuyen_mai;
+
+    await prisma.$transaction(async (tx) => {
+      const freshPromo = await tx.khuyen_mai.findUnique({
+        where: { ma_khuyen_mai: promo.ma_khuyen_mai },
+      });
+      const discount = assertPromotionApplicable(freshPromo, {
+        maKhachSan: booking.loai_phong?.ma_khach_san,
+        tongTien,
+      });
+      const finalAmount = Math.max(tongTien - discount, 0);
+
+      await tx.dat_phong.update({
+        where: { ma_dat_phong: booking.ma_dat_phong },
+        data: {
+          ma_khuyen_mai: promo.ma_khuyen_mai,
+          tien_giam: discount,
+          thanh_toan_cuoi: finalAmount,
+        },
+      });
+
+      if (booking.thanh_toan) {
+        await tx.thanh_toan.update({
+          where: { ma_thanh_toan: booking.thanh_toan.ma_thanh_toan },
+          data: { so_tien: finalAmount },
+        });
+      }
+
+      if (oldPromoId && oldPromoId !== promo.ma_khuyen_mai) {
+        await tx.khuyen_mai.update({
+          where: { ma_khuyen_mai: oldPromoId },
+          data: { so_luot_da_dung: { decrement: 1 } },
+        });
+      }
+      if (!oldPromoId || oldPromoId !== promo.ma_khuyen_mai) {
+        await tx.khuyen_mai.update({
+          where: { ma_khuyen_mai: promo.ma_khuyen_mai },
+          data: { so_luot_da_dung: { increment: 1 } },
+        });
+      }
+    });
+
+    return customerBookingService.getBookingById(userId, maDatPhong);
+  },
+
+  confirmPayment: async (userId, maDatPhong, data = {}) => {
+    const GATEWAY_MAP = {
+      momo: 'MoMo (Ví điện tử)',
+      vnpay: 'VNPay',
+      the_tin_dung: 'Thẻ tín dụng',
+    };
+
+    const gatewayKey = String(data.cong_thanh_toan || data.phuong_thuc || 'momo').trim();
+    const gatewayLabel = GATEWAY_MAP[gatewayKey];
+    if (!gatewayLabel) {
+      throw { statusCode: 400, message: 'Phương thức thanh toán không hợp lệ' };
+    }
+
+    const khachHang = await prisma.khach_hang.findUnique({
+      where: { ma_nguoi_dung: Number(userId) },
+    });
+    if (!khachHang) {
+      throw { statusCode: 404, message: 'Không tìm thấy hồ sơ khách hàng' };
+    }
+
+    await expireUnpaidOnlineHolds({
+      ma_dat_phong: Number(maDatPhong),
+      ma_khach_hang: khachHang.ma_khach_hang,
+    });
+
+    const booking = await prisma.dat_phong.findFirst({
+      where: {
+        ma_dat_phong: Number(maDatPhong),
+        ma_khach_hang: khachHang.ma_khach_hang,
+      },
+      include: { thanh_toan: true },
+    });
+
+    if (!booking) {
+      throw { statusCode: 404, message: 'Không tìm thấy đơn đặt phòng' };
+    }
+    if (isPaymentTimeoutBooking(booking) || !canPayOnline(booking)) {
+      throw { statusCode: 400, message: 'Đơn đã hết hạn thanh toán (30 phút) hoặc không thể thanh toán' };
+    }
+    if (booking.phuong_thuc_tt !== 'truc_tuyen') {
+      throw { statusCode: 400, message: 'Đơn này không thanh toán trực tuyến' };
+    }
+    if (!booking.thanh_toan) {
+      throw { statusCode: 400, message: 'Đơn chưa có bản ghi thanh toán' };
+    }
+    if (booking.thanh_toan.trang_thai === 'thanh_cong') {
+      throw { statusCode: 400, message: 'Đơn đã được thanh toán' };
+    }
+    if (['da_huy', 'tu_choi'].includes(booking.trang_thai)) {
+      throw { statusCode: 400, message: 'Không thể thanh toán đơn đã hủy' };
+    }
+
+    const now = new Date();
+    const updated = await prisma.thanh_toan.update({
+      where: { ma_thanh_toan: booking.thanh_toan.ma_thanh_toan },
+      data: {
+        cong_thanh_toan: gatewayLabel,
+        phuong_thuc: 'Trực tuyến',
+        trang_thai: 'thanh_cong',
+        ngay_cap_nhat: now,
+        ma_tham_chieu: String(3145689000 + Math.floor(Math.random() * 999999)),
+      },
+    });
+
+    return {
+      ma_dat_phong: booking.ma_dat_phong,
+      ma_don_hang: booking.ma_don_hang,
+      thanh_toan_cuoi: Number(booking.thanh_toan_cuoi),
+      cong_thanh_toan: updated.cong_thanh_toan,
+      trang_thai_thanh_toan: updated.trang_thai,
+      ma_giao_dich: updated.ma_giao_dich,
     };
   },
 

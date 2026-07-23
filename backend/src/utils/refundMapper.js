@@ -53,10 +53,18 @@ const mapRefund = (refund) => {
   const calc = buildRefundCalc(refund);
   const lyDoHuy = extractCancelReason(booking?.ghi_chu) || refund.ly_do || '—';
 
+  let nguoiYeuCauHuy = 'Khách hàng';
+  if (booking?.ghi_chu?.trim().startsWith('[Admin hủy]')) {
+    nguoiYeuCauHuy = 'Admin';
+  } else if (booking?.trang_thai === 'tu_choi') {
+    nguoiYeuCauHuy = 'Đối tác';
+  }
+
   return {
     ...refund,
     ma_hoan: formatRefundCode(refund.ma_hoan_tien),
     ly_do_huy: lyDoHuy,
+    nguoi_yeu_cau_huy: nguoiYeuCauHuy,
     phuong_thuc: resolvePaymentMethod(refund),
     khach_hang_ten: booking?.khach_hang?.ho_ten || booking?.ten_nguoi_nhan || null,
     khach_hang_sdt:

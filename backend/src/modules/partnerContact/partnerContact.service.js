@@ -45,7 +45,7 @@ const validatePayload = (data) => {
   }
 
   if (!tinhThanh) {
-    errors.tinh_thanh = 'Tỉnh / Thành phố không được để trống.';
+    errors.tinh_thanh = 'Vui lòng chọn Tỉnh / Thành phố.';
   } else if (tinhThanh.length > 100) {
     errors.tinh_thanh = 'Tỉnh / Thành phố tối đa 100 ký tự.';
   }
@@ -72,8 +72,22 @@ const validatePayload = (data) => {
   };
 };
 
+const assertValidCity = async (tinhThanh) => {
+  const location = await prisma.dia_diem.findFirst({
+    where: { ten_dia_diem: tinhThanh },
+    select: { ma_dia_diem: true },
+  });
+  if (!location) {
+    const err = new Error('Gửi yêu cầu không thành công. Vui lòng điền đầy đủ và đúng thông tin.');
+    err.status = 400;
+    err.errors = { tinh_thanh: 'Tỉnh / Thành phố không hợp lệ.' };
+    throw err;
+  }
+};
+
 const createRequest = async (data) => {
   const payload = validatePayload(data);
+  await assertValidCity(payload.tinh_thanh);
 
   return prisma.yeu_cau_hop_tac.create({
     data: payload,

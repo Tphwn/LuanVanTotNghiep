@@ -8,6 +8,7 @@ const registerRoutes = (app) => {
   app.use('/api/admin/room-types', ...adminGuard, require('../modules/admin/roomType/adminRoomType.routes'));
   app.use('/api/admin/reviews', ...adminGuard, require('../modules/admin/review/adminReview.routes'));
   app.use('/api/admin/reports', ...adminGuard, require('../modules/admin/report/adminReport.routes'));
+  app.use('/api/admin/analytics', ...adminGuard, require('../modules/admin/analytics/analytics.routes'));
   app.use('/api/admin/bookings', ...adminGuard, require('../modules/admin/booking/adminBooking.routes'));
   app.use('/api/admin/payments', ...adminGuard, require('../modules/admin/payment/adminPayment.routes'));
   app.use('/api/admin/finance', ...adminGuard, require('../modules/admin/finance/finance.routes'));
@@ -23,6 +24,7 @@ const registerRoutes = (app) => {
   app.use('/api/partner/account', require('../modules/account/partnerAccount.routes'));
   app.use('/api/customer/account', require('../modules/account/customerAccount.routes'));
   app.use('/api/partner/finance', require('../modules/finance/finance.routes'));
+  app.use('/api/partner/dashboard', require('../modules/dashboard/partnerDashboard.routes'));
   app.use('/api/partner/notifications', require('../modules/notification/partnerNotification.routes'));
   app.use('/api/admin/notifications', ...adminGuard, require('../modules/notification/adminNotification.routes'));
 

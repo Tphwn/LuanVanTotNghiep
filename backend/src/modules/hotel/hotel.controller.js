@@ -2,7 +2,7 @@ const prisma = require('../../config/prisma');
 const { attachHotelImages } = require('../../utils/images');
 const { getUserId } = require('../../utils/user');
 const { parseJsonField } = require('../../utils/parseJson');
-const { parseHotelRulesInput } = require('../../utils/hotelRules');
+const { parseHotelRulesInput, flattenHotelPolicy, flattenHotelsPolicy, upsertHotelPolicy } = require('../../utils/hotelRules');
 const { isLockedByAdminHotel } = require('../../utils/partnerLockHelpers');
 
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
@@ -30,6 +30,7 @@ const fetchHotelFull = async (hotelId) => {
     include: {
       dia_diem: true,
       khach_san_tien_nghi: { include: { tien_nghi: true } },
+      chinh_sach_khach_san: true,
       chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
       _count: { select: { loai_phong: true } },
     },
@@ -42,7 +43,7 @@ const fetchHotelFull = async (hotelId) => {
     orderBy: { thu_tu: 'asc' },
   });
 
-  return { ...hotel, hinh_anh };
+  return { ...flattenHotelPolicy(hotel), hinh_anh };
 };
 
 const saveCancelPolicies = async (tx, hotelId, policies) => {
@@ -141,9 +142,10 @@ exports.createHotel = async (req, res) => {
           gio_nhan_phong: new Date(`1970-01-01T${gio_nhan_phong}:00.000Z`),
           gio_tra_phong: new Date(`1970-01-01T${gio_tra_phong}:00.000Z`),
           trang_thai: 'cho_duyet',
-          ...hotelRules,
         },
       });
+
+      await upsertHotelPolicy(tx, newHotel.ma_khach_san, hotelRules);
 
       if (tien_nghi_ids.length > 0) {
         await tx.khach_san_tien_nghi.createMany({
@@ -202,6 +204,7 @@ exports.getMyHotels = async (req, res) => {
       include: {
         dia_diem: true,
         khach_san_tien_nghi: { include: { tien_nghi: true } },
+        chinh_sach_khach_san: true,
         chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
         _count: { select: { loai_phong: true } },
       },
@@ -209,7 +212,7 @@ exports.getMyHotels = async (req, res) => {
     });
 
     const defaultCancelPolicies = getPartnerDefaultCancelPolicies(hotels);
-    const hotelsWithImages = await attachHotelImages(hotels);
+    const hotelsWithImages = await attachHotelImages(flattenHotelsPolicy(hotels));
 
     res.status(200).json({
       success: true,
@@ -324,7 +327,29 @@ exports.updateHotel = async (req, res) => {
         updateData.trang_thai = trang_thai;
       }
     }
-    Object.assign(updateData, hotelRules);
+
+   
+    const NEEDS_RESUBMIT = ['cho_duyet', 'tu_choi', 'yeu_cau_sua'];
+    const contentFieldKeys = Object.keys(updateData).filter(
+      (key) => key !== 'trang_thai' && key !== 'khoa_do_doi_tac'
+    );
+    const hasContentChange = contentFieldKeys.length > 0
+      || tien_nghi_ids !== undefined
+      || chinh_sach_huy !== undefined
+      || Object.keys(hotelRules).length > 0
+      || removedImageIds.length > 0
+      || Boolean(req.files?.length)
+      || req.body.mainImageId !== undefined
+      || req.body.mainNewIndex !== undefined;
+
+    if (
+      hasContentChange
+      && trang_thai === undefined
+      && NEEDS_RESUBMIT.includes(existing.trang_thai)
+    ) {
+      updateData.trang_thai = 'cho_duyet';
+      updateData.ly_do_tu_choi = null;
+    }
 
     await prisma.$transaction(async (tx) => {
       if (Object.keys(updateData).length > 0) {
@@ -332,6 +357,10 @@ exports.updateHotel = async (req, res) => {
           where: { ma_khach_san: hotelId },
           data: updateData,
         });
+      }
+
+      if (Object.keys(hotelRules).length > 0) {
+        await upsertHotelPolicy(tx, hotelId, hotelRules);
       }
 
       if (tien_nghi_ids !== undefined) {

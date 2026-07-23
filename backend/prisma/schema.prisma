@@ -74,8 +74,10 @@ model dat_phong {
   ngay_nhan_phong    DateTime                 @db.Date
   ngay_tra_phong     DateTime                 @db.Date
   so_khach           Int
+  so_phong           Int                      @default(1)
   ten_nguoi_nhan     String                   @db.VarChar(100)
   sdt_nguoi_nhan     String                   @db.VarChar(15)
+  email_nguoi_nhan   String?                  @db.VarChar(100)
   tong_tien_goc      Decimal                  @db.Decimal(12, 0)
   tien_giam          Decimal                  @default(0) @db.Decimal(12, 0)
   thanh_toan_cuoi    Decimal                  @db.Decimal(12, 0)
@@ -208,15 +210,8 @@ model khach_san {
   khoa_do_doi_tac     Boolean               @default(false)
   ngay_tao            DateTime              @default(now()) @db.DateTime(0)
   ngay_duyet          DateTime?             @db.DateTime(0)
-  giay_to_bat_buoc      String?               @db.Text
-  cho_phep_hut_thuoc    Boolean               @default(false)
-  cho_phep_to_chuc_tiec Boolean               @default(false)
-  cho_phep_thu_cung     Boolean               @default(false)
-  phu_thu_thu_cung      Decimal?              @db.Decimal(12, 0)
-  tuoi_toi_da_mien_phi  Int?                  @db.TinyInt
-  phu_thu_tre_em        Decimal?              @db.Decimal(12, 0)
-  noi_quy_khac            String?               @db.Text
   chinh_sach_huy      chinh_sach_huy[]
+  chinh_sach_khach_san chinh_sach_khach_san?
   nguoi_dung          nguoi_dung?           @relation(fields: [duyet_boi_admin_id], references: [ma_nguoi_dung], onDelete: Restrict, onUpdate: Restrict, map: "fk_ks_admin")
   dia_diem            dia_diem              @relation(fields: [ma_dia_diem], references: [ma_dia_diem], onUpdate: Restrict, map: "fk_ks_diadiem")
   doi_tac             doi_tac               @relation(fields: [ma_doi_tac], references: [ma_doi_tac], onUpdate: Restrict, map: "fk_ks_doitac")
@@ -228,6 +223,19 @@ model khach_san {
   @@index([duyet_boi_admin_id], map: "fk_ks_admin")
   @@index([ma_dia_diem], map: "fk_ks_diadiem")
   @@index([ma_doi_tac], map: "fk_ks_doitac")
+}
+
+model chinh_sach_khach_san {
+  ma_khach_san          Int      @id
+  giay_to_bat_buoc      String?  @db.Text
+  cho_phep_hut_thuoc    Boolean  @default(false)
+  cho_phep_to_chuc_tiec Boolean  @default(false)
+  cho_phep_thu_cung     Boolean  @default(false)
+  phu_thu_thu_cung      Decimal? @db.Decimal(12, 0)
+  tuoi_toi_da_mien_phi  Int?     @db.TinyInt
+  phu_thu_tre_em        Decimal? @db.Decimal(12, 0)
+  noi_quy_khac          String?  @db.Text
+  khach_san             khach_san @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Cascade, onUpdate: Restrict, map: "fk_csks_ks")
 }
 
 model khach_san_tien_nghi {

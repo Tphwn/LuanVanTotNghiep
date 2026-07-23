@@ -152,6 +152,15 @@ const BOOKING_SELECT = {
   ngay_nhan_phong: true,
   ngay_tra_phong: true,
   thanh_toan_cuoi: true,
+  trang_thai: true,
+  phuong_thuc_tt: true,
+  hoan_tien: {
+    select: {
+      ma_hoan_tien: true,
+      trang_thai: true,
+      so_tien_hoan: true,
+    },
+  },
   loai_phong: {
     select: {
       ten_loai: true,
@@ -287,8 +296,6 @@ const adminPaymentService = {
     const { trang_thai, phuong_thuc, tu_ngay, den_ngay, keyword } = filters;
     const where = {};
 
-    if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
-
     if (phuong_thuc && phuong_thuc !== 'all') {
       if (phuong_thuc === 'tai_khach_san') {
         where.OR = [
@@ -323,11 +330,22 @@ const adminPaymentService = {
 
     const rows = await prisma.thanh_toan.findMany({
       where,
-      include: { dat_phong: { select: BOOKING_SELECT } },
+      include: {
+        dat_phong: { select: BOOKING_SELECT },
+        hoan_tien: {
+          select: {
+            ma_hoan_tien: true,
+            trang_thai: true,
+            so_tien_hoan: true,
+          },
+        },
+      },
       orderBy: { thoi_gian: 'desc' },
     });
 
-    return mapTransactions(rows);
+    const mapped = mapTransactions(rows);
+    if (!trang_thai || trang_thai === 'all') return mapped;
+    return mapped.filter((tx) => tx.trang_thai === trang_thai);
   },
 
   getTransactionById: async (id) => {
@@ -354,6 +372,13 @@ const adminPaymentService = {
               },
             },
             khuyen_mai: true,
+            hoan_tien: {
+              select: {
+                ma_hoan_tien: true,
+                trang_thai: true,
+                so_tien_hoan: true,
+              },
+            },
           },
         },
         hoan_tien: true,

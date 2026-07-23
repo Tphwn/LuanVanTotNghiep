@@ -46,33 +46,38 @@ const getDatesInRange = (checkIn, checkOut) => {
   return dates;
 };
 
+/** Tổng số phòng đang bị giữ bởi các đơn chồng ngày (theo so_phong của mỗi đơn). */
 const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
-  return prisma.dat_phong.count({
+  const result = await prisma.dat_phong.aggregate({
     where: {
       ma_loai_phong: maLoaiPhong,
       trang_thai: { in: ACTIVE_BOOKING },
       ngay_nhan_phong: { lt: checkOut },
       ngay_tra_phong: { gt: checkIn },
     },
+    _sum: { so_phong: true },
   });
+  return Number(result._sum.so_phong) || 0;
 };
 
-/** Đếm đơn đang giữ phòng (chưa hủy / chưa hoàn thành, chưa trả phòng). */
+/** Tổng số phòng đang giữ (chưa hủy / chưa hoàn thành, chưa trả phòng). */
 const countActiveBookedRooms = async (maLoaiPhong) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return prisma.dat_phong.count({
+  const result = await prisma.dat_phong.aggregate({
     where: {
       ma_loai_phong: Number(maLoaiPhong),
       trang_thai: { in: ACTIVE_BOOKING },
       ngay_tra_phong: { gte: today },
     },
+    _sum: { so_phong: true },
   });
+  return Number(result._sum.so_phong) || 0;
 };
 
 /**
- * Đếm đơn đang giữ phòng cho nhiều loại phòng cùng lúc (tránh N+1).
- * Trả về Map<ma_loai_phong, số đơn đang giữ>.
+ * Tổng số phòng đang giữ cho nhiều loại phòng cùng lúc (tránh N+1).
+ * Trả về Map<ma_loai_phong, tổng so_phong đang giữ>.
  */
 const countActiveBookedRoomsMap = async (maLoaiPhongList = []) => {
   const ids = [...new Set((maLoaiPhongList || []).map((id) => Number(id)).filter(Boolean))];
@@ -89,11 +94,11 @@ const countActiveBookedRoomsMap = async (maLoaiPhongList = []) => {
       trang_thai: { in: ACTIVE_BOOKING },
       ngay_tra_phong: { gte: today },
     },
-    _count: { ma_dat_phong: true },
+    _sum: { so_phong: true },
   });
 
   grouped.forEach((row) => {
-    result.set(row.ma_loai_phong, row._count.ma_dat_phong);
+    result.set(row.ma_loai_phong, Number(row._sum.so_phong) || 0);
   });
   return result;
 };

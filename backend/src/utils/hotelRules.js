@@ -1,5 +1,27 @@
 const { parseJsonField } = require('./parseJson');
 
+const POLICY_FIELDS = [
+  'giay_to_bat_buoc',
+  'cho_phep_hut_thuoc',
+  'cho_phep_to_chuc_tiec',
+  'cho_phep_thu_cung',
+  'phu_thu_thu_cung',
+  'tuoi_toi_da_mien_phi',
+  'phu_thu_tre_em',
+  'noi_quy_khac',
+];
+
+const DEFAULT_POLICY = {
+  giay_to_bat_buoc: null,
+  cho_phep_hut_thuoc: false,
+  cho_phep_to_chuc_tiec: false,
+  cho_phep_thu_cung: false,
+  phu_thu_thu_cung: null,
+  tuoi_toi_da_mien_phi: null,
+  phu_thu_tre_em: null,
+  noi_quy_khac: null,
+};
+
 const toBool = (value) => value === true || value === 'true' || value === 1 || value === '1';
 
 const parseMoneyInt = (value) => {
@@ -48,6 +70,33 @@ const parseHotelRulesInput = (body) => {
   return rules;
 };
 
+/** Gộp chinh_sach_khach_san ra flat fields để frontend không đổi */
+const flattenHotelPolicy = (hotel) => {
+  if (!hotel) return hotel;
+  const { chinh_sach_khach_san: policy, ...rest } = hotel;
+  const src = policy || DEFAULT_POLICY;
+  const flat = {};
+  POLICY_FIELDS.forEach((key) => {
+    flat[key] = src[key] ?? DEFAULT_POLICY[key];
+  });
+  return { ...rest, ...flat };
+};
+
+const flattenHotelsPolicy = (hotels = []) => hotels.map(flattenHotelPolicy);
+
+const upsertHotelPolicy = async (tx, maKhachSan, rules = {}) => {
+  const ma = Number(maKhachSan);
+  return tx.chinh_sach_khach_san.upsert({
+    where: { ma_khach_san: ma },
+    create: {
+      ma_khach_san: ma,
+      ...DEFAULT_POLICY,
+      ...rules,
+    },
+    update: { ...rules },
+  });
+};
+
 const parseNoiQuyKhac = (value) => {
   if (!value) return [];
   try {
@@ -69,7 +118,12 @@ const parseGiayToBatBuoc = (value) => {
 };
 
 module.exports = {
+  POLICY_FIELDS,
+  DEFAULT_POLICY,
   parseHotelRulesInput,
+  flattenHotelPolicy,
+  flattenHotelsPolicy,
+  upsertHotelPolicy,
   parseGiayToBatBuoc,
   parseNoiQuyKhac,
 };

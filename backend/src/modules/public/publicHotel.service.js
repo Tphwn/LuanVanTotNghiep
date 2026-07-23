@@ -2,7 +2,7 @@ const prisma = require('../../config/prisma');
 const { Prisma } = require('@prisma/client');
 const { attachHotelImages, attachRoomImages } = require('../../utils/images');
 const { activePartnerFilter } = require('../../utils/partnerLockHelpers');
-const { parseGiayToBatBuoc, parseNoiQuyKhac } = require('../../utils/hotelRules');
+const { parseGiayToBatBuoc, parseNoiQuyKhac, flattenHotelPolicy } = require('../../utils/hotelRules');
 const {
   parseDate,
   calcStayPrice,
@@ -458,6 +458,7 @@ const publicHotelService = {
       },
       include: {
         dia_diem: true,
+        chinh_sach_khach_san: true,
         chinh_sach_huy: {
           where: { trang_thai: 'hoat_dong' },
           orderBy: { so_ngay_truoc: 'desc' },
@@ -488,6 +489,7 @@ const publicHotelService = {
 
     if (!hotel) return null;
 
+    const flatHotel = flattenHotelPolicy(hotel);
     const roomsWithAvailability = await getRoomsWithAvailability(
       hotel.loai_phong,
       checkIn,
@@ -498,13 +500,15 @@ const publicHotelService = {
     if (!target) return null;
 
     const pricing = await calcStayPrice(target.ma_loai_phong, target.gia_co_ban, checkIn, checkOut);
+    const roomCount = searchCtx.roomCount || 1;
     const [roomWithImages] = await attachRoomImages([{
       ...target,
       gia_co_ban: Number(target.gia_co_ban),
       gia_hien_thi: pricing.gia_tu_dem,
       gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
-      tong_gia: pricing.tong_luong_tru,
+      tong_gia: pricing.tong_luong_tru * roomCount,
       so_dem: pricing.so_dem,
+      so_phong_dat: roomCount,
       tien_nghi: (target.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
     }]);
 
@@ -518,31 +522,32 @@ const publicHotelService = {
             gia_co_ban: Number(room.gia_co_ban),
             gia_hien_thi: p.gia_tu_dem,
             gia_goc: p.co_giam_gia ? p.gia_goc_dem : null,
-            tong_gia: p.tong_luong_tru,
+            tong_gia: p.tong_luong_tru * roomCount,
             so_dem: p.so_dem,
+            so_phong_dat: roomCount,
           };
         })
     );
     const otherWithImages = await attachRoomImages(otherRooms);
 
     const [hotelWithImages] = await attachHotelImages([{
-      ma_khach_san: hotel.ma_khach_san,
-      ten: hotel.ten,
-      dia_chi: hotel.dia_chi,
-      mo_ta: hotel.mo_ta,
-      so_sao: hotel.so_sao,
-      gio_nhan_phong: hotel.gio_nhan_phong,
-      gio_tra_phong: hotel.gio_tra_phong,
-      dia_diem: hotel.dia_diem,
-      tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
-      giay_to_bat_buoc: hotel.giay_to_bat_buoc,
-      cho_phep_hut_thuoc: hotel.cho_phep_hut_thuoc,
-      cho_phep_to_chuc_tiec: hotel.cho_phep_to_chuc_tiec,
-      cho_phep_thu_cung: hotel.cho_phep_thu_cung,
-      phu_thu_thu_cung: hotel.phu_thu_thu_cung != null ? Number(hotel.phu_thu_thu_cung) : null,
-      tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi,
-      phu_thu_tre_em: hotel.phu_thu_tre_em != null ? Number(hotel.phu_thu_tre_em) : null,
-      chinh_sach_huy: hotel.chinh_sach_huy.map((p) => ({
+      ma_khach_san: flatHotel.ma_khach_san,
+      ten: flatHotel.ten,
+      dia_chi: flatHotel.dia_chi,
+      mo_ta: flatHotel.mo_ta,
+      so_sao: flatHotel.so_sao,
+      gio_nhan_phong: flatHotel.gio_nhan_phong,
+      gio_tra_phong: flatHotel.gio_tra_phong,
+      dia_diem: flatHotel.dia_diem,
+      tien_nghi: flatHotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+      giay_to_bat_buoc: flatHotel.giay_to_bat_buoc,
+      cho_phep_hut_thuoc: flatHotel.cho_phep_hut_thuoc,
+      cho_phep_to_chuc_tiec: flatHotel.cho_phep_to_chuc_tiec,
+      cho_phep_thu_cung: flatHotel.cho_phep_thu_cung,
+      phu_thu_thu_cung: flatHotel.phu_thu_thu_cung != null ? Number(flatHotel.phu_thu_thu_cung) : null,
+      tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
+      phu_thu_tre_em: flatHotel.phu_thu_tre_em != null ? Number(flatHotel.phu_thu_tre_em) : null,
+      chinh_sach_huy: flatHotel.chinh_sach_huy.map((p) => ({
         ma_chinh_sach: p.ma_chinh_sach,
         so_ngay_truoc: p.so_ngay_truoc,
         phan_tram_hoan: Number(p.phan_tram_hoan),
@@ -570,6 +575,7 @@ const publicHotelService = {
       },
       include: {
         dia_diem: true,
+        chinh_sach_khach_san: true,
         chinh_sach_huy: {
           where: { trang_thai: 'hoat_dong' },
           orderBy: { so_ngay_truoc: 'desc' },
@@ -600,6 +606,7 @@ const publicHotelService = {
 
     if (!hotel) return null;
 
+    const flatHotel = flattenHotelPolicy(hotel);
     const roomsWithAvailability = await getRoomsWithAvailability(
       hotel.loai_phong,
       checkIn,
@@ -614,8 +621,9 @@ const publicHotelService = {
           gia_co_ban: Number(room.gia_co_ban),
           gia_hien_thi: pricing.gia_tu_dem,
           gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
-          tong_gia: pricing.tong_luong_tru,
+          tong_gia: pricing.tong_luong_tru * searchCtx.roomCount,
           so_dem: pricing.so_dem,
+          so_phong_dat: searchCtx.roomCount,
           tien_nghi: (room.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
         };
       })
@@ -636,35 +644,35 @@ const publicHotelService = {
     ), null);
 
     const [hotelWithImages] = await attachHotelImages([{
-      ma_khach_san: hotel.ma_khach_san,
-      ten: hotel.ten,
-      dia_chi: hotel.dia_chi,
-      mo_ta: hotel.mo_ta,
-      so_sao: hotel.so_sao,
-      ma_dia_diem: hotel.ma_dia_diem,
-      gio_nhan_phong: hotel.gio_nhan_phong,
-      gio_tra_phong: hotel.gio_tra_phong,
-      cho_phep_thu_cung: hotel.cho_phep_thu_cung,
-      phu_thu_thu_cung: hotel.phu_thu_thu_cung,
-      cho_phep_hut_thuoc: hotel.cho_phep_hut_thuoc,
-      cho_phep_to_chuc_tiec: hotel.cho_phep_to_chuc_tiec,
-      giay_to_bat_buoc: parseGiayToBatBuoc(hotel.giay_to_bat_buoc),
-      noi_quy_khac: parseNoiQuyKhac(hotel.noi_quy_khac),
-      tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi,
-      phu_thu_tre_em: hotel.phu_thu_tre_em,
-      chinh_sach_huy: (hotel.chinh_sach_huy || []).map((p) => ({
+      ma_khach_san: flatHotel.ma_khach_san,
+      ten: flatHotel.ten,
+      dia_chi: flatHotel.dia_chi,
+      mo_ta: flatHotel.mo_ta,
+      so_sao: flatHotel.so_sao,
+      ma_dia_diem: flatHotel.ma_dia_diem,
+      gio_nhan_phong: flatHotel.gio_nhan_phong,
+      gio_tra_phong: flatHotel.gio_tra_phong,
+      cho_phep_thu_cung: flatHotel.cho_phep_thu_cung,
+      phu_thu_thu_cung: flatHotel.phu_thu_thu_cung,
+      cho_phep_hut_thuoc: flatHotel.cho_phep_hut_thuoc,
+      cho_phep_to_chuc_tiec: flatHotel.cho_phep_to_chuc_tiec,
+      giay_to_bat_buoc: parseGiayToBatBuoc(flatHotel.giay_to_bat_buoc),
+      noi_quy_khac: parseNoiQuyKhac(flatHotel.noi_quy_khac),
+      tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
+      phu_thu_tre_em: flatHotel.phu_thu_tre_em,
+      chinh_sach_huy: (flatHotel.chinh_sach_huy || []).map((p) => ({
         so_ngay_truoc: p.so_ngay_truoc,
         phan_tram_hoan: p.phan_tram_hoan,
       })),
-      dia_diem: hotel.dia_diem,
-      tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
+      dia_diem: flatHotel.dia_diem,
+      tien_nghi: flatHotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
       loai_phong: sortedRooms,
       so_phong_trong: soPhongTrong,
       gia_tu: cheapestRoom?.gia_hien_thi ?? null,
       gia_goc: cheapestRoom?.gia_goc ?? null,
     }]);
 
-    const reviewData = await getHotelReviewData(hotel.ma_khach_san);
+    const reviewData = await getHotelReviewData(flatHotel.ma_khach_san);
 
     return {
       ...hotelWithImages,

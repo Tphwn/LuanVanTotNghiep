@@ -1,30 +1,8 @@
 const prisma = require('../../../config/prisma');
-
-const monthKeyFromDate = (value) => {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-};
-
-const formatMonthShort = (thangNam) => {
-  const [y, m] = String(thangNam).split('-');
-  if (!y || !m) return thangNam;
-  return `T${Number(m)}/${y}`;
-};
-
-const listMonthKeys = (fromDate, toDate) => {
-  const keys = [];
-  const cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-  const end = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
-  while (cursor <= end) {
-    keys.push(monthKeyFromDate(cursor));
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-  return keys;
-};
+const {
+  resolveTransactionDisplayStatus,
+  TX_DISPLAY_STATUS,
+} = require('../../../utils/paymentMapper');
 
 const partnerAmountFromBooking = (booking, commissionRow) => {
   const gross = Number(booking?.thanh_toan_cuoi) || 0;
@@ -39,18 +17,64 @@ const partnerAmountFromBooking = (booking, commissionRow) => {
   };
 };
 
+const mapPaymentRow = (tx) => {
+  const trangThai = resolveTransactionDisplayStatus(tx);
+  return {
+    ma_thanh_toan: tx.ma_thanh_toan,
+    ma_giao_dich: tx.ma_giao_dich || tx.ma_tham_chieu || `TT-${tx.ma_thanh_toan}`,
+    ma_don_hang: tx.dat_phong?.ma_don_hang || '—',
+    ma_dat_phong: tx.dat_phong?.ma_dat_phong || null,
+    khach_san: tx.dat_phong?.loai_phong?.khach_san?.ten || '—',
+    khach_hang: tx.dat_phong?.ten_nguoi_nhan || '—',
+    so_tien: Number(tx.so_tien) || 0,
+    trang_thai: trangThai,
+    trang_thai_label: TX_DISPLAY_STATUS[trangThai] || trangThai,
+    phuong_thuc: tx.phuong_thuc || tx.dat_phong?.phuong_thuc_tt || '—',
+    thoi_gian: tx.thoi_gian,
+  };
+};
+
+const paymentInclude = {
+  dat_phong: {
+    select: {
+      ma_dat_phong: true,
+      ma_don_hang: true,
+      ten_nguoi_nhan: true,
+      phuong_thuc_tt: true,
+      trang_thai: true,
+      hoan_tien: {
+        select: { ma_hoan_tien: true, trang_thai: true, so_tien_hoan: true },
+      },
+      loai_phong: {
+        select: {
+          ten_loai: true,
+          khach_san: { select: { ten: true } },
+        },
+      },
+    },
+  },
+  hoan_tien: {
+    select: { ma_hoan_tien: true, trang_thai: true, so_tien_hoan: true },
+  },
+};
+
 const adminFinanceService = {
   getOverview: async () => {
     const now = new Date();
-    const trendStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     const [
       revenueBookings,
       successPayments,
       pendingRefunds,
       commissions,
-      recentPayments,
       hoaHongChoDoiSoat,
+      todaySuccessCount,
+      todayFailedCount,
+      todaySuccessPayments,
+      todayFailedPayments,
+      pendingRefundRows,
     ] = await Promise.all([
       prisma.dat_phong.findMany({
         where: {
@@ -83,7 +107,7 @@ const adminFinanceService = {
       }),
       prisma.thanh_toan.count({ where: { trang_thai: 'thanh_cong' } }),
       prisma.hoan_tien.count({
-        where: { trang_thai: 'cho_xu_ly', so_tien_hoan: { gt: 0 } },
+        where: { trang_thai: { in: ['cho_xu_ly', 'dang_xu_ly'] }, so_tien_hoan: { gt: 0 } },
       }),
       prisma.hoa_hong.findMany({
         include: {
@@ -95,35 +119,57 @@ const adminFinanceService = {
           },
         },
       }),
+      prisma.hoa_hong.count({ where: { trang_thai: 'chua_thu' } }),
+      prisma.thanh_toan.count({
+        where: {
+          trang_thai: 'thanh_cong',
+          thoi_gian: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
+      prisma.thanh_toan.count({
+        where: {
+          trang_thai: 'that_bai',
+          thoi_gian: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
       prisma.thanh_toan.findMany({
-        take: 8,
+        where: {
+          trang_thai: 'thanh_cong',
+          thoi_gian: { gte: startOfDay, lte: endOfDay },
+        },
         orderBy: { thoi_gian: 'desc' },
+        take: 20,
+        include: paymentInclude,
+      }),
+      prisma.thanh_toan.findMany({
+        where: {
+          trang_thai: 'that_bai',
+          thoi_gian: { gte: startOfDay, lte: endOfDay },
+        },
+        orderBy: { thoi_gian: 'desc' },
+        take: 20,
+        include: paymentInclude,
+      }),
+      prisma.hoan_tien.findMany({
+        where: { trang_thai: { in: ['cho_xu_ly', 'dang_xu_ly'] }, so_tien_hoan: { gt: 0 } },
+        orderBy: { ngay_yeu_cau: 'desc' },
+        take: 10,
         include: {
           dat_phong: {
             select: {
-              ma_dat_phong: true,
               ma_don_hang: true,
               ten_nguoi_nhan: true,
-              phuong_thuc_tt: true,
               loai_phong: {
-                select: {
-                  ten_loai: true,
-                  khach_san: { select: { ten: true } },
-                },
+                select: { khach_san: { select: { ten: true } } },
               },
             },
           },
         },
       }),
-      prisma.hoa_hong.count({ where: { trang_thai: 'chua_thu' } }),
     ]);
 
     let tongDoanhThu = 0;
     let hoaHongHeThong = 0;
-    const partnerMap = new Map();
-    const monthTotals = new Map(
-      listMonthKeys(trendStart, now).map((key) => [key, 0]),
-    );
 
     revenueBookings.forEach((booking) => {
       const refund = booking.hoan_tien?.trang_thai === 'da_hoan'
@@ -138,35 +184,12 @@ const adminFinanceService = {
 
       tongDoanhThu += gross;
       hoaHongHeThong += commission;
-
-      const monthKey = monthKeyFromDate(
-        booking.trang_thai === 'hoan_thanh'
-          ? (booking.ngay_tra_phong || booking.ngay_dat)
-          : booking.ngay_dat,
-      );
-      if (monthKey && monthTotals.has(monthKey)) {
-        monthTotals.set(monthKey, monthTotals.get(monthKey) + gross);
-      }
-
-      const partner = booking.loai_phong?.khach_san?.doi_tac;
-      const partnerId = partner?.ma_doi_tac
-        || booking.loai_phong?.khach_san?.ma_doi_tac;
-      if (partnerId) {
-        if (!partnerMap.has(partnerId)) {
-          partnerMap.set(partnerId, {
-            ma_doi_tac: partnerId,
-            ten: partner?.ten_cong_ty || `Đối tác #${partnerId}`,
-            doanh_thu: 0,
-          });
-        }
-        partnerMap.get(partnerId).doanh_thu += gross;
-      }
     });
 
     // Khớp tab Thanh toán ĐT: chờ TT = đã đối soát (da_thu), đã TT = da_thanh_toan
     let choThanhToanDoiTac = 0;
     let daThanhToanDoiTac = 0;
-    const partnersChoTt = new Set();
+    const partnersChoTt = new Map();
 
     commissions.forEach((row) => {
       const { partnerNet } = partnerAmountFromBooking(row.dat_phong, row);
@@ -174,39 +197,36 @@ const adminFinanceService = {
         daThanhToanDoiTac += partnerNet;
       } else if (row.trang_thai === 'da_thu') {
         choThanhToanDoiTac += partnerNet;
-        if (row.ma_doi_tac) partnersChoTt.add(row.ma_doi_tac);
+        if (row.ma_doi_tac) {
+          const prev = partnersChoTt.get(row.ma_doi_tac) || {
+            ma_doi_tac: row.ma_doi_tac,
+            ten: row.doi_tac?.ten_cong_ty || `Đối tác #${row.ma_doi_tac}`,
+            so_tien: 0,
+            so_don: 0,
+          };
+          prev.so_tien += partnerNet;
+          prev.so_don += 1;
+          partnersChoTt.set(row.ma_doi_tac, prev);
+        }
       }
     });
 
-    const revenueTrend = listMonthKeys(trendStart, now).map((thang) => ({
-      thang,
-      label: formatMonthShort(thang),
-      doanh_thu: monthTotals.get(thang) || 0,
+    const partnersChoList = Array.from(partnersChoTt.values())
+      .sort((a, b) => b.so_tien - a.so_tien)
+      .slice(0, 10);
+
+    const refundPreview = pendingRefundRows.map((r) => ({
+      ma_hoan_tien: r.ma_hoan_tien,
+      ma_don_hang: r.dat_phong?.ma_don_hang || '—',
+      khach_hang: r.dat_phong?.ten_nguoi_nhan || '—',
+      khach_san: r.dat_phong?.loai_phong?.khach_san?.ten || '—',
+      so_tien_hoan: Number(r.so_tien_hoan) || 0,
+      ngay_yeu_cau: r.ngay_yeu_cau,
+      trang_thai: r.trang_thai,
     }));
 
-    const revenueByPartner = Array.from(partnerMap.values())
-      .sort((a, b) => b.doanh_thu - a.doanh_thu)
-      .slice(0, 8);
-
-    const TX_STATUS_LABEL = {
-      cho: 'Chờ',
-      thanh_cong: 'Thành công',
-      that_bai: 'Thất bại',
-    };
-
-    const recentTransactions = recentPayments.map((tx) => ({
-      ma_thanh_toan: tx.ma_thanh_toan,
-      ma_giao_dich: tx.ma_giao_dich || tx.ma_tham_chieu || `TT-${tx.ma_thanh_toan}`,
-      ma_don_hang: tx.dat_phong?.ma_don_hang || '—',
-      ma_dat_phong: tx.dat_phong?.ma_dat_phong || null,
-      khach_san: tx.dat_phong?.loai_phong?.khach_san?.ten || '—',
-      khach_hang: tx.dat_phong?.ten_nguoi_nhan || '—',
-      so_tien: Number(tx.so_tien) || 0,
-      trang_thai: tx.trang_thai,
-      trang_thai_label: TX_STATUS_LABEL[tx.trang_thai] || tx.trang_thai,
-      phuong_thuc: tx.phuong_thuc || tx.dat_phong?.phuong_thuc_tt || '—',
-      thoi_gian: tx.thoi_gian,
-    }));
+    const todaySuccessMapped = todaySuccessPayments.map(mapPaymentRow);
+    const todayFailedMapped = todayFailedPayments.map(mapPaymentRow);
 
     return {
       cards: {
@@ -223,15 +243,28 @@ const adminFinanceService = {
       doanh_thu_thuc_nhan: hoaHongHeThong,
       so_don_thanh_cong: successPayments,
       so_don_hoan_tien: pendingRefunds,
-      charts: {
-        revenue_trend: revenueTrend,
-        // Donut khớp số liệu ô thống kê (không còn nhầm “tổng phần ĐT” với “cần TT”)
-        finance_split: [
-          { name: 'Hoa hồng hệ thống', value: hoaHongHeThong },
-          { name: 'Đã thanh toán đối tác', value: daThanhToanDoiTac },
-          { name: 'Chờ thanh toán đối tác', value: choThanhToanDoiTac },
-        ],
-        revenue_by_partner: revenueByPartner,
+      viec_hom_nay: {
+        ngay: startOfDay.toISOString().slice(0, 10),
+        doi_tac_cho_thanh_toan: {
+          so_luong: partnersChoTt.size,
+          so_tien: choThanhToanDoiTac,
+          danh_sach: partnersChoList,
+        },
+        don_cho_hoan_tien: {
+          so_luong: pendingRefunds,
+          danh_sach: refundPreview,
+        },
+        hoa_hong_cho_doi_soat: {
+          so_luong: hoaHongChoDoiSoat,
+        },
+        giao_dich_thanh_cong: {
+          so_luong: todaySuccessCount,
+          danh_sach: todaySuccessMapped,
+        },
+        giao_dich_that_bai: {
+          so_luong: todayFailedCount,
+          danh_sach: todayFailedMapped,
+        },
       },
       can_xu_ly: {
         don_cho_hoan_tien: pendingRefunds,
@@ -239,7 +272,6 @@ const adminFinanceService = {
         doi_tac_cho_thanh_toan: partnersChoTt.size,
         so_tien_cho_thanh_toan: choThanhToanDoiTac,
       },
-      recent_transactions: recentTransactions,
     };
   },
 

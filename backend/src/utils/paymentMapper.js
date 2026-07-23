@@ -1,5 +1,13 @@
 const formatTxCode = (id) => `TXN-${String(id).padStart(6, '0')}`;
 
+const TX_DISPLAY_STATUS = {
+  thanh_cong: 'Thành công',
+  that_bai: 'Thất bại',
+  da_hoan_tien: 'Đã hoàn tiền',
+  hoan_thanh: 'Hoàn thành',
+  cho: 'Chờ',
+};
+
 const resolveGateway = (tx) => {
   if (tx.cong_thanh_toan) return tx.cong_thanh_toan;
   if (tx.phuong_thuc?.includes('MoMo')) return 'MoMo (Ví điện tử)';
@@ -10,6 +18,33 @@ const resolveGateway = (tx) => {
   return tx.phuong_thuc || '—';
 };
 
+/** Trạng thái giao dịch hiển thị theo đơn đặt phòng */
+const resolveTransactionDisplayStatus = (tx) => {
+  if (!tx) return 'cho';
+
+  const bookingStatus = tx.dat_phong?.trang_thai;
+  const refundRows = Array.isArray(tx.hoan_tien)
+    ? tx.hoan_tien
+    : (tx.hoan_tien ? [tx.hoan_tien] : []);
+  const bookingRefund = tx.dat_phong?.hoan_tien;
+  const refunded = refundRows.some((r) => r?.trang_thai === 'da_hoan')
+    || bookingRefund?.trang_thai === 'da_hoan'
+    || (Array.isArray(bookingRefund) && bookingRefund.some((r) => r?.trang_thai === 'da_hoan'));
+
+  if (refunded) return 'da_hoan_tien';
+  if (bookingStatus === 'hoan_thanh') return 'hoan_thanh';
+  if (bookingStatus === 'da_huy' || bookingStatus === 'tu_choi' || tx.trang_thai === 'that_bai') {
+    return 'that_bai';
+  }
+  if (
+    tx.trang_thai === 'thanh_cong'
+    || ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'].includes(bookingStatus)
+  ) {
+    return 'thanh_cong';
+  }
+  return tx.trang_thai === 'cho' ? 'cho' : 'thanh_cong';
+};
+
 const mapTransaction = (tx) => {
   if (!tx) return null;
 
@@ -17,9 +52,13 @@ const mapTransaction = (tx) => {
   const customer = booking?.khach_hang;
   const hotel = booking?.loai_phong?.khach_san;
   const phone = customer?.nguoi_dung?.so_dien_thoai || booking?.sdt_nguoi_nhan || null;
+  const trangThaiHienThi = resolveTransactionDisplayStatus(tx);
 
   return {
     ...tx,
+    trang_thai_thanh_toan: tx.trang_thai,
+    trang_thai: trangThaiHienThi,
+    trang_thai_label: TX_DISPLAY_STATUS[trangThaiHienThi] || trangThaiHienThi,
     ma_giao_dich: tx.ma_giao_dich || formatTxCode(tx.ma_thanh_toan),
     cong_thanh_toan: resolveGateway(tx),
     ngay_cap_nhat: tx.ngay_cap_nhat || tx.thoi_gian,
@@ -37,6 +76,8 @@ const mapTransactions = (list = []) => list.map(mapTransaction);
 
 module.exports = {
   formatTxCode,
+  TX_DISPLAY_STATUS,
+  resolveTransactionDisplayStatus,
   mapTransaction,
   mapTransactions,
 };

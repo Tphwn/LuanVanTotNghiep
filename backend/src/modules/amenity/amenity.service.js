@@ -1,6 +1,25 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { notifyAmenityAdded } = require('../../utils/partnerNotify');
+const {
+  notifyAmenityAdded,
+  notifyAmenityLocked,
+  notifyAmenityUnlocked,
+} = require('../../utils/partnerNotify');
+
+const parseNotifyOptions = (data = {}) => {
+  const notifyScope = ['all', 'one', 'none'].includes(data.notify_scope)
+    ? data.notify_scope
+    : 'none';
+  const maDoiTac = data.ma_doi_tac != null ? Number(data.ma_doi_tac) : null;
+
+  if (notifyScope === 'one' && (!maDoiTac || Number.isNaN(maDoiTac))) {
+    const err = new Error('Vui lòng chọn đối tác để thông báo');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return { notifyScope, maDoiTac };
+};
 
 const withUsageFlags = (row) => {
   if (!row) return null;
@@ -21,6 +40,35 @@ const amenityUsageInclude = {
       loai_phong_tien_nghi: true,
     },
   },
+};
+
+/** Trim + viết hoa chữ cái đầu (locale vi) */
+const formatAmenityName = (ten) => {
+  const trimmed = String(ten || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) {
+    const err = new Error('Vui lòng nhập tên tiện nghi');
+    err.statusCode = 400;
+    throw err;
+  }
+  return trimmed.charAt(0).toLocaleUpperCase('vi') + trimmed.slice(1);
+};
+
+const normalizeNameKey = (ten) => formatAmenityName(ten).toLocaleLowerCase('vi');
+
+const assertUniqueAmenityName = async (ten, excludeId = null) => {
+  const key = normalizeNameKey(ten);
+  const rows = await prisma.tien_nghi.findMany({
+    select: { ma_tien_nghi: true, ten: true },
+  });
+  const duplicated = rows.find((row) => {
+    if (excludeId != null && Number(row.ma_tien_nghi) === Number(excludeId)) return false;
+    return String(row.ten || '').trim().toLocaleLowerCase('vi') === key;
+  });
+  if (duplicated) {
+    const err = new Error('Tiện nghi đã có, vui lòng kiểm tra lại');
+    err.statusCode = 400;
+    throw err;
+  }
 };
 
 const amenityService = {
@@ -44,19 +92,15 @@ const amenityService = {
   },
 
   create: async (data) => {
-    const notifyScope = ['all', 'one', 'none'].includes(data.notify_scope)
-      ? data.notify_scope
-      : 'none';
-    const maDoiTac = data.ma_doi_tac != null ? Number(data.ma_doi_tac) : null;
+    const { notifyScope, maDoiTac } = parseNotifyOptions(data);
 
-    if (notifyScope === 'one' && (!maDoiTac || Number.isNaN(maDoiTac))) {
-      throw new Error('Vui lòng chọn đối tác để thông báo');
-    }
+    const ten = formatAmenityName(data.ten);
+    await assertUniqueAmenityName(ten);
 
     const created = await prisma.tien_nghi.create({
       data: {
-        ten: data.ten,
-        bieu_tuong: data.bieu_tuong,
+        ten,
+        bieu_tuong: data.bieu_tuong || null,
         loai: data.loai,
         danh_muc: data.danh_muc || null,
         trang_thai: 'hoat_dong',
@@ -74,11 +118,14 @@ const amenityService = {
   },
 
   update: async (id, data) => {
+    const ten = formatAmenityName(data.ten);
+    await assertUniqueAmenityName(ten, id);
+
     return prisma.tien_nghi.update({
       where: { ma_tien_nghi: Number(id) },
       data: {
-        ten: data.ten,
-        bieu_tuong: data.bieu_tuong,
+        ten,
+        bieu_tuong: data.bieu_tuong || null,
         loai: data.loai,
         danh_muc: data.danh_muc || null,
       },
@@ -91,25 +138,31 @@ const amenityService = {
     });
   },
 
-  setStatus: async (id, trang_thai) => {
+  setStatus: async (id, trang_thai, options = {}) => {
     if (!['hoat_dong', 'an'].includes(trang_thai)) {
-      throw new Error('Trạng thái không hợp lệ');
+      const err = new Error('Trạng thái không hợp lệ');
+      err.statusCode = 400;
+      throw err;
     }
     const maTienNghi = Number(id);
     const found = await prisma.tien_nghi.findUnique({
       where: { ma_tien_nghi: maTienNghi },
       include: amenityUsageInclude,
     });
-    if (!found) throw new Error('Không tìm thấy tiện nghi');
+    if (!found) {
+      const err = new Error('Không tìm thấy tiện nghi');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const { notifyScope, maDoiTac } = parseNotifyOptions(options);
+    const lyDo = String(options.ly_do || '').trim();
 
     if (trang_thai === 'an') {
-      const soLanSuDung =
-        (found._count?.khach_san_tien_nghi || 0)
-        + (found._count?.loai_phong_tien_nghi || 0);
-      if (soLanSuDung > 0) {
-        throw new Error(
-          'Không thể khóa tiện nghi này vì đã có đối tác chọn. Chỉ khóa khi chưa có đối tác nào sử dụng.',
-        );
+      if (!lyDo) {
+        const err = new Error('Vui lòng nhập lý do khóa tiện nghi');
+        err.statusCode = 400;
+        throw err;
       }
     }
 
@@ -118,6 +171,22 @@ const amenityService = {
       data: { trang_thai },
       include: amenityUsageInclude,
     });
+
+    if (trang_thai === 'an') {
+      await notifyAmenityLocked({
+        tenTienNghi: updated.ten,
+        lyDo,
+        notifyScope,
+        maDoiTac,
+      });
+    } else {
+      await notifyAmenityUnlocked({
+        tenTienNghi: updated.ten,
+        notifyScope,
+        maDoiTac,
+      });
+    }
+
     return withUsageFlags(updated);
   },
 };

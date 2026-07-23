@@ -42,6 +42,11 @@ const HOTEL_INCLUDE = {
   },
 };
 
+
+const PAID_ONLINE_FILTER = {
+  thanh_toan: { is: { trang_thai: 'thanh_cong' } },
+};
+
 const bookingService = {
 
   // Lấy danh sách đặt phòng của KS đối tác
@@ -66,6 +71,7 @@ const bookingService = {
 
     const where = {
       ma_loai_phong: { in: roomIds },
+      ...PAID_ONLINE_FILTER,
     };
 
     if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
@@ -97,11 +103,10 @@ const bookingService = {
     });
   },
 
-  // Lấy chi tiết 1 đơn
   getDetailById: async (id) => {
     await autoCompleteExpiredCheckIns({ ma_dat_phong: Number(id) });
 
-    return await prisma.dat_phong.findUnique({
+    const booking = await prisma.dat_phong.findUnique({
       where: { ma_dat_phong: Number(id) },
       include: {
         khach_hang: {
@@ -124,6 +129,12 @@ const bookingService = {
         hoan_tien: true,
       },
     });
+
+    // Đối tác chỉ xem đơn đã thanh toán thành công
+    if (booking && booking.thanh_toan?.trang_thai !== 'thanh_cong') {
+      return null;
+    }
+    return booking;
   },
 
   // Xác nhận đơn (thanh toán tại khách sạn)
@@ -198,7 +209,9 @@ const bookingService = {
   // ── Admin ────────────────────────────────────────────────
   getAllForAdmin: async (filters = {}) => {
     const { trang_thai, keyword, ks_id, ma_doi_tac, tu_ngay, den_ngay } = filters;
-    const where = {};
+    const where = {
+      ...PAID_ONLINE_FILTER,
+    };
 
     if (trang_thai === 'da_xac_nhan') {
       where.trang_thai = { in: ['da_xac_nhan', 'cho_xac_nhan'] };
@@ -266,12 +279,15 @@ const bookingService = {
         ma_dat_phong: true,
         trang_thai: true,
         ghi_chu: true,
+        thanh_toan: { select: { trang_thai: true } },
         hoan_tien: { select: { ma_hoan_tien: true } },
       },
     });
+    if (!existing || existing.thanh_toan?.trang_thai !== 'thanh_cong') {
+      return null;
+    }
     if (
-      existing
-      && ['da_huy', 'tu_choi'].includes(existing.trang_thai)
+      ['da_huy', 'tu_choi'].includes(existing.trang_thai)
       && !existing.hoan_tien
     ) {
       await prisma.$transaction(async (tx) => {
@@ -365,6 +381,7 @@ const bookingService = {
   },
 
   getStatsForAdmin: async () => {
+    const paidWhere = { ...PAID_ONLINE_FILTER };
     const [
       total,
       cho_xac_nhan,
@@ -374,19 +391,23 @@ const bookingService = {
       da_huy,
       tu_choi,
     ] = await Promise.all([
-      prisma.dat_phong.count(),
-      prisma.dat_phong.count({ where: { trang_thai: 'cho_xac_nhan' } }),
-      prisma.dat_phong.count({ where: { trang_thai: 'da_xac_nhan' } }),
-      prisma.dat_phong.count({ where: { trang_thai: 'da_checkin' } }),
-      prisma.dat_phong.count({ where: { trang_thai: 'hoan_thanh' } }),
-      prisma.dat_phong.count({ where: { trang_thai: 'da_huy' } }),
-      prisma.dat_phong.count({ where: { trang_thai: 'tu_choi' } }),
+      prisma.dat_phong.count({ where: paidWhere }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'cho_xac_nhan' } }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'da_xac_nhan' } }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'da_checkin' } }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'hoan_thanh' } }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'da_huy' } }),
+      prisma.dat_phong.count({ where: { ...paidWhere, trang_thai: 'tu_choi' } }),
     ]);
 
     const now = new Date();
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const revenue = await prisma.dat_phong.aggregate({
-      where: { trang_thai: 'hoan_thanh', ngay_dat: { gte: startMonth } },
+      where: {
+        ...paidWhere,
+        trang_thai: 'hoan_thanh',
+        ngay_dat: { gte: startMonth },
+      },
       _sum: { thanh_toan_cuoi: true },
     });
 
