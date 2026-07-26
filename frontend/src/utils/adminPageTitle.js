@@ -6,8 +6,6 @@ const ADMIN_PAGE_TITLES = [
   { prefix: '/admin/amenities', title: 'Tiện nghi' },
   { prefix: '/admin/room-types', title: 'Loại phòng' },
   { prefix: '/admin/reviews', title: 'Đánh giá' },
-  { prefix: '/admin/finance/partner-payouts', title: 'Chi tiết thanh toán đối tác' },
-  { prefix: '/admin/finance/transactions', title: 'Chi tiết giao dịch' },
   { prefix: '/admin/finance', title: 'Tài chính' },
   { prefix: '/admin/reports', title: 'Báo cáo' },
   { prefix: '/admin/partners', title: 'Đối tác' },

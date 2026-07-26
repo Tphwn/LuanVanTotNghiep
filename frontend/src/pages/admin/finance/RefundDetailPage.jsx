@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import DetailTable from '../../../components/booking/DetailTable';
 import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import {
@@ -10,28 +9,8 @@ import {
   clearRefundDetail,
   fetchRefundById,
 } from '../../../store/slices/adminFinanceSlice';
-import {
-  formatCurrency,
-  formatDate,
-  formatStayDateTime,
-  REFUND_TRANG_THAI,
-  TRANG_THAI,
-} from '../../../utils/bookingDisplay';
-
-const REFUND_STATUS = REFUND_TRANG_THAI;
-const BOOKING_STATUS = TRANG_THAI;
-
-const formatDateTime = (date) => {
-  if (!date) return '—';
-  const d = new Date(date);
-  const time = d.toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-  return `${d.toLocaleDateString('vi-VN')} - ${time}`;
-};
+import { formatCurrency } from '../../../utils/bookingDisplay';
+import RefundDetailBody from './components/RefundDetailBody';
 
 export default function RefundDetailPage() {
   const { id } = useParams();
@@ -58,60 +37,6 @@ export default function RefundDetailPage() {
       return () => clearTimeout(t);
     }
   }, [successMsg, error, dispatch]);
-
-  const refundStatus = useMemo(() => {
-    if (!refundDetail) return { label: '—', cls: 'badge-default' };
-    return REFUND_STATUS[refundDetail.trang_thai] || {
-      label: refundDetail.trang_thai,
-      cls: 'badge-default',
-    };
-  }, [refundDetail]);
-
-  const requestRows = useMemo(() => {
-    if (!refundDetail) return [];
-    return [
-      { label: 'Mã hoàn', value: refundDetail.ma_hoan || `#${refundDetail.ma_hoan_tien}` },
-      { label: 'Ngày yêu cầu', value: formatDateTime(refundDetail.ngay_yeu_cau) },
-      { label: 'Phương thức', value: refundDetail.phuong_thuc || '—' },
-      { label: 'Số tiền hoàn', value: formatCurrency(refundDetail.so_tien_hoan) },
-      {
-        label: 'Ngày xử lý',
-        value: refundDetail.ngay_xu_ly ? formatDateTime(refundDetail.ngay_xu_ly) : '—',
-      },
-    ];
-  }, [refundDetail]);
-
-  const bookingRows = useMemo(() => {
-    if (!refundDetail) return [];
-    const booking = refundDetail.dat_phong;
-    const hotel = booking?.loai_phong?.khach_san;
-    const bookingId = booking?.ma_dat_phong;
-    const checkIn = formatStayDateTime(booking?.ngay_nhan_phong, hotel?.gio_nhan_phong, '14:00');
-    const checkOut = formatStayDateTime(booking?.ngay_tra_phong, hotel?.gio_tra_phong, '12:00');
-    const bookingSt = BOOKING_STATUS[booking?.trang_thai]?.label || booking?.trang_thai || '—';
-
-    return [
-      {
-        label: 'Mã đơn',
-        value: bookingId ? (
-          <Link to={`/admin/bookings/${bookingId}`} className="mgmt-link">
-            {refundDetail.ma_don_hang || booking?.ma_don_hang}
-          </Link>
-        ) : (refundDetail.ma_don_hang || '—'),
-      },
-      { label: 'Khách hàng', value: refundDetail.khach_hang_ten || '—' },
-      { label: 'Số điện thoại', value: refundDetail.khach_hang_sdt || '—' },
-      { label: 'Khách sạn', value: refundDetail.ten_khach_san || '—' },
-      { label: 'Loại phòng', value: refundDetail.ten_loai_phong || '—' },
-      { label: 'Đối tác', value: refundDetail.ten_doi_tac || '—' },
-      { label: 'Trạng thái đơn', value: bookingSt },
-      { label: 'Nhận phòng', value: `${checkIn.date} · ${checkIn.time}` },
-      { label: 'Trả phòng', value: `${checkOut.date} · ${checkOut.time}` },
-      { label: 'Số khách', value: `${booking?.so_khach || 0} khách` },
-      { label: 'Tổng đơn', value: formatCurrency(refundDetail.tong_don || booking?.thanh_toan_cuoi) },
-      { label: 'Ngày đặt', value: formatDate(booking?.ngay_dat) },
-    ];
-  }, [refundDetail]);
 
   const handleBack = () => {
     navigate(location.state?.returnTo || '/admin/finance?tab=refunds');
@@ -158,46 +83,13 @@ export default function RefundDetailPage() {
       )}
 
       <div className="content-card booking-detail-page-card">
-        <div className="booking-detail-status-bar booking-detail-status-bar--page">
-          <div className="booking-detail-status-left">
-            <span className={`badge ${refundStatus.cls}`}>{refundStatus.label}</span>
-          </div>
-          {canApprove && (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={loading}
-              onClick={() => setConfirmOpen(true)}
-            >
-              Hoàn tiền
-            </button>
-          )}
-        </div>
-
-        <div className="booking-detail-reason-box" style={{ marginBottom: 20 }}>
-          <h4 className="booking-detail-section-title">Lý do hủy</h4>
-          <p style={{ margin: 0, fontSize: 14, color: '#1a2e28', lineHeight: 1.6 }}>
-            {refundDetail.ly_do_huy || '—'}
-          </p>
-        </div>
-
-        <div className="booking-detail-calc-box" style={{
-          marginBottom: 20,
-          padding: '16px 18px',
-          background: '#f0faf7',
-          border: '1px solid #d4ede6',
-          borderRadius: 10,
-        }}>
-          <h4 className="booking-detail-section-title" style={{ marginTop: 0 }}>Chi tiết tính toán</h4>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#1a2e28' }}>
-            {refundDetail.chi_tiet_tinh_toan || '—'}
-          </p>
-        </div>
-
-        <div className="booking-detail-grid">
-          <DetailTable title="Thông tin yêu cầu" rows={requestRows} />
-          <DetailTable title="Thông tin đơn đặt phòng" rows={bookingRows} />
-        </div>
+        <RefundDetailBody
+          refundDetail={refundDetail}
+          canApprove={canApprove}
+          loading={loading}
+          onApproveClick={() => setConfirmOpen(true)}
+          onClose={handleBack}
+        />
       </div>
 
       {confirmOpen && (

@@ -34,6 +34,8 @@ const getActiveWhere = (loaiNguon, maKhachSan = null) => {
   const where = {
     loai_nguon: loaiNguon,
     trang_thai: 'hoat_dong',
+    khoa_boi_admin: false,
+    khoa_boi_doi_tac: false,
     ngay_bat_dau: { lte: new Date(`${today}T00:00:00.000Z`) },
     ngay_ket_thuc: { gte: new Date(`${today}T00:00:00.000Z`) },
   };
@@ -45,14 +47,19 @@ const getActiveWhere = (loaiNguon, maKhachSan = null) => {
   return where;
 };
 
+const isPromotionStillAvailable = (promo) => {
+  if (promo.so_luot_toi_da == null) return true;
+  return Number(promo.so_luot_da_dung) < Number(promo.so_luot_toi_da);
+};
+
 const getSystemPromotions = async () => {
   await syncExpiredPromotions(prisma, { loai_nguon: 'he_thong' });
   const rows = await prisma.khuyen_mai.findMany({
     where: getActiveWhere('he_thong'),
     orderBy: [{ gia_tri: 'desc' }, { ngay_ket_thuc: 'asc' }],
-    take: 12,
+    take: 24,
   });
-  return rows.map(mapPublicPromotion);
+  return rows.filter(isPromotionStillAvailable).slice(0, 12).map(mapPublicPromotion);
 };
 
 const getHotelPromotions = async (maKhachSan) => {
@@ -73,9 +80,9 @@ const getHotelPromotions = async (maKhachSan) => {
   const rows = await prisma.khuyen_mai.findMany({
     where: getActiveWhere('doi_tac', hotelId),
     orderBy: [{ gia_tri: 'desc' }, { ngay_ket_thuc: 'asc' }],
-    take: 12,
+    take: 24,
   });
-  return rows.map(mapPublicPromotion);
+  return rows.filter(isPromotionStillAvailable).slice(0, 12).map(mapPublicPromotion);
 };
 
 module.exports = {

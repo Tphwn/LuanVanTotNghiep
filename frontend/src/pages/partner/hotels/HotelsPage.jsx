@@ -16,7 +16,7 @@ import ToggleSwitch from '../../../components/common/management/ToggleSwitch';
 import StarRating from '../../../components/common/management/StarRating';
 import HotelThumb from '../../../components/common/management/HotelThumb';
 import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
-import { TAB_FILTER } from './constants';
+import { ACTIVITY_FILTER, TAB_FILTER } from './constants';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
 
 const HotelsPage = () => {
@@ -30,8 +30,8 @@ const HotelsPage = () => {
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [diaDiemFilter, setDiaDiemFilter] = useState('all');
-  const [draftKeyword, setDraftKeyword] = useState('');
-  const [draftDiaDiemFilter, setDraftDiaDiemFilter] = useState('all');
+  const [activityFilter, setActivityFilter] = useState('all');
+  const [starFilter, setStarFilter] = useState('all');
   const [confirmAction, setConfirmAction] = useState(null);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
@@ -61,6 +61,7 @@ const HotelsPage = () => {
     daDuyet: list.filter((h) => ['hoat_dong', 'da_duyet'].includes(h.trang_thai)).length,
     choDuyet: list.filter((h) => h.trang_thai === 'cho_duyet').length,
     tuChoi: list.filter((h) => ['tu_choi', 'yeu_cau_sua'].includes(h.trang_thai)).length,
+    khongHoatDong: list.filter((h) => h.trang_thai === 'bi_khoa').length,
   }), [list]);
 
   const filterTabs = useMemo(() => [
@@ -68,21 +69,25 @@ const HotelsPage = () => {
     { id: 'da_duyet', label: 'Đã duyệt', count: stats.daDuyet, tone: 'success' },
     { id: 'cho_duyet', label: 'Chờ duyệt', count: stats.choDuyet, tone: 'warning' },
     { id: 'tu_choi', label: 'Từ chối', count: stats.tuChoi, tone: 'danger' },
+    { id: 'khong_hoat_dong', label: 'Không hoạt động', count: stats.khongHoatDong, tone: 'muted' },
   ], [stats]);
 
   const filteredList = useMemo(() => {
     const tabFilter = TAB_FILTER[activeTab] || TAB_FILTER.all;
+    const activityMatch = ACTIVITY_FILTER[activityFilter] || ACTIVITY_FILTER.all;
     const text = keyword.trim().toLowerCase();
     return (list || []).filter((hotel) => {
       if (!tabFilter(hotel)) return false;
+      if (!activityMatch(hotel)) return false;
       const matchDiaDiem = diaDiemFilter === 'all' || String(hotel.ma_dia_diem) === diaDiemFilter;
+      const matchStar = starFilter === 'all' || Number(hotel.so_sao) === Number(starFilter);
       const matchKeyword = !text
         || hotel.ten?.toLowerCase().includes(text)
         || hotel.dia_chi?.toLowerCase().includes(text)
         || hotel.dia_diem?.ten_dia_diem?.toLowerCase().includes(text);
-      return matchDiaDiem && matchKeyword;
+      return matchDiaDiem && matchStar && matchKeyword;
     });
-  }, [list, keyword, activeTab, diaDiemFilter]);
+  }, [list, keyword, activeTab, diaDiemFilter, activityFilter, starFilter]);
 
   const {
     pagedItems: pagedList,
@@ -93,7 +98,7 @@ const HotelsPage = () => {
     rangeFrom,
     rangeTo,
     showPagination,
-  } = useListPagination(filteredList, 10, [keyword, activeTab, diaDiemFilter]);
+  } = useListPagination(filteredList, 10, [keyword, activeTab, diaDiemFilter, activityFilter, starFilter]);
 
   const handleToggleStatus = (hotel) => {
     const isActivating = hotel.trang_thai === 'bi_khoa';
@@ -129,17 +134,12 @@ const HotelsPage = () => {
   const canToggle = (status) => status === 'hoat_dong' || status === 'bi_khoa';
   const canDelete = (status) => status === 'cho_duyet';
 
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-    setDiaDiemFilter(draftDiaDiemFilter);
-  };
-
   const clearFilters = () => {
     setKeyword('');
     setActiveTab('all');
     setDiaDiemFilter('all');
-    setDraftKeyword('');
-    setDraftDiaDiemFilter('all');
+    setActivityFilter('all');
+    setStarFilter('all');
   };
 
   const handleDelete = (hotel) => {
@@ -174,8 +174,8 @@ const HotelsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={draftKeyword}
-        onSearchChange={(e) => setDraftKeyword(e.target.value)}
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
         tabs={filterTabs}
         activeTab={activeTab}
@@ -183,8 +183,8 @@ const HotelsPage = () => {
       >
         <select
           className="mgmt-select-inline partner-hotels-location-filter"
-          value={draftDiaDiemFilter}
-          onChange={(e) => setDraftDiaDiemFilter(e.target.value)}
+          value={diaDiemFilter}
+          onChange={(e) => setDiaDiemFilter(e.target.value)}
           aria-label="Lọc theo địa điểm"
         >
           <option value="all">Tất cả địa điểm</option>
@@ -192,7 +192,28 @@ const HotelsPage = () => {
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
         </select>
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        <select
+          className="mgmt-select-inline partner-hotels-activity-filter"
+          value={activityFilter}
+          onChange={(e) => setActivityFilter(e.target.value)}
+          aria-label="Lọc theo trạng thái hoạt động"
+        >
+          <option value="all">Tất cả trạng thái hoạt động</option>
+          <option value="hoat_dong">Đang hoạt động</option>
+          <option value="khong_hoat_dong">Không hoạt động</option>
+        </select>
+        <select
+          className="mgmt-select-inline partner-hotels-star-filter"
+          value={starFilter}
+          onChange={(e) => setStarFilter(e.target.value)}
+          aria-label="Lọc theo hạng sao"
+        >
+          <option value="all">Tất cả hạng sao</option>
+          {[5, 4, 3, 2, 1].map((s) => (
+            <option key={s} value={s}>{s} sao</option>
+          ))}
+        </select>
+        <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -211,23 +232,23 @@ const HotelsPage = () => {
               <thead>
                 <tr>
                   <th style={{ width: 72 }}>Ảnh</th>
-                  <th>Tên khách sạn</th>
-                  <th>Địa chỉ</th>
-                  <th style={{ width: 90 }}>Sao</th>
-                  <th style={{ width: 150 }}>Trạng thái</th>
-                  <th style={{ width: 130 }}>Thao tác</th>
+                  <th className="partner-col-name">Tên khách sạn</th>
+                  <th className="partner-col-address mgmt-col-address">Địa chỉ</th>
+                  <th className="partner-col-star">Sao</th>
+                  <th className="partner-hotels-status-col partner-col-status">Trạng thái</th>
+                  <th className="partner-col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedList.map((hotel) => {
-                  const st = getHotelStatusMeta(hotel, { variant: 'text' });
+                  const st = getHotelStatusMeta(hotel, { variant: 'badge' });
                   const isActive = hotel.trang_thai === 'hoat_dong';
                   const adminLocked = hotel.trang_thai === 'bi_khoa' && !hotel.khoa_do_doi_tac;
                   const isToggling = toggleLoadingId === hotel.ma_khach_san;
                   return (
                     <tr key={hotel.ma_khach_san} style={{ opacity: hotel.trang_thai === 'bi_khoa' ? 0.85 : 1 }}>
-                      <td><HotelThumb hotel={hotel} /></td>
-                      <td>
+                      <td className="partner-col-thumb"><HotelThumb hotel={hotel} /></td>
+                      <td className="partner-col-name">
                         <div
                           className="mgmt-cell-name"
                           style={{ cursor: 'pointer' }}
@@ -239,27 +260,29 @@ const HotelsPage = () => {
                           {hotel.ten}
                         </div>
                       </td>
-                      <td>
-                        <div className="mgmt-cell-address" title={hotel.dia_chi}>
+                      <td className="partner-col-address mgmt-col-address">
+                        <div className="mgmt-cell-address hotels-address-full">
                           {hotel.dia_chi || '—'}
                         </div>
                       </td>
-                      <td><StarRating value={hotel.so_sao} /></td>
-                      <td>
-                        {canToggle(hotel.trang_thai) ? (
-                          <ToggleSwitch
-                            compact
-                            checked={isActive}
-                            disabled={adminLocked || isToggling}
-                            onChange={() => handleToggleStatus(hotel)}
-                            labelOn="Đang hoạt động"
-                            labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}
-                          />
-                        ) : (
-                          <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
-                        )}
+                      <td className="partner-col-star"><StarRating value={hotel.so_sao} /></td>
+                      <td className="partner-hotels-status-col partner-col-status">
+                        <div className="partner-status-cell">
+                          <span className={`badge ${st.cls}`}>{st.label}</span>
+                          {canToggle(hotel.trang_thai) && (
+                            <ToggleSwitch
+                              compact
+                              hideLabel
+                              checked={isActive}
+                              disabled={adminLocked || isToggling}
+                              onChange={() => handleToggleStatus(hotel)}
+                              labelOn="Đang hoạt động"
+                              labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}
+                            />
+                          )}
+                        </div>
                       </td>
-                      <ActionCell>
+                      <ActionCell className="partner-col-actions">
                         <ActionButton
                           variant="view"
                           iconOnly

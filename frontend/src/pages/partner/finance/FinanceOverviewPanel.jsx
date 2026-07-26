@@ -14,7 +14,7 @@ import {
   Legend,
 } from 'recharts';
 import {
-  PARTNER_TRANG_THAI,
+  TRANG_THAI,
   getPaymentDisplay,
   formatCurrency,
   formatDate,
@@ -164,8 +164,8 @@ const FinanceOverviewPanel = ({ charts, recentPayments, onViewBooking }) => {
               <thead>
                 <tr>
                   <th>Mã đơn</th>
-                  <th>Khách sạn</th>
-                  <th>Loại phòng</th>
+                  <th className="mgmt-col-hotel">Khách sạn</th>
+                  <th className="mgmt-col-room">Loại phòng</th>
                   <th>Ngày Thanh Toán</th>
                   <th>Tổng tiền</th>
                   <th>Trạng thái</th>
@@ -174,7 +174,7 @@ const FinanceOverviewPanel = ({ charts, recentPayments, onViewBooking }) => {
               </thead>
               <tbody>
                 {recentPayments.map((row) => {
-                  const st = PARTNER_TRANG_THAI[row.trang_thai] || { label: row.trang_thai, cls: '' };
+                  const st = TRANG_THAI[row.trang_thai] || { label: row.trang_thai, cls: 'badge-default' };
                   const pay = getPaymentDisplay(row);
                   return (
                     <tr
@@ -185,23 +185,19 @@ const FinanceOverviewPanel = ({ charts, recentPayments, onViewBooking }) => {
                       <td>
                         <span className="mgmt-cell-code">{row.ma_don_hang}</span>
                       </td>
-                      <td>
-                        <div className="partner-finance-cell-ellipsis" title={row.khach_san}>
-                          {row.khach_san}
-                        </div>
+                      <td className="mgmt-col-hotel">
+                        <div className="partner-finance-cell-text">{row.khach_san}</div>
                       </td>
-                      <td>
-                        <div className="partner-finance-cell-ellipsis" title={row.loai_phong}>
-                          {row.loai_phong}
-                        </div>
+                      <td className="mgmt-col-room">
+                        <div className="partner-finance-cell-text">{row.loai_phong}</div>
                       </td>
                       <td>{formatDate(row.ngay_thanh_toan)}</td>
                       <td className="partner-finance-cell-money">{formatCurrency(row.tong_tien)}</td>
                       <td>
-                        <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                        <span className={`badge ${st.cls}`}>{st.label}</span>
                       </td>
                       <td>
-                        <span className={`mgmt-status-text ${pay.cls}`}>{pay.shortLabel}</span>
+                        <span className={`badge ${pay.badge || 'badge-default'}`}>{pay.shortLabel}</span>
                       </td>
                     </tr>
                   );

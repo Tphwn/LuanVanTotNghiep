@@ -14,7 +14,7 @@ const ManagementToolbar = ({
     {tabs ? (
       <FilterTabs tabs={tabs} active={activeTab} onChange={onTabChange} />
     ) : null}
-    <div className="mgmt-toolbar-row">
+    <div className="mgmt-toolbar mgmt-toolbar--filters mgmt-toolbar-row">
       <SearchBar
         value={searchValue}
         onChange={onSearchChange}

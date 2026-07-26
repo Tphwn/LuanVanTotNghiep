@@ -18,7 +18,11 @@ const resolveGateway = (tx) => {
   return tx.phuong_thuc || '—';
 };
 
-/** Trạng thái giao dịch hiển thị theo đơn đặt phòng */
+/**
+ * Trạng thái giao dịch hiển thị:
+ * - that_bai: chỉ khi đã nhấn thanh toán nhưng giao dịch không thành công
+ * - Không coi hủy đơn / chưa thanh toán là thất bại
+ */
 const resolveTransactionDisplayStatus = (tx) => {
   if (!tx) return 'cho';
 
@@ -32,17 +36,19 @@ const resolveTransactionDisplayStatus = (tx) => {
     || (Array.isArray(bookingRefund) && bookingRefund.some((r) => r?.trang_thai === 'da_hoan'));
 
   if (refunded) return 'da_hoan_tien';
-  if (bookingStatus === 'hoan_thanh') return 'hoan_thanh';
-  if (bookingStatus === 'da_huy' || bookingStatus === 'tu_choi' || tx.trang_thai === 'that_bai') {
-    return 'that_bai';
-  }
-  if (
-    tx.trang_thai === 'thanh_cong'
-    || ['cho_xac_nhan', 'da_xac_nhan', 'da_checkin'].includes(bookingStatus)
-  ) {
+
+  // Chỉ thất bại khi bản ghi thanh toán thực sự thất bại (đã thử thanh toán)
+  if (tx.trang_thai === 'that_bai') return 'that_bai';
+
+  // Chưa thanh toán (kể cả đơn đã hủy / hết hạn giữ chỗ)
+  if (tx.trang_thai === 'cho' || !tx.trang_thai) return 'cho';
+
+  if (tx.trang_thai === 'thanh_cong') {
+    if (bookingStatus === 'hoan_thanh') return 'hoan_thanh';
     return 'thanh_cong';
   }
-  return tx.trang_thai === 'cho' ? 'cho' : 'thanh_cong';
+
+  return 'cho';
 };
 
 const mapTransaction = (tx) => {

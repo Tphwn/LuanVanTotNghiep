@@ -94,6 +94,61 @@ exports.savePrices = async (req, res) => {
   }
 };
 
+exports.restoreBasePrices = async (req, res) => {
+  try {
+    const doiTacId = await getDoiTacId(req.user.id);
+    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
+
+    const maLoaiPhong = req.body.maLoaiPhong ?? req.body.ma_loai_phong;
+    const dates = req.body.dates
+      || (req.body.tuNgay && req.body.denNgay
+        ? null
+        : req.body.ngayList);
+
+    if (!maLoaiPhong) {
+      return res.status(400).json({ success: false, message: 'Thiếu ma_loai_phong' });
+    }
+
+    let ngayList = Array.isArray(dates) ? dates : [];
+    if (!ngayList.length && req.body.tuNgay && req.body.denNgay) {
+      const start = String(req.body.tuNgay).slice(0, 10);
+      const end = String(req.body.denNgay).slice(0, 10);
+      const cur = new Date(`${start}T12:00:00`);
+      const last = new Date(`${end}T12:00:00`);
+      while (cur <= last) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const d = String(cur.getDate()).padStart(2, '0');
+        ngayList.push(`${y}-${m}-${d}`);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+
+    if (!ngayList.length) {
+      return res.status(400).json({ success: false, message: 'Thiếu khoảng ngày cần khôi phục' });
+    }
+
+    await verifyRoomOwnership(doiTacId, [maLoaiPhong]);
+    const data = await pricingService.restoreBasePrices(maLoaiPhong, ngayList);
+
+    if (!data.count) {
+      return res.json({
+        success: true,
+        data,
+        message: 'Không có ngày nào đang chỉnh giá khác giá cơ bản trong khoảng đã chọn',
+      });
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: `Đã khôi phục giá cơ bản cho ${data.count} ngày`,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 // Xóa giá đặc biệt (1 ngày)
 exports.deletePrice = async (req, res) => {
   try {

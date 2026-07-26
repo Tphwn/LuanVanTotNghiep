@@ -9,7 +9,7 @@
 | `parseJson.js` | Hotel controller | Parse field JSON từ body |
 | `hotelRules.js` | Hotel controller | Parse quy tắc/chính sách KS từ form |
 | `images.js` | Hotel, public, admin roomType | Gắn `hinh_anh` vào KS/loại phòng |
-| `bookingHelpers.js` | Booking, customer, inventory, public, pricing | Giá, availability, overlap booking |
+| `bookingHelpers.js` | Booking, customer, public, pricing | Giá, availability, overlap booking |
 | `refundHelpers.js` | Booking, customer | Tính hoàn tiền khi hủy |
 | `refundMapper.js` | Admin payment | DTO hoàn tiền cho admin |
 | `paymentMapper.js` | Admin payment | DTO giao dịch cho admin |

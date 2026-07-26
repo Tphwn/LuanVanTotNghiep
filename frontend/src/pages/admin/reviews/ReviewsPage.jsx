@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, MessageSquareOff, MessageSquare } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
@@ -7,8 +7,8 @@ import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
-import ReviewModerationNotice from '../../../components/review/ReviewModerationNotice';
 import AdminReviewConfirmModal from './components/AdminReviewConfirmModal';
+import AdminReviewDetailModal from './components/AdminReviewDetailModal';
 import { REVIEW_BADGE } from '../../../constants/statusConfig';
 
 const PAGE_SIZE = 10;
@@ -47,7 +47,6 @@ const getDateRange = (preset, customFrom, customTo) => {
 };
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
-const formatDateTime = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
 const truncate = (text, len = 60) => {
   if (!text) return '—';
@@ -58,126 +57,6 @@ const formatAvgScore = (score) => {
   if (!score) return '0/5';
   const rounded = Number.isInteger(score) ? score : Number(score.toFixed(1));
   return `${rounded}/5`;
-};
-
-const InfoRow = ({ label, value }) => (
-  <div className="admin-review-info-row">
-    <span className="admin-review-info-label">{label}</span>
-    <span className="admin-review-info-value">{value ?? '—'}</span>
-  </div>
-);
-
-const DetailModal = ({
-  review,
-  onClose,
-  onRequestAction,
-  actionLoading,
-}) => {
-  if (!review) return null;
-  const st = REVIEW_BADGE[review.trang_thai] || { label: review.trang_thai, cls: 'badge-default' };
-  const isHidden = review.trang_thai === 'an';
-  const hasPartnerReply = Boolean(review.phan_hoi_doi_tac?.trim());
-  const isResponseHidden = Boolean(review.phan_hoi_bi_an);
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box admin-review-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">Chi tiết đánh giá #{review.ma_danh_gia}</h3>
-          <button type="button" className="modal-close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="admin-review-modal-meta">
-          <span className={`badge ${st.cls}`}>{st.label}</span>
-          <StarScore value={review.so_sao} />
-          {isResponseHidden && (
-            <span className="badge badge-warning">Phản hồi đã ẩn</span>
-          )}
-        </div>
-
-        {isHidden && (
-          <ReviewModerationNotice
-            variant="hidden"
-            title="Đánh giá bị admin ẩn"
-            reasonLabel="Lý do admin ẩn"
-            reason={review.ly_do_an || '—'}
-          />
-        )}
-
-        <div className="content-card admin-review-modal-section">
-          <h4 className="admin-review-modal-section-title">Thông tin đánh giá</h4>
-          <InfoRow label="Mã đánh giá" value={`#${review.ma_danh_gia}`} />
-          <InfoRow label="Khách hàng" value={review.khach_hang?.ho_ten} />
-          <InfoRow label="Khách sạn" value={review.ten_khach_san} />
-          <InfoRow label="Loại phòng" value={review.ten_loai} />
-          <InfoRow label="Mã đơn hàng" value={review.ma_don_hang} />
-          <InfoRow label="Ngày đánh giá" value={formatDateTime(review.ngay_danh_gia)} />
-          {(review.diem_sach_se || review.diem_dich_vu || review.diem_vi_tri) && (
-            <div className="admin-review-subscores">
-              {review.diem_sach_se && <span>Sạch sẽ: <strong>{review.diem_sach_se}/5</strong></span>}
-              {review.diem_dich_vu && <span>Dịch vụ: <strong>{review.diem_dich_vu}/5</strong></span>}
-              {review.diem_vi_tri && <span>Vị trí: <strong>{review.diem_vi_tri}/5</strong></span>}
-            </div>
-          )}
-        </div>
-
-        <div className="admin-review-modal-block">
-          <h4 className="admin-review-modal-section-title">Nội dung đánh giá</h4>
-          <div className="admin-review-content-box">
-            {review.noi_dung ? `"${review.noi_dung}"` : <span className="admin-review-empty-text">Không có nội dung</span>}
-          </div>
-        </div>
-
-        <div className="admin-review-modal-block">
-          <h4 className="admin-review-modal-section-title">Phản hồi của đối tác</h4>
-          {isResponseHidden && (
-            <ReviewModerationNotice
-              variant="hidden"
-              title="Phản hồi bị admin ẩn"
-              reasonLabel="Lý do admin ẩn"
-              reason={review.ly_do_an_phan_hoi || '—'}
-              note="Chỉ đối tác nhìn thấy thông báo này"
-            />
-          )}
-          {hasPartnerReply ? (
-            <div className="admin-review-partner-reply">
-              <div className="admin-review-partner-reply-meta">
-                {review.ten_doi_tac || 'Đối tác'} · {formatDateTime(review.ngay_phan_hoi)}
-                {isResponseHidden && ' · Đã ẩn'}
-              </div>
-              {review.phan_hoi_doi_tac}
-            </div>
-          ) : (
-            <div className="admin-review-partner-empty">Đối tác chưa phản hồi</div>
-          )}
-        </div>
-
-        <div className="admin-review-modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Đóng</button>
-          {hasPartnerReply && (
-            <ActionButton
-              variant={isResponseHidden ? 'unlock' : 'lock'}
-              icon={isResponseHidden ? MessageSquare : MessageSquareOff}
-              disabled={actionLoading}
-              onClick={() => onRequestAction(
-                review,
-                isResponseHidden ? 'show-response' : 'hide-response',
-              )}
-            >
-              {isResponseHidden ? 'Hiện phản hồi' : 'Ẩn phản hồi'}
-            </ActionButton>
-          )}
-          <ActionButton
-            variant={isHidden ? 'unlock' : 'lock'}
-            disabled={actionLoading}
-            onClick={() => onRequestAction(review, isHidden ? 'show-review' : 'hide-review')}
-          >
-            {actionLoading ? 'Đang xử lý...' : isHidden ? 'Hiện đánh giá' : 'Ẩn đánh giá'}
-          </ActionButton>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 const ReviewsPage = () => {
@@ -196,14 +75,6 @@ const ReviewsPage = () => {
   const [timePreset, setTimePreset] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
-
-  const [draftPartnerFilter, setDraftPartnerFilter] = useState('');
-  const [draftHotelFilter, setDraftHotelFilter] = useState('');
-  const [draftStarFilter, setDraftStarFilter] = useState('all');
-  const [draftStatusFilter, setDraftStatusFilter] = useState('all');
-  const [draftTimePreset, setDraftTimePreset] = useState('all');
-  const [draftTuNgay, setDraftTuNgay] = useState('');
-  const [draftDenNgay, setDraftDenNgay] = useState('');
 
   const [detailReview, setDetailReview] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
@@ -247,9 +118,9 @@ const ReviewsPage = () => {
   }, []);
 
   const hotelOptions = useMemo(() => hotels.filter((hotel) => {
-    if (!draftPartnerFilter) return true;
-    return String(hotel.ma_doi_tac) === draftPartnerFilter;
-  }), [hotels, draftPartnerFilter]);
+    if (!partnerFilter) return true;
+    return String(hotel.ma_doi_tac) === partnerFilter;
+  }), [hotels, partnerFilter]);
 
   const loadReviews = useCallback(async () => {
     if (loadingMeta) return;
@@ -294,13 +165,13 @@ const ReviewsPage = () => {
   }, [loadReviews, loadingMeta]);
 
   const handlePartnerChange = (value) => {
-    setDraftPartnerFilter(value);
-    if (!value || !draftHotelFilter) return;
+    setPartnerFilter(value);
+    if (!value || !hotelFilter) return;
     const hotelStillValid = hotels.some(
-      (h) => String(h.ma_khach_san) === draftHotelFilter
+      (h) => String(h.ma_khach_san) === hotelFilter
         && String(h.ma_doi_tac) === value,
     );
-    if (!hotelStillValid) setDraftHotelFilter('');
+    if (!hotelStillValid) setHotelFilter('');
   };
 
   const handleRequestAction = (review, action) => {
@@ -314,8 +185,15 @@ const ReviewsPage = () => {
     const endpoints = {
       'hide-review': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/hide`, body: { ly_do: lyDo } },
       'show-review': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/show` },
-      'hide-response': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/hide-partner-response`, body: { ly_do: lyDo } },
-      'show-response': { method: 'patch', url: `/admin/reviews/${review.ma_danh_gia}/show-partner-response` },
+      'hide-response': {
+        method: 'patch',
+        url: `/admin/reviews/${review.ma_danh_gia}/hide-partner-response`,
+        body: { ly_do: lyDo },
+      },
+      'show-response': {
+        method: 'patch',
+        url: `/admin/reviews/${review.ma_danh_gia}/show-partner-response`,
+      },
     };
 
     const req = endpoints[action];
@@ -338,16 +216,6 @@ const ReviewsPage = () => {
     }
   };
 
-  const applyFilters = () => {
-    setPartnerFilter(draftPartnerFilter);
-    setHotelFilter(draftHotelFilter);
-    setStarFilter(draftStarFilter);
-    setStatusFilter(draftStatusFilter);
-    setTimePreset(draftTimePreset);
-    setTuNgay(draftTuNgay);
-    setDenNgay(draftDenNgay);
-  };
-
   const clearFilters = () => {
     setPartnerFilter('');
     setHotelFilter('');
@@ -356,13 +224,6 @@ const ReviewsPage = () => {
     setTimePreset('all');
     setTuNgay('');
     setDenNgay('');
-    setDraftPartnerFilter('');
-    setDraftHotelFilter('');
-    setDraftStarFilter('all');
-    setDraftStatusFilter('all');
-    setDraftTimePreset('all');
-    setDraftTuNgay('');
-    setDraftDenNgay('');
   };
 
   const statItems = useMemo(() => [
@@ -397,7 +258,7 @@ const ReviewsPage = () => {
     <div className="mgmt-page admin-reviews-page">
       <ManagementHeader
         title="Quản lý đánh giá"
-        subtitle="Danh sách đánh giá của tất cả khách sạn — dùng bộ lọc để thu hẹp kết quả"
+        subtitle="Danh sách đánh giá của tất cả khách sạn trên hệ thống"
       />
 
       {toast && (
@@ -406,13 +267,15 @@ const ReviewsPage = () => {
         </div>
       )}
 
+      <SummaryStats items={statItems} />
+
       <div className="mgmt-toolbar mgmt-toolbar--filters admin-reviews-filters">
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-partner-filter">Đối tác</label>
           <select
             id="review-partner-filter"
             className="mgmt-select-inline"
-            value={draftPartnerFilter}
+            value={partnerFilter}
             onChange={(e) => handlePartnerChange(e.target.value)}
           >
             <option value="">Tất cả đối tác</option>
@@ -427,8 +290,8 @@ const ReviewsPage = () => {
           <select
             id="review-hotel-filter"
             className="mgmt-select-inline"
-            value={draftHotelFilter}
-            onChange={(e) => setDraftHotelFilter(e.target.value)}
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
           >
             <option value="">Tất cả khách sạn</option>
             {hotelOptions.map((h) => (
@@ -442,8 +305,8 @@ const ReviewsPage = () => {
           <select
             id="review-star-filter"
             className="mgmt-select-inline"
-            value={draftStarFilter}
-            onChange={(e) => setDraftStarFilter(e.target.value)}
+            value={starFilter}
+            onChange={(e) => setStarFilter(e.target.value)}
           >
             <option value="all">Tất cả sao</option>
             {[5, 4, 3, 2, 1].map((s) => (
@@ -457,8 +320,8 @@ const ReviewsPage = () => {
           <select
             id="review-status-filter"
             className="mgmt-select-inline"
-            value={draftStatusFilter}
-            onChange={(e) => setDraftStatusFilter(e.target.value)}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="hien_thi">Hiển thị</option>
@@ -471,8 +334,8 @@ const ReviewsPage = () => {
           <select
             id="review-time-filter"
             className="mgmt-select-inline"
-            value={draftTimePreset}
-            onChange={(e) => setDraftTimePreset(e.target.value)}
+            value={timePreset}
+            onChange={(e) => setTimePreset(e.target.value)}
           >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -480,7 +343,7 @@ const ReviewsPage = () => {
           </select>
         </div>
 
-        {draftTimePreset === 'custom' && (
+        {timePreset === 'custom' && (
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="review-from-date">Từ ngày</label>
@@ -488,8 +351,8 @@ const ReviewsPage = () => {
                 id="review-from-date"
                 type="date"
                 className="mgmt-select-inline"
-                value={draftTuNgay}
-                onChange={(e) => setDraftTuNgay(e.target.value)}
+                value={tuNgay}
+                onChange={(e) => setTuNgay(e.target.value)}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -498,20 +361,18 @@ const ReviewsPage = () => {
                 id="review-to-date"
                 type="date"
                 className="mgmt-select-inline"
-                value={draftDenNgay}
-                min={draftTuNgay}
-                onChange={(e) => setDraftDenNgay(e.target.value)}
+                value={denNgay}
+                min={tuNgay}
+                onChange={(e) => setDenNgay(e.target.value)}
               />
             </div>
           </>
         )}
 
         <div className="mgmt-filter-field mgmt-filter-field--action">
-          <FilterActions onApply={applyFilters} onClear={clearFilters} />
+          <FilterActions showApply={false} onClear={clearFilters} />
         </div>
       </div>
-
-      <SummaryStats items={statItems} />
 
       <div className="content-card admin-reviews-table-card">
         <div className="content-card-header">
@@ -533,45 +394,45 @@ const ReviewsPage = () => {
                 <thead>
                   <tr>
                     <th style={{ width: 72 }}>Mã</th>
-                    <th>Khách hàng</th>
-                    <th>Khách sạn</th>
-                    <th>Loại phòng</th>
+                    <th className="admin-review-customer">Khách hàng</th>
+                    <th className="admin-review-hotel">Khách sạn</th>
+                    <th className="admin-review-room">Loại phòng</th>
                     <th style={{ width: 72 }}>Điểm</th>
                     <th>Nội dung</th>
                     <th style={{ width: 108 }}>Ngày ĐG</th>
-                    <th style={{ width: 100 }}>TT</th>
+                    <th style={{ width: 120 }}>Trạng thái</th>
                     <th style={{ width: 96 }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedReviews.map((rv) => {
-                  const st = REVIEW_BADGE[rv.trang_thai] || { label: rv.trang_thai, cls: 'badge-default' };
-                  return (
-                    <tr key={rv.ma_danh_gia}>
-                      <td className="admin-review-id">#{rv.ma_danh_gia}</td>
-                      <td className="admin-review-customer">{rv.khach_hang?.ho_ten || '—'}</td>
-                      <td>{rv.ten_khach_san}</td>
-                      <td>{rv.ten_loai}</td>
-                      <td><StarScore value={rv.so_sao} /></td>
-                      <td className="admin-review-content">{truncate(rv.noi_dung)}</td>
-                      <td className="admin-review-date">{formatDate(rv.ngay_danh_gia)}</td>
-                      <td>
-                        <span className={`badge ${st.cls} admin-review-status-badge`}>{st.label}</span>
-                      </td>
-                      <ActionCell>
-                        <ActionButton
-                          variant="view"
-                          iconOnly
-                          icon={Eye}
-                          title="Chi tiết"
-                          onClick={() => setDetailReview(rv)}
-                        />
-                      </ActionCell>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    const st = REVIEW_BADGE[rv.trang_thai] || { label: rv.trang_thai, cls: 'badge-default' };
+                    return (
+                      <tr key={rv.ma_danh_gia}>
+                        <td className="admin-review-id">#{rv.ma_danh_gia}</td>
+                        <td className="admin-review-customer">{rv.khach_hang?.ho_ten || '—'}</td>
+                        <td className="admin-review-hotel">{rv.ten_khach_san}</td>
+                        <td className="admin-review-room">{rv.ten_loai}</td>
+                        <td><StarScore value={rv.so_sao} /></td>
+                        <td className="admin-review-content">{truncate(rv.noi_dung)}</td>
+                        <td className="admin-review-date">{formatDate(rv.ngay_danh_gia)}</td>
+                        <td>
+                          <span className={`badge ${st.cls} admin-review-status-badge`}>{st.label}</span>
+                        </td>
+                        <ActionCell>
+                          <ActionButton
+                            variant="view"
+                            iconOnly
+                            icon={Eye}
+                            title="Chi tiết"
+                            onClick={() => setDetailReview(rv)}
+                          />
+                        </ActionCell>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {showPagination && (
@@ -590,7 +451,7 @@ const ReviewsPage = () => {
       </div>
 
       {detailReview && (
-        <DetailModal
+        <AdminReviewDetailModal
           review={detailReview}
           onClose={() => setDetailReview(null)}
           onRequestAction={handleRequestAction}

@@ -33,11 +33,9 @@ export default function RoomDetailModal({ room, onClose }) {
 
   if (!room) return null;
 
-  const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai };
-  const isActive = room.trang_thai === 'hoat_dong';
+  const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai, cls: 'badge-default' };
   const images = room.hinh_anh?.length ? room.hinh_anh : [];
   const currentImg = images[activeImg] || images[0];
-  const moBan = room.so_luong_mo_ban ?? room.phong_con_lai ?? 0;
   const tongPhong = room.so_luong_phong ?? 0;
 
   const prevImg = () => {
@@ -63,9 +61,7 @@ export default function RoomDetailModal({ room, onClose }) {
           <h3 id="partner-room-detail-title" className="partner-room-detail-title">
             {room.ten_loai}
           </h3>
-          <span className={`partner-room-status ${isActive ? 'partner-room-status--active' : 'partner-room-status--inactive'}`}>
-            {st.label}
-          </span>
+          <span className={`badge ${st.cls}`}>{st.label}</span>
         </div>
 
         <div className="partner-room-detail-gallery">
@@ -134,7 +130,7 @@ export default function RoomDetailModal({ room, onClose }) {
           </div>
           <div className="partner-room-detail-item">
             <Home size={16} strokeWidth={1.75} />
-            <span>Số phòng: <strong>{moBan}/{tongPhong}</strong></span>
+            <span>Số phòng: <strong>{tongPhong}</strong></span>
           </div>
         </div>
 

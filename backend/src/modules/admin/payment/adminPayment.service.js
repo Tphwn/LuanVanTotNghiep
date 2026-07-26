@@ -5,6 +5,10 @@ const {
   syncEligibleCommissions,
   COMMISSION_STATUS,
 } = require('../../../utils/commissionHelpers');
+const {
+  expireUnpaidOnlineHolds,
+  purgeCancelledUnpaidBookings,
+} = require('../../../utils/unpaidBookingCleanup');
 
 const mapCommissionRow = (row) => {
   if (!row) return null;
@@ -293,30 +297,54 @@ const adminPaymentService = {
   },
 
   getTransactions: async (filters = {}) => {
+    // Dọn đơn hết hạn / hủy chưa thanh toán trước khi liệt kê
+    await expireUnpaidOnlineHolds(prisma);
+    await purgeCancelledUnpaidBookings(prisma);
+
     const { trang_thai, phuong_thuc, tu_ngay, den_ngay, keyword } = filters;
-    const where = {};
+    const and = [
+      // Chờ: chỉ đơn còn hiệu lực trong thời gian thanh toán
+      // Thành công / thất bại: giao dịch đã xử lý
+      {
+        OR: [
+          { trang_thai: { in: ['thanh_cong', 'that_bai'] } },
+          {
+            trang_thai: 'cho',
+            dat_phong: { trang_thai: { notIn: ['da_huy', 'tu_choi'] } },
+          },
+        ],
+      },
+    ];
 
     if (phuong_thuc && phuong_thuc !== 'all') {
       if (phuong_thuc === 'tai_khach_san') {
-        where.OR = [
-          { cong_thanh_toan: { contains: 'khách sạn' } },
-          { phuong_thuc: { contains: 'khách sạn' } },
-          { dat_phong: { phuong_thuc_tt: 'tai_khach_san' } },
-        ];
+        and.push({
+          OR: [
+            { cong_thanh_toan: { contains: 'khách sạn' } },
+            { phuong_thuc: { contains: 'khách sạn' } },
+            { dat_phong: { phuong_thuc_tt: 'tai_khach_san' } },
+          ],
+        });
       } else if (phuong_thuc === 'truc_tuyen') {
-        where.OR = [
-          { phuong_thuc: { contains: 'Trực tuyến' } },
-          { phuong_thuc: { contains: 'truc_tuyen' } },
-          { dat_phong: { phuong_thuc_tt: 'truc_tuyen' } },
-        ];
+        and.push({
+          OR: [
+            { phuong_thuc: { contains: 'Trực tuyến' } },
+            { phuong_thuc: { contains: 'truc_tuyen' } },
+            { dat_phong: { phuong_thuc_tt: 'truc_tuyen' } },
+          ],
+        });
       }
     }
 
-    if (tu_ngay) where.thoi_gian = { gte: new Date(tu_ngay) };
-    if (den_ngay) where.thoi_gian = { ...where.thoi_gian, lte: new Date(`${den_ngay}T23:59:59`) };
+    if (tu_ngay || den_ngay) {
+      const thoiGian = {};
+      if (tu_ngay) thoiGian.gte = new Date(tu_ngay);
+      if (den_ngay) thoiGian.lte = new Date(`${den_ngay}T23:59:59`);
+      and.push({ thoi_gian: thoiGian });
+    }
 
     if (keyword) {
-      const keywordFilter = {
+      and.push({
         OR: [
           { ma_giao_dich: { contains: keyword } },
           { ma_tham_chieu: { contains: keyword } },
@@ -324,12 +352,11 @@ const adminPaymentService = {
           { dat_phong: { khach_hang: { ho_ten: { contains: keyword } } } },
           { dat_phong: { ten_nguoi_nhan: { contains: keyword } } },
         ],
-      };
-      where.AND = where.AND ? [...where.AND, keywordFilter] : [keywordFilter];
+      });
     }
 
     const rows = await prisma.thanh_toan.findMany({
-      where,
+      where: { AND: and },
       include: {
         dat_phong: { select: BOOKING_SELECT },
         hoan_tien: {

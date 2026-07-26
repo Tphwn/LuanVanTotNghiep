@@ -8,6 +8,5 @@ router.post('/', controller.create);
 router.put('/:id', controller.update);
 router.patch('/:id/lock', controller.lock);
 router.patch('/:id/unlock', controller.unlock);
-router.delete('/:id', controller.delete);
 
 module.exports = router;

@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import { formatCurrency, formatDate } from '../../../utils/bookingDisplay';
 
 const PAYOUT_STATUS = {
-  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'mgmt-status-text--pending' },
-  da_thanh_toan: { label: 'Đã thanh toán', cls: 'mgmt-status-text--active' },
-  tam_giu: { label: 'Tạm giữ', cls: 'mgmt-status-text--danger' },
+  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'badge-warning' },
+  thanh_toan_mot_phan: { label: 'Thanh toán một phần', cls: 'badge-info' },
+  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const BOOKING_STATUS = {
-  da_thu: { label: 'Chờ thanh toán', cls: 'mgmt-status-text--pending' },
-  da_thanh_toan: { label: 'Đã thanh toán', cls: 'mgmt-status-text--active' },
-  tam_giu: { label: 'Tạm giữ', cls: 'mgmt-status-text--danger' },
+  da_thu: { label: 'Chờ thanh toán', cls: 'badge-warning' },
+  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const PayoutDetailPage = () => {
-  const navigate = useNavigate();
   const { maDot: maDotParam } = useParams();
   const maDot = maDotParam ? decodeURIComponent(maDotParam) : null;
 
@@ -58,91 +58,122 @@ const PayoutDetailPage = () => {
     };
   }, [maDot]);
 
-  const infoRows = useMemo(() => {
-    if (!detail) return [];
-    const status = PAYOUT_STATUS[detail.trang_thai] || {
+  const status = useMemo(() => {
+    if (!detail) return { label: '—', cls: '' };
+    return PAYOUT_STATUS[detail.trang_thai] || {
       label: detail.trang_thai || '—',
       cls: '',
     };
-    return [
-      { label: 'Đợt', value: detail.ten_dot || '—' },
-      { label: 'Mã thanh toán', value: detail.ma_gd_doi_tac || '—' },
-      { label: 'Tổng số đơn', value: String(detail.tong_so_don ?? detail.bookings?.length ?? 0) },
-      { label: 'Tổng doanh thu', value: formatCurrency(detail.tong_doanh_thu) },
-      { label: 'Tổng hoa hồng', value: formatCurrency(detail.tong_hoa_hong) },
-      { label: 'Đối tác thực nhận', value: formatCurrency(detail.tien_doi_tac_nhan ?? detail.so_tien_nhan) },
-      { label: 'Đã nhận', value: formatCurrency(detail.da_nhan) },
-      { label: 'Còn chờ nhận', value: formatCurrency(detail.con_cho_nhan) },
-      {
-        label: 'Trạng thái thanh toán',
-        value: status.label,
-        valueClassName: `mgmt-status-text ${status.cls}`,
-      },
-      { label: 'Ngày thanh toán', value: formatDate(detail.ngay_thanh_toan) },
-      {
-        label: 'Phương thức',
-        value: detail.phuong_thuc_tt || '—',
-      },
-    ];
   }, [detail]);
+
+  const receiveAmount = detail
+    ? (detail.trang_thai === 'cho_thanh_toan'
+      ? (detail.con_cho_nhan ?? detail.tien_doi_tac_nhan ?? detail.so_tien_nhan)
+      : (detail.tien_doi_tac_nhan ?? detail.so_tien_nhan ?? detail.da_nhan))
+    : 0;
+
+  const bookings = detail?.bookings || [];
 
   return (
     <div className="mgmt-page partner-finance-page partner-finance-payout-detail-page">
       <ManagementHeader
-        title="Chi tiết đợt thanh toán"
-        subtitle={detail
-          ? `${detail.ten_dot || 'Đợt thanh toán'}${detail.ma_gd_doi_tac ? ` · ${detail.ma_gd_doi_tac}` : ''}`
-          : 'Thông tin đợt thanh toán và danh sách đơn'}
-        onBack={() => navigate('/partner/finance?tab=payout')}
+        title="Chi tiết thanh toán"
+        backTo="/partner/finance?tab=payout"
+        backLabel="Quay lại"
       />
 
       {error && <div className="mgmt-toast error">{error}</div>}
 
-      {loading ? (
+      {loading && !detail ? (
         <div className="partner-finance-loading">Đang tải chi tiết thanh toán...</div>
       ) : !detail ? (
         <div className="empty-state">
-          <p className="empty-state-text">Không tìm thấy đợt thanh toán</p>
+          <p className="empty-state-text">Không tìm thấy dữ liệu thanh toán</p>
         </div>
       ) : (
         <>
-          <section className="partner-finance-payout-section content-card">
-            <h4>Thông tin đợt thanh toán</h4>
-            <div className="partner-finance-payout-info-grid">
-              {infoRows.map((row) => (
-                <div className="partner-finance-payout-info-item" key={row.label}>
-                  <span>{row.label}</span>
-                  <strong className={row.valueClassName || undefined}>{row.value}</strong>
-                </div>
-              ))}
+          <section className="partner-finance-payout-section content-card payout-overview">
+            <div className="payout-overview-identity">
+              <div className="payout-overview-identity-main">
+                <span className="payout-overview-kicker">Đợt thanh toán</span>
+                <h2 className="payout-overview-name">
+                  {detail.ten_dot || 'Đợt thanh toán'}
+                </h2>
+                <p className="payout-overview-meta">
+                  Mã TT: {detail.ma_gd_doi_tac || '—'}
+                  {' · '}
+                  {detail.tong_so_don ?? bookings.length} đơn
+                  {detail.phuong_thuc_tt ? ` · ${detail.phuong_thuc_tt}` : ''}
+                </p>
+              </div>
+              <span className={`badge ${status.cls}`}>{status.label}</span>
+            </div>
+
+            <div className="payout-overview-finance">
+              <div className="payout-finance-card payout-finance-card--neutral">
+                <span className="payout-finance-label">Tổng doanh thu</span>
+                <strong className="payout-finance-value">
+                  {formatCurrency(detail.tong_doanh_thu)}
+                </strong>
+              </div>
+              <div className="payout-finance-card payout-finance-card--deduct">
+                <span className="payout-finance-label">Tổng hoa hồng bị trừ</span>
+                <strong className="payout-finance-value">
+                  {formatCurrency(detail.tong_hoa_hong)}
+                </strong>
+              </div>
+              <div className="payout-finance-card payout-finance-card--receive">
+                <span className="payout-finance-label">Đối tác thực nhận</span>
+                <strong className="payout-finance-value">
+                  {formatCurrency(receiveAmount)}
+                </strong>
+              </div>
+            </div>
+
+            <div className="payout-overview-debt">
+              <div className="payout-debt-item">
+                <span className="payout-debt-label">Đã nhận</span>
+                <strong className="payout-debt-value payout-debt-value--ok">
+                  {formatCurrency(detail.da_nhan)}
+                </strong>
+              </div>
+              <div className="payout-debt-item">
+                <span className="payout-debt-label">Còn chờ nhận</span>
+                <strong className="payout-debt-value payout-debt-value--wait">
+                  {formatCurrency(detail.con_cho_nhan)}
+                </strong>
+              </div>
+              <div className="payout-debt-item">
+                <span className="payout-debt-label">Ngày thanh toán</span>
+                <strong className="payout-debt-value">
+                  {formatDate(detail.ngay_thanh_toan)}
+                </strong>
+              </div>
             </div>
           </section>
 
           <section className="partner-finance-payout-section content-card">
             <h4>Danh sách đơn trong đợt</h4>
-            {(!detail.bookings || detail.bookings.length === 0) ? (
+            {bookings.length === 0 ? (
               <p className="partner-finance-payout-empty">Không có đơn trong đợt này</p>
             ) : (
-              <div
-                className="mgmt-table-card mgmt-table-card--grid partner-finance-table-card"
-                style={{ marginTop: 0, boxShadow: 'none', border: 'none' }}
-              >
+              <div className="mgmt-table-card mgmt-table-card--grid partner-finance-table-card payout-table-wrap">
                 <div className="mgmt-table-scroll partner-finance-table-scroll">
-                  <table className="data-table data-table-grid partner-finance-payout-orders-table">
+                  <table className="data-table payout-finance-table">
                     <thead>
                       <tr>
                         <th>Mã đơn</th>
                         <th>Khách sạn</th>
                         <th>Loại phòng</th>
-                        <th>Ngày hoàn thành</th>
-                        <th>Tổng tiền</th>
-                        <th>Hoa hồng</th>
-                        <th>Đối tác nhận</th>
+                        <th>Ngày HT</th>
+                        <th className="is-money">Tổng tiền</th>
+                        <th className="is-money">Hoa hồng</th>
+                        <th className="is-money">Đối tác nhận</th>
                         <th>Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {detail.bookings.map((b) => {
+                      {bookings.map((b) => {
                         const st = BOOKING_STATUS[b.trang_thai] || {
                           label: b.trang_thai || '—',
                           cls: '',
@@ -153,21 +184,23 @@ const PayoutDetailPage = () => {
                               <span className="mgmt-cell-code">{b.ma_don_hang}</span>
                             </td>
                             <td>
-                              <div className="partner-finance-cell-ellipsis" title={b.khach_san}>
+                              <span className="payout-batch-hotel" title={b.khach_san}>
                                 {b.khach_san}
-                              </div>
+                              </span>
                             </td>
                             <td>
                               <div className="partner-finance-cell-ellipsis" title={b.loai_phong}>
                                 {b.loai_phong || '—'}
                               </div>
                             </td>
-                            <td>{formatDate(b.ngay_hoan_thanh)}</td>
-                            <td>{formatCurrency(b.tong_tien)}</td>
-                            <td>{formatCurrency(b.tien_hoa_hong)}</td>
-                            <td style={{ fontWeight: 600 }}>{formatCurrency(b.tien_doi_tac_nhan)}</td>
+                            <td className="is-date">{formatDate(b.ngay_hoan_thanh)}</td>
+                            <td className="is-money">{formatCurrency(b.tong_tien)}</td>
+                            <td className="is-money">{formatCurrency(b.tien_hoa_hong)}</td>
+                            <td className="is-money is-emphasis is-partner-receive">
+                              {formatCurrency(b.tien_doi_tac_nhan)}
+                            </td>
                             <td>
-                              <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                              <span className={`badge ${st.cls || 'badge-default'}`}>{st.label}</span>
                             </td>
                           </tr>
                         );

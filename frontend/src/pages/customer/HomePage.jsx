@@ -4,7 +4,7 @@ import publicHotelService from '../../services/publicHotelService';
 import ROUTES from '../../constants/routes';
 import { resolveUploadUrl } from '../../utils/media';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { searchFormToParams, resolveSearchForm, saveSearchForm } from '../../utils/hotelSearchStorage';
+import { searchFormToParams } from '../../utils/hotelSearchStorage';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
 import '../../assets/styles/home.css';
 
@@ -70,9 +70,9 @@ const HomePage = () => {
   };
 
   const handleDestClick = (maDiaDiem) => {
-    const data = resolveSearchForm({ ma_dia_diem: String(maDiaDiem) });
-    saveSearchForm(data);
-    handleSearch(data);
+    const params = new URLSearchParams();
+    if (maDiaDiem) params.set('ma_dia_diem', String(maDiaDiem));
+    navigate(`${ROUTES.CUSTOMER.HOTELS}?${params.toString()}`);
   };
 
   const handleHotelClick = (maKhachSan) => {
@@ -224,10 +224,6 @@ const HomePage = () => {
           </div>
         </div>
       </section>
-
-      <footer className="home-footer">
-        {new Date().getFullYear()} Hotel Booking — Nền tảng đặt phòng khách sạn
-      </footer>
     </div>
   );
 };

@@ -63,6 +63,7 @@ export const PROMOTION_STATUS = {
   hoat_dong: make('Đang hoạt động', 'success'),
   tu_choi: make('Từ chối', 'danger'),
   het_han: make('Hết hạn', 'muted'),
+  het_luot: make('Hết lượt', 'warning'),
   an: make('Tạm ngưng', 'locked'),
 };
 
@@ -98,6 +99,45 @@ export const ACCOUNT_BADGE = buildMap(ACCOUNT_STATUS, 'badge');
 export const ACCOUNT_TEXT = buildMap(ACCOUNT_STATUS, 'text');
 export const PROMOTION_BADGE = buildMap(PROMOTION_STATUS, 'badge');
 export const PROMOTION_TEXT = buildMap(PROMOTION_STATUS, 'text');
+
+/** Trạng thái hiển thị khuyến mãi (admin): khóa / hết hạn / hết lượt / đang chạy */
+export const getPromotionStatusMeta = (item, { variant = 'badge' } = {}) => {
+  const status = item?.trang_thai;
+  const asBadge = variant !== 'text';
+  const toneCls = (tone) => (asBadge ? TONE[tone].badge : TONE[tone].text);
+  const pick = (key) => (asBadge
+    ? badgeMeta(PROMOTION_STATUS, key)
+    : textMeta(PROMOTION_STATUS, key));
+
+  if (status === 'an') {
+    return { label: 'Bị khóa', cls: toneCls('locked') };
+  }
+  if (status === 'tu_choi') return pick('tu_choi');
+  if (status === 'cho_duyet') return pick('cho_duyet');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (item?.ngay_ket_thuc) {
+    const end = new Date(item.ngay_ket_thuc);
+    end.setHours(0, 0, 0, 0);
+    if (end < today || status === 'het_han') {
+      return { label: 'Hết hạn', cls: toneCls('muted') };
+    }
+  } else if (status === 'het_han') {
+    return { label: 'Hết hạn', cls: toneCls('muted') };
+  }
+
+  const maxUses = item?.so_luot_toi_da;
+  const used = Number(item?.so_luot_da_dung || 0);
+  if (maxUses != null && Number(maxUses) > 0 && used >= Number(maxUses)) {
+    return { label: 'Hết lượt', cls: toneCls('warning') };
+  }
+
+  if (status === 'hoat_dong') {
+    return { label: 'Đang chạy', cls: toneCls('success') };
+  }
+  return pick(status);
+};
 
 export const getHotelStatusMeta = (hotel, { variant = 'badge' } = {}) => {
   const status = hotel?.trang_thai;

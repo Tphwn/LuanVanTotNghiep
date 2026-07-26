@@ -1,5 +1,4 @@
 const prisma = require('../../config/prisma');
-const { processRefundOnCancel } = require('../../utils/refundHelpers');
 const { autoCompleteExpiredCheckIns, isStayPeriodEnded } = require('../../utils/bookingHelpers');
 const { ensureCommissionForBooking } = require('../../utils/commissionHelpers');
 
@@ -137,19 +136,6 @@ const bookingService = {
     return booking;
   },
 
-  // Xác nhận đơn (thanh toán tại khách sạn)
-  confirm: async (id, doiTacId) => {
-    const booking = await verifyOwner(id, doiTacId);
-    if (booking.trang_thai !== 'cho_xac_nhan') {
-      throw new Error('Chỉ xác nhận đơn đang chờ xác nhận');
-    }
-    await prisma.dat_phong.update({
-      where: { ma_dat_phong: Number(id) },
-      data: { trang_thai: 'da_xac_nhan' },
-    });
-    return bookingService.getDetailById(id);
-  },
-
   // Xác nhận khách đã check-in
   checkIn: async (id, doiTacId) => {
     const booking = await verifyOwner(id, doiTacId);
@@ -190,19 +176,6 @@ const bookingService = {
       data: { trang_thai: 'hoan_thanh' },
     });
     await ensureCommissionForBooking(id);
-    return bookingService.getDetailById(id);
-  },
-
-  // Từ chối đơn
-  reject: async (id, doiTacId, ly_do) => {
-    await verifyOwner(id, doiTacId);
-    await prisma.$transaction(async (tx) => {
-      await tx.dat_phong.update({
-        where: { ma_dat_phong: Number(id) },
-        data: { trang_thai: 'tu_choi', ghi_chu: ly_do },
-      });
-      await processRefundOnCancel(tx, id, ly_do);
-    });
     return bookingService.getDetailById(id);
   },
 

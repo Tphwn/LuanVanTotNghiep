@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
   Calendar, ChevronLeft, ChevronRight, MapPin, Sparkles, Star, Check, X,
@@ -22,6 +22,11 @@ import { TRANG_THAI, formatCurrency, formatDate } from '../../../utils/bookingDi
 import { getHotelStatusMeta, REVIEW_BADGE } from '../../../constants/statusConfig';
 import HotelLockConfirmModal from './components/HotelLockConfirmModal';
 import ConfirmModal from '../../../components/common/ConfirmModal';
+import HotelStatusNotice from '../../../components/common/management/HotelStatusNotice';
+import {
+  buildAdminHotelsListPath,
+  hotelStatusToListTab,
+} from '../../../utils/adminListReturn';
 
 const PAGE_SIZE = 10;
 
@@ -74,6 +79,7 @@ const DetailTabs = ({ tabs, activeTab, onChange }) => (
 const HotelDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   const [hotel, setHotel] = useState(null);
@@ -83,7 +89,11 @@ const HotelDetailPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [flashMsg, setFlashMsg] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
+
+  const backTo = location.state?.returnTo
+    || buildAdminHotelsListPath(hotelStatusToListTab(hotel?.trang_thai));
 
   const loadHotel = useCallback(async () => {
     if (!id) return;
@@ -100,6 +110,12 @@ const HotelDetailPage = () => {
   }, [id]);
 
   useEffect(() => { loadHotel(); }, [loadHotel]);
+
+  useEffect(() => {
+    if (!flashMsg) return undefined;
+    const t = setTimeout(() => setFlashMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [flashMsg]);
 
   const amenityGroups = useMemo(() => {
     if (!hotel) return [];
@@ -178,6 +194,7 @@ const HotelDetailPage = () => {
         return;
       }
       setPendingAction(null);
+      setFlashMsg(type === 'approve' ? 'Duyệt thành công' : 'Đã gửi lý do từ chối');
       await loadHotel();
     } finally {
       setActionLoading(false);
@@ -203,10 +220,11 @@ const HotelDetailPage = () => {
         : unlockHotel(id);
       const result = await dispatch(thunk);
       if (result.meta?.requestStatus === 'rejected') {
-        setActionError(result.payload || 'Thao tác thất bại');
+        setActionError(result.payload || (isLock ? 'Khóa thất bại' : 'Mở khóa thất bại'));
         return;
       }
       setConfirmAction(null);
+      setFlashMsg(isLock ? 'Đã khóa thành công' : 'Đã mở khóa thành công');
       await loadHotel();
     } finally {
       setActionLoading(false);
@@ -224,7 +242,7 @@ const HotelDetailPage = () => {
   if (!hotel) {
     return (
       <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page">
-        <BackButton to="/admin/hotels" />
+        <BackButton to={backTo} />
         <div className="content-card admin-user-detail-section" style={{ marginTop: 16 }}>
           <p className="empty-state-text">Không tìm thấy khách sạn</p>
         </div>
@@ -252,10 +270,14 @@ const HotelDetailPage = () => {
   return (
     <div className="mgmt-page admin-hotel-detail-page admin-user-detail-page">
       <div className="admin-user-detail-top">
-        <BackButton to="/admin/hotels" />
+        <BackButton to={backTo} />
       </div>
 
-      {actionError && <div className="mgmt-toast error">{actionError}</div>}
+      {(flashMsg || actionError) && (
+        <div className={`mgmt-toast ${flashMsg ? 'success' : 'error'}`}>
+          {flashMsg || actionError}
+        </div>
+      )}
 
       <HotelLockConfirmModal
         hotel={confirmAction?.hotel}
@@ -306,6 +328,7 @@ const HotelDetailPage = () => {
               <li><Calendar size={14} strokeWidth={2} /><span>Đăng ký: {formatDate(hotel.ngay_tao)}</span></li>
             </ul>
             <p className="admin-hotel-detail-hero-address">{hotel.dia_chi || '—'}</p>
+            <HotelStatusNotice hotel={hotel} />
           </div>
         </div>
         <div className="admin-user-detail-hero-side">

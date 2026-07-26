@@ -25,7 +25,7 @@ const partnerMenus = [
   { title: 'Khách sạn', path: '/partner/hotels', icon: Building2 },
   { title: 'Loại phòng', path: '/partner/rooms', icon: BedDouble },
   { title: 'Đặt phòng', path: '/partner/bookings', icon: CalendarCheck },
-  { title: 'Quản lý giá', path: '/partner/pricing', icon: Tag },
+  { title: 'Giá & Kho', path: '/partner/pricing', icon: Tag },
   { title: 'Khuyến mãi', path: '/partner/promotions', icon: Percent },
   { title: 'Tài chính', path: '/partner/finance', icon: Wallet },
   { title: 'Đánh giá', path: '/partner/reviews', icon: Star },
@@ -46,7 +46,7 @@ const PartnerLayout = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate(ROUTES.HOME, { replace: true });
+    navigate(ROUTES.LOGIN, { replace: true });
   };
 
   const closeSidebar = () => setSidebarOpen(false);

@@ -208,10 +208,39 @@
   background: #b8eeb8;
 }
 
+
+.price-inv-table td.has-booking:not(.selected) {
+  background: #fff4e5;
+}
+
+.price-inv-table td.has-booking:not(.selected) .price-inv-cell-btn:not(:disabled):hover {
+  background: #ffe8cc;
+}
+
+.price-inv-table td.has-booking .price-inv-cell-day {
+  color: #c05600;
+}
+
+.price-inv-cell-btn.has-booking {
+  box-shadow: inset 3px 0 0 #e67e22;
+}
+
+.price-inv-cell-booked-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: #e67e22;
+  flex-shrink: 0;
+}
+
 .price-inv-cell-left {
   flex-shrink: 0;
   display: flex;
   align-items: flex-start;
+  gap: 4px;
   min-width: 28px;
 }
 
@@ -254,14 +283,20 @@
   line-height: 1.2;
 }
 
-.price-inv-cell-booked {
-  font-size: 10px;
-  font-weight: 500;
-  color: #0d47a1;
-  line-height: 1.2;
+.price-inv-cell-inv.booked {
+  color: #c05600;
 }
 
-/* Panel phải */
+.price-inv-cell-booked {
+  font-size: 10px;
+  font-weight: 700;
+  color: #c05600;
+  line-height: 1.2;
+  background: rgba(230, 126, 34, 0.15);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
 .price-inv-panel {
   background: #fff;
   border: 1px solid #bdbdbd;
@@ -417,6 +452,29 @@
   font-size: 11px;
   color: #757575;
   margin: 4px 0 0;
+}
+
+.price-inv-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.price-inv-panel-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.price-inv-restore-btn {
+  border: 1px solid #c5d5cf;
+  color: #3C7363;
+  gap: 6px;
+}
+
+.price-inv-restore-btn:hover:not(:disabled) {
+  background: #e8f5f1;
+  border-color: #3C7363;
 }
 
 .price-inv-empty {

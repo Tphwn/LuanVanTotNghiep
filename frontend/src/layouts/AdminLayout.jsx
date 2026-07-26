@@ -50,7 +50,7 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate(ROUTES.HOME, { replace: true });
+    navigate(ROUTES.ADMIN.LOGIN, { replace: true });
   };
 
   const closeSidebar = () => setSidebarOpen(false);

@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Send } from 'lucide-react';
 import partnerContactService from '../../services/partnerContactService';
+import publicHotelService from '../../services/publicHotelService';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
 import { validateEmail, validatePhone } from '../../utils/authValidation';
+import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/partner-contact.css';
 
 const INITIAL_FORM = {
@@ -16,6 +19,7 @@ const INITIAL_FORM = {
 };
 
 const SCALE_OPTIONS = ['Dưới 10 phòng', '10 - 30 phòng', 'Trên 30 phòng'];
+const FALLBACK_CITIES = ['Đà Lạt', 'Quy Nhơn', 'Vũng Tàu'];
 
 const FIELD_KEY_MAP = {
   ho_ten: 'fullName',
@@ -29,10 +33,25 @@ const FIELD_KEY_MAP = {
 
 const PartnerContactPage = () => {
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [cities, setCities] = useState(FALLBACK_CITIES);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [sent, setSent] = useState(false);
   const { toast, showToast } = useToast();
+  const logoUrl = resolveUploadUrl('/uploads/logo.png');
+
+  useEffect(() => {
+    let mounted = true;
+    publicHotelService.getLocations()
+      .then((res) => {
+        const list = (res.data?.data || [])
+          .map((loc) => loc.ten_dia_diem)
+          .filter(Boolean);
+        if (mounted && list.length) setCities(list);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -76,9 +95,9 @@ const PartnerContactPage = () => {
     }
 
     if (!city) {
-      errors.city = 'Tỉnh / Thành phố không được để trống.';
-    } else if (city.length > 100) {
-      errors.city = 'Tỉnh / Thành phố tối đa 100 ký tự.';
+      errors.city = 'Vui lòng chọn Tỉnh / Thành phố.';
+    } else if (!cities.includes(city)) {
+      errors.city = 'Tỉnh / Thành phố không hợp lệ.';
     }
 
     if (notes.length > 500) {
@@ -141,10 +160,17 @@ const PartnerContactPage = () => {
     <div className="partner-wrapper">
       <Toast toast={toast} />
 
-      <div className="partner-header">
-        <h1>Hợp tác cùng Hotel Booking</h1>
-        <p>Mở rộng tập khách hàng và tối ưu hóa doanh thu cho cơ sở lưu trú của bạn</p>
-      </div>
+      <section className="partner-hero">
+        <div className="partner-hero-content">
+          <img
+            src={logoUrl}
+            alt="Hotel Booking"
+            className="partner-hero-logo"
+          />
+          <h1>Hợp tác cùng Hotel Booking</h1>
+          <p>Mở rộng tập khách hàng và tối ưu hóa doanh thu cho cơ sở lưu trú của bạn</p>
+        </div>
+      </section>
 
       <h2 className="section-title">1. Lợi ích nổi bật</h2>
       <div className="benefits-container">
@@ -189,8 +215,8 @@ const PartnerContactPage = () => {
         </div>
       </div>
 
-      <h2 className="section-title section-title--center">Đăng Ký Hợp Tác Ngay</h2>
-      <div className="form-container">
+      <div className="partner-form-card">
+        <h2 className="partner-form-card-title">Đăng Ký Hợp Tác Ngay</h2>
         {sent ? (
           <div className="partner-success">
             <p>Cảm ơn bạn! Yêu cầu hợp tác đã được gửi thành công.</p>
@@ -284,15 +310,18 @@ const PartnerContactPage = () => {
 
               <div className="form-group full-width">
                 <label htmlFor="city">Tỉnh / Thành phố *</label>
-                <input
+                <select
                   id="city"
-                  type="text"
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
                   className={`form-control${fieldErrors.city ? ' input-invalid' : ''}`}
-                  placeholder="VD: Đà Lạt"
-                />
+                >
+                  <option value="">-- Chọn tỉnh / thành phố --</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
                 {renderFieldError('city')}
               </div>
 
@@ -309,8 +338,11 @@ const PartnerContactPage = () => {
                 />
                 {renderFieldError('notes')}
               </div>
+            </div>
 
+            <div className="submit-btn-wrap">
               <button type="submit" className="submit-btn" disabled={loading}>
+                <Send size={18} strokeWidth={2.25} aria-hidden />
                 {loading ? 'Đang gửi...' : 'GỬI YÊU CẦU HỢP TÁC'}
               </button>
             </div>
@@ -318,19 +350,6 @@ const PartnerContactPage = () => {
         )}
       </div>
 
-      <div className="contact-footer">
-        <h3>Cam Kết Của Chúng Tôi</h3>
-        <p>Đội ngũ phát triển đối tác sẽ xem xét thông tin và liên hệ lại với bạn trong vòng 24 giờ làm việc.</p>
-        <p>
-          Hotline hỗ trợ:
-          {' '}
-          <strong>0777443085</strong>
-          {' | '}
-          Email:
-          {' '}
-          <strong>Hotelbooking@gmail.com</strong>
-        </p>
-      </div>
     </div>
   );
 };

@@ -1,30 +1,60 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { login, loginWithGoogle, clearError } from '../../store/slices/authSlice';
+import { login, loginWithGoogle, clearError, logout } from '../../store/slices/authSlice';
 import ROUTES from '../../constants/routes';
+import ROLES from '../../constants/roles';
 import getRedirectRoute from '../../utils/redirect';
 import { validateEmail } from '../../utils/authValidation';
 import { setFlashToast } from '../../utils/flashToast';
+import {
+  getForgotPasswordRouteByRole,
+  PORTAL_COPY,
+  SHARED_LOGIN_ROLES,
+} from '../../utils/authPortal';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-const LoginPage = () => {
+/**
+ * @param {'shared'|'admin'} [props.mode]
+ * @param {boolean} [props.showGoogle] - chỉ khách hàng (Google)
+ * @param {boolean} [props.showRegister]
+ * @param {boolean} [props.redirectIfLoggedIn]
+ */
+export const AuthLoginPage = ({
+  mode = 'shared',
+  showGoogle = false,
+  showRegister = false,
+  redirectIfLoggedIn = false,
+}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from;
   const successMessage = location.state?.message;
-  const { loading, error, user } = useSelector((state) => state.auth);
+  const { loading, error, user, token } = useSelector((state) => state.auth);
   const googleBtnRef = useRef(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [googleError, setGoogleError] = useState('');
   const [localLoginError, setLocalLoginError] = useState('');
-
   const [formData, setFormData] = useState({ email: '', mat_khau: '' });
+  const [sessionReady, setSessionReady] = useState(false);
+
+  const isAdminPortal = mode === 'admin';
+  const allowedRoles = isAdminPortal ? [ROLES.ADMIN] : SHARED_LOGIN_ROLES;
+  const copy = isAdminPortal ? PORTAL_COPY[ROLES.ADMIN] : PORTAL_COPY.shared;
+  const forgotPath = isAdminPortal
+    ? getForgotPasswordRouteByRole(ROLES.ADMIN)
+    : ROUTES.FORGOT_PASSWORD;
+  const allowGoogle = showGoogle && !isAdminPortal && Boolean(GOOGLE_CLIENT_ID);
+  useEffect(() => {
+    dispatch(logout());
+    dispatch(clearError());
+    setSessionReady(true);
+  }, [dispatch, mode]);
 
   const isAccountLocked = Boolean(
     (error || localLoginError) && (
@@ -33,7 +63,19 @@ const LoginPage = () => {
     ),
   );
 
+  const redirectIfAllowed = useCallback((authUser) => {
+    if (!authUser) return;
+    if (!allowedRoles.includes(authUser.vai_tro)) {
+      dispatch(logout());
+      setLocalLoginError('Tài khoản đăng nhập không hợp lệ.');
+      return;
+    }
+    setFlashToast('Đăng nhập thành công');
+    navigate(from || getRedirectRoute(authUser), { replace: true });
+  }, [allowedRoles, dispatch, from, navigate]);
+
   const handleGoogleCredential = useCallback(async (response) => {
+    if (!allowGoogle) return;
     if (!response?.credential) {
       setGoogleError('Đăng nhập thất bại. Không nhận được thông tin từ Google.');
       return;
@@ -42,8 +84,12 @@ const LoginPage = () => {
     try {
       const result = await dispatch(loginWithGoogle(response.credential)).unwrap();
       if (result?.user) {
-        setFlashToast('Đăng nhập thành công');
-        navigate(from || getRedirectRoute(result.user), { replace: true });
+        if (result.user.vai_tro !== ROLES.KHACH_HANG) {
+          dispatch(logout());
+          setGoogleError('Đăng nhập Google chỉ dành cho khách hàng.');
+          return;
+        }
+        redirectIfAllowed(result.user);
       }
     } catch (err) {
       setGoogleError(
@@ -52,10 +98,10 @@ const LoginPage = () => {
           : 'Đăng nhập thất bại.',
       );
     }
-  }, [dispatch, navigate, from]);
+  }, [allowGoogle, dispatch, redirectIfAllowed]);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !googleBtnRef.current) return undefined;
+    if (!allowGoogle || !googleBtnRef.current) return undefined;
 
     const renderButton = () => {
       if (!window.google?.accounts?.id || !googleBtnRef.current) return;
@@ -97,7 +143,7 @@ const LoginPage = () => {
     script.onerror = () => setGoogleError('Đăng nhập thất bại. Không tải được Google Sign-In.');
     document.body.appendChild(script);
     return undefined;
-  }, [handleGoogleCredential]);
+  }, [allowGoogle, handleGoogleCredential]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -113,23 +159,23 @@ const LoginPage = () => {
       setLocalLoginError('Thông tin đăng nhập không hợp lệ.');
       return;
     }
-    // Login chỉ kiểm tra tối thiểu; ràng buộc chi tiết chỉ áp dụng khi đăng ký
     if (formData.mat_khau.length < 6) {
       setLocalLoginError('Thông tin đăng nhập không hợp lệ.');
       return;
     }
     setLocalLoginError('');
     try {
-      const result = await dispatch(login({
+      const payload = {
         email: formData.email.trim(),
         mat_khau: formData.mat_khau,
-      })).unwrap();
-      if (result?.user) {
-        setFlashToast('Đăng nhập thành công');
-        navigate(from || getRedirectRoute(result.user), { replace: true });
+      };
+      if (isAdminPortal) {
+        payload.vai_tro = ROLES.ADMIN;
       }
+      const result = await dispatch(login(payload)).unwrap();
+      if (result?.user) redirectIfAllowed(result.user);
     } catch (err) {
-      if (err?.code === 'EMAIL_NOT_VERIFIED' && err.email) {
+      if (err?.code === 'EMAIL_NOT_VERIFIED' && err.email && !isAdminPortal) {
         navigate(ROUTES.REGISTER, {
           replace: true,
           state: {
@@ -151,10 +197,26 @@ const LoginPage = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (!sessionReady || !redirectIfLoggedIn) return;
+    if (token && user && allowedRoles.includes(user.vai_tro)) {
       navigate(from || getRedirectRoute(user), { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, token, navigate, from, allowedRoles, redirectIfLoggedIn, sessionReady]);
+
+  if (!sessionReady) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#5a7a72',
+      }}
+      >
+        Đang chuẩn bị trang đăng nhập...
+      </div>
+    );
+  }
 
   const displayError = localLoginError || error || googleError;
 
@@ -165,15 +227,16 @@ const LoginPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'linear-gradient(135deg, #e6f4ff 0%, #f0f2f5 100%)',
+      padding: '24px 16px',
     }}
     >
       <Card style={{ width: '100%', maxWidth: '420px', textAlign: 'left' }}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
           <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
-            Đăng Nhập
+            {copy.title}
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-md)' }}>
-            Chào mừng trở lại Hotel Booking
+            {copy.subtitle}
           </p>
         </div>
 
@@ -210,7 +273,7 @@ const LoginPage = () => {
           </div>
         )}
 
-        {GOOGLE_CLIENT_ID && (
+        {allowGoogle && (
           <>
             <div
               ref={googleBtnRef}
@@ -259,7 +322,7 @@ const LoginPage = () => {
           />
 
           <div style={{ marginBottom: 'var(--spacing-md)', textAlign: 'right' }}>
-            <Link to={ROUTES.FORGOT_PASSWORD} style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+            <Link to={forgotPath} style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
               Quên mật khẩu?
             </Link>
           </div>
@@ -269,22 +332,32 @@ const LoginPage = () => {
           </Button>
         </form>
 
-        <p style={{
-          textAlign: 'center',
-          marginTop: 'var(--spacing-lg)',
-          fontSize: 'var(--font-size-md)',
-          color: 'var(--color-text-secondary)',
-        }}
-        >
-          Chưa có tài khoản?
-          {' '}
-          <Link to={ROUTES.REGISTER} style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
-            Đăng ký ngay
-          </Link>
-        </p>
+        {showRegister && (
+          <p style={{
+            textAlign: 'center',
+            marginTop: 'var(--spacing-lg)',
+            fontSize: 'var(--font-size-md)',
+            color: 'var(--color-text-secondary)',
+          }}
+          >
+            Chưa có tài khoản?
+            {' '}
+            <Link to={ROUTES.REGISTER} style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+              Đăng ký ngay
+            </Link>
+          </p>
+        )}
       </Card>
     </div>
   );
 };
+
+const LoginPage = () => (
+  <AuthLoginPage
+    mode="shared"
+    showGoogle
+    showRegister
+  />
+);
 
 export default LoginPage;

@@ -3,6 +3,7 @@ const ToggleSwitch = ({
   onChange,
   disabled = false,
   compact = false,
+  hideLabel = false,
   labelOn = 'Đang hoạt động',
   labelOff = 'Tạm ngừng',
 }) => (
@@ -12,11 +13,15 @@ const ToggleSwitch = ({
     onClick={disabled ? undefined : onChange}
     disabled={disabled}
     aria-pressed={checked}
+    aria-label={checked ? labelOn : labelOff}
   >
     <span className="mgmt-toggle-track">
       <span className="mgmt-toggle-thumb" />
     </span>
-    <span className="mgmt-toggle-label">{checked ? labelOn : labelOff}</span>
+    {!hideLabel && (
+      <span className="mgmt-toggle-label">{checked ? labelOn : labelOff}</span>
+    )}
   </button>
 );
+
 export default ToggleSwitch;

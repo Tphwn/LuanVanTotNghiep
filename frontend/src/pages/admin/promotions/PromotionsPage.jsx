@@ -12,7 +12,7 @@ import useListPagination from '../../../hooks/useListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
-import { PROMOTION_BADGE } from '../../../constants/statusConfig';
+import { getPromotionStatusMeta } from '../../../constants/statusConfig';
 
 const PAGE_SIZE = 10;
 
@@ -27,11 +27,6 @@ const LOAI_GIAM = {
 
 const PHAM_VI = {
   he_thong: 'Toàn hệ thống',
-  doi_tac: 'Đối tác',
-};
-
-const VAI_TRO_LABELS = {
-  he_thong: 'Admin',
   doi_tac: 'Đối tác',
 };
 
@@ -103,7 +98,14 @@ const maxDate = (a, b) => (!a ? b : !b ? a : a >= b ? a : b);
 
 const formatGiaTri = (item) => (item.loai_giam === 'phan_tram'
   ? `${item.gia_tri}%`
-  : `${formatCurrency(item.gia_tri)} đ`);
+  : `${formatCurrency(item.gia_tri)} ₫`);
+
+const formatGiaTriShortMax = (v) => {
+  const n = Number(v) || 0;
+  if (n >= 1_000_000) return `${formatCurrency(n / 1_000_000)}tr`;
+  if (n >= 1_000) return `${formatCurrency(n / 1_000)}k`;
+  return formatCurrency(n);
+};
 
 const canAdminRestore = (item) => (
   (item.trang_thai === 'an' || item.trang_thai === 'tu_choi') && !item.khoa_boi_doi_tac
@@ -114,9 +116,54 @@ const getCreatorName = (item) => {
   if (!nd) return '—';
   return (
     nd.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung?.ten_cong_ty
+    || item.khach_san?.doi_tac?.ten_cong_ty
     || nd.khach_hang?.ho_ten
     || nd.email
     || '—'
+  );
+};
+
+const getSourceMeta = (item) => {
+  const isSystem = item.loai_nguon === 'he_thong';
+  if (isSystem) {
+    return {
+      role: 'Admin',
+      detail: item.nguoi_dung?.email || '—',
+    };
+  }
+  return {
+    role: 'Đối tác',
+    detail: getCreatorName(item),
+  };
+};
+
+const GiaTriCell = ({ item }) => {
+  if (item.loai_giam === 'phan_tram') {
+    return (
+      <div className="admin-promo-value">
+        <strong>{item.gia_tri}%</strong>
+        {item.giam_toi_da != null && Number(item.giam_toi_da) > 0 && (
+          <span className="admin-promo-value-sub">
+            Tối đa {formatGiaTriShortMax(item.giam_toi_da)}
+          </span>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="admin-promo-value">
+      <strong>{formatCurrency(item.gia_tri)} ₫</strong>
+    </div>
+  );
+};
+
+const UsageCell = ({ item }) => {
+  const used = Number(item.so_luot_da_dung || 0);
+  const max = item.so_luot_toi_da != null ? Number(item.so_luot_toi_da) : null;
+  return (
+    <div className="admin-promo-usage-num">
+      {max != null ? `${used} / ${max}` : used}
+    </div>
   );
 };
 
@@ -141,8 +188,9 @@ const InfoRow = ({ label, value }) => (
 
 const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
   if (!item) return null;
-  const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+  const st = getPromotionStatusMeta(item);
   const isSystem = item.loai_nguon === 'he_thong';
+  const source = getSourceMeta(item);
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
@@ -159,15 +207,14 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
           <div className="user-lock-confirm-modal-info">
             <InfoRow label="Mã khuyến mãi" value={item.ma_code} />
             <InfoRow label="Tên chương trình" value={item.ten} />
-            <InfoRow label="Loại giảm" value={LOAI_GIAM[item.loai_giam] || item.loai_giam} />
             <InfoRow label="Giá trị giảm" value={formatGiaTri(item)} />
-            {item.giam_toi_da != null && (
-              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} đ`} />
+            {item.loai_giam === 'phan_tram' && item.giam_toi_da != null && (
+              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} ₫`} />
             )}
-            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} đ`} />
+            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} ₫`} />
             <InfoRow label="Phạm vi áp dụng" value={PHAM_VI[item.loai_nguon] || item.loai_nguon} />
             {!isSystem && <InfoRow label="Khách sạn" value={item.khach_san?.ten} />}
-            <InfoRow label="Người tạo" value={getCreatorName(item)} />
+            <InfoRow label="Nguồn tạo" value={`${source.role} · ${source.detail}`} />
             <InfoRow
               label="Thời gian áp dụng"
               value={`${formatDate(item.ngay_bat_dau)} – ${formatDate(item.ngay_ket_thuc)}`}
@@ -381,22 +428,13 @@ const AdminPromotionsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const { toast, showToast } = useToast();
 
-  const [keyword, setKeyword] = useState('');
   const [loaiGiamFilter, setLoaiGiamFilter] = useState('all');
   const [phamViFilter, setPhamViFilter] = useState('all');
   const [partnerFilter, setPartnerFilter] = useState('');
   const [hotelFilter, setHotelFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [timePreset, setTimePreset] = useState('all');
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
-
-  const [draftLoaiGiamFilter, setDraftLoaiGiamFilter] = useState('all');
-  const [draftPhamViFilter, setDraftPhamViFilter] = useState('all');
-  const [draftPartnerFilter, setDraftPartnerFilter] = useState('');
-  const [draftTimePreset, setDraftTimePreset] = useState('all');
-  const [draftTuNgay, setDraftTuNgay] = useState('');
-  const [draftDenNgay, setDraftDenNgay] = useState('');
 
   const [detailItem, setDetailItem] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
@@ -442,28 +480,14 @@ const AdminPromotionsPage = () => {
     return () => clearTimeout(t);
   }, [loadPromotions]);
 
-  const hotelOptions = useMemo(() => hotels.filter((h) => {
-    if (!draftPartnerFilter) return true;
-    return String(h.ma_doi_tac) === draftPartnerFilter;
-  }), [hotels, draftPartnerFilter]);
-
   const handlePartnerChange = (value) => {
-    setDraftPartnerFilter(value);
+    setPartnerFilter(value);
     if (value && hotelFilter) {
       const stillValid = hotels.some(
         (h) => String(h.ma_khach_san) === hotelFilter && String(h.ma_doi_tac) === value,
       );
       if (!stillValid) setHotelFilter('');
     }
-  };
-
-  const applyFilters = () => {
-    setLoaiGiamFilter(draftLoaiGiamFilter);
-    setPhamViFilter(draftPhamViFilter);
-    setPartnerFilter(draftPartnerFilter);
-    setTimePreset(draftTimePreset);
-    setTuNgay(draftTuNgay);
-    setDenNgay(draftDenNgay);
   };
 
   const clearFilters = () => {
@@ -473,12 +497,6 @@ const AdminPromotionsPage = () => {
     setTimePreset('all');
     setTuNgay('');
     setDenNgay('');
-    setDraftLoaiGiamFilter('all');
-    setDraftPhamViFilter('all');
-    setDraftPartnerFilter('');
-    setDraftTimePreset('all');
-    setDraftTuNgay('');
-    setDraftDenNgay('');
   };
 
   const updateField = (key, value) => {
@@ -632,7 +650,7 @@ const AdminPromotionsPage = () => {
     { label: 'Tổng khuyến mãi', value: stats.total ?? 0, tone: 'neutral' },
     { label: 'Đang hoạt động', value: stats.hoat_dong ?? 0, tone: 'success' },
     { label: 'Hết hạn', value: stats.het_han ?? 0, tone: 'muted' },
-    { label: 'Bị khóa', value: stats.an ?? 0, tone: 'muted' },
+    { label: 'Bị khóa', value: stats.an ?? 0, tone: 'danger' },
   ], [stats]);
 
   const {
@@ -644,7 +662,7 @@ const AdminPromotionsPage = () => {
   const confirmCfg = confirmTarget ? CONFIRM_CONFIG[confirmTarget.action] : null;
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page admin-promotions-page">
       <ManagementHeader
         title="Quản lý khuyến mãi"
         subtitle="Toàn bộ khuyến mãi nền tảng và của đối tác trong hệ thống"
@@ -654,10 +672,17 @@ const AdminPromotionsPage = () => {
 
       <Toast toast={toast} />
 
-      <div className="mgmt-toolbar mgmt-toolbar--filters">
+      <SummaryStats items={statItems} />
+
+      <div className="mgmt-toolbar mgmt-toolbar--filters admin-promotions-filters">
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="promo-loaigiam">Loại khuyến mãi</label>
-          <select id="promo-loaigiam" className="mgmt-select-inline" value={draftLoaiGiamFilter} onChange={(e) => setDraftLoaiGiamFilter(e.target.value)}>
+          <select
+            id="promo-loaigiam"
+            className="mgmt-select-inline"
+            value={loaiGiamFilter}
+            onChange={(e) => setLoaiGiamFilter(e.target.value)}
+          >
             <option value="all">Tất cả loại</option>
             <option value="phan_tram">Phần trăm (%)</option>
             <option value="so_tien">Số tiền (VNĐ)</option>
@@ -666,7 +691,12 @@ const AdminPromotionsPage = () => {
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="promo-role">Vai trò</label>
-          <select id="promo-role" className="mgmt-select-inline" value={draftPhamViFilter} onChange={(e) => setDraftPhamViFilter(e.target.value)}>
+          <select
+            id="promo-role"
+            className="mgmt-select-inline"
+            value={phamViFilter}
+            onChange={(e) => setPhamViFilter(e.target.value)}
+          >
             <option value="all">Tất cả vai trò</option>
             <option value="he_thong">Admin</option>
             <option value="doi_tac">Đối tác</option>
@@ -675,7 +705,12 @@ const AdminPromotionsPage = () => {
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="promo-partner">Đối tác tạo</label>
-          <select id="promo-partner" className="mgmt-select-inline" value={draftPartnerFilter} onChange={(e) => handlePartnerChange(e.target.value)}>
+          <select
+            id="promo-partner"
+            className="mgmt-select-inline"
+            value={partnerFilter}
+            onChange={(e) => handlePartnerChange(e.target.value)}
+          >
             <option value="">Tất cả đối tác</option>
             {partners.map((p) => (
               <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
@@ -685,34 +720,50 @@ const AdminPromotionsPage = () => {
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="promo-time">Thời gian</label>
-          <select id="promo-time" className="mgmt-select-inline" value={draftTimePreset} onChange={(e) => setDraftTimePreset(e.target.value)}>
+          <select
+            id="promo-time"
+            className="mgmt-select-inline"
+            value={timePreset}
+            onChange={(e) => setTimePreset(e.target.value)}
+          >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
         </div>
 
-        {draftTimePreset === 'custom' && (
+        {timePreset === 'custom' && (
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="promo-from">Từ ngày</label>
-              <input id="promo-from" type="date" className="mgmt-select-inline" value={draftTuNgay} onChange={(e) => setDraftTuNgay(e.target.value)} />
+              <input
+                id="promo-from"
+                type="date"
+                className="mgmt-select-inline"
+                value={tuNgay}
+                onChange={(e) => setTuNgay(e.target.value)}
+              />
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="promo-to">Đến ngày</label>
-              <input id="promo-to" type="date" className="mgmt-select-inline" value={draftDenNgay} min={draftTuNgay} onChange={(e) => setDraftDenNgay(e.target.value)} />
+              <input
+                id="promo-to"
+                type="date"
+                className="mgmt-select-inline"
+                value={denNgay}
+                min={tuNgay}
+                onChange={(e) => setDenNgay(e.target.value)}
+              />
             </div>
           </>
         )}
 
         <div className="mgmt-filter-field mgmt-filter-field--action">
-          <FilterActions onApply={applyFilters} onClear={clearFilters} />
+          <FilterActions showApply={false} onClear={clearFilters} />
         </div>
       </div>
 
-      <SummaryStats items={statItems} />
-
-      <div className="content-card">
+      <div className="content-card admin-promotions-table-card">
         <div className="content-card-header">
           <h3 className="content-card-title">Danh sách khuyến mãi ({items.length})</h3>
         </div>
@@ -724,39 +775,47 @@ const AdminPromotionsPage = () => {
         ) : (
           <>
             <div className="mgmt-table-scroll">
-              <table className="data-table data-table-grid admin-mgmt-table">
+              <table className="data-table data-table-grid admin-mgmt-table admin-promotions-table">
                 <thead>
                   <tr>
-                    <th>Mã khuyến mãi</th>
-                    <th>Tên khuyến mãi</th>
-                    <th>Loại giảm</th>
-                    <th>Vai trò</th>
-                    <th>Người tạo</th>
-                    <th>Thời gian áp dụng</th>
-                    <th>Lượt sử dụng</th>
-                    <th>Trạng thái</th>
-                    <th style={{ width: 150 }}>Thao tác</th>
+                    <th className="admin-promo-col-code">Mã KM</th>
+                    <th className="admin-promo-col-name">Tên khuyến mãi</th>
+                    <th className="admin-promo-col-value">Giá trị</th>
+                    <th className="admin-promo-col-source">Nguồn tạo</th>
+                    <th className="admin-promo-col-dates">Thời gian</th>
+                    <th className="admin-promo-col-usage">Lượt dùng</th>
+                    <th className="admin-promo-col-status">Trạng thái</th>
+                    <th className="admin-promo-col-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedItems.map((item) => {
-                    const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+                    const st = getPromotionStatusMeta(item);
                     const isSystem = item.loai_nguon === 'he_thong';
+                    const source = getSourceMeta(item);
                     return (
                       <tr key={item.ma_khuyen_mai}>
-                        <td><strong>{item.ma_code}</strong></td>
-                        <td>{item.ten}</td>
-                        <td>{LOAI_GIAM[item.loai_giam] || item.loai_giam}</td>
-                        <td>{VAI_TRO_LABELS[item.loai_nguon] || item.loai_nguon}</td>
-                        <td>{getCreatorName(item)}</td>
-                        <td>{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
-                        <td>
-                          {item.so_luot_toi_da != null
-                            ? `${item.so_luot_da_dung} / ${item.so_luot_toi_da}`
-                            : item.so_luot_da_dung}
+                        <td className="admin-promo-col-code"><strong>{item.ma_code}</strong></td>
+                        <td className="admin-promo-col-name">{item.ten}</td>
+                        <td className="admin-promo-col-value"><GiaTriCell item={item} /></td>
+                        <td className="admin-promo-col-source">
+                          <div className="admin-promo-source">
+                            <strong>{source.role}</strong>
+                            <span>{source.detail}</span>
+                          </div>
                         </td>
-                        <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                        <ActionCell>
+                        <td className="admin-promo-col-dates">
+                          <div className="admin-promo-dates">
+                            <span>{formatDate(item.ngay_bat_dau)}</span>
+                            <span className="admin-promo-dates-sep">→</span>
+                            <span>{formatDate(item.ngay_ket_thuc)}</span>
+                          </div>
+                        </td>
+                        <td className="admin-promo-col-usage"><UsageCell item={item} /></td>
+                        <td className="admin-promo-col-status">
+                          <span className={`badge ${st.cls}`}>{st.label}</span>
+                        </td>
+                        <ActionCell className="admin-promo-col-actions">
                           <ActionButton variant="view" iconOnly icon={Eye} title="Chi tiết" onClick={() => setDetailItem(item)} />
                           {isSystem ? (
                             <>

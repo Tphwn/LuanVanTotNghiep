@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import customerBookingService from '../../services/customerBookingService';
 import RoomSpecs from '../../components/customer/RoomSpecs';
+import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { resolveBookingQuery } from '../../utils/bookingNavigation';
@@ -72,16 +73,19 @@ const AccommodationPolicyDisplay = ({ groups }) => {
   );
 };
 
-const PolicyBox = ({ title, children, emptyText }) => (
-  <div className="booking-confirm-policy-block">
-    <h3 className="booking-confirm-section-title">{title}</h3>
-    <div className="booking-confirm-policy-box">
-      {children || (
-        <p className="booking-confirm-policy-empty">{emptyText}</p>
-      )}
+const PolicyBox = ({ title, children, emptyText }) => {
+  const hasContent = Boolean(children);
+  return (
+    <div className="booking-confirm-card booking-confirm-policy-card">
+      <h2 className="booking-confirm-section-title">{title}</h2>
+      <div className="booking-confirm-policy-body">
+        {hasContent ? children : (
+          <p className="booking-confirm-policy-empty">{emptyText}</p>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CustomerBookingPage = () => {
   const navigate = useNavigate();
@@ -94,6 +98,8 @@ const CustomerBookingPage = () => {
     ngay_nhan: searchParams.get('ngay_nhan') || '',
     ngay_tra: searchParams.get('ngay_tra') || '',
     so_khach: searchParams.get('so_khach') || '',
+    tre_em: searchParams.get('tre_em') || '',
+    so_phong: searchParams.get('so_phong') || '',
     ma_dia_diem: searchParams.get('ma_dia_diem') || '',
   }), [searchParams]);
 
@@ -102,12 +108,13 @@ const CustomerBookingPage = () => {
   const ngayNhan = bookingParams.ngay_nhan;
   const ngayTra = bookingParams.ngay_tra;
   const soKhach = bookingParams.so_khach;
+  const treEm = bookingParams.tre_em;
+  const soPhong = bookingParams.so_phong;
 
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [form, setForm] = useState({
     ten_nguoi_nhan: '',
@@ -121,7 +128,9 @@ const CustomerBookingPage = () => {
     ngay_nhan: ngayNhan,
     ngay_tra: ngayTra,
     so_khach: soKhach,
-  }), [ngayNhan, ngayTra, soKhach]);
+    tre_em: treEm,
+    so_phong: soPhong,
+  }), [ngayNhan, ngayTra, soKhach, treEm, soPhong]);
 
   const backUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -155,13 +164,16 @@ const CustomerBookingPage = () => {
     [hotel],
   );
 
+  const roomCount = Math.max(Number(soPhong) || Number(room?.so_phong_dat) || 1, 1);
+  const guestCount = Math.max(Number(soKhach) || 1, 1);
+
   const priceBreakdown = useMemo(() => {
     const total = Number(room?.tong_gia) || 0;
     const taxFees = Math.round(total - total / 1.1);
     const roomSubtotal = total - taxFees;
-    const avgNight = room?.gia_hien_thi || (nights ? Math.round(roomSubtotal / nights) : roomSubtotal);
+    const avgNight = room?.gia_hien_thi || (nights ? Math.round(roomSubtotal / nights / roomCount) : roomSubtotal);
     return { total, taxFees, roomSubtotal, avgNight };
-  }, [room, nights]);
+  }, [room, nights, roomCount]);
 
   useEffect(() => {
     if (!token) {
@@ -210,7 +222,6 @@ const CustomerBookingPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setSubmitting(true);
 
     try {
@@ -218,18 +229,30 @@ const CustomerBookingPage = () => {
         ma_loai_phong: Number(maLoaiPhong),
         ngay_nhan: ngayNhan,
         ngay_tra: ngayTra,
-        so_khach: Math.max(Number(soKhach) || 0, 1),
+        so_khach: guestCount,
+        so_phong: roomCount,
         ten_nguoi_nhan: form.ten_nguoi_nhan.trim(),
         sdt_nguoi_nhan: form.sdt_nguoi_nhan.trim(),
+        email: form.email.trim(),
         phuong_thuc_tt: form.phuong_thuc_tt,
         ghi_chu: form.ghi_chu.trim() || undefined,
       });
 
       const data = res.data?.data;
-      setSuccess(`Đặt phòng thành công! Mã đơn: ${data?.ma_don_hang}`);
-      setTimeout(() => navigate(ROUTES.CUSTOMER.MY_BOOKINGS), 1800);
+      const bookingId = data?.ma_dat_phong;
+      if (!bookingId) {
+        throw new Error('Không nhận được mã đơn đặt phòng');
+      }
+      const confirmUrl = `${ROUTES.CUSTOMER.BOOKING}?${searchParams.toString()}`;
+      const paymentUrl = ROUTES.CUSTOMER.PAYMENT.replace(':id', bookingId);
+      try {
+        sessionStorage.setItem(`paymentBack:${bookingId}`, confirmUrl);
+      } catch {
+        /* ignore */
+      }
+      navigate(paymentUrl, { state: { backTo: confirmUrl } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể đặt phòng');
+      setError(err.response?.data?.message || err.message || 'Không thể tiếp tục đặt phòng');
     } finally {
       setSubmitting(false);
     }
@@ -261,8 +284,16 @@ const CustomerBookingPage = () => {
   return (
     <div className="booking-confirm-page">
       <div className="booking-confirm-header">
-        <BackButton to={backUrl} className="booking-confirm-back page-back-btn--standalone" />
-        <h1 className="booking-confirm-title">Xác nhận đặt phòng</h1>
+        <BackButton to={backUrl} className="booking-confirm-back" />
+        <div className="booking-confirm-header-row">
+          <div className="booking-confirm-header-text">
+            <h1 className="booking-confirm-title">Xác nhận đặt phòng</h1>
+            <p className="booking-confirm-subtitle">
+              Kiểm tra thông tin khách và chính sách trước khi thanh toán
+            </p>
+          </div>
+          <BookingFlowStepper current={1} />
+        </div>
       </div>
 
       <div className="booking-confirm-layout">
@@ -305,32 +336,46 @@ const CustomerBookingPage = () => {
                 <input
                   id="email"
                   type="email"
-                  className="booking-confirm-input booking-confirm-input--readonly"
+                  className="booking-confirm-input"
                   value={form.email}
-                  readOnly
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                   required
-                  maxLength={120}
-                  aria-readonly="true"
+                  maxLength={100}
+                  placeholder="email@domain.com"
                 />
               </div>
             </div>
 
-            
-
+            <div className="booking-confirm-field">
+              <label className="booking-confirm-label" htmlFor="ghi_chu">
+                Ghi chú / yêu cầu đặc biệt
+              </label>
+              <textarea
+                id="ghi_chu"
+                className="booking-confirm-textarea"
+                value={form.ghi_chu}
+                onChange={(e) => setForm((p) => ({ ...p, ghi_chu: e.target.value }))}
+                rows={3}
+                maxLength={500}
+                placeholder="VD: Nhận phòng muộn, cần phòng tầng cao, thêm giường phụ..."
+              />
+            </div>
           </div>
 
           <PolicyBox
             title="Chính sách chỗ ở"
             emptyText="Khách sạn chưa cập nhật chính sách chỗ ở."
           >
-            <AccommodationPolicyDisplay groups={accommodationPolicies} />
+            {accommodationPolicies?.hasContent ? (
+              <AccommodationPolicyDisplay groups={accommodationPolicies} />
+            ) : null}
           </PolicyBox>
 
           <PolicyBox
             title="Chính sách hủy"
             emptyText="Khách sạn chưa cấu hình chính sách hủy — hủy đặt phòng có thể mất 100% tiền cọc."
           >
-            {hasCancelRules && (
+            {hasCancelRules ? (
               <div className="booking-confirm-cancel-wrap">
                 {cancellationPolicies.rules.length > 0 && (
                   <ul className="booking-confirm-policy-list">
@@ -347,14 +392,11 @@ const CustomerBookingPage = () => {
                   </ul>
                 )}
               </div>
-            )}
+            ) : null}
           </PolicyBox>
 
           {error && room && (
             <p className="booking-confirm-error">{error}</p>
-          )}
-          {success && (
-            <p className="booking-confirm-success">{success}</p>
           )}
         </form>
 
@@ -389,6 +431,14 @@ const CustomerBookingPage = () => {
               </div>
             </div>
 
+            <p className="booking-confirm-party">
+              <strong>{guestCount}</strong>
+              {' khách · '}
+              <strong>{roomCount}</strong>
+              {' phòng'}
+              {Number(treEm) > 0 ? ` · ${treEm} trẻ em` : ''}
+            </p>
+
             <RoomSpecs
               sucChua={room?.suc_chua}
               dienTich={room?.dien_tich}
@@ -400,11 +450,11 @@ const CustomerBookingPage = () => {
             <h2 className="booking-confirm-section-title">Chi tiết giá</h2>
 
             <div className="booking-confirm-price-row">
-              <span>Giá phòng</span>
+              <span>Giá phòng / đêm</span>
               <strong>{fmt(priceBreakdown.avgNight)} VNĐ</strong>
             </div>
             <div className="booking-confirm-price-sub">
-              <span>1 phòng {room?.ten_loai}</span>
+              <span>{roomCount} phòng {room?.ten_loai}</span>
               <span>{nights} đêm</span>
             </div>
 
@@ -416,7 +466,9 @@ const CustomerBookingPage = () => {
             <div className="booking-confirm-price-total">
               <div>
                 <span className="booking-confirm-price-total-label">Tổng cộng</span>
-                <span className="booking-confirm-price-total-sub">/ 1 phòng, {nights} đêm</span>
+                <span className="booking-confirm-price-total-sub">
+                  / {roomCount} phòng, {nights} đêm
+                </span>
               </div>
               <strong className="booking-confirm-price-total-value">
                 {fmt(priceBreakdown.total)} VNĐ
@@ -427,9 +479,9 @@ const CustomerBookingPage = () => {
               type="submit"
               form="booking-confirm-form"
               className="booking-confirm-submit"
-              disabled={submitting || !!success}
+              disabled={submitting}
             >
-              {submitting ? 'Đang xử lý...' : 'Đặt Phòng'}
+              {submitting ? 'Đang xử lý...' : 'Tiếp tục đặt phòng'}
             </button>
           </div>
         </aside>

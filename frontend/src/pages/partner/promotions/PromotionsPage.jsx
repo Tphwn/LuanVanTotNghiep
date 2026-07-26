@@ -352,13 +352,6 @@ const PartnerPromotionsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
 
-  const [draftHotelFilter, setDraftHotelFilter] = useState('');
-  const [draftLoaiGiamFilter, setDraftLoaiGiamFilter] = useState('all');
-  const [draftStatusFilter, setDraftStatusFilter] = useState('all');
-  const [draftTimePreset, setDraftTimePreset] = useState('all');
-  const [draftTuNgay, setDraftTuNgay] = useState('');
-  const [draftDenNgay, setDraftDenNgay] = useState('');
-
   const [detailItem, setDetailItem] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -401,15 +394,6 @@ const PartnerPromotionsPage = () => {
     return () => clearTimeout(t);
   }, [loadPromotions]);
 
-  const applyFilters = () => {
-    setHotelFilter(draftHotelFilter);
-    setLoaiGiamFilter(draftLoaiGiamFilter);
-    setStatusFilter(draftStatusFilter);
-    setTimePreset(draftTimePreset);
-    setTuNgay(draftTuNgay);
-    setDenNgay(draftDenNgay);
-  };
-
   const clearFilters = () => {
     setHotelFilter('');
     setLoaiGiamFilter('all');
@@ -417,12 +401,6 @@ const PartnerPromotionsPage = () => {
     setTimePreset('all');
     setTuNgay('');
     setDenNgay('');
-    setDraftHotelFilter('');
-    setDraftLoaiGiamFilter('all');
-    setDraftStatusFilter('all');
-    setDraftTimePreset('all');
-    setDraftTuNgay('');
-    setDraftDenNgay('');
   };
 
   const updateField = (key, value) => {
@@ -593,7 +571,7 @@ const PartnerPromotionsPage = () => {
   const confirmCfg = confirmTarget ? CONFIRM_CONFIG[confirmTarget.action] : null;
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page partner-promotions-page">
       <ManagementHeader
         title="Khuyến mãi"
         subtitle="Tạo và quản lý mã giảm giá — cần admin duyệt trước khi hiển thị với khách hàng"
@@ -611,8 +589,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-hotel"
             className="mgmt-select-inline"
-            value={draftHotelFilter}
-            onChange={(e) => setDraftHotelFilter(e.target.value)}
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
           >
             <option value="">Tất cả khách sạn</option>
             {hotels.map((h) => (
@@ -626,8 +604,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-loaigiam"
             className="mgmt-select-inline"
-            value={draftLoaiGiamFilter}
-            onChange={(e) => setDraftLoaiGiamFilter(e.target.value)}
+            value={loaiGiamFilter}
+            onChange={(e) => setLoaiGiamFilter(e.target.value)}
           >
             <option value="all">Tất cả loại</option>
             <option value="phan_tram">Phần trăm (%)</option>
@@ -640,8 +618,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-status"
             className="mgmt-select-inline"
-            value={draftStatusFilter}
-            onChange={(e) => setDraftStatusFilter(e.target.value)}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="cho_duyet">Chờ duyệt</option>
@@ -657,8 +635,8 @@ const PartnerPromotionsPage = () => {
           <select
             id="partner-promo-time"
             className="mgmt-select-inline"
-            value={draftTimePreset}
-            onChange={(e) => setDraftTimePreset(e.target.value)}
+            value={timePreset}
+            onChange={(e) => setTimePreset(e.target.value)}
           >
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -666,7 +644,7 @@ const PartnerPromotionsPage = () => {
           </select>
         </div>
 
-        {draftTimePreset === 'custom' && (
+        {timePreset === 'custom' && (
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
@@ -674,8 +652,8 @@ const PartnerPromotionsPage = () => {
                 id="partner-promo-from"
                 type="date"
                 className="mgmt-select-inline"
-                value={draftTuNgay}
-                onChange={(e) => setDraftTuNgay(e.target.value)}
+                value={tuNgay}
+                onChange={(e) => setTuNgay(e.target.value)}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -684,16 +662,16 @@ const PartnerPromotionsPage = () => {
                 id="partner-promo-to"
                 type="date"
                 className="mgmt-select-inline"
-                value={draftDenNgay}
-                min={draftTuNgay}
-                onChange={(e) => setDraftDenNgay(e.target.value)}
+                value={denNgay}
+                min={tuNgay}
+                onChange={(e) => setDenNgay(e.target.value)}
               />
             </div>
           </>
         )}
 
         <div className="mgmt-filter-field mgmt-filter-field--action">
-          <FilterActions onApply={applyFilters} onClear={clearFilters} />
+          <FilterActions showApply={false} onClear={clearFilters} />
         </div>
       </div>
 
@@ -713,14 +691,14 @@ const PartnerPromotionsPage = () => {
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
-                    <th>Mã khuyến mãi</th>
-                    <th>Tên khuyến mãi</th>
-                    <th>Khách sạn</th>
-                    <th>Loại giảm</th>
-                    <th>Thời gian áp dụng</th>
-                    <th>Lượt sử dụng</th>
-                    <th>Trạng thái</th>
-                    <th style={{ width: 150 }}>Thao tác</th>
+                    <th className="partner-col-code">Mã khuyến mãi</th>
+                    <th className="partner-col-name">Tên khuyến mãi</th>
+                    <th className="partner-col-hotel">Khách sạn</th>
+                    <th className="partner-col-type">Loại giảm</th>
+                    <th className="partner-col-daterange">Thời gian áp dụng</th>
+                    <th className="partner-col-count">Lượt sử dụng</th>
+                    <th className="partner-col-status">Trạng thái</th>
+                    <th className="partner-col-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -728,17 +706,17 @@ const PartnerPromotionsPage = () => {
                     const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
                     return (
                       <tr key={item.ma_khuyen_mai}>
-                        <td><strong>{item.ma_code}</strong></td>
-                        <td>{item.ten}</td>
-                        <td>{item.khach_san?.ten || '—'}</td>
-                        <td>{LOAI_GIAM[item.loai_giam] || item.loai_giam}</td>
-                        <td>{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
-                        <td>
+                        <td className="partner-col-code"><strong>{item.ma_code}</strong></td>
+                        <td className="partner-col-name">{item.ten}</td>
+                        <td className="partner-col-hotel">{item.khach_san?.ten || '—'}</td>
+                        <td className="partner-col-type">{LOAI_GIAM[item.loai_giam] || item.loai_giam}</td>
+                        <td className="partner-col-daterange">{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
+                        <td className="partner-col-count">
                           {item.so_luot_toi_da != null
                             ? `${item.so_luot_da_dung} / ${item.so_luot_toi_da}`
                             : item.so_luot_da_dung}
                         </td>
-                        <td>
+                        <td className="partner-col-status">
                           <span className={`badge ${st.cls}`}>{st.label}</span>
                           {item.khoa_boi_admin && (
                             <div style={{ fontSize: 11, color: '#c0392b', marginTop: 4 }}>Admin đã khóa</div>
@@ -747,7 +725,7 @@ const PartnerPromotionsPage = () => {
                             <div style={{ fontSize: 11, color: '#856404', marginTop: 4 }}>Bạn đã tạm ngưng</div>
                           )}
                         </td>
-                        <ActionCell>
+                        <ActionCell className="partner-col-actions">
                           <ActionButton variant="view" iconOnly icon={Eye} title="Chi tiết" onClick={() => setDetailItem(item)} />
                           {canPartnerEdit(item) && (
                             <ActionButton variant="edit" iconOnly icon={Pencil} title="Sửa" onClick={() => openEdit(item)} />

@@ -17,9 +17,9 @@ const ACTION_CONFIG = {
   'show-review': {
     icon: Eye,
     lockClass: 'is-unlock',
-    title: 'Xác nhận hiện đánh giá',
-    intro: 'Bạn có chắc muốn hiện lại đánh giá này? Khách hàng và đối tác sẽ được thông báo.',
-    confirmText: 'Xác nhận hiện',
+    title: 'Xác nhận mở đánh giá',
+    intro: 'Bạn có chắc muốn mở lại đánh giá này? Khách hàng và đối tác sẽ được thông báo.',
+    confirmText: 'Xác nhận mở',
     danger: false,
     needsReason: false,
   },

@@ -55,7 +55,7 @@ exports.loginWithGoogle = handle(
 
 exports.forgotPassword = handle(
   (req) => authService.forgotPassword(req.body),
-  'Nếu email tồn tại, mã OTP đã được gửi',
+  'Mã OTP đã được gửi.',
 );
 
 exports.verifyResetOtp = handle(

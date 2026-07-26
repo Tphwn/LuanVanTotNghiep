@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Check, ChevronRight, Percent, Ticket } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Percent, Ticket } from 'lucide-react';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '');
 
@@ -26,10 +26,11 @@ const CustomerPromotionStrip = ({ promotions = [], variant = 'system', onClaim }
 
   if (!promotions.length) return null;
 
-  const scrollNext = () => {
+  const scrollByCards = (direction) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: 280, behavior: 'smooth' });
+    const step = variant === 'partner' ? 360 : 280;
+    el.scrollBy({ left: direction * step, behavior: 'smooth' });
   };
 
   const copyText = async (text, flashKey) => {
@@ -62,7 +63,10 @@ const CustomerPromotionStrip = ({ promotions = [], variant = 'system', onClaim }
     : cfg.title;
 
   return (
-    <section className="customer-promo-strip" aria-label="Khuyến mãi">
+    <section
+      className={`customer-promo-strip customer-promo-strip--${variant}`}
+      aria-label="Khuyến mãi"
+    >
       <div className="customer-promo-strip__header">
         <div className="customer-promo-strip__headline-wrap">
           <h2 className="customer-promo-strip__title">{headline}</h2>
@@ -78,6 +82,16 @@ const CustomerPromotionStrip = ({ promotions = [], variant = 'system', onClaim }
       </div>
 
       <div className="customer-promo-strip__carousel-wrap">
+        {promotions.length > 2 && (
+          <button
+            type="button"
+            className="customer-promo-strip__scroll-btn"
+            onClick={() => scrollByCards(-1)}
+            aria-label="Xem khuyến mãi trước"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
         <div className="customer-promo-strip__carousel" ref={scrollRef}>
           {promotions.map((promo) => (
             <button
@@ -115,7 +129,7 @@ const CustomerPromotionStrip = ({ promotions = [], variant = 'system', onClaim }
           <button
             type="button"
             className="customer-promo-strip__scroll-btn"
-            onClick={scrollNext}
+            onClick={() => scrollByCards(1)}
             aria-label="Xem thêm khuyến mãi"
           >
             <ChevronRight size={20} />

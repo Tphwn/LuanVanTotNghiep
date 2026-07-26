@@ -168,19 +168,38 @@ const calculatePromotionDiscount = (promo, orderTotal) => {
 const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date() }) => {
   if (!promo) throwValidation('Mã khuyến mãi không tồn tại');
 
-  if (isPastPromotionEndDate(promo.ngay_ket_thuc, at)) {
-    throwValidation('Khuyến mãi đã hết hạn');
+  if (promo.khoa_boi_admin) {
+    throwValidation('Mã khuyến mãi đã bị khóa bởi quản trị viên, không thể áp dụng');
+  }
+  if (promo.khoa_boi_doi_tac) {
+    throwValidation('Mã khuyến mãi đã bị khóa bởi đối tác, không thể áp dụng');
   }
 
+  if (isPastPromotionEndDate(promo.ngay_ket_thuc, at)) {
+    throwValidation('Mã khuyến mãi đã hết hạn');
+  }
+
+  if (promo.trang_thai === 'het_han') {
+    throwValidation('Mã khuyến mãi đã hết hạn');
+  }
+  if (promo.trang_thai === 'an') {
+    throwValidation('Mã khuyến mãi đang bị khóa / tạm ngưng, không thể áp dụng');
+  }
   if (BLOCKED_APPLY_STATUSES.includes(promo.trang_thai)) {
-    throwValidation('Khuyến mãi không khả dụng (đã khóa, hết hạn hoặc tạm ngưng)');
+    throwValidation('Mã khuyến mãi không khả dụng (chưa duyệt, bị từ chối hoặc tạm ngưng)');
+  }
+  if (promo.trang_thai !== 'hoat_dong') {
+    throwValidation('Mã khuyến mãi hiện không thể áp dụng');
   }
 
   const today = toLocalDateString(at);
   const start = toDbDateString(promo.ngay_bat_dau);
   const end = toDbDateString(promo.ngay_ket_thuc);
-  if (today < start || today > end) {
-    throwValidation('Khuyến mãi không nằm trong thời gian áp dụng');
+  if (today < start) {
+    throwValidation('Mã khuyến mãi chưa đến thời gian áp dụng');
+  }
+  if (today > end) {
+    throwValidation('Mã khuyến mãi đã hết hạn');
   }
 
   if (promo.loai_nguon === 'doi_tac') {
@@ -189,10 +208,13 @@ const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date(
     }
   }
 
-  const orderTotal = Number(tongTien);
+  const orderTotal = Number(tongTien) || 0;
   const minOrder = Number(promo.don_hang_toi_thieu || 0);
   if (minOrder > 0 && orderTotal < minOrder) {
-    throwValidation(`Đơn tối thiểu ${minOrder.toLocaleString('vi-VN')}đ để áp dụng mã`);
+    throwValidation(
+      `Đơn phòng hiện tại (${orderTotal.toLocaleString('vi-VN')}đ) chưa đạt mức tối thiểu `
+      + `${minOrder.toLocaleString('vi-VN')}đ để áp dụng mã này`
+    );
   }
 
   if (promo.so_luot_toi_da != null && Number(promo.so_luot_da_dung) >= Number(promo.so_luot_toi_da)) {
@@ -207,6 +229,38 @@ const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date(
   return discount;
 };
 
+const assertCustomerHasNotUsedPromotion = async (
+  prismaClient,
+  { maKhachHang, maKhuyenMai, excludeMaDatPhong = null }
+) => {
+  const where = {
+    ma_khach_hang: Number(maKhachHang),
+    ma_khuyen_mai: Number(maKhuyenMai),
+    trang_thai: { notIn: ['da_huy', 'tu_choi'] },
+    OR: [
+      { thanh_toan: { is: { trang_thai: 'thanh_cong' } } },
+      { phuong_thuc_tt: 'tai_khach_san' },
+    ],
+  };
+  if (excludeMaDatPhong != null) {
+    where.ma_dat_phong = { not: Number(excludeMaDatPhong) };
+  }
+
+  const used = await prismaClient.dat_phong.findFirst({
+    where,
+    select: { ma_dat_phong: true, ma_don_hang: true },
+    orderBy: { ma_dat_phong: 'desc' },
+  });
+
+  if (used) {
+    const orderRef = used.ma_don_hang || `#${used.ma_dat_phong}`;
+    throwValidation(
+      `Bạn đã dùng mã này cho đơn ${orderRef}`
+      + 'Vui lòng chọn mã khuyến mãi khác cho đơn này'
+    );
+  }
+};
+
 module.exports = {
   EXPIRABLE_STATUSES,
   BLOCKED_APPLY_STATUSES,
@@ -219,4 +273,5 @@ module.exports = {
   assertUniquePromotionCode,
   calculatePromotionDiscount,
   assertPromotionApplicable,
+  assertCustomerHasNotUsedPromotion,
 };

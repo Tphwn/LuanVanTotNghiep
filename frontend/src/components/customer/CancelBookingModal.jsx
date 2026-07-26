@@ -3,11 +3,22 @@ import customerBookingService from '../../services/customerBookingService';
 import CustomerPrice from './CustomerPrice';
 import { formatCurrency } from '../../utils/bookingDisplay';
 
-export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
+/**
+ * @param {'booking'|'payment'} variant
+
+ */
+export default function CancelBookingModal({
+  booking,
+  variant = 'booking',
+  onClose,
+  onConfirmed,
+}) {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const isPaymentCancel = variant === 'payment';
 
   useEffect(() => {
     if (!booking) return undefined;
@@ -17,7 +28,7 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
     customerBookingService.getCancelPreview(booking.ma_dat_phong)
       .then((res) => setPreview(res.data?.data))
       .catch((err) => {
-        setError(err.response?.data?.message || 'Không tải được chính sách hủy');
+        setError(err.response?.data?.message || 'Không tải được thông tin hủy');
       })
       .finally(() => setLoading(false));
 
@@ -29,10 +40,17 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
     setError('');
     try {
       const res = await customerBookingService.cancelBooking(booking.ma_dat_phong);
-      onConfirmed(res.data?.data);
+      onConfirmed(res.data?.data, {
+        successMessage: isPaymentCancel
+          ? 'Hủy thanh toán thành công'
+          : 'Đã hủy đơn đặt phòng thành công',
+      });
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể hủy đơn');
+      setError(
+        err.response?.data?.message
+          || (isPaymentCancel ? 'Không thể hủy thanh toán' : 'Không thể hủy đơn'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -51,26 +69,49 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
       >
         <div className="modal-header">
           <div>
-            <h3 className="modal-title" id="cancel-booking-title">Xác nhận hủy đơn</h3>
+            <h3 className="modal-title" id="cancel-booking-title">
+              {isPaymentCancel ? 'Xác nhận hủy thanh toán' : 'Xác nhận hủy đơn'}
+            </h3>
             <p className="cancel-booking-modal-sub">
-              Mã đơn: <strong>{booking.ma_don_hang}</strong>
+              Mã đơn:
+              {' '}
+              <strong>{booking.ma_don_hang || booking.ma_don}</strong>
             </p>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Đóng">×</button>
         </div>
 
         {loading && (
-          <p className="cancel-booking-modal-loading">Đang tải chính sách hủy...</p>
+          <p className="cancel-booking-modal-loading">
+            {isPaymentCancel ? 'Đang tải thông tin...' : 'Đang tải chính sách hủy...'}
+          </p>
         )}
 
         {!loading && preview && (
           <>
-            <p className="cancel-booking-modal-intro">
-              Theo chính sách hủy của <strong>{preview.ten_khach_san || 'khách sạn'}</strong>,
-              {' '}còn <strong>{preview.so_ngay_con_lai}</strong> ngày trước ngày nhận phòng.
-            </p>
+            {isPaymentCancel ? (
+              <p className="cancel-booking-modal-intro">
+                Bạn sắp hủy phiên thanh toán cho đơn tại
+                {' '}
+                <strong>{preview.ten_khach_san || 'khách sạn'}</strong>
+                .
+              </p>
+            ) : (
+              <p className="cancel-booking-modal-intro">
+                Theo chính sách hủy của
+                {' '}
+                <strong>{preview.ten_khach_san || 'khách sạn'}</strong>
+                ,
+                {' '}
+                còn
+                {' '}
+                <strong>{preview.so_ngay_con_lai}</strong>
+                {' '}
+                ngày trước ngày nhận phòng.
+              </p>
+            )}
 
-            {preview.chinh_sach?.length > 0 && (
+            {!isPaymentCancel && preview.chinh_sach?.length > 0 && (
               <div className="cancel-booking-policy-box">
                 <h4 className="cancel-booking-policy-title">Chính sách hủy</h4>
                 <ul className="cancel-booking-policy-list">
@@ -83,8 +124,16 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
                           : 'cancel-booking-policy-item'
                       }
                     >
-                      Hủy trước <strong>{rule.so_ngay_truoc}</strong> ngày: hoàn{' '}
-                      <strong>{rule.phan_tram_hoan}%</strong>
+                      Hủy trước
+                      {' '}
+                      <strong>{rule.so_ngay_truoc}</strong>
+                      {' '}
+                      ngày: hoàn
+                      {' '}
+                      <strong>
+                        {rule.phan_tram_hoan}
+                        %
+                      </strong>
                     </li>
                   ))}
                 </ul>
@@ -93,14 +142,17 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
 
             <div className="cancel-booking-summary">
               <div className="cancel-booking-summary-row">
-                <span>Tổng thanh toán</span>
+                <span>{isPaymentCancel ? 'Số tiền cần thanh toán' : 'Tổng thanh toán'}</span>
                 <CustomerPrice amount={preview.thanh_toan_cuoi} unit="VNĐ" />
               </div>
-              {preview.da_thanh_toan_online && (
+              {!isPaymentCancel && preview.da_thanh_toan_online && (
                 <>
                   <div className="cancel-booking-summary-row">
                     <span>Mức hoàn áp dụng</span>
-                    <strong>{preview.ap_dung?.phan_tram_hoan ?? 0}%</strong>
+                    <strong>
+                      {preview.ap_dung?.phan_tram_hoan ?? 0}
+                      %
+                    </strong>
                   </div>
                   <div className="cancel-booking-summary-row cancel-booking-summary-row--highlight">
                     <span>Số tiền hoàn dự kiến</span>
@@ -110,10 +162,10 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
               )}
             </div>
 
-            <p className="cancel-booking-modal-note">{preview.tom_tat}</p>
-            <p className="cancel-booking-modal-note cancel-booking-modal-note--muted">
-              Đơn sẽ được hủy ngay sau khi bạn nhấn xác nhận hủy.
-            </p>
+            {!isPaymentCancel && preview.tom_tat && (
+              <p className="cancel-booking-modal-note">{preview.tom_tat}</p>
+            )}
+            
           </>
         )}
 
@@ -123,7 +175,7 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
 
         <div className="cancel-booking-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>
-            Không hủy
+            {isPaymentCancel ? 'Không hủy' : 'Không hủy'}
           </button>
           <button
             type="button"
@@ -131,7 +183,9 @@ export default function CancelBookingModal({ booking, onClose, onConfirmed }) {
             onClick={handleConfirm}
             disabled={loading || submitting || !preview}
           >
-            {submitting ? 'Đang hủy...' : 'Xác nhận hủy'}
+            {submitting
+              ? 'Đang hủy...'
+              : (isPaymentCancel ? 'Xác nhận hủy thanh toán' : 'Xác nhận hủy')}
           </button>
         </div>
       </div>

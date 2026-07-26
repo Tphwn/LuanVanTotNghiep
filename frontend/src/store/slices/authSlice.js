@@ -87,10 +87,17 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.error = null;
       removeToken();
       removeUser();
     },
     clearError: (state) => {
+      state.error = null;
+    },
+    /** Đồng bộ Redux khi localStorage đổi (đăng nhập/xuất ở tab khác). */
+    hydrateSession: (state) => {
+      state.token = getToken();
+      state.user = getUser();
       state.error = null;
     },
   },
@@ -151,9 +158,15 @@ const authSlice = createSlice({
         const user = mapAuthUser(action.payload);
         state.user = user;
         setUser(user);
+      })
+      .addCase(getMe.rejected, (state) => {
+        state.user = null;
+        state.token = null;
+        removeToken();
+        removeUser();
       });
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, hydrateSession } = authSlice.actions;
 export default authSlice.reducer;

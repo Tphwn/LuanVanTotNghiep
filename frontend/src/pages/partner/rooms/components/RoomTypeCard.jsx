@@ -89,8 +89,8 @@ export default function RoomTypeCard({ room, onEdit, onToggle, onManageImages })
           <div className="rt-detail-row">
             <Home size={14} strokeWidth={1.8} />
             <span>
-              <strong>Số phòng còn lại:</strong>{' '}
-              {room.phong_con_lai ?? room.so_luong_mo_ban ?? 0}/{room.so_luong_phong ?? 0} phòng
+              <strong>Số phòng:</strong>{' '}
+              {room.so_luong_phong ?? 0} phòng
             </span>
           </div>
           {room.mo_ta && (

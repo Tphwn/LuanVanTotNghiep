@@ -59,15 +59,6 @@ export const formatBookingDate = (d) => {
 export const buildCancelNoticeContent = (refundInfo) => {
   if (!refundInfo) return null;
 
-  if (refundInfo.tom_tat_chinh_sach) {
-    return {
-      policyLine: refundInfo.tom_tat_chinh_sach,
-      statusLine: null,
-      summaryText: refundInfo.tom_tat_chinh_sach,
-      refundBadge: getRefundBadgeMeta(refundInfo.trang_thai_hoan),
-    };
-  }
-
   const {
     phan_tram_hoan: phanTram,
     so_tien_hoan: soTienHoan,
@@ -75,28 +66,56 @@ export const buildCancelNoticeContent = (refundInfo) => {
     trang_thai_hoan: trangThaiHoan,
   } = refundInfo;
 
+  const refundAmount = Number(soTienHoan) || 0;
+  const needsRefund = paid && refundAmount > 0;
+
   let policyLine = '';
-  if (paid && Number(soTienHoan) > 0) {
-    policyLine = `Theo chính sách: khách được hoàn lại ${phanTram}% số tiền (tương đương ${Number(soTienHoan).toLocaleString('vi-VN')}đ).`;
+  if (needsRefund) {
+    policyLine = `Theo chính sách: khách được hoàn lại ${phanTram}% số tiền (tương đương ${refundAmount.toLocaleString('vi-VN')}đ).`;
   } else if (paid) {
     policyLine = 'Theo chính sách hủy, khách không được hoàn tiền cho đơn này.';
   } else {
     policyLine = 'Khách chưa thanh toán online nên không phát sinh hoàn tiền.';
   }
 
-  let statusLine = null;
+  // Ưu tiên tom_tat nhưng bỏ phần "Admin đã hoàn..." nếu đơn không cần hoàn
+  if (refundInfo.tom_tat_chinh_sach) {
+    let summaryText = refundInfo.tom_tat_chinh_sach;
+    if (!needsRefund) {
+      summaryText = summaryText
+        .replace(/\s*Admin đã hoàn tiền cho khách\./gi, '')
+        .replace(/\s*Yêu cầu hoàn tiền đang chờ xử lý\./gi, '')
+        .replace(/\s*Yêu cầu hoàn tiền đã bị từ chối\./gi, '')
+        .trim();
+      if (!summaryText) summaryText = policyLine;
+    }
+    return {
+      policyLine: summaryText,
+      statusLine: null,
+      summaryText,
+      refundBadge: needsRefund ? getRefundBadgeMeta(trangThaiHoan) : null,
+    };
+  }
 
-  if (trangThaiHoan === 'cho_xu_ly' || trangThaiHoan === 'dang_xu_ly') {
-    statusLine = 'Yêu cầu hoàn tiền đang chờ xử lý.';
-  } else if (trangThaiHoan === 'da_hoan') {
-    statusLine = 'Admin đã hoàn tiền cho khách.';
-  } else if (trangThaiHoan === 'tu_choi') {
-    statusLine = 'Yêu cầu hoàn tiền đã bị từ chối.';
+  let statusLine = null;
+  if (needsRefund) {
+    if (trangThaiHoan === 'cho_xu_ly' || trangThaiHoan === 'dang_xu_ly') {
+      statusLine = 'Yêu cầu hoàn tiền đang chờ xử lý.';
+    } else if (trangThaiHoan === 'da_hoan') {
+      statusLine = 'Admin đã hoàn tiền cho khách.';
+    } else if (trangThaiHoan === 'tu_choi') {
+      statusLine = 'Yêu cầu hoàn tiền đã bị từ chối.';
+    }
   }
 
   const summaryText = statusLine ? `${policyLine} ${statusLine}` : policyLine;
 
-  return { policyLine, statusLine, summaryText, refundBadge: getRefundBadgeMeta(trangThaiHoan) };
+  return {
+    policyLine,
+    statusLine,
+    summaryText,
+    refundBadge: needsRefund ? getRefundBadgeMeta(trangThaiHoan) : null,
+  };
 };
 
 export const isCancelledBooking = (booking) =>
@@ -115,6 +134,23 @@ export const getBookingCancelReason = (booking) => {
     || booking.ly_do_huy
     || booking.hoan_tien?.ly_do
     || extractCancelReasonFromNote(booking.ghi_chu);
+};
+
+/** Ai hủy đơn: Admin / Đối tác / Khách hàng */
+export const getCancelledByLabel = (booking, refundInfo) => {
+  if (!isCancelledBooking(booking)) return null;
+  if (refundInfo?.huy_boi_admin || booking?.huy_boi_admin) return 'Admin';
+  if (booking?.ghi_chu?.trim().startsWith('[Admin hủy]')) return 'Admin';
+  if (booking?.trang_thai === 'tu_choi') return 'Đối tác';
+  return 'Khách hàng';
+};
+
+/** Ghi chú yêu cầu đặc biệt — bỏ phần lý do admin hủy */
+export const getBookingSpecialRequest = (booking) => {
+  const note = booking?.ghi_chu?.trim();
+  if (!note) return null;
+  if (/^\[Admin hủy\]/i.test(note)) return null;
+  return note;
 };
 
 export const isOnlinePaid = (booking) => {

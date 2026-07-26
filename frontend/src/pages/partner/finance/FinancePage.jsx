@@ -10,11 +10,15 @@ import useListPagination from '../../../hooks/useListPagination';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 import FinanceOverviewPanel from './FinanceOverviewPanel';
 import {
-  PARTNER_TRANG_THAI,
+  TRANG_THAI,
   getPaymentDisplay,
   formatCurrency,
   formatDate,
 } from '../../../utils/bookingDisplay';
+import {
+  getPresetRange,
+  REPORT_DATE_PRESETS,
+} from '../../admin/reports/reportHelpers';
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan' },
@@ -23,42 +27,20 @@ const TABS = [
   { id: 'payout', label: 'Thanh toán' },
 ];
 
+const DEFAULT_PRESET = 'month';
+const defaultRange = getPresetRange(DEFAULT_PRESET);
+
 const COMMISSION_STATUS = {
-  chua_thu: { label: 'Chờ đối soát', cls: 'mgmt-status-text--pending' },
-  da_thu: { label: 'Đã đối soát', cls: 'mgmt-status-text--active' },
-  tam_giu: { label: 'Tạm giữ', cls: 'mgmt-status-text--danger' },
-  da_thanh_toan: { label: 'Đã thanh toán', cls: 'mgmt-status-text--info' },
+  chua_thu: { label: 'Chờ đối soát', cls: 'badge-warning' },
+  da_thu: { label: 'Đã đối soát', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
+  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-info' },
 };
 
 const PAYOUT_STATUS = {
-  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'mgmt-status-text--pending' },
-  da_thanh_toan: { label: 'Đã thanh toán', cls: 'mgmt-status-text--active' },
-  tam_giu: { label: 'Tạm giữ', cls: 'mgmt-status-text--danger' },
-};
-
-/** yyyy-mm-dd → dd/mm/yyyy */
-const toDisplayDate = (value) => {
-  if (!value) return '';
-  const [y, m, d] = String(value).split('-');
-  if (!y || !m || !d) return '';
-  return `${d}/${m}/${y}`;
-};
-
-/** Parse dd/mm/yyyy → yyyy-mm-dd; '' nếu trống; null nếu không hợp lệ */
-const parseDisplayDate = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) return null;
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const dt = new Date(year, month - 1, day);
-  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) {
-    return null;
-  }
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'badge-warning' },
+  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
+  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const StatCard = ({ title, value, subtitle, tone }) => (
@@ -77,12 +59,10 @@ const FinancePage = () => {
   const tabParam = searchParams.get('tab');
   const tab = TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
   const [hotels, setHotels] = useState([]);
-  const [draftHotel, setDraftHotel] = useState('all');
-  const [draftTuNgayText, setDraftTuNgayText] = useState('');
-  const [draftDenNgayText, setDraftDenNgayText] = useState('');
   const [hotelFilter, setHotelFilter] = useState('all');
-  const [tuNgay, setTuNgay] = useState('');
-  const [denNgay, setDenNgay] = useState('');
+  const [preset, setPreset] = useState(DEFAULT_PRESET);
+  const [tuNgay, setTuNgay] = useState(defaultRange.tu_ngay);
+  const [denNgay, setDenNgay] = useState(defaultRange.den_ngay);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [detailBookingId, setDetailBookingId] = useState(null);
@@ -230,36 +210,20 @@ const FinancePage = () => {
     showPagination: showPayoutPaging,
   } = useListPagination(payoutRows, 10, [payoutRows, queryParams]);
 
-  const clearFilters = () => {
-    setDraftHotel('all');
-    setDraftTuNgayText('');
-    setDraftDenNgayText('');
-    setHotelFilter('all');
-    setTuNgay('');
-    setDenNgay('');
+  const applyPresetDates = (nextPreset) => {
+    setPreset(nextPreset);
+    if (nextPreset === 'custom') return;
+    const range = getPresetRange(nextPreset);
+    setTuNgay(range.tu_ngay);
+    setDenNgay(range.den_ngay);
   };
 
-  const applyFilters = () => {
-    const parsedTu = parseDisplayDate(draftTuNgayText);
-    const parsedDen = parseDisplayDate(draftDenNgayText);
-    if (parsedTu === null) {
-      setDraftTuNgayText(toDisplayDate(tuNgay));
-      return;
-    }
-    if (parsedDen === null) {
-      setDraftDenNgayText(toDisplayDate(denNgay));
-      return;
-    }
-    let nextTu = parsedTu;
-    let nextDen = parsedDen;
-    if (nextTu && nextDen && nextTu > nextDen) {
-      nextDen = nextTu;
-    }
-    setDraftTuNgayText(nextTu ? toDisplayDate(nextTu) : '');
-    setDraftDenNgayText(nextDen ? toDisplayDate(nextDen) : '');
-    setHotelFilter(draftHotel);
-    setTuNgay(nextTu || '');
-    setDenNgay(nextDen || '');
+  const clearFilters = () => {
+    const range = getPresetRange(DEFAULT_PRESET);
+    setHotelFilter('all');
+    setPreset(DEFAULT_PRESET);
+    setTuNgay(range.tu_ngay);
+    setDenNgay(range.den_ngay);
   };
 
   const openPayoutDetail = (row) => {
@@ -308,44 +272,32 @@ const FinancePage = () => {
             tone="success"
           />
         </div>
-
-        <div className="partner-finance-summary-toolbar">
-          <div className="partner-finance-tabs" role="tablist">
-            {TABS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                className={`partner-finance-tab${tab === item.id ? ' is-active' : ''}`}
-                aria-selected={tab === item.id}
-                onClick={() => handleTabChange(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 12,
-            marginBottom: 12,
-          }}
-        >
-          <div>
-            <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>
-              Khách sạn
-            </label>
+      <div className="partner-finance-tabs" role="tablist">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            className={`partner-finance-tab${tab === item.id ? ' is-active' : ''}`}
+            aria-selected={tab === item.id}
+            onClick={() => handleTabChange(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="partner-finance-filter-card">
+        <div className="partner-finance-filter-row">
+          <div className="partner-finance-filter-field partner-finance-filter-field--hotel">
+            <label htmlFor="partner-finance-hotel">Khách sạn</label>
             <select
+              id="partner-finance-hotel"
               className="mgmt-select-inline"
-              style={{ width: '100%' }}
-              value={draftHotel}
-              onChange={(e) => setDraftHotel(e.target.value)}
-              aria-label="Lọc theo khách sạn"
+              value={hotelFilter}
+              onChange={(e) => setHotelFilter(e.target.value)}
             >
               <option value="all">Tất cả khách sạn</option>
               {hotels.map((hotel) => (
@@ -355,38 +307,57 @@ const FinancePage = () => {
               ))}
             </select>
           </div>
-          <div>
-            <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>
-              Từ ngày
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="mgmt-select-inline partner-finance-date-input"
-              style={{ width: '100%' }}
-              value={draftTuNgayText}
-              placeholder="dd/mm/yyyy"
-              onChange={(e) => setDraftTuNgayText(e.target.value)}
-              aria-label="Từ ngày"
-            />
+
+          <div className="partner-finance-filter-field partner-finance-filter-field--time">
+            <span className="partner-finance-filter-label">Thời gian</span>
+            <div className="admin-reports-presets" role="group" aria-label="Khoảng thời gian">
+              {REPORT_DATE_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`admin-reports-preset${preset === p.value ? ' is-active' : ''}`}
+                  onClick={() => applyPresetDates(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div>
-            <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>
-              Đến ngày
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className="mgmt-select-inline partner-finance-date-input"
-              style={{ width: '100%' }}
-              value={draftDenNgayText}
-              placeholder="dd/mm/yyyy"
-              onChange={(e) => setDraftDenNgayText(e.target.value)}
-              aria-label="Đến ngày"
-            />
+
+          <div className="partner-finance-filter-field partner-finance-filter-field--action">
+            <FilterActions showApply={false} onClear={clearFilters} />
           </div>
         </div>
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+
+        {preset === 'custom' ? (
+          <div className="partner-finance-filter-row partner-finance-filter-row--custom">
+            <div className="partner-finance-filter-field">
+              <label htmlFor="partner-finance-from">Từ ngày</label>
+              <input
+                id="partner-finance-from"
+                type="date"
+                className="mgmt-select-inline partner-finance-date-input"
+                value={tuNgay}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setTuNgay(next);
+                  if (denNgay && next && next > denNgay) setDenNgay(next);
+                }}
+              />
+            </div>
+            <div className="partner-finance-filter-field">
+              <label htmlFor="partner-finance-to">Đến ngày</label>
+              <input
+                id="partner-finance-to"
+                type="date"
+                className="mgmt-select-inline partner-finance-date-input"
+                value={denNgay}
+                min={tuNgay}
+                onChange={(e) => setDenNgay(e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {loading ? (
@@ -414,8 +385,8 @@ const FinancePage = () => {
                       <thead>
                         <tr>
                           <th>Mã đơn</th>
-                          <th>Khách sạn</th>
-                          <th>Loại phòng</th>
+                          <th className="mgmt-col-hotel">Khách sạn</th>
+                          <th className="mgmt-col-room">Loại phòng</th>
                           <th>Ngày nhận <br /> Trả phòng</th>
                           <th>Hoàn thành</th>
                           <th>Tổng tiền</th>
@@ -426,7 +397,7 @@ const FinancePage = () => {
                       </thead>
                       <tbody>
                         {pagedRevenue.map((row) => {
-                          const st = PARTNER_TRANG_THAI[row.trang_thai] || { label: row.trang_thai, cls: '' };
+                          const st = TRANG_THAI[row.trang_thai] || { label: row.trang_thai, cls: 'badge-default' };
                           const pay = getPaymentDisplay(row);
                           return (
                             <tr key={row.ma_dat_phong}>
@@ -435,15 +406,11 @@ const FinancePage = () => {
                                   {row.ma_don_hang}
                                 </span>
                               </td>
-                              <td>
-                                <div className="partner-finance-cell-ellipsis" title={row.khach_san}>
-                                  {row.khach_san}
-                                </div>
+                              <td className="mgmt-col-hotel">
+                                <div className="partner-finance-cell-text">{row.khach_san}</div>
                               </td>
-                              <td>
-                                <div className="partner-finance-cell-ellipsis" title={row.loai_phong}>
-                                  {row.loai_phong}
-                                </div>
+                              <td className="mgmt-col-room">
+                                <div className="partner-finance-cell-text">{row.loai_phong}</div>
                               </td>
                               <td>
                                 <div className="partner-finance-date-range">
@@ -461,10 +428,10 @@ const FinancePage = () => {
                                 {formatCurrency(row.tong_tien)}
                               </td>
                               <td>
-                                <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                                <span className={`badge ${st.cls}`}>{st.label}</span>
                               </td>
                               <td>
-                                <span className={`mgmt-status-text ${pay.cls}`}>{pay.shortLabel}</span>
+                                <span className={`badge ${pay.badge || 'badge-default'}`}>{pay.shortLabel}</span>
                               </td>
                               <ActionCell>
                                 <ActionButton
@@ -510,7 +477,7 @@ const FinancePage = () => {
                       <thead>
                         <tr>
                           <th>Mã đơn</th>
-                          <th>Khách sạn</th>
+                          <th className="mgmt-col-hotel">Khách sạn</th>
                           <th>Tổng tiền</th>
                           <th>Tỷ lệ</th>
                           <th>Hoa hồng</th>
@@ -529,17 +496,15 @@ const FinancePage = () => {
                               <td className="mgmt-table-cell-code">
                                 <span className="mgmt-cell-code" title={row.ma_don_hang}>{row.ma_don_hang}</span>
                               </td>
-                              <td>
-                                <div className="partner-finance-cell-ellipsis" title={row.khach_san}>
-                                  {row.khach_san}
-                                </div>
+                              <td className="mgmt-col-hotel">
+                                <div className="partner-finance-cell-text">{row.khach_san}</div>
                               </td>
                               <td>{formatCurrency(row.tong_tien)}</td>
                               <td>{Number(row.ty_le_hoa_hong).toLocaleString('vi-VN')}%</td>
                               <td>{formatCurrency(row.tien_hoa_hong)}</td>
                               <td style={{ fontWeight: 600 }}>{formatCurrency(row.tien_doi_tac_nhan)}</td>
                               <td>
-                                <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                                <span className={`badge ${st.cls}`}>{st.label}</span>
                               </td>
                             </tr>
                           );
@@ -594,7 +559,7 @@ const FinancePage = () => {
                           };
                           return (
                             <tr key={row.ma_dot || row.ma_gd_doi_tac || row.ten_dot}>
-                              <td style={{ fontWeight: 500 }}>{row.ten_dot || '—'}</td>
+                              <td className="mgmt-col-name" style={{ fontWeight: 500 }}>{row.ten_dot || '—'}</td>
                               <td className="mgmt-table-cell-code">
                                 <span className="mgmt-cell-code">
                                   {row.ma_gd_doi_tac || '—'}
@@ -607,7 +572,7 @@ const FinancePage = () => {
                                 {formatCurrency(row.tien_doi_tac_nhan ?? row.so_tien_nhan)}
                               </td>
                               <td>
-                                <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                                <span className={`badge ${st.cls}`}>{st.label}</span>
                               </td>
                               <td>{formatDate(row.ngay_thanh_toan)}</td>
                               <ActionCell>

@@ -2,18 +2,19 @@ import { createElement, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { addAmenity, updateAmenity, fetchAmenities } from '../../../store/slices/amenitySlice';
-import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug } from '../../../utils/amenityIcons';
+import { getAmenityLucideIcon, suggestIconSlugFromName, resolveIconSlug, DEFAULT_AMENITY_ICON_SLUG } from '../../../utils/amenityIcons';
 import EditField from '../users/components/EditField';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import BackButton from '../../../components/common/BackButton';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
+import AmenityPartnerNotifyFields from './components/AmenityPartnerNotifyFields';
 import {
   AMENITY_SCOPE,
   HOTEL_CATEGORY_GROUPS,
   ROOM_CATEGORY_GROUPS,
 } from './constants';
-import { findCategoryForAmenity } from './utils';
+import { findCategoryForAmenity, formatAmenityNameInput } from './utils';
 import api from '../../../services/api';
 
 const inputStyle = {
@@ -42,8 +43,8 @@ const getGroupsForScope = (scope) => (
   scope === 'phong' ? ROOM_CATEGORY_GROUPS : HOTEL_CATEGORY_GROUPS
 );
 
-const AmenityIconPreview = ({ slugOrName, size = 22, strokeWidth = 1.5 }) => (
-  createElement(getAmenityLucideIcon(slugOrName), { size, strokeWidth })
+const AmenityIconPreview = ({ slugOrName, name = '', size = 22, strokeWidth = 1.5 }) => (
+  createElement(getAmenityLucideIcon(slugOrName, name), { size, strokeWidth })
 );
 
 const buildEditInitialState = (existing) => {
@@ -62,7 +63,7 @@ const buildEditInitialState = (existing) => {
     categoryId: validCategory,
     form: {
       ten: existing.ten,
-      bieu_tuong: existing.bieu_tuong || suggestIconSlugFromName(existing.ten),
+      bieu_tuong: resolveIconSlug(existing.bieu_tuong, existing.ten),
       loai: existing.loai || category.loai,
       danh_muc: existing.danh_muc || validCategory,
     },
@@ -79,12 +80,12 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
   const [categoryId, setCategoryId] = useState(() => editInitial?.categoryId ?? null);
   const [form, setForm] = useState(() => editInitial?.form ?? {
     ten: suggestedName || '',
-    bieu_tuong: suggestIconSlugFromName(suggestedName || '') || 'wifi',
+    bieu_tuong: suggestIconSlugFromName(suggestedName || '') || DEFAULT_AMENITY_ICON_SLUG,
     loai: '',
   });
   const iconManual = editInitial?.iconManual ?? false;
   const [submitting, setSubmitting] = useState(false);
-  const [notifyScope, setNotifyScope] = useState('none');
+  const [notifyScope, setNotifyScope] = useState('all');
   const [partnerId, setPartnerId] = useState('');
   const [partners, setPartners] = useState([]);
   const { toast, showToast } = useToast();
@@ -144,7 +145,7 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
     const iconSlug = resolveIconSlug(form.bieu_tuong, form.ten);
     const payload = {
       ...form,
-      ten: form.ten.trim(),
+      ten: formatAmenityNameInput(form.ten),
       bieu_tuong: iconSlug,
       danh_muc: categoryId,
     };
@@ -168,7 +169,10 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
       });
       onDone?.();
     } catch (err) {
-      const msg = err?.message || err?.response?.data?.message || 'Lưu tiện nghi thất bại';
+      const msg = (typeof err === 'string' ? err : null)
+        || err?.message
+        || err?.response?.data?.message
+        || 'Lưu tiện nghi thất bại';
       showToast(msg, 'error');
     } finally {
       setSubmitting(false);
@@ -197,7 +201,7 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
                   flexShrink: 0,
                 }}
               >
-                <AmenityIconPreview slugOrName={form.ten || form.bieu_tuong} size={22} strokeWidth={1.5} />
+                <AmenityIconPreview slugOrName={form.bieu_tuong} name={form.ten} size={22} strokeWidth={1.5} />
               </div>
               <input
                 type="text"
@@ -210,7 +214,7 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
             </div>
             {form.ten && (
               <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <AmenityIconPreview slugOrName={form.ten || form.bieu_tuong} size={12} strokeWidth={2} />
+                <AmenityIconPreview slugOrName={form.bieu_tuong} name={form.ten} size={12} strokeWidth={2} />
                 Icon tự nhận diện từ tên
               </p>
             )}
@@ -264,42 +268,14 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
         {!isEdit && (
           <div className="content-card" style={{ gridColumn: '1 / -1' }}>
             <h3 className="content-card-title" style={{ marginBottom: 12 }}>Thông báo đối tác</h3>
-            <EditField label="Gửi thông báo sau khi thêm">
-              <div className="amenity-form-scope-row" style={{ marginTop: 4 }}>
-                {[
-                  { key: 'none', label: 'Không gửi', desc: 'Chỉ thêm vào danh mục' },
-                  { key: 'all', label: 'Tất cả đối tác', desc: 'Thông báo toàn bộ đối tác đang hoạt động' },
-                  { key: 'one', label: 'Một đối tác', desc: 'Chọn đối tác cụ thể' },
-                ].map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    className={`amenity-scope-btn${notifyScope === opt.key ? ' active' : ''}`}
-                    onClick={() => setNotifyScope(opt.key)}
-                  >
-                    <span className="amenity-scope-label">{opt.label}</span>
-                    <span className="amenity-scope-desc">{opt.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </EditField>
-            {notifyScope === 'one' && (
-              <EditField label="Chọn đối tác" required>
-                <select
-                  className="search-input"
-                  value={partnerId}
-                  onChange={(e) => setPartnerId(e.target.value)}
-                  style={{ width: '100%', marginTop: 4 }}
-                >
-                  <option value="">-- Chọn đối tác --</option>
-                  {partners.map((p) => (
-                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>
-                      {p.ten_cong_ty}
-                    </option>
-                  ))}
-                </select>
-              </EditField>
-            )}
+            <AmenityPartnerNotifyFields
+              label="Gửi thông báo sau khi thêm"
+              notifyScope={notifyScope}
+              onNotifyScopeChange={setNotifyScope}
+              partnerId={partnerId}
+              onPartnerIdChange={setPartnerId}
+              partners={partners}
+            />
           </div>
         )}
       </div>

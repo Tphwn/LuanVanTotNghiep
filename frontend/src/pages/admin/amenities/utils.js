@@ -1,4 +1,4 @@
-import { suggestIconSlugFromName } from '../../../utils/amenityIcons';
+import { resolveIconSlug } from '../../../utils/amenityIcons';
 
 export const inferLoaiDeXuat = (req) => {
   if (req.loai_de_xuat) return req.loai_de_xuat;
@@ -33,7 +33,7 @@ export const groupAmenitiesByCategory = (items, categoryGroups) => {
       return;
     }
 
-    const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
+    const slug = resolveIconSlug(item.bieu_tuong, item.ten);
     let assigned = false;
     for (const g of groups) {
       if (g.slugs.length > 0 && g.slugs.includes(slug)) {
@@ -52,11 +52,22 @@ export const findCategoryForAmenity = (item, categoryGroups) => {
   if (item.danh_muc && categoryGroups.some((g) => g.id === item.danh_muc)) {
     return item.danh_muc;
   }
-  const slug = item.bieu_tuong || suggestIconSlugFromName(item.ten);
+  const slug = resolveIconSlug(item.bieu_tuong, item.ten);
   const matched = categoryGroups.find((g) => g.slugs.length > 0 && g.slugs.includes(slug));
   if (matched) return matched.id;
   const catchAll = categoryGroups.find((g) => g.slugs.length === 0);
   return catchAll?.id || categoryGroups[0]?.id || null;
+};
+
+export const getCategoryLabel = (categoryId, categoryGroups = []) => {
+  if (!categoryId) return '—';
+  return categoryGroups.find((g) => g.id === categoryId)?.label || categoryId;
+};
+
+export const formatAmenityNameInput = (ten) => {
+  const trimmed = String(ten || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+  return trimmed.charAt(0).toLocaleUpperCase('vi') + trimmed.slice(1);
 };
 
 export const formatTimeAgo = (date) => {

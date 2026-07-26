@@ -588,9 +588,9 @@ const HotelSearchPage = () => {
                       <div className="hotel-result-aside">
                         <HotelRatingBadge score={hotel.diem_trung_binh} count={hotel.so_danh_gia} />
                         <div className="hotel-result-aside-bottom">
-                          {roomsLeft != null && (
-                            <span className={`hotel-result-stock-badge${isSoldOut ? ' hotel-result-stock-badge--sold-out' : ''}`}>
-                              {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng trống`}
+                          {isSoldOut && (
+                            <span className="hotel-result-stock-badge hotel-result-stock-badge--sold-out">
+                              Hết phòng
                             </span>
                           )}
                           {hotel.gia_tu != null && (
@@ -603,12 +603,11 @@ const HotelSearchPage = () => {
                             />
                           )}
                           <CustomerButton
-                            to={isSoldOut ? undefined : detailUrl}
-                            className="hotel-result-cta"
-                            disabled={isSoldOut}
+                            to={detailUrl}
+                            className={`hotel-result-cta${isSoldOut ? ' hotel-result-cta--sold-out' : ''}`}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {isSoldOut ? 'Hết phòng' : 'Chọn phòng'}
+                            {isSoldOut ? 'Xem khách sạn' : 'Chọn phòng'}
                           </CustomerButton>
                         </div>
                       </div>

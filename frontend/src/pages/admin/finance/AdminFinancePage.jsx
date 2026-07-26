@@ -7,6 +7,7 @@ import {
   fetchRefunds,
   fetchCommissions,
   fetchCommissionStats,
+  fetchCommissionById,
   confirmCommission,
   holdCommission,
   releaseCommissionHold,
@@ -59,9 +60,11 @@ const getTxRoomType = (tx) =>
   tx.dat_phong?.loai_phong?.ten_loai || '—';
 
 const TX_STATUS = {
-  cho:          { label: 'Chờ',         cls: 'badge-warning'},
-  thanh_cong:   { label:'Thành công',  cls: 'badge-success'},
-  that_bai:     { label:'Thất bại',    cls: 'badge-danger'},
+  thanh_cong:   { label: 'Thành công', cls: 'badge-success' },
+  that_bai:     { label: 'Thất bại', cls: 'badge-danger' },
+  da_hoan_tien: { label: 'Đã hoàn tiền', cls: 'badge-info' },
+  hoan_thanh:   { label: 'Hoàn thành', cls: 'badge-success' },
+  cho:          { label: 'Chờ', cls: 'badge-warning' },
 };
 
 const REFUND_STATUS = REFUND_TRANG_THAI;
@@ -71,12 +74,6 @@ const COMM_STATUS = {
   da_thu: { label: 'Đã đối soát', cls: 'badge-success' },
   tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
   da_thanh_toan: { label: 'Đã thanh toán ĐT', cls: 'badge-info' },
-};
-
-const PAYOUT_STATUS = {
-  cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'badge-warning' },
-  da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
-  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const StatCard = ({ title, value, subtitle, tone }) => (
@@ -152,8 +149,6 @@ const AdminFinancePage = () => {
     doi_tac_id: 'all',
     khach_san_id: 'all',
     trang_thai: 'all',
-    tu_ngay: '',
-    den_ngay: '',
   });
 
   const loadCommissions = (filters = commFilter) => {
@@ -190,6 +185,32 @@ const AdminFinancePage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [successMsg]);
 
+  useEffect(() => {
+    if (tab !== 'transactions') return undefined;
+    const t = setTimeout(() => dispatch(fetchTransactions(txFilter)), 300);
+    return () => clearTimeout(t);
+  }, [tab, txFilter, dispatch]);
+
+  useEffect(() => {
+    if (tab !== 'refunds') return undefined;
+    const t = setTimeout(() => dispatch(fetchRefunds(rfFilter)), 300);
+    return () => clearTimeout(t);
+  }, [tab, rfFilter, dispatch]);
+
+  useEffect(() => {
+    if (tab !== 'commissions') return undefined;
+    const t = setTimeout(() => loadCommissions(commFilter), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, commFilter]);
+
+  useEffect(() => {
+    if (tab !== 'partner') return undefined;
+    const t = setTimeout(() => loadPartnerPayouts(payoutFilter), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, payoutFilter]);
+
   const handleConfirmCommAction = async () => {
     if (!commAction) return;
     setCommActionLoading(true);
@@ -202,6 +223,10 @@ const AdminFinancePage = () => {
         await dispatch(releaseCommissionHold(commAction.id)).unwrap();
       }
       setCommAction(null);
+      if (commModalId) {
+        dispatch(fetchCommissionById(commModalId));
+      }
+      loadCommissions();
     } catch {
       // error handled in slice
     } finally {
@@ -255,7 +280,39 @@ const AdminFinancePage = () => {
   const txPg = useListPagination(transactions, 10, [transactions]);
   const rfPg = useListPagination(refunds, 10, [refunds]);
   const commPg = useListPagination(commissions, 10, [commissions]);
-  const payoutPg = useListPagination(partnerPayouts || [], 10, [partnerPayouts]);
+
+  const partnerPayoutSummaries = useMemo(() => {
+    const map = new Map();
+    for (const row of partnerPayouts || []) {
+      const id = row.ma_doi_tac;
+      if (!map.has(id)) {
+        map.set(id, {
+          ma_doi_tac: id,
+          ten_cong_ty: row.ten_cong_ty || `Đối tác #${id}`,
+          tong_doanh_thu: 0,
+          tong_hoa_hong: 0,
+          da_thanh_toan: 0,
+          cho_thanh_toan: 0,
+          so_don_cho_tt: 0,
+        });
+      }
+      const s = map.get(id);
+      s.tong_doanh_thu += Number(row.tong_doanh_thu) || 0;
+      s.tong_hoa_hong += Number(row.tong_hoa_hong) || 0;
+      if (row.trang_thai === 'cho_thanh_toan') {
+        s.cho_thanh_toan += Number(row.so_tien_can_thanh_toan) || 0;
+        s.so_don_cho_tt += Number(row.so_don_cho_tt || row.so_don) || 0;
+      } else if (row.trang_thai === 'da_thanh_toan') {
+        s.da_thanh_toan += Number(row.so_tien_thanh_toan) || 0;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.cho_thanh_toan !== a.cho_thanh_toan) return b.cho_thanh_toan - a.cho_thanh_toan;
+      return String(a.ten_cong_ty).localeCompare(String(b.ten_cong_ty), 'vi');
+    });
+  }, [partnerPayouts]);
+
+  const payoutPg = useListPagination(partnerPayoutSummaries, 10, [partnerPayoutSummaries]);
 
   const payoutHotelsForPartner = useMemo(() => {
     const hotels = partnerPayoutStats?.hotels || [];
@@ -270,7 +327,7 @@ const AdminFinancePage = () => {
   }, [commissionStats?.hotels, commFilter.doi_tac_id]);
 
   return (
-    <div>
+    <div className="admin-finance-page">
       {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
@@ -312,58 +369,85 @@ const AdminFinancePage = () => {
           onGoRefunds={() => handleTabChange('refunds')}
           onGoCommissions={() => handleTabChange('commissions')}
           onGoPartner={() => handleTabChange('partner')}
+          onGoTransactions={() => handleTabChange('transactions')}
           onViewTransaction={(id) => setTxModalId(id)}
         />
       )}
 
-      {/* ===== GIAO DỊCH ===== */}
       {tab === 'transactions'&& (
         <>
-          {/* Filter */}
-          <div className="content-card"style={{ marginBottom:16 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:12 }}>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Tìm kiếm</label>
-                <input style={{ ...inputSt, width:'100%'}}
-                  placeholder="Mã GD, tham chiếu, mã đơn..."
-                  value={txFilter.keyword}
-                  onChange={e => setTxFilter({...txFilter, keyword:e.target.value})}
-                  onKeyDown={e => e.key==='Enter'&& dispatch(fetchTransactions(txFilter))}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Trạng thái</label>
-                <select style={{ ...inputSt, width:'100%'}} value={txFilter.trang_thai}
-                  onChange={e => setTxFilter({...txFilter, trang_thai:e.target.value})}>
-                  <option value="all">Tất cả</option>
-                  <option value="cho">Chờ</option>
-                  <option value="thanh_cong">Thành công</option>
-                  <option value="that_bai">Thất bại</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Phương thức</label>
-                <select style={{ ...inputSt, width:'100%'}} value={txFilter.phuong_thuc}
-                  onChange={e => setTxFilter({...txFilter, phuong_thuc:e.target.value})}>
-                  <option value="all">Tất cả</option>
-                  <option value="truc_tuyen">Trực tuyến</option>
-                  <option value="tai_khach_san">Tại khách sạn</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Từ ngày</label>
-                <input type="date"style={{ ...inputSt, width:'100%'}} value={txFilter.tu_ngay}
-                  onChange={e => setTxFilter({...txFilter, tu_ngay:e.target.value})} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Đến ngày</label>
-                <input type="date"style={{ ...inputSt, width:'100%'}} value={txFilter.den_ngay}
-                  onChange={e => setTxFilter({...txFilter, den_ngay:e.target.value})} />
-              </div>
+          <div className="admin-finance-filters">
+            <div className="mgmt-filter-field mgmt-filter-field--grow">
+              <label className="mgmt-filter-label" htmlFor="tx-keyword">Tìm kiếm</label>
+              <input
+                id="tx-keyword"
+                className="mgmt-select-inline"
+                style={inputSt}
+                placeholder="Mã GD, tham chiếu, mã đơn..."
+                value={txFilter.keyword}
+                onChange={(e) => setTxFilter({ ...txFilter, keyword: e.target.value })}
+              />
             </div>
-            <div className="mgmt-filter-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => dispatch(fetchTransactions(txFilter))}>Lọc</button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setTxFilter({trang_thai:'all', phuong_thuc:'all', tu_ngay:'', den_ngay:'', keyword:''}); dispatch(fetchTransactions()); }}>Xóa lọc</button>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="tx-status">Trạng thái</label>
+              <select
+                id="tx-status"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={txFilter.trang_thai}
+                onChange={(e) => setTxFilter({ ...txFilter, trang_thai: e.target.value })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="thanh_cong">Thành công</option>
+                <option value="that_bai">Thất bại</option>
+                <option value="da_hoan_tien">Đã hoàn tiền</option>
+                <option value="hoan_thanh">Hoàn thành</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="tx-method">Phương thức</label>
+              <select
+                id="tx-method"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={txFilter.phuong_thuc}
+                onChange={(e) => setTxFilter({ ...txFilter, phuong_thuc: e.target.value })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="truc_tuyen">Trực tuyến</option>
+                <option value="tai_khach_san">Tại khách sạn</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="tx-from">Từ ngày</label>
+              <input
+                id="tx-from"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={txFilter.tu_ngay}
+                onChange={(e) => setTxFilter({ ...txFilter, tu_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="tx-to">Đến ngày</label>
+              <input
+                id="tx-to"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={txFilter.den_ngay}
+                onChange={(e) => setTxFilter({ ...txFilter, den_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field mgmt-filter-field--action">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setTxFilter({ trang_thai: 'all', phuong_thuc: 'all', tu_ngay: '', den_ngay: '', keyword: '' })}
+              >
+                Xóa lọc
+              </button>
             </div>
           </div>
 
@@ -381,8 +465,8 @@ const AdminFinancePage = () => {
                   <tr>
                     <th>Mã giao dịch</th>
                     <th>Mã đơn</th>
-                    <th>Khách sạn / Phòng</th>
-                    <th>Khách hàng</th>
+                    <th className="mgmt-col-hotel">Khách sạn / Phòng</th>
+                    <th className="mgmt-col-customer">Khách hàng</th>
                     <th>Số tiền</th>
                     <th>Phương thức</th>
                     <th>Trạng thái</th>
@@ -400,11 +484,11 @@ const AdminFinancePage = () => {
                         <td>
                           <span className="mgmt-cell-code">{tx.ma_don_hang || tx.dat_phong?.ma_don_hang || '—'}</span>
                         </td>
-                        <td>
+                        <td className="mgmt-col-hotel">
                           <div className="mgmt-cell-name">{getTxHotelName(tx)}</div>
                           <div className="mgmt-cell-sub">Loại: {getTxRoomType(tx)}</div>
                         </td>
-                        <td>{formatTxCustomer(tx)}</td>
+                        <td className="mgmt-col-customer">{formatTxCustomer(tx)}</td>
                         <td style={{ fontWeight:500 }}>{fmt(tx.so_tien)}</td>
                         <td style={{ whiteSpace:'nowrap' }}>{tx.phuong_thuc || '—'}</td>
                         <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
@@ -440,46 +524,64 @@ const AdminFinancePage = () => {
 
       {tab ==='refunds'&& (
         <>
-          <div className="content-card"style={{ marginBottom:16 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:12 }}>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Tìm kiếm</label>
-                <input
-                  style={{ ...inputSt, width:'100%' }}
-                  placeholder="Mã đơn hoặc tên khách hàng..."
-                  value={rfFilter.keyword}
-                  onChange={e => setRfFilter({ ...rfFilter, keyword: e.target.value })}
-                  onKeyDown={e => e.key === 'Enter' && dispatch(fetchRefunds(rfFilter))}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Trạng thái</label>
-                <select style={{ ...inputSt, width:'100%'}} value={rfFilter.trang_thai}
-                  onChange={e => setRfFilter({...rfFilter, trang_thai:e.target.value})}>
-                  <option value="all">Tất cả</option>
-                  <option value="cho_xu_ly">Chờ xử lý</option>
-                  <option value="dang_xu_ly">Đang xử lý</option>
-                  <option value="da_hoan">Đã hoàn</option>
-                  <option value="tu_choi">Từ chối</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Từ ngày</label>
-                <input type="date"style={{ ...inputSt, width:'100%'}} value={rfFilter.tu_ngay}
-                  onChange={e => setRfFilter({...rfFilter, tu_ngay:e.target.value})} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:'#5a7a72', display:'block', marginBottom:4 }}>Đến ngày</label>
-                <input type="date"style={{ ...inputSt, width:'100%'}} value={rfFilter.den_ngay}
-                  onChange={e => setRfFilter({...rfFilter, den_ngay:e.target.value})} />
-              </div>
+          <div className="admin-finance-filters">
+            <div className="mgmt-filter-field mgmt-filter-field--grow">
+              <label className="mgmt-filter-label" htmlFor="rf-keyword">Tìm kiếm</label>
+              <input
+                id="rf-keyword"
+                className="mgmt-select-inline"
+                style={inputSt}
+                placeholder="Mã đơn hoặc tên khách hàng..."
+                value={rfFilter.keyword}
+                onChange={(e) => setRfFilter({ ...rfFilter, keyword: e.target.value })}
+              />
             </div>
-            <div className="mgmt-filter-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => dispatch(fetchRefunds(rfFilter))}>Lọc</button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
-                setRfFilter({ trang_thai:'all', tu_ngay:'', den_ngay:'', keyword:'' });
-                dispatch(fetchRefunds());
-              }}>Xóa lọc</button>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="rf-status">Trạng thái</label>
+              <select
+                id="rf-status"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={rfFilter.trang_thai}
+                onChange={(e) => setRfFilter({ ...rfFilter, trang_thai: e.target.value })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="cho_xu_ly">Chờ xử lý</option>
+                <option value="dang_xu_ly">Đang xử lý</option>
+                <option value="da_hoan">Đã hoàn</option>
+                <option value="tu_choi">Từ chối</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="rf-from">Từ ngày</label>
+              <input
+                id="rf-from"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={rfFilter.tu_ngay}
+                onChange={(e) => setRfFilter({ ...rfFilter, tu_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="rf-to">Đến ngày</label>
+              <input
+                id="rf-to"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={rfFilter.den_ngay}
+                onChange={(e) => setRfFilter({ ...rfFilter, den_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field mgmt-filter-field--action">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setRfFilter({ trang_thai: 'all', tu_ngay: '', den_ngay: '', keyword: '' })}
+              >
+                Xóa lọc
+              </button>
             </div>
           </div>
 
@@ -498,9 +600,8 @@ const AdminFinancePage = () => {
                   <tr>
                     <th>Mã hoàn</th>
                     <th>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>Số tiền</th>
-                    <th>Phương thức</th>
+                    <th className="mgmt-col-customer">Khách hàng</th>
+                    <th>Số tiền hoàn</th>
                     <th>Ngày yêu cầu</th>
                     <th>Trạng thái</th>
                     <th className="table-action-cell--compact" scope="col">Thao tác</th>
@@ -518,9 +619,8 @@ const AdminFinancePage = () => {
                         <td>
                           <span className="mgmt-cell-code">{r.ma_don_hang || r.dat_phong?.ma_don_hang || '—'}</span>
                         </td>
-                        <td>{customerName}</td>
+                        <td className="mgmt-col-customer">{customerName}</td>
                         <td style={{ fontWeight:500, color:'#e05c5c' }}>{fmt(r.so_tien_hoan)}</td>
-                        <td style={{ whiteSpace:'nowrap' }}>{r.phuong_thuc || '—'}</td>
                         <td style={{ fontSize:13, color:'#5a7a72', whiteSpace:'nowrap' }}>{fmtPaymentDateTime(r.ngay_yeu_cau)}</td>
                         <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                         <ActionCell compact>
@@ -594,98 +694,100 @@ const AdminFinancePage = () => {
             />
           </div>
 
-          <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đối tác</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={commFilter.doi_tac_id}
-                  onChange={(e) => setCommFilter({
-                    ...commFilter,
-                    doi_tac_id: e.target.value,
-                    khach_san_id: 'all',
-                  })}
-                >
-                  <option value="all">Tất cả</option>
-                  {(commissionStats?.partners || []).map((p) => (
-                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Khách sạn</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={commFilter.khach_san_id}
-                  disabled={commFilter.doi_tac_id === 'all'}
-                  title={commFilter.doi_tac_id === 'all' ? '' : undefined}
-                  onChange={(e) => setCommFilter({ ...commFilter, khach_san_id: e.target.value })}
-                >
-                  <option value="all">
-                    {commFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
-                  </option>
-                  {commissionHotelsForPartner.map((h) => (
-                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Trạng thái đối soát</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={commFilter.trang_thai}
-                  onChange={(e) => setCommFilter({ ...commFilter, trang_thai: e.target.value })}
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="chua_thu">Chờ đối soát</option>
-                  <option value="da_thu">Đã đối soát</option>
-                  <option value="tam_giu">Tạm giữ</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Từ ngày trả</label>
-                <input
-                  type="date"
-                  style={{ ...inputSt, width: '100%' }}
-                  value={commFilter.tu_ngay}
-                  onChange={(e) => setCommFilter({ ...commFilter, tu_ngay: e.target.value })}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đến ngày trả</label>
-                <input
-                  type="date"
-                  style={{ ...inputSt, width: '100%' }}
-                  value={commFilter.den_ngay}
-                  onChange={(e) => setCommFilter({ ...commFilter, den_ngay: e.target.value })}
-                />
-              </div>
+          <div className="admin-finance-filters">
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-partner">Đối tác</label>
+              <select
+                id="comm-partner"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.doi_tac_id}
+                onChange={(e) => setCommFilter({
+                  ...commFilter,
+                  doi_tac_id: e.target.value,
+                  khach_san_id: 'all',
+                })}
+              >
+                <option value="all">Tất cả</option>
+                {(commissionStats?.partners || []).map((p) => (
+                  <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+                ))}
+              </select>
             </div>
-            <div className="mgmt-filter-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => loadCommissions(commFilter)}>
-                Lọc
-              </button>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-hotel">Khách sạn</label>
+              <select
+                id="comm-hotel"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.khach_san_id}
+                disabled={commFilter.doi_tac_id === 'all'}
+                onChange={(e) => setCommFilter({ ...commFilter, khach_san_id: e.target.value })}
+              >
+                <option value="all">
+                  {commFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                </option>
+                {commissionHotelsForPartner.map((h) => (
+                  <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+                ))}
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-status">Trạng thái đối soát</label>
+              <select
+                id="comm-status"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.trang_thai}
+                onChange={(e) => setCommFilter({ ...commFilter, trang_thai: e.target.value })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="chua_thu">Chờ đối soát</option>
+                <option value="da_thu">Đã đối soát</option>
+                <option value="tam_giu">Tạm giữ</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-from">Từ ngày trả</label>
+              <input
+                id="comm-from"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.tu_ngay}
+                onChange={(e) => setCommFilter({ ...commFilter, tu_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-to">Đến ngày trả</label>
+              <input
+                id="comm-to"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.den_ngay}
+                onChange={(e) => setCommFilter({ ...commFilter, den_ngay: e.target.value })}
+              />
+            </div>
+            <div className="mgmt-filter-field mgmt-filter-field--action">
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
-                  const reset = {
+                  setCommFilter({
                     doi_tac_id: 'all',
                     khach_san_id: 'all',
                     trang_thai: 'all',
                     tu_ngay: '',
                     den_ngay: '',
-                  };
-                  setCommFilter(reset);
-                  loadCommissions(reset);
+                  });
                 }}
               >
                 Xóa lọc
               </button>
             </div>
           </div>
-
+{/* ===== HOA HỒNG ===== */}
           <div className="content-card">
             <div className="content-card-header">
               <h3 className="content-card-title">Danh sách hoa hồng ({commissions.length})</h3>
@@ -702,8 +804,8 @@ const AdminFinancePage = () => {
                   <thead>
                     <tr>
                       <th>Mã đơn</th>
-                      <th>Khách sạn</th>
-                      <th>Đối tác</th>
+                      <th className="mgmt-col-hotel">Khách sạn</th>
+                      <th className="mgmt-col-name">Đối tác</th>
                       <th>Ngày hoàn</th>
                       <th>Tổng tiền đơn</th>
                       <th>Tỷ lệ HH</th>
@@ -719,14 +821,11 @@ const AdminFinancePage = () => {
                       const doanhThu = c.doanh_thu_don ?? c.dat_phong?.thanh_toan_cuoi;
                       const tienDoiTac = c.tien_doi_tac_nhan
                         ?? Math.max(0, Number(doanhThu || 0) - Number(c.so_tien_hoa_hong || 0));
-                      const canConfirm = c.trang_thai === 'chua_thu';
-                      const canHold = c.trang_thai === 'chua_thu' || c.trang_thai === 'da_thu';
-                      const canRelease = c.trang_thai === 'tam_giu';
                       return (
                         <tr key={c.ma_hoa_hong}>
                           <td className="mgmt-table-cell-code">#{c.dat_phong?.ma_don_hang}</td>
-                          <td>{c.dat_phong?.loai_phong?.khach_san?.ten || '—'}</td>
-                          <td>{c.doi_tac?.ten_cong_ty || '—'}</td>
+                          <td className="mgmt-col-hotel">{c.dat_phong?.loai_phong?.khach_san?.ten || '—'}</td>
+                          <td className="mgmt-col-name">{c.doi_tac?.ten_cong_ty || '—'}</td>
                           <td style={{ fontSize: 13, color: '#5a7a72' }}>
                             {fmtDate(c.ngay_hoan_thanh || c.dat_phong?.ngay_tra_phong)}
                           </td>
@@ -743,44 +842,6 @@ const AdminFinancePage = () => {
                               title="Xem chi tiết"
                               onClick={() => setCommModalId(c.ma_hoa_hong)}
                             />
-                            <ActionButton
-                              variant="confirm"
-                              iconOnly
-                              icon={Check}
-                              title="Xác nhận đối soát"
-                              disabled={!canConfirm}
-                              onClick={() => canConfirm && setCommAction({
-                                type: 'confirm',
-                                id: c.ma_hoa_hong,
-                                code: c.dat_phong?.ma_don_hang,
-                              })}
-                            />
-                            {canRelease ? (
-                              <ActionButton
-                                variant="unlock"
-                                iconOnly
-                                icon={Play}
-                                title="Bỏ tạm giữ"
-                                onClick={() => setCommAction({
-                                  type: 'release',
-                                  id: c.ma_hoa_hong,
-                                  code: c.dat_phong?.ma_don_hang,
-                                })}
-                              />
-                            ) : (
-                              <ActionButton
-                                variant="lock"
-                                iconOnly
-                                icon={Pause}
-                                title="Tạm giữ"
-                                disabled={!canHold}
-                                onClick={() => canHold && setCommAction({
-                                  type: 'hold',
-                                  id: c.ma_hoa_hong,
-                                  code: c.dat_phong?.ma_don_hang,
-                                })}
-                              />
-                            )}
                           </ActionCell>
                         </tr>
                       );
@@ -834,90 +895,68 @@ const AdminFinancePage = () => {
             />
           </div>
 
-          <div className="content-card finance-filter-card" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đối tác</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={payoutFilter.doi_tac_id}
-                  onChange={(e) => setPayoutFilter({
-                    ...payoutFilter,
-                    doi_tac_id: e.target.value,
-                    khach_san_id: 'all',
-                  })}
-                >
-                  <option value="all">Tất cả</option>
-                  {(partnerPayoutStats?.partners || []).map((p) => (
-                    <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Khách sạn</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={payoutFilter.khach_san_id}
-                  disabled={payoutFilter.doi_tac_id === 'all'}
-                  title={payoutFilter.doi_tac_id === 'all' ? '' : undefined}
-                  onChange={(e) => setPayoutFilter({ ...payoutFilter, khach_san_id: e.target.value })}
-                >
-                  <option value="all">
-                    {payoutFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
-                  </option>
-                  {payoutHotelsForPartner.map((h) => (
-                    <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Trạng thái thanh toán</label>
-                <select
-                  style={{ ...inputSt, width: '100%' }}
-                  value={payoutFilter.trang_thai}
-                  onChange={(e) => setPayoutFilter({ ...payoutFilter, trang_thai: e.target.value })}
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="cho_thanh_toan">Chờ thanh toán</option>
-                  <option value="da_thanh_toan">Đã thanh toán</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Từ ngày trả</label>
-                <input
-                  type="date"
-                  style={{ ...inputSt, width: '100%' }}
-                  value={payoutFilter.tu_ngay}
-                  onChange={(e) => setPayoutFilter({ ...payoutFilter, tu_ngay: e.target.value })}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: '#5a7a72', display: 'block', marginBottom: 4 }}>Đến ngày trả</label>
-                <input
-                  type="date"
-                  style={{ ...inputSt, width: '100%' }}
-                  value={payoutFilter.den_ngay}
-                  onChange={(e) => setPayoutFilter({ ...payoutFilter, den_ngay: e.target.value })}
-                />
-              </div>
+          <div className="admin-finance-filters">
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-partner">Đối tác</label>
+              <select
+                id="payout-partner"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.doi_tac_id}
+                onChange={(e) => setPayoutFilter({
+                  ...payoutFilter,
+                  doi_tac_id: e.target.value,
+                  khach_san_id: 'all',
+                })}
+              >
+                <option value="all">Tất cả</option>
+                {(partnerPayoutStats?.partners || []).map((p) => (
+                  <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+                ))}
+              </select>
             </div>
-            <div className="mgmt-filter-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => loadPartnerPayouts(payoutFilter)}>
-                Lọc
-              </button>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-hotel">Khách sạn</label>
+              <select
+                id="payout-hotel"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.khach_san_id}
+                disabled={payoutFilter.doi_tac_id === 'all'}
+                onChange={(e) => setPayoutFilter({ ...payoutFilter, khach_san_id: e.target.value })}
+              >
+                <option value="all">
+                  {payoutFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                </option>
+                {payoutHotelsForPartner.map((h) => (
+                  <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+                ))}
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-status">Trạng thái thanh toán</label>
+              <select
+                id="payout-status"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.trang_thai}
+                onChange={(e) => setPayoutFilter({ ...payoutFilter, trang_thai: e.target.value })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="cho_thanh_toan">Chờ thanh toán</option>
+                <option value="da_thanh_toan">Đã thanh toán</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field mgmt-filter-field--action">
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
-                  const reset = {
+                  setPayoutFilter({
                     doi_tac_id: 'all',
                     khach_san_id: 'all',
                     trang_thai: 'all',
-                    tu_ngay: '',
-                    den_ngay: '',
-                  };
-                  setPayoutFilter(reset);
-                  loadPartnerPayouts(reset);
+                  });
                 }}
               >
                 Xóa lọc
@@ -928,13 +967,13 @@ const AdminFinancePage = () => {
           <div className="content-card">
             <div className="content-card-header">
               <h3 className="content-card-title">
-                Danh sách đợt thanh toán đối tác ({partnerPayouts?.length || 0})
+                Danh sách thanh toán đối tác ({partnerPayoutSummaries.length})
               </h3>
             </div>
-            {!partnerPayouts?.length ? (
+            {!partnerPayoutSummaries.length ? (
               <div className="empty-state">
                 <p className="empty-state-text">
-                  Chưa có đợt thanh toán. Sau khi đối soát hoa hồng, các đơn sẽ gom thành một đợt chờ thanh toán.
+                  Chưa có dữ liệu thanh toán đối tác. Sau khi đối soát hoa hồng, đối tác sẽ xuất hiện trong danh sách.
                 </p>
               </div>
             ) : (
@@ -943,40 +982,25 @@ const AdminFinancePage = () => {
                   <thead>
                     <tr>
                       <th>Mã đối tác</th>
-                      <th>Tên đối tác</th>
-                      <th>Đợt</th>
-                      <th>Mã thanh toán</th>
-                      <th>Số đơn</th>
+                      <th className="mgmt-col-name">Tên đối tác</th>
                       <th>Tổng doanh thu</th>
-                      <th>Hoa hồng hệ thống</th>
-                      <th>Số tiền TT</th>
-                      <th>Trạng thái</th>
+                      <th>Tổng hoa hồng</th>
+                      <th>Đã thanh toán</th>
+                      <th>Chờ thanh toán</th>
                       <th className="table-action-cell--compact" scope="col">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payoutPg.pagedItems.map((row) => {
-                      const st = PAYOUT_STATUS[row.trang_thai] || {
-                        label: row.trang_thai,
-                        cls: 'badge-default',
-                      };
-                      const canConfirm = row.trang_thai === 'cho_thanh_toan' && row.so_don_cho_tt > 0;
-                      const amount = canConfirm
-                        ? row.so_tien_can_thanh_toan
-                        : row.so_tien_thanh_toan;
+                      const canConfirm = row.cho_thanh_toan > 0 && row.so_don_cho_tt > 0;
                       return (
-                        <tr key={row.ma_dot || `${row.ma_doi_tac}-${row.ma_gd_doi_tac || row.trang_thai}`}>
+                        <tr key={row.ma_doi_tac}>
                           <td className="mgmt-table-cell-code">#{row.ma_doi_tac}</td>
-                          <td style={{ fontWeight: 500 }}>{row.ten_cong_ty}</td>
-                          <td>{row.ten_dot || '—'}</td>
-                          <td className="mgmt-table-cell-code">
-                            {row.ma_gd_doi_tac || (canConfirm ? '—' : '—')}
-                          </td>
-                          <td>{row.so_don ?? row.so_don_da_doi_soat}</td>
+                          <td className="mgmt-col-name" style={{ fontWeight: 500 }}>{row.ten_cong_ty}</td>
                           <td>{fmt(row.tong_doanh_thu)}</td>
                           <td style={{ color: '#b36b00', fontWeight: 500 }}>{fmt(row.tong_hoa_hong)}</td>
-                          <td style={{ color: '#3C7363', fontWeight: 700 }}>{fmt(amount)}</td>
-                          <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                          <td style={{ color: '#16a34a', fontWeight: 600 }}>{fmt(row.da_thanh_toan)}</td>
+                          <td style={{ color: '#b45309', fontWeight: 700 }}>{fmt(row.cho_thanh_toan)}</td>
                           <ActionCell>
                             <ActionButton
                               variant="view"
@@ -990,8 +1014,8 @@ const AdminFinancePage = () => {
                               iconOnly
                               icon={Check}
                               title={canConfirm
-                                ? `Thanh toán ${row.so_don_cho_tt} đơn trong đợt này`
-                                : 'Chỉ thanh toán được đợt chờ'}
+                                ? `Thanh toán ${row.so_don_cho_tt} đơn đang chờ`
+                                : 'Không có đơn chờ thanh toán'}
                               disabled={!canConfirm}
                               onClick={() => {
                                 if (!canConfirm) return;
@@ -1000,7 +1024,7 @@ const AdminFinancePage = () => {
                                   type: 'confirm',
                                   id: row.ma_doi_tac,
                                   name: row.ten_cong_ty,
-                                  amount: row.so_tien_can_thanh_toan,
+                                  amount: row.cho_thanh_toan,
                                   soDon: row.so_don_cho_tt,
                                 });
                               }}
@@ -1015,7 +1039,7 @@ const AdminFinancePage = () => {
             )}
             {payoutPg.showPagination && (
               <ListPagination
-                total={partnerPayouts.length}
+                total={partnerPayoutSummaries.length}
                 currentPage={payoutPg.currentPage}
                 totalPages={payoutPg.totalPages}
                 rangeFrom={payoutPg.rangeFrom}
@@ -1050,6 +1074,7 @@ const AdminFinancePage = () => {
         <CommissionDetailModal
           commissionId={commModalId}
           onClose={() => setCommModalId(null)}
+          onRequestAction={setCommAction}
         />
       )}
 

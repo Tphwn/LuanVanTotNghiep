@@ -27,6 +27,7 @@ import {
   formatHotelTime,
   diffDays,
   getBookingCancelReason,
+  getBookingSpecialRequest,
   canPartnerCheckIn,
   canPartnerCheckOut,
 } from '../../utils/bookingDisplay';
@@ -183,7 +184,10 @@ const BookingDetailModal = ({
   const canCancel = isAdmin && detail && !CANCEL_BLOCKED_STATUS.includes(detail.trang_thai);
   const isCancelled = detail && ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail?.thong_tin_hoan_tien;
-  const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
+  const refundAmount = Number(refundInfo?.so_tien_hoan) || 0;
+  const refundBadge = refundAmount > 0
+    ? getRefundBadgeMeta(refundInfo?.trang_thai_hoan)
+    : null;
   const showCheckInAction = !isAdmin && canPartnerCheckIn(detail);
   const showCheckOutAction = !isAdmin && canPartnerCheckOut(detail);
   const hasPartnerAction = showCheckInAction || showCheckOutAction;
@@ -316,7 +320,7 @@ const BookingDetailModal = ({
                     value={detail.sdt_nguoi_nhan || detail.khach_hang?.nguoi_dung?.so_dien_thoai}
                   />
                   <DrawerField label="Email" value={detail.khach_hang?.nguoi_dung?.email} />
-                  <DrawerField label="Yêu cầu đặc biệt" value={detail.ghi_chu || '—'} />
+                  <DrawerField label="Yêu cầu đặc biệt" value={getBookingSpecialRequest(detail) || '—'} />
                 </section>
 
                 <section className="booking-drawer-section">

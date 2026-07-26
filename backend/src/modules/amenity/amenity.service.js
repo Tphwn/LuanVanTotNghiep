@@ -132,12 +132,6 @@ const amenityService = {
     });
   },
 
-  delete: async (id) => {
-    return prisma.tien_nghi.delete({
-      where: { ma_tien_nghi: Number(id) },
-    });
-  },
-
   setStatus: async (id, trang_thai, options = {}) => {
     if (!['hoat_dong', 'an'].includes(trang_thai)) {
       const err = new Error('Trạng thái không hợp lệ');

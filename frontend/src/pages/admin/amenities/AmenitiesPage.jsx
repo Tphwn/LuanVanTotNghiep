@@ -7,20 +7,20 @@ import {
   lockAmenity,
   unlockAmenity,
 } from '../../../store/slices/amenitySlice';
-import { Plus, Bell, Building2, BedDouble, Lock, Unlock } from 'lucide-react';
+import { Plus, Bell, Building2, BedDouble } from 'lucide-react';
 import { HOTEL_CATEGORY_GROUPS, ROOM_CATEGORY_GROUPS } from './constants';
 import { groupAmenitiesByCategory } from './utils';
 import { AmenityListSection } from './components/AmenityListSection';
 import { RequestsSection } from './components/RequestsSection';
-import ConfirmModal from '../../../components/common/ConfirmModal';
+import AmenityLockConfirmModal from './components/AmenityLockConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
 import api from '../../../services/api';
 
-const pickDefaultCategory = (availableGroups, prev) => {
-  if (availableGroups.length === 0) return '';
-  return availableGroups.some((g) => g.id === prev) ? prev : availableGroups[0].id;
-};
+const TYPE_TABS = [
+  { id: 'hotel', label: 'Tiện nghi khách sạn', Icon: Building2 },
+  { id: 'room', label: 'Tiện nghi loại phòng', Icon: BedDouble },
+];
 
 const AmenitiesPage = () => {
   const dispatch = useDispatch();
@@ -30,11 +30,12 @@ const AmenitiesPage = () => {
     (state) => state.amenities || {},
   );
 
+  const initialTypeTab = location.state?.tab === 'room' ? 'room' : 'hotel';
   const [viewMode, setViewMode] = useState(
     () => (location.state?.tab === 'requests' ? 'requests' : 'main'),
   );
-  const [hotelCategoryFilter, setHotelCategoryFilter] = useState('');
-  const [roomCategoryFilter, setRoomCategoryFilter] = useState('');
+  const [typeTab, setTypeTab] = useState(initialTypeTab);
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [lockTarget, setLockTarget] = useState(null);
   const [lockLoading, setLockLoading] = useState(false);
   const { toast, showToast } = useToast();
@@ -46,6 +47,10 @@ const AmenitiesPage = () => {
 
   useEffect(() => {
     if (location.state?.tab === 'requests') setViewMode('requests');
+    if (location.state?.tab === 'room' || location.state?.tab === 'hotel') {
+      setTypeTab(location.state.tab);
+      setViewMode('main');
+    }
     if (location.state?.toast) {
       showToast(location.state.toast);
       navigate(location.pathname, { replace: true, state: { tab: location.state?.tab } });
@@ -55,78 +60,75 @@ const AmenitiesPage = () => {
 
   const unreadProposalCount = proposals.filter((p) => !p.da_doc).length;
 
-  const hotelAmenities = useMemo(
-    () => list.filter((item) => item.loai === 'khach_san' || item.loai === 'ca_hai'),
-    [list],
-  );
-  const roomAmenities = useMemo(
-    () => list.filter((item) => item.loai === 'phong' || item.loai === 'ca_hai'),
-    [list],
+  const categoryGroups = typeTab === 'room' ? ROOM_CATEGORY_GROUPS : HOTEL_CATEGORY_GROUPS;
+
+  const scopedAmenities = useMemo(() => {
+    if (typeTab === 'room') {
+      return list.filter((item) => item.loai === 'phong' || item.loai === 'ca_hai');
+    }
+    return list.filter((item) => item.loai === 'khach_san' || item.loai === 'ca_hai');
+  }, [list, typeTab]);
+
+  const grouped = useMemo(
+    () => groupAmenitiesByCategory(scopedAmenities, categoryGroups),
+    [scopedAmenities, categoryGroups],
   );
 
-  const hotelGroups = useMemo(
-    () => groupAmenitiesByCategory(hotelAmenities, HOTEL_CATEGORY_GROUPS),
-    [hotelAmenities],
-  );
-  const roomGroups = useMemo(
-    () => groupAmenitiesByCategory(roomAmenities, ROOM_CATEGORY_GROUPS),
-    [roomAmenities],
-  );
-
-  const hotelAvailableGroups = useMemo(
-    () => hotelGroups.filter((group) => group.items.length > 0),
-    [hotelGroups],
-  );
-  const roomAvailableGroups = useMemo(
-    () => roomGroups.filter((group) => group.items.length > 0),
-    [roomGroups],
+  const availableGroups = useMemo(
+    () => grouped.filter((group) => group.items.length > 0),
+    [grouped],
   );
 
   useEffect(() => {
-    setHotelCategoryFilter((prev) => pickDefaultCategory(hotelAvailableGroups, prev));
-  }, [hotelAvailableGroups]);
+    setCategoryFilter('all');
+  }, [typeTab]);
 
   useEffect(() => {
-    setRoomCategoryFilter((prev) => pickDefaultCategory(roomAvailableGroups, prev));
-  }, [roomAvailableGroups]);
+    if (categoryFilter === 'all') return;
+    if (!availableGroups.some((g) => g.id === categoryFilter)) {
+      setCategoryFilter('all');
+    }
+  }, [availableGroups, categoryFilter]);
 
-  const hotelFilteredAmenities = useMemo(() => {
-    if (!hotelCategoryFilter) return [];
-    return hotelGroups.find((g) => g.id === hotelCategoryFilter)?.items || [];
-  }, [hotelCategoryFilter, hotelGroups]);
-
-  const roomFilteredAmenities = useMemo(() => {
-    if (!roomCategoryFilter) return [];
-    return roomGroups.find((g) => g.id === roomCategoryFilter)?.items || [];
-  }, [roomCategoryFilter, roomGroups]);
+  const filteredAmenities = useMemo(() => {
+    if (categoryFilter === 'all') {
+      return availableGroups.flatMap((g) => g.items.map((item) => ({
+        ...item,
+        danh_muc: item.danh_muc || g.id,
+      })));
+    }
+    const group = availableGroups.find((g) => g.id === categoryFilter);
+    return (group?.items || []).map((item) => ({
+      ...item,
+      danh_muc: item.danh_muc || group.id,
+    }));
+  }, [availableGroups, categoryFilter]);
 
   const handleEdit = (item) => {
     navigate(`/admin/amenities/${item.ma_tien_nghi}/edit`);
   };
 
   const handleToggleLock = (item) => {
-    const isLocked = item.trang_thai === 'an';
-    if (!isLocked && item.dang_su_dung) {
-      showToast(
-        'Không thể khóa tiện nghi này vì đã có đối tác chọn. Chỉ khóa khi chưa có đối tác nào sử dụng.',
-        'error',
-      );
-      return;
-    }
     setLockTarget(item);
   };
 
-  const handleConfirmLock = async () => {
+  const handleConfirmLock = async (payload) => {
     if (!lockTarget) return;
     const isLocked = lockTarget.trang_thai === 'an';
     setLockLoading(true);
     try {
       if (isLocked) {
-        await dispatch(unlockAmenity(lockTarget.ma_tien_nghi)).unwrap();
-        showToast('Đã mở khóa tiện nghi thành công');
+        await dispatch(unlockAmenity({
+          id: lockTarget.ma_tien_nghi,
+          ...payload,
+        })).unwrap();
+        showToast('Mở khóa tiện nghi thành công');
       } else {
-        await dispatch(lockAmenity(lockTarget.ma_tien_nghi)).unwrap();
-        showToast('Đã khóa tiện nghi thành công');
+        await dispatch(lockAmenity({
+          id: lockTarget.ma_tien_nghi,
+          ...payload,
+        })).unwrap();
+        showToast('Khóa tiện nghi thành công');
       }
       setLockTarget(null);
     } catch (err) {
@@ -155,6 +157,11 @@ const AmenitiesPage = () => {
     navigate('/admin/amenities/create', {
       state: { suggestedName: match?.[1]?.trim() || '' },
     });
+  };
+
+  const handleTypeTabChange = (tabId) => {
+    setTypeTab(tabId);
+    setCategoryFilter('all');
   };
 
   return (
@@ -201,30 +208,37 @@ const AmenitiesPage = () => {
       <Toast toast={toast} />
 
       {viewMode === 'main' ? (
-        <div className="amenity-dual-grid">
+        <>
+          <div className="amenity-type-tabs partner-account-tabs" role="tablist">
+            {TYPE_TABS.map((tab) => {
+              const TabIcon = tab.Icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={typeTab === tab.id}
+                  className={`partner-account-tab amenity-type-tab${typeTab === tab.id ? ' is-active' : ''}`}
+                  onClick={() => handleTypeTabChange(tab.id)}
+                >
+                  <TabIcon size={15} strokeWidth={1.8} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
           <AmenityListSection
             loading={loading}
-            panelTitle="Tiện nghi khách sạn"
-            panelIcon={Building2}
-            availableGroups={hotelAvailableGroups}
-            categoryFilter={hotelCategoryFilter}
-            onCategoryChange={setHotelCategoryFilter}
-            amenities={hotelFilteredAmenities}
+            availableGroups={availableGroups}
+            categoryFilter={categoryFilter}
+            onCategoryChange={setCategoryFilter}
+            amenities={filteredAmenities}
+            listKey={typeTab}
             onEdit={handleEdit}
             onToggleLock={handleToggleLock}
           />
-          <AmenityListSection
-            loading={loading}
-            panelTitle="Tiện nghi loại phòng"
-            panelIcon={BedDouble}
-            availableGroups={roomAvailableGroups}
-            categoryFilter={roomCategoryFilter}
-            onCategoryChange={setRoomCategoryFilter}
-            amenities={roomFilteredAmenities}
-            onEdit={handleEdit}
-            onToggleLock={handleToggleLock}
-          />
-        </div>
+        </>
       ) : (
         <RequestsSection
           proposals={proposals}
@@ -234,18 +248,8 @@ const AmenitiesPage = () => {
         />
       )}
 
-      <ConfirmModal
-        open={!!lockTarget}
-        variant={lockTarget?.trang_thai === 'an' ? 'primary' : 'danger'}
-        icon={lockTarget?.trang_thai === 'an' ? <Unlock size={20} /> : <Lock size={20} />}
-        title={lockTarget?.trang_thai === 'an' ? 'Xác nhận mở khóa tiện nghi' : 'Xác nhận khóa tiện nghi'}
-        intro={lockTarget?.trang_thai === 'an'
-          ? 'Bạn có chắc muốn mở khóa tiện nghi này? Tiện nghi sẽ hoạt động trở lại và có thể được gán cho khách sạn/loại phòng.'
-          : 'Bạn có chắc muốn khóa tiện nghi này? Chỉ khóa được khi chưa có đối tác nào chọn. Sau khi khóa, tiện nghi sẽ bị ẩn và không thể gán mới.'}
-        infoRows={lockTarget ? [
-          { label: 'Tên tiện nghi', value: lockTarget.ten },
-        ] : []}
-        confirmText={lockTarget?.trang_thai === 'an' ? 'Xác nhận mở khóa' : 'Xác nhận khóa'}
+      <AmenityLockConfirmModal
+        amenity={lockTarget}
         loading={lockLoading}
         onClose={() => !lockLoading && setLockTarget(null)}
         onConfirm={handleConfirmLock}

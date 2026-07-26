@@ -3,7 +3,6 @@ import api from '../../../services/api';
 import { resolveUploadUrl } from '../../../utils/media';
 import { HotelAmenityPicker } from './components/HotelAmenityGroups';
 import PartnerHotelSubmitConfirmModal from './components/PartnerHotelSubmitConfirmModal';
-import PartnerHotelTimeConfirmModal from './components/PartnerHotelTimeConfirmModal';
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
@@ -57,6 +56,9 @@ const HotelFormContent = ({
   onClose, onSubmit, loading,
 }) => {
   const isEdit = !!hotel;
+  const needsApproval = !isEdit
+    || ['cho_duyet', 'tu_choi', 'yeu_cau_sua'].includes(hotel?.trang_thai);
+  const submitLabel = needsApproval ? 'Gửi duyệt' : 'Lưu thay đổi';
   const [activeTab, setActiveTab] = useState('info');
   const [removedImageIds, setRemovedImageIds] = useState([]);
 
@@ -101,7 +103,6 @@ const HotelFormContent = ({
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [timeConfirm, setTimeConfirm] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -140,9 +141,9 @@ const HotelFormContent = ({
     if (['ten', 'dia_chi', 'ma_dia_diem'].includes(firstKey)) setActiveTab('info');
     else if (firstKey === 'images') setActiveTab('images');
     setFormAlert(
-      isEdit
-        ? 'Cập nhật không thành công. Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc.'
-        : 'Gửi duyệt không thành công. Vui lòng điền đầy đủ thông tin bắt buộc.',
+      needsApproval
+        ? 'Gửi duyệt không thành công. Vui lòng điền đầy đủ thông tin bắt buộc.'
+        : 'Cập nhật không thành công. Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc.',
     );
   };
 
@@ -285,20 +286,8 @@ const HotelFormContent = ({
   };
 
   const handleTimeInputChange = (field, newValue) => {
-    if (!newValue || newValue === form[field]) return;
-    setTimeConfirm({ field, newValue, oldValue: form[field] });
-  };
-
-  const handleConfirmTimeChange = () => {
-    if (!timeConfirm) return;
-    setForm((prev) => ({ ...prev, [timeConfirm.field]: timeConfirm.newValue }));
-    const label = timeConfirm.field === 'gio_nhan_phong' ? 'giờ nhận phòng' : 'giờ trả phòng';
-    showToast(`Đã cập nhật ${label} thành ${timeConfirm.newValue}`);
-    setTimeConfirm(null);
-  };
-
-  const handleCancelTimeChange = () => {
-    setTimeConfirm(null);
+    if (!newValue) return;
+    updateField(field, newValue);
   };
 
   const tabs = [
@@ -323,21 +312,13 @@ const HotelFormContent = ({
 
         {showSubmitConfirm && (
           <PartnerHotelSubmitConfirmModal
-            isEdit={isEdit}
+            needsApproval={needsApproval}
             hotelName={form.ten?.trim()}
             loading={confirmLoading || loading}
             onClose={() => !confirmLoading && !loading && setShowSubmitConfirm(false)}
             onConfirm={handleConfirmSubmit}
           />
         )}
-
-        <PartnerHotelTimeConfirmModal
-          field={timeConfirm?.field}
-          newValue={timeConfirm?.newValue}
-          oldValue={timeConfirm?.oldValue}
-          onClose={handleCancelTimeChange}
-          onConfirm={handleConfirmTimeChange}
-        />
 
         <div style={{
           display: 'flex', gap: 8, marginBottom: 20,
@@ -697,9 +678,9 @@ const HotelFormContent = ({
             display:'flex', gap: 10, justifyContent: 'flex-end',
             borderTop: '1px solid #eee', paddingTop: 20, marginTop: 20,
           }}>
-            <button type="button"className="btn btn-ghost"onClick={onClose}>Hủy bỏ</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Hủy bỏ</button>
             <button type="submit" className="btn btn-primary" disabled={loading || confirmLoading}>
-              {loading || confirmLoading ? 'Đang xử lý...': isEdit ?'Lưu thay đổi':'Gửi duyệt'}
+              {loading || confirmLoading ? 'Đang xử lý...' : submitLabel}
             </button>
           </div>
         </form>

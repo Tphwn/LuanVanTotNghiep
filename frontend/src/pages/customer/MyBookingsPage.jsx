@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { MapPin } from 'lucide-react';
 import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerPrice from '../../components/customer/CustomerPrice';
 import CancelBookingModal from '../../components/customer/CancelBookingModal';
+import Toast from '../../components/common/Toast';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { TRANG_THAI } from '../../utils/bookingDisplay';
-import { Link } from 'react-router-dom';
+import { takeFlashToast } from '../../utils/flashToast';
 import ListPagination from '../../components/common/management/ListPagination';
 import useListPagination from '../../hooks/useListPagination';
 import '../../assets/styles/home.css';
@@ -33,6 +34,10 @@ const getStatusMeta = (booking) => {
     return { label: 'Bị hủy bởi admin', tone: 'cancel' };
   }
 
+  if (booking.can_thanh_toan) {
+    return { label: booking.trang_thai_label || 'Chờ thanh toán', tone: 'pending' };
+  }
+
   const status = booking.trang_thai;
   const base = TRANG_THAI[status] || { label: status, cls: 'badge-default' };
   if (status === 'da_huy' || status === 'tu_choi') {
@@ -54,16 +59,23 @@ const canCancelBooking = (status) => status === 'cho_xac_nhan' || status === 'da
 
 const MyBookingsPage = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelVariant, setCancelVariant] = useState('booking');
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
+    setToast({ message: msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const openCancel = (booking, variant = 'booking') => {
+    setCancelVariant(variant);
+    setCancelTarget(booking);
   };
 
   const loadBookings = () => customerBookingService.getMyBookings()
@@ -82,11 +94,32 @@ const MyBookingsPage = () => {
     loadBookings().finally(() => setLoading(false));
   }, [token, user]);
 
-  const handleCancelConfirmed = (updated) => {
-    setBookings((prev) => prev.map((item) => (
-      item.ma_dat_phong === updated.ma_dat_phong ? updated : item
-    )));
-    showToast('Đã hủy đơn đặt phòng thành công');
+  useEffect(() => {
+    const fromState = location.state?.flash;
+    const fromFlash = takeFlashToast();
+    const message = fromState || fromFlash?.message;
+    if (message) {
+      showToast(message, fromFlash?.type === 'error' ? 'error' : 'success');
+      if (fromState) {
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state]);
+
+  const handleCancelConfirmed = (updated, meta = {}) => {
+    if (!updated?.ma_dat_phong) {
+      loadBookings();
+      showToast(meta.successMessage || 'Đã hủy đơn đặt phòng thành công');
+      return;
+    }
+    if (updated.an_khoi_danh_sach) {
+      setBookings((prev) => prev.filter((item) => item.ma_dat_phong !== updated.ma_dat_phong));
+    } else {
+      setBookings((prev) => prev.map((item) => (
+        item.ma_dat_phong === updated.ma_dat_phong ? updated : item
+      )));
+    }
+    showToast(meta.successMessage || 'Đã hủy đơn đặt phòng thành công');
   };
 
   const stats = useMemo(() => ({
@@ -133,11 +166,7 @@ const MyBookingsPage = () => {
 
   return (
     <div className="my-bookings-page">
-      {toast && (
-        <div className={`mgmt-toast ${toast.type}`} style={{ marginBottom: 16 }}>
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} />
 
       {!loading && !error && bookings.length > 0 && (
         <div className="my-bookings-stats">
@@ -241,16 +270,34 @@ const MyBookingsPage = () => {
                       className="my-booking-price-value"
                     />
                   </div>
-                  {(b.co_the_huy || canCancelBooking(b.trang_thai)) && (
+                  {b.can_thanh_toan && (
+                    <div className="my-booking-action-stack">
+                      <CustomerButton
+                        className="my-booking-pay-btn"
+                        to={ROUTES.CUSTOMER.PAYMENT.replace(':id', b.ma_dat_phong)}
+                        state={{ backTo: ROUTES.CUSTOMER.MY_BOOKINGS }}
+                      >
+                        Quay lại thanh toán
+                      </CustomerButton>
+                      <button
+                        type="button"
+                        className="my-booking-cancel-btn"
+                        onClick={() => openCancel(b, 'payment')}
+                      >
+                        Hủy thanh toán
+                      </button>
+                    </div>
+                  )}
+                  {!b.can_thanh_toan && (b.co_the_huy || canCancelBooking(b.trang_thai)) && (
                     <button
                       type="button"
                       className="my-booking-cancel-btn"
-                      onClick={() => setCancelTarget(b)}
+                      onClick={() => openCancel(b, 'booking')}
                     >
                       Hủy đơn
                     </button>
                   )}
-                  {b.hoan_tien?.trang_thai_label && (
+                  {b.hoan_tien?.trang_thai_label && Number(b.hoan_tien.so_tien_hoan) > 0 && (
                     <span className={`my-booking-refund-status my-booking-refund-status--${b.hoan_tien.trang_thai}`}>
                       Hoàn tiền: {b.hoan_tien.trang_thai_label}
                     </span>
@@ -293,7 +340,11 @@ const MyBookingsPage = () => {
       {cancelTarget && (
         <CancelBookingModal
           booking={cancelTarget}
-          onClose={() => setCancelTarget(null)}
+          variant={cancelVariant}
+          onClose={() => {
+            setCancelTarget(null);
+            setCancelVariant('booking');
+          }}
           onConfirmed={handleCancelConfirmed}
         />
       )}

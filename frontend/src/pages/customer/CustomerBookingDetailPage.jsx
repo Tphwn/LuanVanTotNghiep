@@ -9,6 +9,7 @@ import {
   formatBookingDate,
   formatCurrency,
 } from '../../utils/bookingDisplay';
+import { setFlashToast } from '../../utils/flashToast';
 import '../../assets/styles/home.css';
 
 const PAYMENT_METHOD_LABEL = {
@@ -37,6 +38,7 @@ export default function CustomerBookingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelVariant, setCancelVariant] = useState('booking');
 
   useEffect(() => {
     if (!id) return undefined;
@@ -51,7 +53,15 @@ export default function CustomerBookingDetailPage() {
       })
       .catch((err) => {
         if (isMounted) {
-          setError(err.response?.data?.message || 'Không tải được chi tiết đơn');
+          const status = err.response?.status;
+          const msg = err.response?.data?.message;
+          if (status === 410) {
+            setError(msg || 'Đơn đã hết hạn thanh toán và không còn hiệu lực');
+          } else if (status === 404) {
+            setError(msg || 'Không tìm thấy đơn đặt phòng. Đơn có thể đã bị hủy hoặc không thuộc tài khoản đang đăng nhập.');
+          } else {
+            setError(msg || 'Không tải được chi tiết đơn');
+          }
         }
       })
       .finally(() => {
@@ -63,9 +73,15 @@ export default function CustomerBookingDetailPage() {
     };
   }, [id]);
 
-  const handleCancelConfirmed = () => {
+  const handleCancelConfirmed = (_updated, meta = {}) => {
+    const message = meta.successMessage
+      || (cancelVariant === 'payment'
+        ? 'Hủy thanh toán thành công'
+        : 'Đã hủy đơn đặt phòng thành công');
+    setFlashToast(message);
     setCancelTarget(null);
-    navigate(ROUTES.CUSTOMER.MY_BOOKINGS);
+    setCancelVariant('booking');
+    navigate(ROUTES.CUSTOMER.MY_BOOKINGS, { state: { flash: message } });
   };
 
   if (loading) {
@@ -224,12 +240,36 @@ export default function CustomerBookingDetailPage() {
           </div>
         </section>
 
-        {booking.co_the_huy && (
+        {booking.can_thanh_toan && (
+          <div className="booking-detail-actions booking-detail-actions--stack">
+            <CustomerButton
+              to={ROUTES.CUSTOMER.PAYMENT.replace(':id', booking.ma_dat_phong)}
+              state={{ backTo: ROUTES.CUSTOMER.MY_BOOKING_DETAIL.replace(':id', booking.ma_dat_phong) }}
+            >
+              Quay lại thanh toán
+            </CustomerButton>
+            <button
+              type="button"
+              className="my-booking-cancel-btn"
+              onClick={() => {
+                setCancelVariant('payment');
+                setCancelTarget(booking);
+              }}
+            >
+              Hủy thanh toán
+            </button>
+          </div>
+        )}
+
+        {!booking.can_thanh_toan && booking.co_the_huy && (
           <div className="booking-detail-actions">
             <button
               type="button"
               className="my-booking-cancel-btn"
-              onClick={() => setCancelTarget(booking)}
+              onClick={() => {
+                setCancelVariant('booking');
+                setCancelTarget(booking);
+              }}
             >
               Hủy đơn
             </button>
@@ -264,7 +304,11 @@ export default function CustomerBookingDetailPage() {
             ma_don_hang: booking.ma_don,
             thanh_toan_cuoi: thanh_toan?.tong_tien,
           }}
-          onClose={() => setCancelTarget(null)}
+          variant={cancelVariant}
+          onClose={() => {
+            setCancelTarget(null);
+            setCancelVariant('booking');
+          }}
           onConfirmed={handleCancelConfirmed}
         />
       )}

@@ -32,34 +32,6 @@ export const fetchBookingDetail = createAsyncThunk(
   }
 );
 
-export const confirmBooking = createAsyncThunk(
-  'partnerBooking/confirm',
-  async (id, { rejectWithValue }) => {
-    try {
-      const res = await api.patch(`${BASE}/${id}/confirm`);
-      return res.data.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || 'Lỗi xác nhận booking'
-      );
-    }
-  }
-);
-
-export const rejectBooking = createAsyncThunk(
-  'partnerBooking/reject',
-  async ({ id, ly_do }, { rejectWithValue }) => {
-    try {
-      const res = await api.patch(`${BASE}/${id}/reject`, { ly_do });
-      return res.data.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || 'Lỗi từ chối booking'
-      );
-    }
-  }
-);
-
 export const checkInBooking = createAsyncThunk(
   'partnerBooking/checkIn',
   async (id, { rejectWithValue }) => {
@@ -148,22 +120,6 @@ const partnerBookingSlice = createSlice({
         state.detailLoading = false;
         state.detail = null;
         state.error = action.payload;
-      })
-
-      .addCase(confirmBooking.fulfilled, (state, action) => {
-        state.successMsg = 'Đã xác nhận đơn đặt phòng';
-        upsertListItem(state.list, action.payload);
-        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
-          state.detail = action.payload;
-        }
-      })
-
-      .addCase(rejectBooking.fulfilled, (state, action) => {
-        state.successMsg = 'Đã từ chối đơn đặt phòng';
-        upsertListItem(state.list, action.payload);
-        if (state.detail?.ma_dat_phong === action.payload.ma_dat_phong) {
-          state.detail = action.payload;
-        }
       })
 
       .addCase(checkInBooking.pending, (state) => {

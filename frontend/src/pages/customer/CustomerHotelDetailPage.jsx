@@ -1,7 +1,19 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Images } from 'lucide-react';
+import {
+  AlertTriangle,
+  Baby,
+  Cigarette,
+  Clock3,
+  FileText,
+  Images,
+  ListChecks,
+  PartyPopper,
+  PawPrint,
+  ShieldAlert,
+  Star,
+} from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
@@ -48,18 +60,51 @@ const nameInitial = (name) => (name && name.trim() ? name.trim().charAt(0).toUpp
 
 const money = (v) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
 
+const ReviewStars = ({ value = 0, size = 14 }) => {
+  const score = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+  return (
+    <span className="hotel-review-stars" aria-label={`${score} trên 5 sao`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star
+          key={i}
+          size={size}
+          strokeWidth={2}
+          className={i < score ? 'is-filled' : 'is-empty'}
+          fill={i < score ? 'currentColor' : 'none'}
+          aria-hidden
+        />
+      ))}
+    </span>
+  );
+};
+
 const buildPolicyRows = (h) => {
   const rows = [];
 
-  // Giờ nhận/trả phòng — chỉ hiện khi khách sạn có thiết lập
   if (h.gio_nhan_phong || h.gio_tra_phong) {
     const lines = [];
-    if (h.gio_nhan_phong) lines.push({ label: 'Nhận phòng:', value: `Từ ${formatHotelTime(h.gio_nhan_phong, '14:00')}` });
-    if (h.gio_tra_phong) lines.push({ label: 'Trả phòng:', value: `Trước ${formatHotelTime(h.gio_tra_phong, '12:00')}` });
-    rows.push({ label: 'Giờ nhận phòng và trả phòng', lines });
+    if (h.gio_nhan_phong) {
+      lines.push({
+        label: 'Nhận phòng:',
+        value: `Từ ${formatHotelTime(h.gio_nhan_phong, '14:00')}`,
+        emphasis: true,
+      });
+    }
+    if (h.gio_tra_phong) {
+      lines.push({
+        label: 'Trả phòng:',
+        value: `Trước ${formatHotelTime(h.gio_tra_phong, '12:00')}`,
+        emphasis: true,
+      });
+    }
+    rows.push({
+      key: 'checkin',
+      label: 'Giờ nhận / trả phòng',
+      Icon: Clock3,
+      lines,
+    });
   }
 
-  // Chính sách trẻ em — chỉ hiện khi có dữ liệu
   const childLines = [];
   if (h.tuoi_toi_da_mien_phi != null) {
     childLines.push(`Trẻ em từ ${h.tuoi_toi_da_mien_phi} tuổi trở xuống được miễn phí khi dùng chung giường với người lớn.`);
@@ -67,57 +112,105 @@ const buildPolicyRows = (h) => {
   if (h.phu_thu_tre_em != null && Number(h.phu_thu_tre_em) > 0) {
     childLines.push(`Phụ thu ${money(h.phu_thu_tre_em)}đ đối với trẻ em sử dụng giường hiện có.`);
   }
-  if (childLines.length) rows.push({ label: 'Chính sách dành cho trẻ em', lines: childLines });
+  if (childLines.length) {
+    rows.push({ key: 'children', label: 'Chính sách trẻ em', Icon: Baby, lines: childLines });
+  }
 
-  // Thú cưng
   rows.push({
+    key: 'pets',
     label: 'Thú cưng',
+    Icon: PawPrint,
     lines: [h.cho_phep_thu_cung
       ? (h.phu_thu_thu_cung != null && Number(h.phu_thu_thu_cung) > 0
-        ? `Cho phép mang theo thú cưng (phụ thu ${money(h.phu_thu_thu_cung)}đ).`
-        : 'Cho phép mang theo thú cưng.')
-      : 'Không được phép mang theo thú cưng.'],
+        ? { text: `Cho phép mang theo thú cưng (phụ thu ${money(h.phu_thu_thu_cung)}đ).` }
+        : { text: 'Cho phép mang theo thú cưng.', emphasisWords: ['Cho phép'] })
+      : { text: 'Không được phép mang theo thú cưng.', emphasisWords: ['Không được phép'] }],
   });
 
-  // Hút thuốc
   rows.push({
+    key: 'smoking',
     label: 'Hút thuốc',
-    lines: [h.cho_phep_hut_thuoc ? 'Cho phép hút thuốc.' : 'Không cho phép hút thuốc.'],
+    Icon: Cigarette,
+    lines: [h.cho_phep_hut_thuoc
+      ? { text: 'Cho phép hút thuốc.', emphasisWords: ['Cho phép'] }
+      : { text: 'Không cho phép hút thuốc.', emphasisWords: ['Không cho phép'] }],
   });
 
-  // Tổ chức tiệc
   rows.push({
+    key: 'party',
     label: 'Tổ chức tiệc',
-    lines: [h.cho_phep_to_chuc_tiec ? 'Cho phép tổ chức tiệc.' : 'Không cho phép tổ chức tiệc.'],
+    Icon: PartyPopper,
+    lines: [h.cho_phep_to_chuc_tiec
+      ? { text: 'Cho phép tổ chức tiệc.', emphasisWords: ['Cho phép'] }
+      : { text: 'Không cho phép tổ chức tiệc.', emphasisWords: ['Không cho phép'] }],
   });
 
-  // Giấy tờ bắt buộc — chỉ hiện khi khách sạn có yêu cầu
   if (Array.isArray(h.giay_to_bat_buoc) && h.giay_to_bat_buoc.length) {
     rows.push({
+      key: 'docs',
       label: 'Giấy tờ bắt buộc',
+      Icon: FileText,
       lines: h.giay_to_bat_buoc.map((doc) => REQUIRED_DOC_LABELS[doc] || doc),
     });
   }
 
-  // Nội quy riêng của khách sạn — chỉ hiện khi có
   if (Array.isArray(h.noi_quy_khac) && h.noi_quy_khac.length) {
-    rows.push({ label: 'Nội quy khác', lines: h.noi_quy_khac });
-  }
-
-  // Chính sách hủy — theo mốc hoàn tiền thật của khách sạn
-  const cancelPolicies = (h.chinh_sach_huy || [])
-    .slice()
-    .sort((a, b) => Number(b.so_ngay_truoc) - Number(a.so_ngay_truoc));
-  if (cancelPolicies.length) {
     rows.push({
-      label: 'Chính sách hủy',
-      lines: cancelPolicies.map(
-        (p) => `Hủy trước ${p.so_ngay_truoc} ngày: hoàn ${Number(p.phan_tram_hoan)}% tiền đã thanh toán.`,
-      ),
+      key: 'rules',
+      label: 'Nội quy khác',
+      Icon: ListChecks,
+      lines: h.noi_quy_khac,
     });
   }
 
   return rows;
+};
+
+const buildCancelPolicy = (h) => {
+  const cancelPolicies = (h.chinh_sach_huy || [])
+    .slice()
+    .sort((a, b) => Number(b.so_ngay_truoc) - Number(a.so_ngay_truoc));
+  if (!cancelPolicies.length) return null;
+  return {
+    lines: cancelPolicies.map(
+      (p) => `Hủy trước ${p.so_ngay_truoc} ngày: hoàn ${Number(p.phan_tram_hoan)}% tiền đã thanh toán.`,
+    ),
+  };
+};
+
+const renderPolicyLine = (line, i) => {
+  if (typeof line === 'string') {
+    return <p key={i} className="hotel-policy-line">{line}</p>;
+  }
+  if (line.label && line.value) {
+    return (
+      <p key={i} className="hotel-policy-line">
+        <span className="hotel-policy-inline-label">{line.label}</span>
+        {' '}
+        <strong className={line.emphasis ? 'hotel-policy-emphasis' : undefined}>{line.value}</strong>
+      </p>
+    );
+  }
+  if (line.text && line.emphasisWords?.length) {
+    let parts = [line.text];
+    line.emphasisWords.forEach((word) => {
+      parts = parts.flatMap((part) => {
+        if (typeof part !== 'string') return [part];
+        const chunks = part.split(word);
+        if (chunks.length === 1) return [part];
+        const out = [];
+        chunks.forEach((chunk, idx) => {
+          if (chunk) out.push(chunk);
+          if (idx < chunks.length - 1) {
+            out.push(<strong key={`${word}-${idx}`} className="hotel-policy-emphasis">{word}</strong>);
+          }
+        });
+        return out;
+      });
+    });
+    return <p key={i} className="hotel-policy-line">{parts}</p>;
+  }
+  return <p key={i} className="hotel-policy-line">{line.text || ''}</p>;
 };
 
 const buildQueryString = (query) => {
@@ -334,6 +427,7 @@ const CustomerHotelDetailPage = () => {
   const sideImages = images.slice(1, 5);
   const reviews = hotel.danh_gia || [];
   const policyRows = buildPolicyRows(hotel);
+  const cancelPolicy = buildCancelPolicy(hotel);
   const addressLine = [
     hotel.dia_diem?.ten_dia_diem,
     hotel.dia_chi,
@@ -432,8 +526,6 @@ const CustomerHotelDetailPage = () => {
               <ExpandableIntro key={hotel.mo_ta} text={hotel.mo_ta} />
             </section>
           )}
-
-          <CustomerPromotionStrip promotions={hotelPromotions} variant="partner" />
         </div>
 
         <aside className="hotel-detail-booking-card">
@@ -468,6 +560,12 @@ const CustomerHotelDetailPage = () => {
           </CustomerButton>
         </aside>
       </div>
+
+      {hotelPromotions.length > 0 && (
+        <div className="hotel-detail-promo-full">
+          <CustomerPromotionStrip promotions={hotelPromotions} variant="partner" />
+        </div>
+      )}
 
       <section className="hotel-detail-rooms-section" ref={roomListRef}>
         <h2 className="hotel-detail-rooms-heading">
@@ -516,15 +614,19 @@ const CustomerHotelDetailPage = () => {
                           style={{ width: `${(Math.min(v, 5) / 5) * 100}%` }}
                         />
                       </span>
+                      <span className="hotel-review-bar-value">{v ? v.toFixed(1) : '0.0'}</span>
                     </div>
                   );
                 })}
               </div>
               <div className="hotel-review-summary-score">
-                <div className="hotel-review-summary-score-value">
-                  <strong>{hotel.diem_trung_binh || 0}</strong>/5
-                  <span className="hotel-review-summary-score-label">
-                    {scoreLabel(hotel.diem_trung_binh || 0)}
+                <div className="hotel-review-score-badge">
+                  <strong>{Number(hotel.diem_trung_binh || 0).toFixed(1)}</strong>
+                  <span className="hotel-review-score-badge-meta">
+                    <span className="hotel-review-score-badge-scale">/ 5</span>
+                    <span className="hotel-review-summary-score-label">
+                      {scoreLabel(hotel.diem_trung_binh || 0)}
+                    </span>
                   </span>
                 </div>
                 <div className="hotel-review-summary-count">
@@ -536,32 +638,30 @@ const CustomerHotelDetailPage = () => {
             <div className="hotel-review-list">
               {reviews.map((rv) => (
                 <article key={rv.ma_danh_gia} className="hotel-review-item">
-                  <div className="hotel-review-grid">
-                    <div className="hotel-review-left">
-                      <div className="hotel-review-author-row">
-                        <span className="hotel-review-avatar">
-                          {nameInitial(rv.khach_hang?.ho_ten)}
-                        </span>
-                        <div className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</div>
-                      </div>
+                  <div className="hotel-review-identity">
+                    <span className="hotel-review-avatar">
+                      {nameInitial(rv.khach_hang?.ho_ten)}
+                    </span>
+                    <div className="hotel-review-card-meta">
+                      <div className="hotel-review-author">{rv.khach_hang?.ho_ten || 'Khách hàng'}</div>
                       {rv.ten_loai_phong && (
                         <div className="hotel-review-room-name">{rv.ten_loai_phong}</div>
                       )}
                     </div>
-                    <div className="hotel-review-right">
-                      <div className="hotel-review-meta">
-                        <span className="hotel-review-score">{rv.so_sao}/5</span>
-                        <span className="hotel-review-date">Đánh giá ngày {fmtDate(rv.ngay_danh_gia)}</span>
-                      </div>
-                      {rv.noi_dung && (
-                        <p className="hotel-review-content">{rv.noi_dung}</p>
-                      )}
-                      {rv.phan_hoi_doi_tac && (
-                        <div className="hotel-review-partner-reply">
-                          {rv.phan_hoi_doi_tac}
-                        </div>
-                      )}
+                  </div>
+                  <div className="hotel-review-body">
+                    <div className="hotel-review-card-sub">
+                      <ReviewStars value={rv.so_sao} size={14} />
+                      <span className="hotel-review-date">Đánh giá ngày {fmtDate(rv.ngay_danh_gia)}</span>
                     </div>
+                    {rv.noi_dung && (
+                      <p className="hotel-review-content">{rv.noi_dung}</p>
+                    )}
+                    {rv.phan_hoi_doi_tac && (
+                      <div className="hotel-review-partner-reply">
+                        {rv.phan_hoi_doi_tac}
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}
@@ -570,31 +670,53 @@ const CustomerHotelDetailPage = () => {
         )}
       </section>
 
-      {policyRows.length > 0 && (
+      {(policyRows.length > 0 || cancelPolicy) && (
       <section className="hotel-detail-policy-section">
         <h2 className="hotel-detail-block-title hotel-detail-reviews-title">
           Chính sách hủy và chỗ ở
         </h2>
         <div className="hotel-policy-table">
-          {policyRows.map((row) => (
-            <div key={row.label} className="hotel-policy-row">
-              <div className="hotel-policy-label">{row.label}</div>
-              <div className="hotel-policy-value">
-                {row.lines.map((line, i) => (
-                  <p key={i} className="hotel-policy-line">
-                    {typeof line === 'string' ? line : (
-                      <>
-                        <span className="hotel-policy-inline-label">{line.label}</span>
-                        {' '}
-                        <strong>{line.value}</strong>
-                      </>
-                    )}
-                  </p>
-                ))}
+          {policyRows.map((row) => {
+            const Icon = row.Icon;
+            return (
+              <div key={row.key || row.label} className="hotel-policy-row">
+                <div className="hotel-policy-label">
+                  {Icon && (
+                    <span className="hotel-policy-label-icon" aria-hidden>
+                      <Icon size={18} strokeWidth={2} />
+                    </span>
+                  )}
+                  <span>{row.label}</span>
+                </div>
+                <div className="hotel-policy-value">
+                  {row.lines.map((line, i) => renderPolicyLine(line, i))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {cancelPolicy && (
+          <div className="hotel-policy-cancel-box">
+            <div className="hotel-policy-cancel-head">
+              <span className="hotel-policy-cancel-icon" aria-hidden>
+                <ShieldAlert size={20} strokeWidth={2} />
+              </span>
+              <div>
+                <h3 className="hotel-policy-cancel-title">Chính sách hủy</h3>
+                <p className="hotel-policy-cancel-hint">
+                  <AlertTriangle size={14} strokeWidth={2.25} aria-hidden />
+                  Đọc kỹ trước khi đặt — hủy muộn có thể mất một phần hoặc toàn bộ tiền đã thanh toán.
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+            <ul className="hotel-policy-cancel-list">
+              {cancelPolicy.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
       )}
 

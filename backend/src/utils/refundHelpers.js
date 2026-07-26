@@ -41,9 +41,9 @@ const extractCancelReason = (ghiChu) => {
 const isAdminCancelledBooking = (booking) =>
   Boolean(booking?.ghi_chu?.trim().startsWith('[Admin hủy]'));
 
+/** Chỉ coi là đã thanh toán khi giao dịch thực sự thành công — không lấy theo phương thức TT. */
 const wasBookingPaid = (booking) =>
-  booking?.phuong_thuc_tt === 'truc_tuyen'
-  || booking?.thanh_toan?.trang_thai === 'thanh_cong';
+  booking?.thanh_toan?.trang_thai === 'thanh_cong';
 
 const getRefundStatusLabel = (refundStatus) => {
   if (refundStatus === 'da_hoan') return 'Đã hoàn';
@@ -189,10 +189,7 @@ const syncMissingCancelRefunds = async (prismaClient, limit = 50) => {
     where: {
       trang_thai: { in: ['da_huy', 'tu_choi'] },
       hoan_tien: null,
-      OR: [
-        { phuong_thuc_tt: 'truc_tuyen' },
-        { thanh_toan: { trang_thai: 'thanh_cong' } },
-      ],
+      thanh_toan: { is: { trang_thai: 'thanh_cong' } },
     },
     select: {
       ma_dat_phong: true,

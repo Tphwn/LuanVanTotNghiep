@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Tag } from 'lucide-react';
+import { Tag, RotateCcw } from 'lucide-react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
-import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import { ActionCell } from '../../../components/common/ActionButton';
 import ListPagination from '../../../components/common/management/ListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import useListPagination from '../../../hooks/useListPagination';
@@ -59,23 +59,6 @@ const formatDisplayDate = (dateStr) => {
   const [y, m, d] = String(dateStr).slice(0, 10).split('-');
   if (!y || !m || !d) return '—';
   return `${d}/${m}/${y}`;
-};
-
-/** Parse dd/mm/yyyy → yyyy-mm-dd; return null nếu không hợp lệ */
-const parseDisplayDate = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) return null;
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const dt = new Date(year, month - 1, day);
-  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) {
-    return null;
-  }
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
 const getDatesInRange = (from, to) => {
@@ -156,18 +139,27 @@ const MonthCalendar = ({
               const isPast = dateStr < today;
               const selected = isInRange(dateStr, selectedFrom, selectedTo);
               const isCustom = info?.gia_tuy_chinh;
+              const hasBooking = Number(info?.da_dat || 0) > 0;
               const dayNum = parseInt(dateStr.slice(8), 10);
 
               return (
-                <td key={dateStr} className={selected ? 'selected' : ''}>
+                <td
+                  key={dateStr}
+                  className={[
+                    selected ? 'selected' : '',
+                    hasBooking ? 'has-booking' : '',
+                  ].filter(Boolean).join(' ') || undefined}
+                >
                   <button
                     type="button"
-                    className="price-inv-cell-btn"
+                    className={`price-inv-cell-btn${hasBooking ? ' has-booking' : ''}`}
                     onClick={() => !isPast && onDayClick(dateStr)}
                     disabled={isPast}
+                    title={hasBooking ? `Có ${info.da_dat} đơn đặt phòng` : undefined}
                   >
                     <span className="price-inv-cell-left">
                       <span className="price-inv-cell-day">{dayNum}</span>
+                      {hasBooking && <span className="price-inv-cell-booked-dot" aria-hidden />}
                     </span>
                     <span className="price-inv-cell-right">
                       {info ? (
@@ -175,9 +167,14 @@ const MonthCalendar = ({
                           <span className={`price-inv-cell-price ${isCustom || selected ? 'custom' : ''}`}>
                             {formatPriceShort(info.don_gia)}
                           </span>
-                          <span className="price-inv-cell-inv">
+                          <span className={`price-inv-cell-inv${hasBooking ? ' booked' : ''}`}>
                             {info.con_lai}/{info.tong_phong} Phòng
                           </span>
+                          {hasBooking && (
+                            <span className="price-inv-cell-booked">
+                              {info.da_dat} đơn
+                            </span>
+                          )}
                         </>
                       ) : (
                         <span className="price-inv-cell-price">—</span>
@@ -213,13 +210,13 @@ const PricingPage = () => {
   const [rangeAnchor, setRangeAnchor] = useState(null);
   const [selectedFrom, setSelectedFrom] = useState('');
   const [selectedTo, setSelectedTo] = useState('');
-  const [fromText, setFromText] = useState('');
-  const [toText, setToText] = useState('');
 
   const [donGia, setDonGia] = useState('');
   const [moBan, setMoBan] = useState('');
   const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const { toast, showToast } = useToast();
 
@@ -251,12 +248,10 @@ const PricingPage = () => {
 
   const syncFromDate = (iso) => {
     setSelectedFrom(iso || '');
-    setFromText(iso ? formatDisplayDate(iso) : '');
   };
 
   const syncToDate = (iso) => {
     setSelectedTo(iso || '');
-    setToText(iso ? formatDisplayDate(iso) : '');
   };
 
   const clearDateRange = () => {
@@ -395,7 +390,6 @@ const PricingPage = () => {
       }
     };
 
-    // Tránh setState đồng bộ trong thân effect (React Compiler)
     const timer = window.setTimeout(run, 0);
     return () => {
       cancelled = true;
@@ -434,52 +428,6 @@ const PricingPage = () => {
     if (value && selectedFrom && value < selectedFrom) {
       syncFromDate(value);
     }
-  };
-
-  const commitFromText = (raw) => {
-    const trimmed = String(raw || '').trim();
-    if (!trimmed) {
-      syncFromDate('');
-      clearFieldError('selectedFrom');
-      return;
-    }
-    const iso = parseDisplayDate(trimmed);
-    if (!iso) {
-      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
-      return;
-    }
-    if (iso < today) {
-      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày bắt đầu không được trước hôm nay' }));
-      setFromText(formatDisplayDate(iso));
-      return;
-    }
-    handleFromDateChange(iso);
-  };
-
-  const commitToText = (raw) => {
-    const trimmed = String(raw || '').trim();
-    if (!trimmed) {
-      syncToDate('');
-      clearFieldError('selectedTo');
-      return;
-    }
-    const iso = parseDisplayDate(trimmed);
-    if (!iso) {
-      setFieldErrors((prev) => ({ ...prev, selectedTo: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
-      return;
-    }
-    const minDate = selectedFrom || today;
-    if (iso < minDate) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        selectedTo: selectedFrom
-          ? 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'
-          : 'Ngày kết thúc không được trước hôm nay',
-      }));
-      setToText(formatDisplayDate(iso));
-      return;
-    }
-    handleToDateChange(iso);
   };
 
   const handleDayClick = (dateStr) => {
@@ -569,10 +517,8 @@ const PricingPage = () => {
       errors.donGia = 'Đơn giá là bắt buộc';
     } else {
       const priceValue = parseCurrency(priceRaw);
-      if (!Number.isFinite(priceValue) || priceValue <= 0) {
-        errors.donGia = 'Đơn giá không hợp lệ';
-      } else if (priceValue < MIN_UNIT_PRICE) {
-        errors.donGia = `Đơn giá phải từ ${formatCurrency(MIN_UNIT_PRICE)} VNĐ trở lên`;
+      if (!Number.isFinite(priceValue) || priceValue <= 0 || priceValue < MIN_UNIT_PRICE) {
+        errors.donGia = `Đơn giá phải lớn hơn ${formatCurrency(MIN_UNIT_PRICE)}đ`;
       }
     }
 
@@ -595,27 +541,7 @@ const PricingPage = () => {
   };
 
   const handleSaveClick = () => {
-    const fromIso = fromText.trim() ? parseDisplayDate(fromText) : '';
-    const toIso = toText.trim() ? parseDisplayDate(toText) : '';
-
-    if (fromText.trim() && fromIso === null) {
-      setFieldErrors((prev) => ({ ...prev, selectedFrom: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
-      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
-      return;
-    }
-    if (toText.trim() && toIso === null) {
-      setFieldErrors((prev) => ({ ...prev, selectedTo: 'Ngày không hợp lệ (dd/mm/yyyy)' }));
-      showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
-      return;
-    }
-
-    const nextFrom = fromIso || '';
-    const nextTo = toIso || '';
-    syncFromDate(nextFrom);
-    syncToDate(nextTo);
-    setRangeAnchor(null);
-
-    const errors = validateSave(nextFrom, nextTo);
+    const errors = validateSave(selectedFrom, selectedTo);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       showToast('Lưu không thành công. Vui lòng kiểm tra lại thông tin.', 'error');
@@ -623,6 +549,56 @@ const PricingPage = () => {
     }
     setFieldErrors({});
     setShowSaveConfirm(true);
+  };
+
+  const validateRestore = (from = selectedFrom, to = selectedTo) => {
+    const errors = {};
+    if (!selectedRoom) errors.selectedRoom = 'Vui lòng chọn loại phòng';
+    if (!from) errors.selectedFrom = 'Vui lòng chọn từ ngày';
+    if (!to) errors.selectedTo = 'Vui lòng chọn đến ngày';
+    if (from && to && from > to) {
+      errors.selectedTo = 'Đến ngày phải sau hoặc bằng từ ngày';
+    }
+    return errors;
+  };
+
+  const handleRestoreClick = () => {
+    const errors = validateRestore();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
+      showToast('Vui lòng chọn khoảng ngày cần khôi phục giá.', 'error');
+      return;
+    }
+    setFieldErrors({});
+    setShowRestoreConfirm(true);
+  };
+
+  const handleRestore = async () => {
+    const errors = validateRestore();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
+      setShowRestoreConfirm(false);
+      showToast('Vui lòng chọn khoảng ngày cần khôi phục giá.', 'error');
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const res = await api.post('/partner/pricing/restore', {
+        ma_loai_phong: Number(selectedRoom),
+        tuNgay: selectedFrom,
+        denNgay: selectedTo,
+      });
+      setShowRestoreConfirm(false);
+      showToast(res.data?.message || 'Đã khôi phục giá cơ bản');
+      setRangeAnchor(null);
+      setDonGia(formatCurrency(giaCoBan));
+      await loadCalendar();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Khôi phục giá không thành công.', 'error');
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleSave = async () => {
@@ -712,12 +688,20 @@ const PricingPage = () => {
     { label: 'Số phòng mở bán', value: String(moBan || '—') },
   ];
 
+  const restoreConfirmRows = [
+    { label: 'Khách sạn', value: detailHotel?.ten || '—' },
+    { label: 'Loại phòng', value: selectedRoomName },
+    { label: 'Từ ngày', value: formatDisplayDate(selectedFrom) },
+    { label: 'Đến ngày', value: formatDisplayDate(selectedTo) },
+    { label: 'Giá khôi phục', value: giaCoBan > 0 ? `${formatCurrency(giaCoBan)}đ` : '—' },
+  ];
+
   if (!detailHotelId) {
     return (
-      <div className="mgmt-page mgmt-list-page">
+      <div className="mgmt-page mgmt-list-page partner-pricing-page">
         <ManagementHeader
           title="Quản lý giá và kho phòng"
-          subtitle="Danh sách khách sạn đang quản lý — chọn xem chi tiết để chỉnh giá theo ngày"
+          subtitle="Danh sách khách sạn đang quản lý — chọn xem chi tiết để chỉnh giá và kho theo ngày"
         />
 
         <Toast toast={toast} />
@@ -730,7 +714,7 @@ const PricingPage = () => {
               <p className="empty-state-text">
                 {hotels.length
                   ? 'Không có khách sạn phù hợp bộ lọc'
-                  : 'Chưa có khách sạn nào đang hoạt động để quản lý giá.'}
+                  : 'Chưa có khách sạn đã duyệt để quản lý giá.'}
               </p>
             </div>
           ) : (
@@ -739,12 +723,12 @@ const PricingPage = () => {
                 <table className="data-table data-table-grid">
                   <thead>
                     <tr>
-                      <th>Tên khách sạn</th>
-                      <th>Địa điểm</th>
-                      <th>Địa chỉ</th>
-                      <th style={{ width: 120 }}>Số Loại phòng</th>
-                      <th style={{ width: 140 }}>Trạng thái</th>
-                      <th style={{ width: 140 }}>Thao tác</th>
+                      <th className="partner-col-name">Tên khách sạn</th>
+                      <th className="partner-col-location">Địa điểm</th>
+                      <th className="partner-col-address">Địa chỉ</th>
+                      <th className="partner-col-count">Số Loại phòng</th>
+                      <th className="partner-col-status">Trạng thái</th>
+                      <th className="partner-col-actions">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -756,28 +740,35 @@ const PricingPage = () => {
                       const activeCount = getActiveRooms(hotel).length;
                       return (
                         <tr key={hotel.ma_khach_san}>
-                          <td>
-                            <strong>{hotel.ten}</strong>
+                          <td className="partner-col-name">
+                            <span className="partner-pricing-cell-text" title={hotel.ten}>
+                              <strong>{hotel.ten}</strong>
+                            </span>
                           </td>
-                          <td>{hotel.dia_diem?.ten_dia_diem || '—'}</td>
-                          <td>{hotel.dia_chi || '—'}</td>
-                          <td>
+                          <td className="partner-col-location">{hotel.dia_diem?.ten_dia_diem || '—'}</td>
+                          <td className="partner-col-address mgmt-col-address">
+                            <span className="partner-pricing-cell-text mgmt-cell-address">
+                              {hotel.dia_chi || '—'}
+                            </span>
+                          </td>
+                          <td className="partner-col-count">
                             {activeCount > 0
                               ? `${activeCount}${roomCount !== activeCount ? ` / ${roomCount}` : ''}`
                               : roomCount}
                           </td>
-                          <td>
+                          <td className="partner-col-status">
                             <span className={`badge ${st.cls}`}>{st.label}</span>
                           </td>
-                          <ActionCell>
-                            <ActionButton
-                              variant="edit"
-                              title="Quản lý giá"
-                              onClick={() => openDetail(hotel)}
+                          <ActionCell className="partner-col-actions">
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm partner-room-manage-btn"
+                              title="Giá & Kho"
                               disabled={activeCount === 0}
+                              onClick={() => openDetail(hotel)}
                             >
-                              Quản lý giá
-                            </ActionButton>
+                              Giá & Kho
+                            </button>
                           </ActionCell>
                         </tr>
                       );
@@ -932,22 +923,11 @@ const PricingPage = () => {
               <div className="price-inv-date-row">
                 <span>Từ <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="dd/mm/yyyy"
+                  type="date"
                   className={fieldErrors.selectedFrom ? 'input-invalid' : ''}
-                  value={fromText}
-                  onChange={(e) => {
-                    setFromText(e.target.value);
-                    clearFieldError('selectedFrom');
-                  }}
-                  onBlur={() => commitFromText(fromText)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      commitFromText(fromText);
-                    }
-                  }}
+                  value={selectedFrom}
+                  min={today}
+                  onChange={(e) => handleFromDateChange(e.target.value)}
                 />
               </div>
               {fieldErrors.selectedFrom && (
@@ -956,22 +936,11 @@ const PricingPage = () => {
               <div className="price-inv-date-row">
                 <span>Đến <span style={{ color: '#e05c5c' }}>*</span></span>
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="dd/mm/yyyy"
+                  type="date"
                   className={fieldErrors.selectedTo ? 'input-invalid' : ''}
-                  value={toText}
-                  onChange={(e) => {
-                    setToText(e.target.value);
-                    clearFieldError('selectedTo');
-                  }}
-                  onBlur={() => commitToText(toText)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      commitToText(toText);
-                    }
-                  }}
+                  value={selectedTo}
+                  min={selectedFrom || today}
+                  onChange={(e) => handleToDateChange(e.target.value)}
                 />
               </div>
               {fieldErrors.selectedTo && (
@@ -1002,10 +971,11 @@ const PricingPage = () => {
                 {fieldErrors.donGia ? (
                   <p className="form-field-error">{fieldErrors.donGia}</p>
                 ) : (
-                  <p className="price-inv-hint">
-                    Tối thiểu {formatCurrency(MIN_UNIT_PRICE)}đ
-                    {calendarData.room ? ` · Giá cơ bản: ${formatCurrency(giaCoBan)}đ` : ''}
-                  </p>
+                  calendarData.room && (
+                    <p className="price-inv-hint">
+                      Giá cơ bản: {formatCurrency(giaCoBan)}đ
+                    </p>
+                  )
                 )}
               </div>
             </div>
@@ -1024,7 +994,6 @@ const PricingPage = () => {
                     setMoBan(e.target.value);
                     clearFieldError('moBan');
                   }}
-                  placeholder="Lớn hơn 0"
                 />
                 {fieldErrors.moBan ? (
                   <p className="form-field-error">{fieldErrors.moBan}</p>
@@ -1036,15 +1005,26 @@ const PricingPage = () => {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center', marginBottom: 14 }}
-              onClick={handleSaveClick}
-              disabled={saving}
-            >
-              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-            </button>
+            <div className="price-inv-panel-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveClick}
+                disabled={saving || restoring}
+              >
+                {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost price-inv-restore-btn"
+                onClick={handleRestoreClick}
+                disabled={saving || restoring}
+              >
+                <RotateCcw size={16} />
+                {restoring ? 'Đang khôi phục...' : 'Khôi phục giá gốc'}
+              </button>
+             
+            </div>
           </aside>
         </div>
       )}
@@ -1061,6 +1041,20 @@ const PricingPage = () => {
         loading={saving}
         onClose={() => !saving && setShowSaveConfirm(false)}
         onConfirm={handleSave}
+      />
+
+      <ConfirmModal
+        open={showRestoreConfirm}
+        title="Xác nhận khôi phục giá gốc"
+        intro="Các ngày đã chỉnh giá trong khoảng chọn sẽ quay về giá cơ bản của loại phòng. Số phòng mở bán (nếu đã đặt riêng) vẫn giữ nguyên."
+        icon={<RotateCcw size={20} />}
+        variant="primary"
+        infoRows={restoreConfirmRows}
+        confirmText="Khôi phục"
+        cancelText="Hủy"
+        loading={restoring}
+        onClose={() => !restoring && setShowRestoreConfirm(false)}
+        onConfirm={handleRestore}
       />
     </div>
   );

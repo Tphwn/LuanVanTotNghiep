@@ -52,9 +52,16 @@ const registerSchema = Joi.object({
   }),
 });
 
+const roleField = Joi.string()
+  .valid('khach_hang', 'doi_tac', 'admin')
+  .messages({
+    'any.only': 'Vai trò đăng nhập không hợp lệ',
+  });
+
 const loginSchema = Joi.object({
   email: emailField,
   mat_khau: loginPasswordField,
+  vai_tro: roleField.optional(),
 });
 
 const googleLoginSchema = Joi.object({
@@ -68,15 +75,18 @@ const emailOtpSchema = Joi.object({
   otp: Joi.string().length(6).required().messages({
     'string.length': 'Mã OTP gồm 6 chữ số',
   }),
+  vai_tro: roleField.optional(),
 });
 
 const resendOtpSchema = Joi.object({
   email: emailField,
   purpose: Joi.string().valid('register', 'reset').default('register'),
+  vai_tro: roleField.optional(),
 });
 
 const forgotPasswordSchema = Joi.object({
   email: emailField,
+  vai_tro: roleField.optional(),
 });
 
 const resetPasswordSchema = Joi.object({

@@ -6,7 +6,6 @@ import {
   clearMsg,
 } from '../../../store/slices/partnerBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import FilterTabs from '../../../components/common/management/FilterTabs';
 import SearchBar from '../../../components/common/management/SearchBar';
 import FilterActions from '../../../components/common/management/FilterActions';
 import ListPagination from '../../../components/common/management/ListPagination';
@@ -52,7 +51,7 @@ const getPaymentFilterKey = (booking) => {
 
 const matchesStatusFilter = (booking, statusFilter) => {
   if (statusFilter === 'all') return true;
-  if (statusFilter === 'da_xac_nhan') {
+  if (statusFilter === 'cho_nhan_phong' || statusFilter === 'da_xac_nhan') {
     return ['da_xac_nhan', 'cho_xac_nhan'].includes(booking.trang_thai);
   }
   if (statusFilter === 'da_huy') {
@@ -60,6 +59,8 @@ const matchesStatusFilter = (booking, statusFilter) => {
   }
   return booking.trang_thai === statusFilter;
 };
+
+const isActiveStay = (booking) => booking.trang_thai === 'da_checkin';
 
 const BookingManagePage = () => {
   const dispatch = useDispatch();
@@ -79,14 +80,14 @@ const BookingManagePage = () => {
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [quickAction, setQuickAction] = useState(null);
+  const [assistantKey, setAssistantKey] = useState('all');
 
-  const [draftStatusFilter, setDraftStatusFilter] = useState('all');
-  const [draftPaymentFilter, setDraftPaymentFilter] = useState('all');
-  const [draftKeyword, setDraftKeyword] = useState('');
-  const [draftHotelFilter, setDraftHotelFilter] = useState('all');
-  const [draftCheckInDate, setDraftCheckInDate] = useState('');
-  const [draftCheckOutDate, setDraftCheckOutDate] = useState('');
-  const [draftQuickAction, setDraftQuickAction] = useState(null);
+  const todayKey = useMemo(() => getLocalToday(), []);
+  const tomorrowKey = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return toDateKey(d);
+  }, []);
 
   useEffect(() => {
     dispatch(fetchPartnerBookings());
@@ -97,6 +98,7 @@ const BookingManagePage = () => {
       const t = setTimeout(() => dispatch(clearMsg()), 4000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [successMsg, error, dispatch]);
 
   const handleViewDetail = (id) => {
@@ -123,50 +125,16 @@ const BookingManagePage = () => {
       .sort((a, b) => (a.ten || '').localeCompare(b.ten || '', 'vi'));
   }, [list]);
 
-  const handleHotelFilterChange = (value) => {
-    setDraftHotelFilter(value);
-    setDraftQuickAction(null);
-  };
-
-  const handleStatusChange = (value) => {
-    setDraftStatusFilter(value);
-    setDraftQuickAction(null);
-  };
-
-  const handleTabChange = (value) => {
-    setStatusFilter(value);
-    setDraftStatusFilter(value);
-    setQuickAction(null);
-    setDraftQuickAction(null);
-  };
-
-  const handlePaymentChange = (value) => {
-    setDraftPaymentFilter(value);
-    setDraftQuickAction(null);
-  };
-
-  const handleCheckInDateChange = (value) => {
-    setDraftCheckInDate(value);
-    setDraftQuickAction(null);
-  };
-
-  const handleCheckOutDateChange = (value) => {
-    setDraftCheckOutDate(value);
-    setDraftQuickAction(null);
-  };
-
-  const clearDraftFilters = () => {
-    setDraftKeyword('');
-    setDraftStatusFilter('all');
-    setDraftPaymentFilter('all');
-    setDraftHotelFilter('all');
-    setDraftCheckInDate('');
-    setDraftCheckOutDate('');
-    setDraftQuickAction(null);
-  };
+  const assistantStats = useMemo(() => {
+    const checkinToday = list.filter((b) => toDateKey(b.ngay_nhan_phong) === todayKey).length;
+    const checkoutToday = list.filter((b) => toDateKey(b.ngay_tra_phong) === todayKey).length;
+    const waiting = list.filter((b) => matchesStatusFilter(b, 'cho_nhan_phong')).length;
+    const staying = list.filter((b) => isActiveStay(b)).length;
+    const cancelled = list.filter((b) => matchesStatusFilter(b, 'da_huy')).length;
+    return { checkinToday, checkoutToday, waiting, staying, cancelled };
+  }, [list, todayKey]);
 
   const clearFilters = () => {
-    clearDraftFilters();
     setKeyword('');
     setStatusFilter('all');
     setPaymentFilter('all');
@@ -174,76 +142,154 @@ const BookingManagePage = () => {
     setCheckInDate('');
     setCheckOutDate('');
     setQuickAction(null);
+    setAssistantKey('all');
   };
 
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-    setStatusFilter(draftStatusFilter);
-    setPaymentFilter(draftPaymentFilter);
-    setHotelFilter(draftHotelFilter);
-    setCheckInDate(draftCheckInDate);
-    setCheckOutDate(draftCheckOutDate);
-    setQuickAction(draftQuickAction);
-  };
-
-  const handleQuickFilterChange = (value) => {
+  const applyQuickPreset = (value) => {
     if (!value || value === 'all') {
-      clearDraftFilters();
+      clearFilters();
       return;
     }
 
-    const todayKey = getLocalToday();
-    setDraftKeyword('');
-    setDraftHotelFilter('all');
-    setDraftPaymentFilter('all');
-    setDraftQuickAction(value);
+    setKeyword('');
+    setHotelFilter('all');
+    setPaymentFilter('all');
+    setQuickAction(value);
+    setAssistantKey(value === 'staying' ? 'da_checkin' : 'all');
 
-    if (value === 'checkin_today') {
-      setDraftStatusFilter('da_xac_nhan');
-      setDraftCheckInDate(todayKey);
-      setDraftCheckOutDate('');
-      return;
-    }
-    if (value === 'checkout_today') {
-      setDraftStatusFilter('da_checkin');
-      setDraftCheckInDate('');
-      setDraftCheckOutDate(todayKey);
-      return;
-    }
     if (value === 'staying') {
-      setDraftStatusFilter('da_checkin');
-      setDraftCheckInDate('');
-      setDraftCheckOutDate('');
+      setStatusFilter('da_checkin');
+      setCheckInDate('');
+      setCheckOutDate('');
+      return;
+    }
+    if (value === 'arrive_tomorrow') {
+      setStatusFilter('all');
+      setCheckInDate(tomorrowKey);
+      setCheckOutDate('');
+      return;
+    }
+    if (value === 'booked_today') {
+      setStatusFilter('all');
+      setCheckInDate('');
+      setCheckOutDate('');
     }
   };
 
-  const filtered = list.filter((b) => {
-    const matchStatus = matchesStatusFilter(b, statusFilter);
-    const matchPayment = paymentFilter === 'all' || getPaymentFilterKey(b) === paymentFilter;
-    const text = keyword.toLowerCase();
-    const matchKeyword = !keyword
-      || b.ma_don_hang?.toLowerCase().includes(text)
-      || b.ten_nguoi_nhan?.toLowerCase().includes(text)
-      || b.sdt_nguoi_nhan?.includes(text)
-      || b.khach_hang?.ho_ten?.toLowerCase().includes(text);
-    const matchHotel = hotelFilter === 'all'
-      || String(b.loai_phong?.khach_san?.ma_khach_san) === hotelFilter;
-    const matchCheckIn = !checkInDate || toDateKey(b.ngay_nhan_phong) === checkInDate;
-    const matchCheckOut = !checkOutDate || toDateKey(b.ngay_tra_phong) === checkOutDate;
+  const handleAssistantClick = (key) => {
+    if (key === 'checkin_today') {
+      setKeyword('');
+      setHotelFilter('all');
+      setPaymentFilter('all');
+      setQuickAction(null);
+      setAssistantKey(key);
+      setStatusFilter('all');
+      setCheckInDate(todayKey);
+      setCheckOutDate('');
+      return;
+    }
+    if (key === 'checkout_today') {
+      setKeyword('');
+      setHotelFilter('all');
+      setPaymentFilter('all');
+      setQuickAction(null);
+      setAssistantKey(key);
+      setStatusFilter('all');
+      setCheckInDate('');
+      setCheckOutDate(todayKey);
+      return;
+    }
 
-    return matchStatus && matchPayment && matchKeyword && matchHotel && matchCheckIn && matchCheckOut;
-  });
+    setQuickAction(null);
+    setCheckInDate('');
+    setCheckOutDate('');
+    setPaymentFilter('all');
+    setAssistantKey(key);
 
-  const filterTabs = useMemo(() => {
-    const count = (s) => list.filter((b) => matchesStatusFilter(b, s)).length;
-    return [
-      { id: 'all', label: 'Tất cả đơn', count: list.length, tone: 'neutral' },
-      { id: 'da_xac_nhan', label: 'Chờ nhận phòng', count: count('da_xac_nhan'), tone: 'info' },
-      { id: 'da_checkin', label: 'Đang lưu trú', count: count('da_checkin'), tone: 'info' },
-      { id: 'hoan_thanh', label: 'Đã hoàn thành', count: count('hoan_thanh'), tone: 'success' },
-      { id: 'da_huy', label: 'Đã hủy', count: count('da_huy'), tone: 'danger' },
-    ];
-  }, [list]);
+    if (key === 'cho_nhan_phong') {
+      setStatusFilter('cho_nhan_phong');
+      return;
+    }
+    if (key === 'da_checkin') {
+      setStatusFilter('da_checkin');
+      return;
+    }
+    if (key === 'da_huy') {
+      setStatusFilter('da_huy');
+      return;
+    }
+    setStatusFilter('all');
+  };
+
+  const handleHotelFilterChange = (value) => {
+    setHotelFilter(value);
+    if (quickAction && quickAction !== 'booked_today') setQuickAction(null);
+  };
+
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setQuickAction(null);
+    setAssistantKey(value === 'all' ? 'all' : value);
+    if (value !== 'all') {
+      setCheckInDate('');
+      setCheckOutDate('');
+    }
+  };
+
+  const handlePaymentChange = (value) => {
+    setPaymentFilter(value);
+  };
+
+  const handleCheckInDateChange = (value) => {
+    setCheckInDate(value);
+    setQuickAction(null);
+    setAssistantKey(value === todayKey ? 'checkin_today' : 'all');
+  };
+
+  const handleCheckOutDateChange = (value) => {
+    setCheckOutDate(value);
+    setQuickAction(null);
+    setAssistantKey(value === todayKey ? 'checkout_today' : 'all');
+  };
+
+  const filtered = useMemo(() => {
+    const rows = list.filter((b) => {
+      const matchStatus = matchesStatusFilter(b, statusFilter);
+      const matchPayment = paymentFilter === 'all' || getPaymentFilterKey(b) === paymentFilter;
+      const text = keyword.toLowerCase();
+      const matchKeyword = !keyword
+        || b.ma_don_hang?.toLowerCase().includes(text)
+        || b.ten_nguoi_nhan?.toLowerCase().includes(text)
+        || b.sdt_nguoi_nhan?.includes(text)
+        || b.khach_hang?.ho_ten?.toLowerCase().includes(text)
+        || b.khach_hang?.sdt?.includes(text);
+      const matchHotel = hotelFilter === 'all'
+        || String(b.loai_phong?.khach_san?.ma_khach_san) === hotelFilter;
+      const matchCheckIn = !checkInDate || toDateKey(b.ngay_nhan_phong) === checkInDate;
+      const matchCheckOut = !checkOutDate || toDateKey(b.ngay_tra_phong) === checkOutDate;
+      const matchBookedToday = quickAction !== 'booked_today'
+        || toDateKey(b.ngay_dat) === todayKey;
+      return matchStatus
+        && matchPayment
+        && matchKeyword
+        && matchHotel
+        && matchCheckIn
+        && matchCheckOut
+        && matchBookedToday;
+    });
+
+    return rows;
+  }, [
+    list,
+    keyword,
+    statusFilter,
+    paymentFilter,
+    hotelFilter,
+    checkInDate,
+    checkOutDate,
+    quickAction,
+    todayKey,
+  ]);
 
   const {
     pagedItems: pagedBookings,
@@ -264,39 +310,131 @@ const BookingManagePage = () => {
     quickAction,
   ]);
 
+  const todayCards = [
+    {
+      id: 'checkin_today',
+      label: 'Check-in hôm nay',
+      count: assistantStats.checkinToday,
+      tone: 'warning',
+      hint: 'Chuẩn bị nhận phòng',
+    },
+    {
+      id: 'checkout_today',
+      label: 'Check-out hôm nay',
+      count: assistantStats.checkoutToday,
+      tone: 'danger',
+      hint: 'Chuẩn bị dọn phòng',
+    },
+  ];
+
+  const statusCards = [
+    {
+      id: 'cho_nhan_phong',
+      label: 'Chờ nhận phòng',
+      count: assistantStats.waiting,
+      tone: 'info',
+    },
+    {
+      id: 'da_checkin',
+      label: 'Đang lưu trú',
+      count: assistantStats.staying,
+      tone: 'success',
+    },
+    {
+      id: 'da_huy',
+      label: 'Đã hủy',
+      count: assistantStats.cancelled,
+      tone: 'muted',
+    },
+  ];
+
   return (
     <div className="mgmt-page mgmt-list-page partner-bookings-page">
       <ManagementHeader
         title="Quản Lý Đặt phòng"
-        subtitle="Xem và xử lý các đơn đặt phòng của khách sạn"
+        subtitle="Trợ lý nhắc việc cho lễ tân — ưu tiên check-in / check-out hôm nay"
       />
 
       {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
       {error && <div className="mgmt-toast error">{error}</div>}
 
       <div className="mgmt-toolbar-block partner-bookings-toolbar">
-        <FilterTabs
-          tabs={filterTabs}
-          active={statusFilter}
-          onChange={handleTabChange}
-        />
+        <section className="partner-booking-assistant" aria-label="Trợ lý nhắc việc">
+          <div className="partner-booking-assistant-group">
+            <h3 className="partner-booking-assistant-title partner-booking-assistant-title--today">
+              Việc hôm nay
+            </h3>
+            <div className="partner-booking-assistant-cards partner-booking-assistant-cards--today">
+              {todayCards.map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={`partner-booking-assistant-card partner-booking-assistant-card--${card.tone}${assistantKey === card.id ? ' is-active' : ''}`}
+                  onClick={() => handleAssistantClick(card.id)}
+                >
+                  <span className="partner-booking-assistant-card-label">{card.label}</span>
+                  <strong className="partner-booking-assistant-card-count">{card.count}</strong>
+                  <span className="partner-booking-assistant-card-hint">{card.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="partner-booking-assistant-group">
+            <h3 className="partner-booking-assistant-title">Trạng thái tổng</h3>
+            <div className="partner-booking-assistant-cards partner-booking-assistant-cards--status">
+              {statusCards.map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={`partner-booking-assistant-card partner-booking-assistant-card--${card.tone}${assistantKey === card.id ? ' is-active' : ''}`}
+                  onClick={() => handleAssistantClick(card.id)}
+                >
+                  <span className="partner-booking-assistant-card-label">{card.label}</span>
+                  <strong className="partner-booking-assistant-card-count">{card.count}</strong>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <div className="partner-bookings-filters">
-          <div className="partner-bookings-filters-row">
+          <div className="partner-bookings-filters-row partner-bookings-filters-row--primary">
             <div className="partner-bookings-search">
               <SearchBar
-                value={draftKeyword}
-                onChange={(e) => {
-                  setDraftKeyword(e.target.value);
-                  setDraftQuickAction(null);
-                }}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Tìm mã đơn, tên khách, SĐT..."
               />
             </div>
 
+            <label className="partner-bookings-date-field">
+              <span>Check-in</span>
+              <input
+                type="date"
+                className="mgmt-select-inline"
+                value={checkInDate}
+                onChange={(e) => handleCheckInDateChange(e.target.value)}
+                aria-label="Lọc theo ngày check-in"
+              />
+            </label>
+
+            <label className="partner-bookings-date-field">
+              <span>Check-out</span>
+              <input
+                type="date"
+                className="mgmt-select-inline"
+                value={checkOutDate}
+                onChange={(e) => handleCheckOutDateChange(e.target.value)}
+                aria-label="Lọc theo ngày check-out"
+              />
+            </label>
+          </div>
+
+          <div className="partner-bookings-filters-row partner-bookings-filters-row--secondary">
             <select
               className="mgmt-select-inline"
-              value={draftHotelFilter}
+              value={hotelFilter}
               onChange={(e) => handleHotelFilterChange(e.target.value)}
               aria-label="Lọc theo khách sạn"
             >
@@ -310,26 +448,24 @@ const BookingManagePage = () => {
 
             <select
               className="mgmt-select-inline"
-              value={draftQuickAction || 'all'}
-              onChange={(e) => handleQuickFilterChange(e.target.value)}
+              value={quickAction || 'all'}
+              onChange={(e) => applyQuickPreset(e.target.value)}
               aria-label="Bộ lọc nhanh"
             >
               <option value="all">Bộ lọc nhanh</option>
-              <option value="checkin_today">Hôm nay nhận phòng</option>
-              <option value="checkout_today">Hôm nay trả phòng</option>
-              <option value="staying">Đang lưu trú</option>
+              <option value="staying">Khách đang lưu trú</option>
+              <option value="arrive_tomorrow">Khách đến vào ngày mai</option>
+              <option value="booked_today">Đặt phòng mới hôm nay</option>
             </select>
-          </div>
 
-          <div className="partner-bookings-filters-row">
             <select
               className="mgmt-select-inline"
-              value={draftStatusFilter}
+              value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
               aria-label="Lọc theo trạng thái đơn"
             >
               <option value="all">Tất cả trạng thái đơn</option>
-              <option value="da_xac_nhan">Chờ nhận phòng</option>
+              <option value="cho_nhan_phong">Chờ nhận phòng</option>
               <option value="da_checkin">Đang lưu trú</option>
               <option value="hoan_thanh">Đã hoàn thành</option>
               <option value="da_huy">Đã hủy</option>
@@ -337,7 +473,7 @@ const BookingManagePage = () => {
 
             <select
               className="mgmt-select-inline"
-              value={draftPaymentFilter}
+              value={paymentFilter}
               onChange={(e) => handlePaymentChange(e.target.value)}
               aria-label="Lọc theo trạng thái thanh toán"
             >
@@ -350,29 +486,7 @@ const BookingManagePage = () => {
               <option value="khong_hoan">Không hoàn</option>
             </select>
 
-            <label className="partner-bookings-date-field">
-              <span>Check-in</span>
-              <input
-                type="date"
-                className="mgmt-select-inline"
-                value={draftCheckInDate}
-                onChange={(e) => handleCheckInDateChange(e.target.value)}
-                aria-label="Lọc theo ngày check-in"
-              />
-            </label>
-
-            <label className="partner-bookings-date-field">
-              <span>Check-out</span>
-              <input
-                type="date"
-                className="mgmt-select-inline"
-                value={draftCheckOutDate}
-                onChange={(e) => handleCheckOutDateChange(e.target.value)}
-                aria-label="Lọc theo ngày check-out"
-              />
-            </label>
-
-            <FilterActions onApply={applyFilters} onClear={clearFilters} />
+            <FilterActions showApply={false} onClear={clearFilters} />
           </div>
         </div>
       </div>
@@ -390,21 +504,23 @@ const BookingManagePage = () => {
               <table className="data-table data-table-grid">
                 <thead>
                   <tr>
-                    <th style={{ width: 140 }}>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>Khách sạn</th>
-                    <th>Loại phòng</th>
-                    <th style={{ width: 108 }}>Check-in</th>
-                    <th style={{ width: 108 }}>Check-out</th>
-                    <th style={{ width: 120 }}>Tổng tiền</th>
-                    <th style={{ width: 100 }}>Thanh toán</th>
-                    <th style={{ width: 120 }}>Trạng thái</th>
-                    <th style={{ width: 72 }}>Thao tác</th>
+                    <th className="partner-col-code">Mã đơn</th>
+                    <th className="partner-col-customer">Khách hàng</th>
+                    <th className="partner-col-hotel">Khách sạn</th>
+                    <th className="partner-col-date">Check-in</th>
+                    <th className="partner-col-date">Check-out</th>
+                    <th className="partner-col-money">Tổng tiền</th>
+                    <th className="partner-col-pay">Thanh toán</th>
+                    <th className="partner-col-status">Trạng thái</th>
+                    <th className="partner-col-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <BookingTable
                   bookings={pagedBookings}
                   onViewDetail={handleViewDetail}
+                  highlightToday
+                  todayKey={todayKey}
+                  showRoomType={false}
                 />
               </table>
             </div>

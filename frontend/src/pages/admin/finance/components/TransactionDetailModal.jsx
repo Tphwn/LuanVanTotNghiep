@@ -9,9 +9,11 @@ import {
 import { formatCurrency } from '../../../../utils/bookingDisplay';
 
 const TX_STATUS = {
-  cho: { label: 'Chờ', cls: 'badge-warning' },
   thanh_cong: { label: 'Thành công', cls: 'badge-success' },
   that_bai: { label: 'Thất bại', cls: 'badge-danger' },
+  da_hoan_tien: { label: 'Đã hoàn tiền', cls: 'badge-info' },
+  hoan_thanh: { label: 'Hoàn thành', cls: 'badge-success' },
+  cho: { label: 'Chờ', cls: 'badge-warning' },
 };
 
 const formatPaymentDateTime = (date) => {

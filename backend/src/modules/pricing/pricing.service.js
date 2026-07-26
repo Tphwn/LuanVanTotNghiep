@@ -270,6 +270,65 @@ const pricingService = {
     }
     return { count: total };
   },
+
+  // Khôi phục đơn giá về giá cơ bản của loại phòng (giữ số phòng mở bán nếu có)
+  restoreBasePrices: async (maLoaiPhong, dates = []) => {
+    const roomId = Number(maLoaiPhong);
+    if (!roomId || Number.isNaN(roomId)) {
+      throw new Error('ma_loai_phong không hợp lệ');
+    }
+
+    const ngayList = [...new Set(
+      (dates || [])
+        .map((d) => String(d).slice(0, 10))
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)),
+    )];
+    if (!ngayList.length) {
+      throw new Error('Cần chọn ít nhất một ngày để khôi phục');
+    }
+
+    const room = await prisma.loai_phong.findUnique({
+      where: { ma_loai_phong: roomId },
+      select: { gia_co_ban: true },
+    });
+    if (!room) throw new Error('Không tìm thấy loại phòng');
+
+    const giaCoBan = Number(room.gia_co_ban);
+    let restored = 0;
+
+    for (const ngayKey of ngayList) {
+      const rows = await prisma.$queryRaw`
+        SELECT ma_bang_gia, don_gia, so_luong_ap_dung
+        FROM bang_gia_phong
+        WHERE ma_loai_phong = ${roomId}
+          AND ngay = ${ngayKey}
+        LIMIT 1
+      `;
+      if (!rows.length) continue;
+
+      const row = rows[0];
+      const currentPrice = Number(row.don_gia);
+      if (currentPrice === giaCoBan) continue;
+
+      if (row.so_luong_ap_dung == null) {
+        await prisma.$executeRaw`
+          DELETE FROM bang_gia_phong
+          WHERE ma_bang_gia = ${Number(row.ma_bang_gia)}
+        `;
+      } else {
+        await prisma.bang_gia_phong.update({
+          where: { ma_bang_gia: Number(row.ma_bang_gia) },
+          data: {
+            don_gia: giaCoBan,
+            loai_gia: getDefaultLoaiGia(ngayKey),
+          },
+        });
+      }
+      restored += 1;
+    }
+
+    return { count: restored, gia_co_ban: giaCoBan };
+  },
 };
 
 module.exports = pricingService;

@@ -41,15 +41,6 @@ exports.update = async (req, res) => {
   }
 };
 
-exports.delete = async (req, res) => {
-  try {
-    await amenityService.delete(req.params.id);
-    res.json({ success: true, message: 'Xóa thành công' });
-  } catch (err) {
-    sendError(res, err);
-  }
-};
-
 exports.lock = async (req, res) => {
   try {
     const data = await amenityService.setStatus(req.params.id, 'an', req.body || {});

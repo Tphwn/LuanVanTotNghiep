@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { Calendar, Mail, Phone } from 'lucide-react';
 import adminUserService from '../../../services/adminUserService';
 import BackButton from '../../../components/common/BackButton';
@@ -12,6 +12,10 @@ import {
   REVIEW_BADGE,
   HOTEL_BADGE,
 } from '../../../constants/statusConfig';
+import {
+  buildAdminUsersListPath,
+  userStatusToListTab,
+} from '../../../utils/adminListReturn';
 
 const PAGE_SIZE = 10;
 
@@ -55,10 +59,14 @@ const DetailTabs = ({ tabs, activeTab, onChange }) => (
 
 export default function UserDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('');
+
+  const backTo = location.state?.returnTo
+    || buildAdminUsersListPath(userStatusToListTab(user?.trang_thai));
 
   useEffect(() => {
     let isMounted = true;
@@ -171,7 +179,7 @@ export default function UserDetailPage() {
   if (error || !user) {
     return (
       <div className="mgmt-page admin-user-detail-page">
-        <BackButton to="/admin/users" />
+        <BackButton to={backTo} />
         <div className="content-card admin-user-detail-section" style={{ marginTop: 16 }}>
           <p className="empty-state-text">{error || 'Không tìm thấy người dùng'}</p>
         </div>
@@ -182,7 +190,7 @@ export default function UserDetailPage() {
   return (
     <div className="mgmt-page admin-user-detail-page">
       <div className="admin-user-detail-top">
-        <BackButton to="/admin/users" />
+        <BackButton to={backTo} />
       </div>
 
       <div className="admin-user-detail-hero content-card">

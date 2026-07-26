@@ -4,6 +4,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { register, verifyRegisterOtp, clearError } from '../../store/slices/authSlice';
 import authService from '../../services/authService';
 import ROUTES from '../../constants/routes';
+import ROLES from '../../constants/roles';
 import getRedirectRoute from '../../utils/redirect';
 import {
   validateEmail,
@@ -69,7 +70,7 @@ const RegisterPage = () => {
     const errors = validateRegisterFields();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setFormError('Đăng ký không thành công. Vui lòng điền đúng các ràng buộc.');
+      setFormError(' Vui lòng điền đúng thông tin.');
       return;
     }
 
@@ -133,7 +134,8 @@ const RegisterPage = () => {
   };
 
   useEffect(() => {
-    if (user && step !== 'otp') {
+    // Chỉ khách hàng đã login mới bỏ qua trang đăng ký
+    if (user?.vai_tro === ROLES.KHACH_HANG && step !== 'otp') {
       navigate(getRedirectRoute(user), { replace: true });
     }
   }, [user, navigate, step]);

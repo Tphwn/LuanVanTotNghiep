@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import ROUTES from '../../constants/routes';
+import ROLES from '../../constants/roles';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -10,10 +11,14 @@ import {
   validatePassword,
   validatePasswordConfirm,
 } from '../../utils/authValidation';
+import { getLoginRouteByRole, PORTAL_COPY } from '../../utils/authPortal';
 
-const ForgotPasswordPage = () => {
+/**
+ * @param {'shared'|'admin'} [props.mode]
+ */
+export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState('email'); // email | otp | password
+  const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -22,6 +27,16 @@ const ForgotPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+
+  const isAdminPortal = mode === 'admin';
+  const copy = isAdminPortal ? PORTAL_COPY[ROLES.ADMIN] : PORTAL_COPY.shared;
+  const loginPath = isAdminPortal
+    ? getLoginRouteByRole(ROLES.ADMIN)
+    : ROUTES.LOGIN;
+
+  const buildRolePayload = () => (
+    isAdminPortal ? { vai_tro: ROLES.ADMIN } : {}
+  );
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -33,8 +48,11 @@ const ForgotPasswordPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await authService.forgotPassword({ email: email.trim() });
-      setInfo(res.data?.data?.message || res.data?.message || 'Nếu email tồn tại, mã OTP đã được gửi.');
+      const res = await authService.forgotPassword({
+        email: email.trim(),
+        ...buildRolePayload(),
+      });
+      setInfo(res.data?.data?.message || res.data?.message || 'Mã OTP đã được gửi.');
       setStep('otp');
       setOtp('');
     } catch (err) {
@@ -49,7 +67,11 @@ const ForgotPasswordPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await authService.verifyResetOtp({ email: email.trim(), otp: otp.trim() });
+      const res = await authService.verifyResetOtp({
+        email: email.trim(),
+        otp: otp.trim(),
+        ...buildRolePayload(),
+      });
       const token = res.data?.data?.reset_token || res.data?.reset_token;
       if (!token) {
         setError('Không nhận được token đặt lại mật khẩu');
@@ -77,7 +99,7 @@ const ForgotPasswordPage = () => {
     setError('');
     try {
       await authService.resetPassword({ reset_token: resetToken, mat_khau: matKhau });
-      navigate(ROUTES.LOGIN, {
+      navigate(loginPath, {
         replace: true,
         state: { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.' },
       });
@@ -92,7 +114,11 @@ const ForgotPasswordPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await authService.resendOtp({ email: email.trim(), purpose: 'reset' });
+      const res = await authService.resendOtp({
+        email: email.trim(),
+        purpose: 'reset',
+        ...buildRolePayload(),
+      });
       setInfo(res.data?.data?.message || res.data?.message || 'Đã gửi lại mã OTP.');
     } catch (err) {
       setError(err.response?.data?.message || 'Không gửi lại được OTP');
@@ -123,7 +149,7 @@ const ForgotPasswordPage = () => {
             {titles[step]}
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-md)' }}>
-            {step === 'email' && 'Nhập email đã đăng ký để nhận mã OTP'}
+            {step === 'email' && copy.forgotHint}
             {step === 'otp' && `Mã OTP đã gửi tới ${email}`}
             {step === 'password' && 'Mật khẩu mới tối thiểu 6 ký tự'}
           </p>
@@ -198,16 +224,23 @@ const ForgotPasswordPage = () => {
             <Button type="submit" fullWidth loading={loading} size="lg">
               Xác thực OTP
             </Button>
-            <Button
+            <button
               type="button"
-              fullWidth
-              variant="outline"
-              loading={loading}
               onClick={handleResendOtp}
-              style={{ marginTop: 10 }}
+              disabled={loading}
+              style={{
+                display: 'block',
+                width: '100%',
+                marginTop: 12,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--color-primary)',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: 'var(--font-size-sm)',
+              }}
             >
-              Gửi lại mã
-            </Button>
+              Gửi lại mã OTP
+            </button>
           </form>
         )}
 
@@ -250,7 +283,7 @@ const ForgotPasswordPage = () => {
           color: 'var(--color-text-secondary)',
         }}
         >
-          <Link to={ROUTES.LOGIN} style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+          <Link to={loginPath} style={{ color: 'var(--color-primary)' }}>
             Quay lại đăng nhập
           </Link>
         </p>
@@ -258,5 +291,9 @@ const ForgotPasswordPage = () => {
     </div>
   );
 };
+
+const ForgotPasswordPage = () => (
+  <AuthForgotPasswordPage mode="shared" />
+);
 
 export default ForgotPasswordPage;

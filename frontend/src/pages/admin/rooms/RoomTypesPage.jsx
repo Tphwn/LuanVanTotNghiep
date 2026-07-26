@@ -317,7 +317,6 @@ const RoomTypesPage = () => {
               filteredHotels={hotelPagination.pagedItems}
               onViewHotel={selectHotel}
               onClearFilters={clearHotelListFilters}
-              onApplyFilters={() => {}}
               pagination={{
                 showPagination: hotelPagination.showPagination,
                 total: filteredHotels.length,
@@ -366,7 +365,6 @@ const RoomTypesPage = () => {
             onViewRoom={handleViewRoom}
             onToggleRoom={handleToggleRoom}
             onClearFilters={clearRoomListFilters}
-            onApplyFilters={() => {}}
             pagination={{
               showPagination: roomPagination.showPagination,
               total: filteredRooms.length,

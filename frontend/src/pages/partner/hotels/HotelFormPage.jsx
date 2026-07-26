@@ -68,7 +68,12 @@ export default function HotelFormPage() {
     if (res.error) {
       throw new Error(res.payload || 'Không thể cập nhật khách sạn');
     }
-    setLocalSuccess('Sửa khách sạn thành công!');
+    const needsResubmit = ['cho_duyet', 'tu_choi', 'yeu_cau_sua'].includes(hotel.trang_thai);
+    setLocalSuccess(
+      needsResubmit
+        ? 'Đã gửi duyệt lại cho admin!'
+        : 'Sửa khách sạn thành công!'
+    );
     dispatch(clearMsg());
     setFormVersion((v) => v + 1);
   };

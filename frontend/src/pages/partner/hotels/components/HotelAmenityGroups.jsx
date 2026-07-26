@@ -70,7 +70,7 @@ export const HotelAmenityDisplay = ({ items }) => {
           </div>
           <div className="partner-hotel-amenity-tags">
             {group.items.map((item) => {
-              const Icon = getAmenityLucideIcon(item.bieu_tuong || item.ten);
+              const Icon = getAmenityLucideIcon(item.bieu_tuong, item.ten);
               return (
                 <span key={item.ma_tien_nghi} className="mgmt-type-tag partner-hotel-amenity-tag">
                   <Icon size={13} strokeWidth={1.6} />

@@ -3,15 +3,26 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
 import ROUTES from '../constants/routes';
 import ROLES from '../constants/roles';
-import getRedirectRoute from '../utils/redirect';
 import { resolveUploadUrl } from '../utils/media';
 import CustomerUserMenu from '../components/customer/CustomerUserMenu';
 import FlashToastHost from '../components/common/FlashToastHost';
+import SiteFooter from '../components/layout/SiteFooter';
+
+const AUTH_FOOTER_HIDDEN = new Set([
+  ROUTES.LOGIN,
+  ROUTES.REGISTER,
+  ROUTES.FORGOT_PASSWORD,
+]);
+
 const MainLayout = ({ children, fullBleed = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+
+  // Website khách chỉ hiện session khách hàng; admin/đối tác xem như khách chưa đăng nhập
+  const isCustomerSession = user?.vai_tro === ROLES.KHACH_HANG;
+  const showFooter = !AUTH_FOOTER_HIDDEN.has(location.pathname);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -68,21 +79,8 @@ const MainLayout = ({ children, fullBleed = false }) => {
         </nav>
 
         <div className="header-actions">
-          {user?.vai_tro === ROLES.KHACH_HANG ? (
+          {isCustomerSession ? (
             <CustomerUserMenu user={user} onLogout={handleLogout} />
-          ) : user ? (
-            <>
-            <div className="header-user-text">
-              <div className="header-smoke">Xin chào</div>
-              <div className="header-username">{user.ho_ten || user.email}</div>
-              </div>
-              <button type="button"className="logout-button"onClick={() => navigate(getRedirectRoute(user))}>
-                Bảng điều khiển
-              </button>
-              <button type="button"className="logout-button"onClick={handleLogout}>
-                Đăng xuất
-              </button>
-            </>
           ) : (
             <>
               <Link to={ROUTES.LOGIN}>
@@ -106,7 +104,8 @@ const MainLayout = ({ children, fullBleed = false }) => {
         </div>
       </header>
 
-      <main className={fullBleed ? 'main-panel-full':'main-panel'}>{children}</main>
+      <main className={fullBleed ? 'main-panel-full' : 'main-panel'}>{children}</main>
+      {showFooter ? <SiteFooter /> : null}
     </div>
   );
 };

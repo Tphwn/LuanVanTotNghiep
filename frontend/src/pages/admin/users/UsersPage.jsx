@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, Lock, Unlock } from "lucide-react";
 import {
   fetchUsers,
@@ -15,9 +15,11 @@ import ManagementToolbar from "../../../components/common/management/ManagementT
 import FilterActions from "../../../components/common/management/FilterActions";
 import CreatePartnerModal from "./components/CreatePartnerModal";
 import UserLockConfirmModal from "./components/UserLockConfirmModal";
-import { ACCOUNT_TEXT } from "../../../constants/statusConfig";
+import { ACCOUNT_BADGE } from "../../../constants/statusConfig";
+import { buildAdminUsersListPath } from "../../../utils/adminListReturn";
 
 const PAGE_SIZE = 10;
+const VALID_STATUS_TABS = ["all", "hoat_dong", "bi_khoa"];
 
 const ROLE_LABEL = {
   khach_hang: "Khách hàng",
@@ -39,7 +41,7 @@ const getNameInitial = (name) => {
   return word[0]?.toUpperCase() || "?";
 };
 
-const TAB_FILTER = {
+const STATUS_FILTER = {
   all: () => true,
   hoat_dong: (u) => u.trang_thai === "hoat_dong",
   bi_khoa: (u) => u.trang_thai === "bi_khoa",
@@ -55,17 +57,18 @@ const UsersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { users = [], loading, error, successMsg } = useSelector((state) => state.adminUsers);
 
   const [flashMsg, setFlashMsg] = useState(location.state?.toast || "");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const tabFromUrl = searchParams.get("tab");
   const [keyword, setKeyword] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(
+    VALID_STATUS_TABS.includes(tabFromUrl) ? tabFromUrl : "all"
+  );
   const [roleFilter, setRoleFilter] = useState("all");
-
-  const [draftKeyword, setDraftKeyword] = useState("");
-  const [draftRoleFilter, setDraftRoleFilter] = useState("all");
 
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
@@ -76,8 +79,15 @@ const UsersPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    const tab = searchParams.get("tab") || "all";
+    if (VALID_STATUS_TABS.includes(tab) && tab !== statusFilter) {
+      setStatusFilter(tab);
+    }
+  }, [searchParams, statusFilter]);
+
+  useEffect(() => {
     if (!flashMsg) return undefined;
-    navigate(location.pathname, { replace: true, state: {} });
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: {} });
     const t = setTimeout(() => setFlashMsg(""), 4000);
     return () => clearTimeout(t);
   }, [flashMsg]);
@@ -91,7 +101,16 @@ const UsersPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [activeTab, roleFilter, keyword]);
+  }, [statusFilter, roleFilter, keyword]);
+
+  const handleStatusTabChange = (tab) => {
+    setStatusFilter(tab);
+    if (tab === "all") {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
 
   const nonAdminUsers = useMemo(
     () => users.filter((u) => u.vai_tro !== "admin"),
@@ -111,11 +130,11 @@ const UsersPage = () => {
   ], [stats]);
 
   const filteredUsers = useMemo(() => {
-    const tabFilter = TAB_FILTER[activeTab] || TAB_FILTER.all;
+    const statusFn = STATUS_FILTER[statusFilter] || STATUS_FILTER.all;
     const roleFn = ROLE_FILTER[roleFilter] || ROLE_FILTER.all;
     const searchText = keyword.toLowerCase().trim();
     return nonAdminUsers.filter((user) => {
-      if (!tabFilter(user)) return false;
+      if (!statusFn(user)) return false;
       if (!roleFn(user)) return false;
       if (!searchText) return true;
       const name = getDisplayName(user).toLowerCase();
@@ -125,7 +144,7 @@ const UsersPage = () => {
         || name.includes(searchText)
       );
     });
-  }, [nonAdminUsers, activeTab, roleFilter, keyword]);
+  }, [nonAdminUsers, statusFilter, roleFilter, keyword]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -180,23 +199,15 @@ const UsersPage = () => {
     }
   };
 
-  const getStatusText = (status) => ACCOUNT_TEXT[status] || { label: status, cls: "" };
+  const clearFilters = () => {
+    setKeyword("");
+    setStatusFilter("all");
+    setRoleFilter("all");
+    setSearchParams({}, { replace: true });
+  };
 
   const rangeFrom = filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredUsers.length);
-
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-    setRoleFilter(draftRoleFilter);
-  };
-
-  const clearFilters = () => {
-    setKeyword('');
-    setActiveTab('all');
-    setRoleFilter('all');
-    setDraftKeyword('');
-    setDraftRoleFilter('all');
-  };
 
   return (
     <div className="mgmt-page mgmt-list-page admin-users-page">
@@ -234,24 +245,34 @@ const UsersPage = () => {
       )}
 
       <ManagementToolbar
-        searchValue={draftKeyword}
-        onSearchChange={(e) => setDraftKeyword(e.target.value)}
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên, email, SĐT..."
         tabs={filterTabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        activeTab={statusFilter}
+        onTabChange={handleStatusTabChange}
       >
         <select
           className="mgmt-select-inline"
-          value={draftRoleFilter}
-          onChange={(e) => setDraftRoleFilter(e.target.value)}
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
           aria-label="Lọc theo vai trò"
         >
           <option value="all">Tất cả vai trò</option>
           <option value="khach_hang">Khách hàng</option>
           <option value="doi_tac">Đối tác</option>
         </select>
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        <select
+          className="mgmt-select-inline"
+          value={statusFilter}
+          onChange={(e) => handleStatusTabChange(e.target.value)}
+          aria-label="Lọc theo trạng thái"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="hoat_dong">Đang hoạt động</option>
+          <option value="bi_khoa">Đã khóa</option>
+        </select>
+        <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -268,7 +289,7 @@ const UsersPage = () => {
                 <thead>
                   <tr>
                     <th style={{ width: 72 }}>Mã</th>
-                    <th>Họ Tên</th>
+                    <th className="mgmt-col-name">Họ Tên</th>
                     <th>Email</th>
                     <th style={{ width: 130 }}>SĐT</th>
                     <th style={{ width: 120 }}>Vai Trò</th>
@@ -280,11 +301,12 @@ const UsersPage = () => {
                   {pagedUsers.map((user) => {
                     const name = getDisplayName(user);
                     const isActive = user.trang_thai === "hoat_dong";
-                    const status = getStatusText(user.trang_thai);
+                    const status = ACCOUNT_BADGE[user.trang_thai]
+                      || { label: user.trang_thai, cls: "badge-default" };
                     return (
                       <tr key={user.ma_nguoi_dung}>
                         <td className="admin-cell-id">#{user.ma_nguoi_dung}</td>
-                        <td>
+                        <td className="mgmt-col-name">
                           <div className="mgmt-name-cell">
                             <span className="mgmt-avatar-initial" aria-hidden>
                               {getNameInitial(name)}
@@ -298,7 +320,7 @@ const UsersPage = () => {
                           {ROLE_LABEL[user.vai_tro] || user.vai_tro}
                         </td>
                         <td>
-                          <span className={`mgmt-status-text ${status.cls}`}>{status.label}</span>
+                          <span className={`badge ${status.cls}`}>{status.label}</span>
                         </td>
                         <ActionCell>
                           <ActionButton
@@ -306,7 +328,9 @@ const UsersPage = () => {
                             iconOnly
                             icon={Eye}
                             title="Chi tiết"
-                            onClick={() => navigate(`/admin/users/${user.ma_nguoi_dung}`)}
+                            onClick={() => navigate(`/admin/users/${user.ma_nguoi_dung}`, {
+                              state: { returnTo: buildAdminUsersListPath(statusFilter) },
+                            })}
                           />
                           <ActionButton
                             variant={isActive ? "lock" : "unlock"}

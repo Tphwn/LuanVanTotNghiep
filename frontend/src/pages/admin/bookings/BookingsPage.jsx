@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   fetchAdminBookings,
@@ -11,34 +11,57 @@ import {
   clearMsg,
 } from '../../../store/slices/adminBookingSlice';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
+import SearchBar from '../../../components/common/management/SearchBar';
+import FilterTabs from '../../../components/common/management/FilterTabs';
 import FilterActions from '../../../components/common/management/FilterActions';
 import BookingTable from '../../../components/booking/BookingTable';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 import AdminBookingCancelModal from './components/AdminBookingCancelModal';
+import { buildAdminBookingsListPath } from '../../../utils/adminListReturn';
+import { getPaymentDisplay } from '../../../utils/bookingDisplay';
 
 const PAGE_SIZE = 10;
+const VALID_STATUS_TABS = ['all', 'da_xac_nhan', 'da_checkin', 'hoan_thanh', 'da_huy'];
+
+const getPaymentFilterKey = (booking) => {
+  const pay = getPaymentDisplay(booking);
+  switch (pay.shortLabel) {
+    case 'Đã thanh toán':
+      return 'da_thanh_toan';
+    case 'Tại KS':
+      return 'tai_khach_san';
+    case 'Chờ TT':
+      return 'cho_thanh_toan';
+    case 'Đã hoàn':
+      return 'da_hoan';
+    case 'Chờ xử lý':
+      return 'cho_xu_ly';
+    case 'Không hoàn':
+      return 'khong_hoan';
+    default:
+      return 'khac';
+  }
+};
 
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id: routeBookingId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { list, stats, hotels, partners, loading, error, successMsg } = useSelector(
     (s) => s.adminBooking || {},
   );
 
+  const tabFromUrl = searchParams.get('tab');
   const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(
+    VALID_STATUS_TABS.includes(tabFromUrl) ? tabFromUrl : 'all'
+  );
   const [partnerFilter, setPartnerFilter] = useState('all');
   const [hotelFilter, setHotelFilter] = useState('all');
-  const [tuNgay, setTuNgay] = useState('');
-  const [denNgay, setDenNgay] = useState('');
-
-  const [draftKeyword, setDraftKeyword] = useState('');
-  const [draftPartnerFilter, setDraftPartnerFilter] = useState('all');
-  const [draftHotelFilter, setDraftHotelFilter] = useState('all');
-  const [draftTuNgay, setDraftTuNgay] = useState('');
-  const [draftDenNgay, setDraftDenNgay] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [checkInDate, setCheckInDate] = useState('');
+  const [checkOutDate, setCheckOutDate] = useState('');
 
   const [page, setPage] = useState(1);
   const [cancelBooking, setCancelBooking] = useState(null);
@@ -51,32 +74,22 @@ const AdminBookingsPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    const tab = searchParams.get('tab') || 'all';
+    if (VALID_STATUS_TABS.includes(tab) && tab !== statusFilter) {
+      setStatusFilter(tab);
+    }
+  }, [searchParams, statusFilter]);
+
+  useEffect(() => {
     dispatch(fetchAdminBookings({
       keyword,
       trang_thai: statusFilter,
       ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
       ks_id: hotelFilter !== 'all' ? hotelFilter : '',
-      tu_ngay: tuNgay,
-      den_ngay: denNgay,
+      tu_ngay: checkInDate,
+      den_ngay: checkOutDate,
     }));
-  }, [dispatch, keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
-
-  const filteredHotels = useMemo(() => {
-    if (draftPartnerFilter === 'all') return hotels;
-    return hotels.filter((h) => String(h.ma_doi_tac) === String(draftPartnerFilter));
-  }, [hotels, draftPartnerFilter]);
-
-  const handlePartnerChange = (value) => {
-    setDraftPartnerFilter(value);
-    if (value === 'all') return;
-    const hotelStillValid = hotels.some(
-      (h) => String(h.ma_khach_san) === String(draftHotelFilter)
-        && String(h.ma_doi_tac) === String(value),
-    );
-    if (draftHotelFilter !== 'all' && !hotelStillValid) {
-      setDraftHotelFilter('all');
-    }
-  };
+  }, [dispatch, keyword, statusFilter, partnerFilter, hotelFilter, checkInDate, checkOutDate]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -87,15 +100,53 @@ const AdminBookingsPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+  }, [keyword, statusFilter, partnerFilter, hotelFilter, paymentFilter, checkInDate, checkOutDate]);
 
-  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const handleStatusTabChange = (tab) => {
+    setStatusFilter(tab);
+    if (tab === 'all') {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
+
+  const filteredHotels = useMemo(() => {
+    if (partnerFilter === 'all') return hotels;
+    return hotels.filter((h) => String(h.ma_doi_tac) === String(partnerFilter));
+  }, [hotels, partnerFilter]);
+
+  const handlePartnerChange = (value) => {
+    setPartnerFilter(value);
+    if (value === 'all') return;
+    const hotelStillValid = hotels.some(
+      (h) => String(h.ma_khach_san) === String(hotelFilter)
+        && String(h.ma_doi_tac) === String(value),
+    );
+    if (hotelFilter !== 'all' && !hotelStillValid) {
+      setHotelFilter('all');
+    }
+  };
+
+  const handleCheckInDateChange = (value) => {
+    setCheckInDate(value);
+    if (checkOutDate && value && checkOutDate < value) {
+      setCheckOutDate(value);
+    }
+  };
+
+  const displayList = useMemo(() => {
+    if (paymentFilter === 'all') return list;
+    return list.filter((booking) => getPaymentFilterKey(booking) === paymentFilter);
+  }, [list, paymentFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(displayList.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
   const pagedBookings = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return list.slice(start, start + PAGE_SIZE);
-  }, [list, currentPage]);
+    return displayList.slice(start, start + PAGE_SIZE);
+  }, [displayList, currentPage]);
 
   const pageNumbers = useMemo(() => {
     const pages = [];
@@ -107,24 +158,26 @@ const AdminBookingsPage = () => {
     return pages;
   }, [currentPage, totalPages]);
 
-  const rangeFrom = list.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const rangeTo = Math.min(currentPage * PAGE_SIZE, list.length);
+  const rangeFrom = displayList.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeTo = Math.min(currentPage * PAGE_SIZE, displayList.length);
 
   const listFilters = useMemo(() => ({
     keyword,
     trang_thai: statusFilter,
     ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
     ks_id: hotelFilter !== 'all' ? hotelFilter : '',
-    tu_ngay: tuNgay,
-    den_ngay: denNgay,
-  }), [keyword, statusFilter, partnerFilter, hotelFilter, tuNgay, denNgay]);
+    tu_ngay: checkInDate,
+    den_ngay: checkOutDate,
+  }), [keyword, statusFilter, partnerFilter, hotelFilter, checkInDate, checkOutDate]);
 
   const handleViewDetail = (id) => {
-    navigate(`/admin/bookings/${id}`);
+    navigate(`/admin/bookings/${id}`, {
+      state: { returnTo: buildAdminBookingsListPath(statusFilter) },
+    });
   };
 
   const handleCloseDetail = () => {
-    navigate('/admin/bookings');
+    navigate(buildAdminBookingsListPath(statusFilter));
   };
 
   const handleDetailUpdated = () => {
@@ -158,41 +211,45 @@ const AdminBookingsPage = () => {
     }
   };
 
-  const filterTabs = useMemo(() => [
-    { id: 'all', label: 'Tất cả', count: stats?.total ?? list.length, tone: 'neutral' },
-    { id: 'da_xac_nhan', label: 'Chờ check-in', count: stats?.da_xac_nhan ?? 0, tone: 'info' },
-    { id: 'da_checkin', label: 'Đã check-in', count: stats?.da_checkin ?? 0, tone: 'info' },
-    { id: 'hoan_thanh', label: 'Hoàn thành', count: stats?.hoan_thanh ?? 0, tone: 'success' },
-    { id: 'da_huy', label: 'Đã hủy', count: stats?.da_huy ?? 0, tone: 'danger' },
-  ], [stats, list.length]);
+  const summaryTabs = useMemo(() => [
+    {
+      id: 'all',
+      label: 'Tổng đơn đặt',
+      count: stats?.total ?? 0,
+      tone: 'neutral',
+    },
+    {
+      id: 'hoan_thanh',
+      label: 'Hoàn thành',
+      count: stats?.hoan_thanh ?? 0,
+      tone: 'success',
+    },
+    {
+      id: 'da_huy',
+      label: 'Đã hủy',
+      count: stats?.da_huy ?? 0,
+      tone: 'danger',
+    },
+  ], [stats]);
 
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-    setPartnerFilter(draftPartnerFilter);
-    setHotelFilter(draftHotelFilter);
-    setTuNgay(draftTuNgay);
-    setDenNgay(draftDenNgay);
-  };
+  const summaryActiveTab = ['all', 'hoan_thanh', 'da_huy'].includes(statusFilter)
+    ? statusFilter
+    : null;
 
   const clearFilters = () => {
     setKeyword('');
     setStatusFilter('all');
     setPartnerFilter('all');
     setHotelFilter('all');
-    setTuNgay('');
-    setDenNgay('');
-    setDraftKeyword('');
-    setDraftPartnerFilter('all');
-    setDraftHotelFilter('all');
-    setDraftTuNgay('');
-    setDraftDenNgay('');
+    setPaymentFilter('all');
+    setCheckInDate('');
+    setCheckOutDate('');
+    setSearchParams({}, { replace: true });
   };
 
   return (
     <div className="mgmt-page mgmt-list-page admin-bookings-page">
-      <ManagementHeader
-        title="Quản Lý Đặt Phòng"
-      />
+      <ManagementHeader title="Quản Lý Đặt Phòng" />
 
       {(successMsg || error) && (
         <div className={`mgmt-toast ${successMsg ? 'success' : 'error'}`}>
@@ -207,63 +264,109 @@ const AdminBookingsPage = () => {
         onConfirm={handleConfirmCancel}
       />
 
-      <ManagementToolbar
-        searchValue={draftKeyword}
-        onSearchChange={(e) => setDraftKeyword(e.target.value)}
-        searchPlaceholder="Tìm mã đơn, tên khách, SĐT..."
-        tabs={filterTabs}
-        activeTab={statusFilter}
-        onTabChange={setStatusFilter}
-      >
-        <select
-          className="mgmt-select-inline"
-          value={draftPartnerFilter}
-          onChange={(e) => handlePartnerChange(e.target.value)}
-          aria-label="Lọc theo đối tác"
-        >
-          <option value="all">Tất cả đối tác</option>
-          {partners.map((p) => (
-            <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
-          ))}
-        </select>
-        <select
-          className="mgmt-select-inline"
-          value={draftHotelFilter}
-          onChange={(e) => setDraftHotelFilter(e.target.value)}
-          aria-label="Lọc theo khách sạn"
-        >
-          <option value="all">Tất cả khách sạn</option>
-          {filteredHotels.map((h) => (
-            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-          ))}
-        </select>
-      </ManagementToolbar>
+      <div className="mgmt-toolbar-block admin-bookings-toolbar">
+        <FilterTabs
+          tabs={summaryTabs}
+          active={summaryActiveTab}
+          onChange={handleStatusTabChange}
+        />
 
-      <div className="mgmt-toolbar-row admin-bookings-date-row">
-        <span className="mgmt-toolbar-label">Ngày check-in</span>
-        <input
-          type="date"
-          className="mgmt-select-inline admin-bookings-date-filter"
-          value={draftTuNgay}
-          onChange={(e) => setDraftTuNgay(e.target.value)}
-          aria-label="Ngày nhận"
-        />
-        <span className="mgmt-toolbar-label">Ngày check-out</span>
-        <input
-          type="date"
-          className="mgmt-select-inline admin-bookings-date-filter"
-          value={draftDenNgay}
-          min={draftTuNgay}
-          onChange={(e) => setDraftDenNgay(e.target.value)}
-          aria-label="Ngày trả"
-        />
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        <div className="admin-bookings-filters">
+          <div className="admin-bookings-filters-row admin-bookings-filters-row--primary">
+            <div className="admin-bookings-search">
+              <SearchBar
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Tìm mã đơn, tên khách, SĐT..."
+              />
+            </div>
+
+            <label className="admin-bookings-date-field">
+              <span>Check-in</span>
+              <input
+                type="date"
+                className="mgmt-select-inline"
+                value={checkInDate}
+                onChange={(e) => handleCheckInDateChange(e.target.value)}
+                aria-label="Lọc theo ngày check-in"
+              />
+            </label>
+
+            <label className="admin-bookings-date-field">
+              <span>Check-out</span>
+              <input
+                type="date"
+                className="mgmt-select-inline"
+                value={checkOutDate}
+                min={checkInDate || undefined}
+                onChange={(e) => setCheckOutDate(e.target.value)}
+                aria-label="Lọc theo ngày check-out"
+              />
+            </label>
+          </div>
+
+          <div className="admin-bookings-filters-row admin-bookings-filters-row--secondary">
+            <select
+              className="mgmt-select-inline"
+              value={partnerFilter}
+              onChange={(e) => handlePartnerChange(e.target.value)}
+              aria-label="Lọc theo đối tác"
+            >
+              <option value="all">Tất cả đối tác</option>
+              {partners.map((p) => (
+                <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
+              ))}
+            </select>
+
+            <select
+              className="mgmt-select-inline"
+              value={hotelFilter}
+              onChange={(e) => setHotelFilter(e.target.value)}
+              aria-label="Lọc theo khách sạn"
+            >
+              <option value="all">Tất cả khách sạn</option>
+              {filteredHotels.map((h) => (
+                <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+              ))}
+            </select>
+
+            <select
+              className="mgmt-select-inline"
+              value={statusFilter}
+              onChange={(e) => handleStatusTabChange(e.target.value)}
+              aria-label="Lọc theo trạng thái đơn"
+            >
+              <option value="all">Tất cả trạng thái đơn</option>
+              <option value="da_xac_nhan">Chờ check-in</option>
+              <option value="da_checkin">Đã check-in</option>
+              <option value="hoan_thanh">Hoàn thành</option>
+              <option value="da_huy">Đã hủy</option>
+            </select>
+
+            <select
+              className="mgmt-select-inline"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              aria-label="Lọc theo trạng thái thanh toán"
+            >
+              <option value="all">Tất cả thanh toán</option>
+              <option value="da_thanh_toan">Đã thanh toán</option>
+              <option value="cho_thanh_toan">Chờ thanh toán</option>
+              <option value="tai_khach_san">Thanh toán tại KS</option>
+              <option value="cho_xu_ly">Chờ xử lý hoàn</option>
+              <option value="da_hoan">Đã hoàn</option>
+              <option value="khong_hoan">Không hoàn</option>
+            </select>
+
+            <FilterActions showApply={false} onClear={clearFilters} />
+          </div>
+        </div>
       </div>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
         {loading ? (
           <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
-        ) : list.length === 0 ? (
+        ) : displayList.length === 0 ? (
           <div className="empty-state">
             <p className="empty-state-text">Không có đơn đặt phòng nào</p>
           </div>
@@ -273,30 +376,30 @@ const AdminBookingsPage = () => {
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 140 }}>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>Khách sạn</th>
-                    <th>Loại phòng</th>
-                    <th style={{ width: 108 }}>Check-in</th>
-                    <th style={{ width: 108 }}>Check-out</th>
-                    <th style={{ width: 120 }}>Tổng tiền</th>
-                    <th style={{ width: 100 }}>Thanh toán</th>
-                    <th style={{ width: 120 }}>Trạng thái</th>
-                    <th style={{ width: 96 }}>Thao tác</th>
+                    <th className="partner-col-code">Mã đơn</th>
+                    <th className="partner-col-customer">Khách hàng</th>
+                    <th className="partner-col-hotel">Khách sạn</th>
+                    <th className="partner-col-date">Check-in</th>
+                    <th className="partner-col-date">Check-out</th>
+                    <th className="partner-col-money">Tổng tiền</th>
+                    <th className="partner-col-pay">Thanh toán</th>
+                    <th className="partner-col-status">Trạng thái</th>
+                    <th className="partner-col-actions">Thao tác</th>
                   </tr>
                 </thead>
                 <BookingTable
                   bookings={pagedBookings}
                   onViewDetail={handleViewDetail}
                   onCancelBooking={handleCancelRequest}
+                  showRoomType={false}
                 />
               </table>
             </div>
 
-            {list.length > PAGE_SIZE && (
+            {displayList.length > PAGE_SIZE && (
               <div className="mgmt-list-pagination">
                 <span className="mgmt-list-pagination-info">
-                  Hiển thị {rangeFrom}–{rangeTo} / {list.length}
+                  Hiển thị {rangeFrom}–{rangeTo} / {displayList.length}
                 </span>
                 <div className="mgmt-list-pagination-controls">
                   <button

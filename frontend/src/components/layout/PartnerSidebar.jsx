@@ -17,7 +17,7 @@ const partnerMenus = [
   { name: 'Khách sạn', path: '/partner/hotels', icon: Building2 },
   { name: 'Loại phòng', path: '/partner/rooms', icon: BedDouble },
   { name: 'Đặt phòng', path: '/partner/bookings', icon: CalendarCheck },
-  { name: 'Quản lý giá', path: '/partner/pricing', icon: Tag },
+  { name: 'Giá & Kho', path: '/partner/pricing', icon: Tag },
   { name: 'Khuyến mãi', path: '/partner/promotions', icon: Percent },
   { name: 'Tài chính', path: '/partner/finance', icon: Wallet },
   { name: 'Đánh giá', path: '/partner/reviews', icon: Star },

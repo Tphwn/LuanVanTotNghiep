@@ -8,26 +8,29 @@ export const fetchAmenities = createAsyncThunk('amenities/fetch', async () => {
   return res.data.data;
 });
 
-export const addAmenity = createAsyncThunk('amenities/add', async (data) => {
-  const res = await api.post(ENDPOINT, data);
-  return res.data.data;
+export const addAmenity = createAsyncThunk('amenities/add', async (data, { rejectWithValue }) => {
+  try {
+    const res = await api.post(ENDPOINT, data);
+    return res.data.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || 'Thêm tiện nghi thất bại');
+  }
 });
 
-export const updateAmenity = createAsyncThunk('amenities/update', async ({ id, data }) => {
-  const res = await api.put(`${ENDPOINT}/${id}`, data);
-  return res.data.data;
-});
-
-export const removeAmenity = createAsyncThunk('amenities/delete', async (id) => {
-  await api.delete(`${ENDPOINT}/${id}`);
-  return id;
+export const updateAmenity = createAsyncThunk('amenities/update', async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const res = await api.put(`${ENDPOINT}/${id}`, data);
+    return res.data.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || 'Cập nhật tiện nghi thất bại');
+  }
 });
 
 export const lockAmenity = createAsyncThunk(
   'amenities/lock',
-  async (id, { rejectWithValue }) => {
+  async ({ id, ...body }, { rejectWithValue }) => {
     try {
-      const res = await api.patch(`${ENDPOINT}/${id}/lock`);
+      const res = await api.patch(`${ENDPOINT}/${id}/lock`, body);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(
@@ -39,9 +42,9 @@ export const lockAmenity = createAsyncThunk(
 
 export const unlockAmenity = createAsyncThunk(
   'amenities/unlock',
-  async (id, { rejectWithValue }) => {
+  async ({ id, ...body }, { rejectWithValue }) => {
     try {
-      const res = await api.patch(`${ENDPOINT}/${id}/unlock`);
+      const res = await api.patch(`${ENDPOINT}/${id}/unlock`, body);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(
@@ -81,9 +84,6 @@ const amenitySlice = createSlice({
       .addCase(updateAmenity.fulfilled, (state, action) => {
         const i = state.list.findIndex((x) => x.ma_tien_nghi === action.payload.ma_tien_nghi);
         if (i !== -1) state.list[i] = action.payload;
-      })
-      .addCase(removeAmenity.fulfilled, (state, action) => {
-        state.list = state.list.filter((x) => x.ma_tien_nghi !== action.payload);
       })
       .addCase(lockAmenity.fulfilled, (state, action) => {
         const i = state.list.findIndex((x) => x.ma_tien_nghi === action.payload?.ma_tien_nghi);

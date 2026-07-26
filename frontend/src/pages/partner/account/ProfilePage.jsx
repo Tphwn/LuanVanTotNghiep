@@ -201,7 +201,12 @@ const ProfilePage = () => {
   }
 
   const roleLabel = ROLE_LABEL[profile?.vai_tro] || 'Đối tác';
-  const statusLabel = STATUS_LABEL[profile?.trang_thai_tai_khoan] || profile?.trang_thai_tai_khoan || '—';
+  const statusKey = profile?.trang_thai_tai_khoan;
+  const statusLabel = STATUS_LABEL[statusKey] || statusKey || '—';
+  const statusBadgeClass =
+    statusKey === 'bi_khoa'
+      ? 'partner-account-status-badge is-locked'
+      : 'partner-account-status-badge is-active';
 
   return (
     <div className="mgmt-page partner-account-page">
@@ -220,13 +225,10 @@ const ProfilePage = () => {
           <div className="partner-account-summary-meta">
             <h2>{profile?.ten_hien_thi || 'Đối tác'}</h2>
             <p className="partner-account-email">{profile?.email_dang_ky}</p>
-            <p className="partner-account-role-status">
-              {roleLabel}
-              {' '}
-              •
-              {' '}
-              {statusLabel}
-            </p>
+            <div className="partner-account-role-status">
+              <span className="partner-account-role-chip">{roleLabel}</span>
+              <span className={statusBadgeClass}>{statusLabel}</span>
+            </div>
             <p className="partner-account-last-login">
               Đăng nhập lần cuối:
               {' '}
@@ -258,13 +260,8 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {activeTab === 'info' && (
-          <div className="content-card partner-account-panel">
-            <div className="partner-account-panel-head">
-              <h3>Hồ sơ cá nhân</h3>
-              <p>Cập nhật thông tin dùng để liên hệ với bạn.</p>
-            </div>
-
+        <div className="content-card partner-account-panel">
+          {activeTab === 'info' ? (
             <form onSubmit={handleSaveInfo} className="partner-account-form" noValidate>
               <div className="partner-account-field">
                 <label htmlFor="ten_hien_thi">Tên hiển thị</label>
@@ -283,53 +280,46 @@ const ProfilePage = () => {
                 )}
               </div>
 
-              <div className="partner-account-field">
-                <label htmlFor="email_dang_ky">Email liên hệ</label>
-                <input
-                  id="email_dang_ky"
-                  type="email"
-                  className="search-input is-readonly"
-                  value={profile?.email_dang_ky || ''}
-                  readOnly
-                  disabled
-                />
-                <span className="partner-account-hint">
-                  Email đăng nhập hệ thống, không thể thay đổi.
-                </span>
+              <div className="partner-account-field-row">
+                <div className="partner-account-field">
+                  <label htmlFor="email_dang_ky">Email liên hệ</label>
+                  <input
+                    id="email_dang_ky"
+                    type="email"
+                    className="search-input is-readonly"
+                    value={profile?.email_dang_ky || ''}
+                    readOnly
+                    disabled
+                  />
+                  <span className="partner-account-hint">Không thể thay đổi</span>
+                </div>
+
+                <div className="partner-account-field">
+                  <label htmlFor="so_dien_thoai">Số điện thoại</label>
+                  <input
+                    id="so_dien_thoai"
+                    type="tel"
+                    className={`search-input${infoFieldErrors.so_dien_thoai ? ' input-invalid' : ''}`}
+                    value={infoForm.so_dien_thoai}
+                    onChange={(e) => {
+                      setInfoForm({ ...infoForm, so_dien_thoai: e.target.value });
+                      setInfoFieldErrors((prev) => ({ ...prev, so_dien_thoai: undefined }));
+                    }}
+                    placeholder="09xxxxxxxx"
+                  />
+                  {infoFieldErrors.so_dien_thoai && (
+                    <p className="form-field-error">{infoFieldErrors.so_dien_thoai}</p>
+                  )}
+                </div>
               </div>
 
-              <div className="partner-account-field">
-                <label htmlFor="so_dien_thoai">Số điện thoại</label>
-                <input
-                  id="so_dien_thoai"
-                  type="tel"
-                  className={`search-input${infoFieldErrors.so_dien_thoai ? ' input-invalid' : ''}`}
-                  value={infoForm.so_dien_thoai}
-                  onChange={(e) => {
-                    setInfoForm({ ...infoForm, so_dien_thoai: e.target.value });
-                    setInfoFieldErrors((prev) => ({ ...prev, so_dien_thoai: undefined }));
-                  }}
-                  placeholder="09xxxxxxxx"
-                />
-                {infoFieldErrors.so_dien_thoai && (
-                  <p className="form-field-error">{infoFieldErrors.so_dien_thoai}</p>
-                )}
+              <div className="partner-account-form-actions">
+                <button type="submit" className="btn btn-primary" disabled={savingInfo}>
+                  {savingInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
               </div>
-
-              <button type="submit" className="btn btn-primary" disabled={savingInfo}>
-                {savingInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
-              </button>
             </form>
-          </div>
-        )}
-
-        {activeTab === 'security' && (
-          <div className="content-card partner-account-panel">
-            <div className="partner-account-panel-head">
-              <h3>Bảo mật tài khoản</h3>
-              <p>Thay đổi mật khẩu đăng nhập của bạn.</p>
-            </div>
-
+          ) : (
             <form onSubmit={handleChangePassword} className="partner-account-form" noValidate>
               {[
                 {
@@ -381,12 +371,14 @@ const ProfilePage = () => {
                 </div>
               ))}
 
-              <button type="submit" className="btn btn-primary" disabled={savingPwd}>
-                {savingPwd ? 'Đang xử lý...' : 'Đổi mật khẩu'}
-              </button>
+              <div className="partner-account-form-actions">
+                <button type="submit" className="btn btn-primary" disabled={savingPwd}>
+                  {savingPwd ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                </button>
+              </div>
             </form>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

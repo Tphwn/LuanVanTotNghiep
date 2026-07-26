@@ -19,8 +19,8 @@ export const TableActions = ({ children, className = '', style }) => (
   </div>
 );
 
-export const ActionCell = ({ children }) => (
-  <td className="table-action-cell">
+export const ActionCell = ({ children, className = '' }) => (
+  <td className={`table-action-cell${className ? ` ${className}` : ''}`}>
     <div className="table-actions table-actions-nowrap">{children}</div>
   </td>
 );

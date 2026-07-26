@@ -36,17 +36,6 @@ exports.getDetail = async (req, res) => {
   }
 };
 
-exports.confirm = async (req, res) => {
-  try {
-    const doiTacId = await getDoiTacId(req.user);
-    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
-    const data = await bookingService.confirm(req.params.id, doiTacId);
-    res.json({ success: true, data: mapPartnerBooking(data), message: 'Đã xác nhận đơn' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
 exports.checkIn = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user);
@@ -66,16 +55,5 @@ exports.checkOut = async (req, res) => {
     res.json({ success: true, data: mapPartnerBooking(data), message: 'Đã xác nhận check-out, đơn hoàn thành' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-exports.reject = async (req, res) => {
-  try {
-    const doiTacId = await getDoiTacId(req.user);
-    if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
-    const data = await bookingService.reject(req.params.id, doiTacId, req.body.ly_do);
-    res.json({ success: true, data: mapPartnerBooking(data), message: 'Đã từ chối đơn' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
   }
 };

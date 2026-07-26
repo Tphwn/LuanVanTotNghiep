@@ -20,6 +20,7 @@ import {
   PHUONG_THUC,
   getPaymentDisplay,
   getRefundBadgeMeta,
+  getBookingSpecialRequest,
   formatCurrency,
   formatDate,
   formatStayDateTime,
@@ -94,6 +95,7 @@ export default function PartnerBookingDetailPage() {
       { label: 'Trả phòng', value: `${checkOut.date} · ${checkOut.time}` },
       { label: 'Số đêm', value: `${nights} đêm` },
       { label: 'Số khách', value: `${detail.so_khach || 0} khách` },
+      { label: 'Số phòng', value: `${detail.so_phong || 1} phòng` },
     ];
   }, [detail]);
 
@@ -101,11 +103,12 @@ export default function PartnerBookingDetailPage() {
     if (!detail) return [];
     return [
       { label: 'Khách hàng', value: detail.khach_hang?.ho_ten || '—' },
-      { label: 'Email', value: detail.khach_hang?.nguoi_dung?.email || '—' },
+      { label: 'Email tài khoản', value: detail.khach_hang?.nguoi_dung?.email || '—' },
       { label: 'SĐT', value: detail.khach_hang?.nguoi_dung?.so_dien_thoai || '—' },
       { label: 'Người nhận phòng', value: detail.ten_nguoi_nhan || '—' },
       { label: 'SĐT người nhận', value: detail.sdt_nguoi_nhan || '—' },
-      { label: 'Ghi chú', value: detail.ghi_chu || '—' },
+      { label: 'Email liên hệ', value: detail.email_nguoi_nhan || detail.khach_hang?.nguoi_dung?.email || '—' },
+      { label: 'Ghi chú', value: getBookingSpecialRequest(detail) || '—' },
     ];
   }, [detail]);
 
@@ -164,7 +167,9 @@ export default function PartnerBookingDetailPage() {
   const showCheckOutAction = canPartnerCheckOut(detail);
   const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail.thong_tin_hoan_tien;
-  const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
+  const refundBadge = (Number(refundInfo?.so_tien_hoan) || 0) > 0
+    ? getRefundBadgeMeta(refundInfo?.trang_thai_hoan)
+    : null;
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -243,7 +248,7 @@ export default function PartnerBookingDetailPage() {
         </div>
 
         {isCancelled && refundInfo && (
-          <BookingCancelNotice refundInfo={refundInfo} />
+          <BookingCancelNotice refundInfo={refundInfo} booking={detail} />
         )}
 
         <div className="booking-detail-grid">

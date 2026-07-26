@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from './store/slices/authSlice';
 import AppRoutes from './routes/AppRoutes';
+import AuthSessionSync from './components/common/AuthSessionSync';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -13,7 +14,12 @@ const App = () => {
     }
   }, [token, dispatch]);
 
-  return <AppRoutes />;
+  return (
+    <>
+      <AuthSessionSync />
+      <AppRoutes />
+    </>
+  );
 };
 
 export default App;

@@ -1,12 +1,22 @@
-import { buildCancelNoticeContent, getBookingCancelReason } from '../../utils/bookingDisplay';
+import {
+  buildCancelNoticeContent,
+  getBookingCancelReason,
+  getCancelledByLabel,
+} from '../../utils/bookingDisplay';
 
 export default function BookingCancelNotice({ refundInfo, booking }) {
   const cancelReason = getBookingCancelReason(booking) || refundInfo?.ly_do_huy;
+  const cancelledBy = getCancelledByLabel(booking, refundInfo);
   const content = buildCancelNoticeContent(refundInfo);
-  if (!cancelReason && !content?.summaryText) return null;
+  if (!cancelReason && !content?.summaryText && !cancelledBy) return null;
 
   return (
     <div className="booking-cancel-notice">
+      {cancelledBy && (
+        <p className="booking-cancel-notice-by">
+          <strong>Hủy bởi:</strong> {cancelledBy}
+        </p>
+      )}
       {cancelReason && (
         <p className="booking-cancel-notice-reason">
           <strong>Lý do hủy:</strong> {cancelReason}

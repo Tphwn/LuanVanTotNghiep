@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Eye, Check, X, Lock, Unlock } from "lucide-react";
 import {
   fetchHotels,
@@ -18,8 +18,11 @@ import HotelThumb from "../../../components/common/management/HotelThumb";
 import HotelLockConfirmModal from "./components/HotelLockConfirmModal";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import { getHotelStatusMeta } from "../../../constants/statusConfig";
+import { buildAdminHotelsListPath } from "../../../utils/adminListReturn";
 
 const PAGE_SIZE = 10;
+
+const VALID_TABS = ["all", "hoat_dong", "cho_duyet", "tu_choi"];
 
 const TAB_STATUS_MAP = {
   all: null,
@@ -31,23 +34,23 @@ const TAB_STATUS_MAP = {
 const HotelsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hotels = [], loading = false } = useSelector((state) => state.adminHotels || {});
 
+  const tabFromUrl = searchParams.get("tab");
   const [keyword, setKeyword] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(
+    VALID_TABS.includes(tabFromUrl) ? tabFromUrl : "all"
+  );
   const [starFilter, setStarFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
-
-  const [draftKeyword, setDraftKeyword] = useState("");
-  const [draftStarFilter, setDraftStarFilter] = useState("all");
-  const [draftPartnerFilter, setDraftPartnerFilter] = useState("all");
-  const [draftLocationFilter, setDraftLocationFilter] = useState("all");
 
   const [page, setPage] = useState(1);
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [flashMsg, setFlashMsg] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -56,8 +59,30 @@ const HotelsPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    const tab = searchParams.get("tab") || "all";
+    if (VALID_TABS.includes(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
     setPage(1);
   }, [activeTab, starFilter, partnerFilter, locationFilter, keyword]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === "all") {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    if (!flashMsg) return undefined;
+    const t = setTimeout(() => setFlashMsg(""), 4000);
+    return () => clearTimeout(t);
+  }, [flashMsg]);
 
   const stats = useMemo(() => ({
     total: hotels.length,
@@ -168,6 +193,11 @@ const HotelsPage = () => {
       : rejectHotel.fulfilled.match(result);
     if (ok) {
       setPendingAction(null);
+      setFlashMsg(
+        type === "approve"
+          ? "Duyệt thành công"
+          : "Đã gửi lý do từ chối"
+      );
       return;
     }
     setActionError(result.payload || (type === "approve" ? "Duyệt khách sạn thất bại" : "Từ chối khách sạn thất bại"));
@@ -204,10 +234,11 @@ const HotelsPage = () => {
 
     if (lockHotel.fulfilled.match(result) || unlockHotel.fulfilled.match(result)) {
       setConfirmAction(null);
+      setFlashMsg(isLock ? "Đã khóa thành công" : "Đã mở khóa thành công");
       return;
     }
 
-    setActionError(result.payload || (isLock ? "Khóa khách sạn thất bại" : "Mở khóa khách sạn thất bại"));
+    setActionError(result.payload || (isLock ? "Khóa thất bại" : "Mở khóa thất bại"));
   };
 
   const canToggle = (status) => status === "hoat_dong" || status === "bi_khoa";
@@ -215,31 +246,23 @@ const HotelsPage = () => {
   const rangeFrom = filteredHotels.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeTo = Math.min(currentPage * PAGE_SIZE, filteredHotels.length);
 
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-    setStarFilter(draftStarFilter);
-    setPartnerFilter(draftPartnerFilter);
-    setLocationFilter(draftLocationFilter);
-  };
-
   const clearFilters = () => {
-    setKeyword('');
-    setActiveTab('all');
-    setPartnerFilter('all');
-    setLocationFilter('all');
-    setStarFilter('all');
-    setDraftKeyword('');
-    setDraftStarFilter('all');
-    setDraftPartnerFilter('all');
-    setDraftLocationFilter('all');
+    setKeyword("");
+    setActiveTab("all");
+    setPartnerFilter("all");
+    setLocationFilter("all");
+    setStarFilter("all");
+    setSearchParams({}, { replace: true });
   };
 
   return (
     <div className="mgmt-page mgmt-list-page admin-hotels-page">
       <ManagementHeader title="Quản Lý Khách Sạn" />
 
-      {actionError && (
-        <div className="mgmt-toast error">{actionError}</div>
+      {(flashMsg || actionError) && (
+        <div className={`mgmt-toast ${flashMsg ? "success" : "error"}`}>
+          {flashMsg || actionError}
+        </div>
       )}
 
       <HotelLockConfirmModal
@@ -276,17 +299,17 @@ const HotelsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={draftKeyword}
-        onSearchChange={(e) => setDraftKeyword(e.target.value)}
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
         searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
         tabs={filterTabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       >
         <select
           className="mgmt-select-inline"
-          value={draftPartnerFilter}
-          onChange={(e) => setDraftPartnerFilter(e.target.value)}
+          value={partnerFilter}
+          onChange={(e) => setPartnerFilter(e.target.value)}
           aria-label="Lọc theo đối tác"
         >
           <option value="all">Tất cả đối tác</option>
@@ -298,8 +321,8 @@ const HotelsPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={draftLocationFilter}
-          onChange={(e) => setDraftLocationFilter(e.target.value)}
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
           aria-label="Lọc theo địa điểm"
         >
           <option value="all">Tất cả địa điểm</option>
@@ -311,8 +334,8 @@ const HotelsPage = () => {
         </select>
         <select
           className="mgmt-select-inline"
-          value={draftStarFilter}
-          onChange={(e) => setDraftStarFilter(e.target.value)}
+          value={starFilter}
+          onChange={(e) => setStarFilter(e.target.value)}
           aria-label="Lọc theo hạng sao"
         >
           <option value="all">Tất cả hạng sao</option>
@@ -320,7 +343,7 @@ const HotelsPage = () => {
             <option key={s} value={s}>{s} sao</option>
           ))}
         </select>
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">
@@ -337,38 +360,39 @@ const HotelsPage = () => {
                 <thead>
                   <tr>
                     <th style={{ width: 64 }}>Mã</th>
-                    <th style={{ width: 80 }}>Ảnh đại diện</th>
-                    <th style={{ width: 180 }}>Tên khách sạn</th>
-                    <th style={{ width: 120 }}>Đối tác</th>
-                    <th>Địa chỉ</th>
-                    <th style={{ width: 150 }}>Sao</th>
-                    <th style={{ width: 160 }}>Trạng Thái</th>
+                    <th className="admin-hotels-name-col">Khách sạn</th>
+                    <th className="hotels-partner-cell mgmt-col-name">Đối tác</th>
+                    <th className="hotels-address-cell mgmt-col-address">Địa chỉ</th>
+                    <th style={{ width: 72 }}>Sao</th>
+                    <th style={{ width: 140 }}>Trạng Thái</th>
                     <th style={{ width: 88 }}>Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedHotels.map((hotel) => {
-                    const st = getHotelStatusMeta(hotel, { variant: "text" });
+                    const st = getHotelStatusMeta(hotel, { variant: "badge" });
                     const isActive = hotel.trang_thai === "hoat_dong";
-                  const partnerLockedHotel = Boolean(hotel.khoa_do_doi_tac);
+                    const partnerLockedHotel = Boolean(hotel.khoa_do_doi_tac);
                     return (
                       <tr key={hotel.ma_khach_san}>
                         <td className="admin-cell-id">#{hotel.ma_khach_san}</td>
-                        <td><HotelThumb hotel={hotel} /></td>
-                        <td>
-                          <div className="admin-cell-name">{hotel.ten}</div>
+                        <td className="admin-hotels-name-col">
+                          <div className="mgmt-name-cell">
+                            <HotelThumb hotel={hotel} />
+                            <div className="admin-cell-name">{hotel.ten}</div>
+                          </div>
                         </td>
-                        <td className="hotels-partner-cell">
+                        <td className="hotels-partner-cell mgmt-col-name">
                           {hotel.doi_tac?.ten_cong_ty || "—"}
                         </td>
-                        <td className="hotels-address-cell">
+                        <td className="hotels-address-cell mgmt-col-address">
                           <div className="mgmt-cell-address hotels-address-full">
                             {hotel.dia_chi || "—"}
                           </div>
                         </td>
                         <td><StarRating value={hotel.so_sao} /></td>
                         <td>
-                          <span className={`mgmt-status-text ${st.cls}`}>{st.label}</span>
+                          <span className={`badge ${st.cls}`}>{st.label}</span>
                         </td>
                         <ActionCell>
                           <ActionButton
@@ -376,7 +400,9 @@ const HotelsPage = () => {
                             iconOnly
                             icon={Eye}
                             title="Chi tiết"
-                            onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`)}
+                            onClick={() => navigate(`/admin/hotels/${hotel.ma_khach_san}`, {
+                              state: { returnTo: buildAdminHotelsListPath(activeTab) },
+                            })}
                           />
                           {hotel.trang_thai === "cho_duyet" && (
                             <>

@@ -33,12 +33,6 @@ const ReviewsPage = () => {
   const [tuNgay, setTuNgay] = useState('');
   const [denNgay, setDenNgay] = useState('');
 
-  const [draftHotelFilter, setDraftHotelFilter] = useState('');
-  const [draftRoomFilter, setDraftRoomFilter] = useState('');
-  const [draftStarFilter, setDraftStarFilter] = useState('');
-  const [draftTuNgay, setDraftTuNgay] = useState('');
-  const [draftDenNgay, setDraftDenNgay] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -62,17 +56,17 @@ const ReviewsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!draftHotelFilter) {
+    if (!hotelFilter) {
       setRoomTypes([]);
       return;
     }
-    api.get('/partner/reviews/room-types', { params: { ma_khach_san: draftHotelFilter } })
+    api.get('/partner/reviews/room-types', { params: { ma_khach_san: hotelFilter } })
       .then((res) => setRoomTypes(res.data.data || []));
-  }, [draftHotelFilter]);
+  }, [hotelFilter]);
 
   useEffect(() => {
-    setDraftRoomFilter('');
-  }, [draftHotelFilter]);
+    setRoomFilter('');
+  }, [hotelFilter]);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -104,25 +98,12 @@ const ReviewsPage = () => {
     loadReviews();
   }, [hotelFilter, roomFilter, starFilter, tuNgay, denNgay]);
 
-  const applyFilters = () => {
-    setHotelFilter(draftHotelFilter);
-    setRoomFilter(draftRoomFilter);
-    setStarFilter(draftStarFilter);
-    setTuNgay(draftTuNgay);
-    setDenNgay(draftDenNgay);
-  };
-
   const clearFilters = () => {
     setHotelFilter('');
     setRoomFilter('');
     setStarFilter('');
     setTuNgay('');
     setDenNgay('');
-    setDraftHotelFilter('');
-    setDraftRoomFilter('');
-    setDraftStarFilter('');
-    setDraftTuNgay('');
-    setDraftDenNgay('');
   };
 
   const fetchReviewDetail = async (reviewId) => {
@@ -196,7 +177,7 @@ const ReviewsPage = () => {
   } = useListPagination(danhSach, 10, [hotelFilter, roomFilter, starFilter, tuNgay, denNgay]);
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page partner-reviews-page">
       <ManagementHeader title="Quản lý đánh giá" />
 
       {toast && (
@@ -209,52 +190,72 @@ const ReviewsPage = () => {
         <SummaryStats items={statItems} />
       </div>
 
-      <div className="search-bar partner-reviews-filters">
-        <select
-          className="search-input"
-          value={draftHotelFilter}
-          onChange={(e) => setDraftHotelFilter(e.target.value)}
-        >
-          <option value="">Tất cả khách sạn</option>
-          {hotels.map((h) => (
-            <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-          ))}
-        </select>
-        <select
-          className="search-input"
-          value={draftRoomFilter}
-          onChange={(e) => setDraftRoomFilter(e.target.value)}
-          disabled={!draftHotelFilter}
-        >
-          <option value="">Tất cả loại phòng</option>
-          {roomTypes.map((r) => (
-            <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
-          ))}
-        </select>
-        <select
-          className="search-input"
-          value={draftStarFilter}
-          onChange={(e) => setDraftStarFilter(e.target.value)}
-        >
-          <option value="">Tất cả sao</option>
-          {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s} sao</option>)}
-        </select>
-        <input
-          type="date"
-          className="search-input"
-          value={draftTuNgay}
-          onChange={(e) => setDraftTuNgay(e.target.value)}
-          title="Từ ngày"
-        />
-        <input
-          type="date"
-          className="search-input"
-          value={draftDenNgay}
-          min={draftTuNgay}
-          onChange={(e) => setDraftDenNgay(e.target.value)}
-          title="Đến ngày"
-        />
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+      <div className="mgmt-toolbar mgmt-toolbar--filters partner-reviews-filters">
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-review-hotel">Khách sạn</label>
+          <select
+            id="partner-review-hotel"
+            className="mgmt-select-inline"
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
+          >
+            <option value="">Tất cả khách sạn</option>
+            {hotels.map((h) => (
+              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-review-room">Loại phòng</label>
+          <select
+            id="partner-review-room"
+            className="mgmt-select-inline"
+            value={roomFilter}
+            onChange={(e) => setRoomFilter(e.target.value)}
+            disabled={!hotelFilter}
+          >
+            <option value="">Tất cả loại phòng</option>
+            {roomTypes.map((r) => (
+              <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-review-star">Số sao</label>
+          <select
+            id="partner-review-star"
+            className="mgmt-select-inline"
+            value={starFilter}
+            onChange={(e) => setStarFilter(e.target.value)}
+          >
+            <option value="">Tất cả sao</option>
+            {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s} sao</option>)}
+          </select>
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-review-from">Từ ngày</label>
+          <input
+            id="partner-review-from"
+            type="date"
+            className="mgmt-select-inline"
+            value={tuNgay}
+            onChange={(e) => setTuNgay(e.target.value)}
+          />
+        </div>
+        <div className="mgmt-filter-field">
+          <label className="mgmt-filter-label" htmlFor="partner-review-to">Đến ngày</label>
+          <input
+            id="partner-review-to"
+            type="date"
+            className="mgmt-select-inline"
+            value={denNgay}
+            min={tuNgay}
+            onChange={(e) => setDenNgay(e.target.value)}
+          />
+        </div>
+        <div className="mgmt-filter-field mgmt-filter-field--action">
+          <FilterActions showApply={false} onClear={clearFilters} />
+        </div>
       </div>
 
       <div className="mgmt-table-card">
@@ -271,26 +272,26 @@ const ReviewsPage = () => {
         ) : (
           <>
           <div className="mgmt-table-scroll">
-            <table className="data-table">
+            <table className="data-table data-table-grid">
               <thead>
                 <tr>
-                  <th>Tên khách hàng</th>
-                  <th>Khách sạn</th>
-                  <th>Loại phòng</th>
-                  <th>Số sao</th>
-                  <th>Ngày đánh giá</th>
-                  <th className="table-action-cell table-action-cell--compact">Thao tác</th>
+                  <th className="partner-col-customer">Tên khách hàng</th>
+                  <th className="partner-col-hotel">Khách sạn</th>
+                  <th className="partner-col-room">Loại phòng</th>
+                  <th className="partner-col-star">Số sao</th>
+                  <th className="partner-col-date">Ngày đánh giá</th>
+                  <th className="table-action-cell table-action-cell--compact partner-col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedReviews.map((review) => (
                   <tr key={review.ma_danh_gia}>
-                    <td className="partner-review-customer">{review.khach_hang?.ho_ten || 'Khách hàng'}</td>
-                    <td>{review.ten_khach_san || '—'}</td>
-                    <td>{review.ten_loai || '—'}</td>
-                    <td><StarScore value={review.so_sao} /></td>
-                    <td className="partner-review-date">{formatDate(review.ngay_danh_gia)}</td>
-                    <ActionCell>
+                    <td className="partner-review-customer partner-col-customer">{review.khach_hang?.ho_ten || 'Khách hàng'}</td>
+                    <td className="partner-col-hotel">{review.ten_khach_san || '—'}</td>
+                    <td className="partner-col-room">{review.ten_loai || '—'}</td>
+                    <td className="partner-col-star"><StarScore value={review.so_sao} /></td>
+                    <td className="partner-review-date partner-col-date">{formatDate(review.ngay_danh_gia)}</td>
+                    <ActionCell className="partner-col-actions table-action-cell--compact">
                       <ActionButton
                         variant="view"
                         iconOnly

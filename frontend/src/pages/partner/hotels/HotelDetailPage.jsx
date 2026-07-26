@@ -15,6 +15,7 @@ import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirm
 import { HOTEL_CATEGORY_GROUPS } from '../../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../../admin/amenities/utils';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
+import HotelStatusNotice from '../../../components/common/management/HotelStatusNotice';
 import {
   REQUIRED_DOC_LABELS,
   parseGiayToBatBuoc,
@@ -205,6 +206,7 @@ export default function HotelDetailPage() {
               <li><Calendar size={14} strokeWidth={2} /><span>Đăng ký: {formatDate(hotel.ngay_tao)}</span></li>
             </ul>
             <p className="admin-hotel-detail-hero-address">{hotel.dia_chi || '—'}</p>
+            <HotelStatusNotice hotel={hotel} />
           </div>
         </div>
         <div className="admin-user-detail-hero-side">
@@ -216,15 +218,11 @@ export default function HotelDetailPage() {
                 checked={hotel.trang_thai === 'hoat_dong'}
                 disabled={adminLocked || toggleLoading}
                 onChange={handleToggleStatus}
+                hideLabel
                 labelOn="Đang hoạt động"
                 labelOff={adminLocked ? 'Admin khóa' : 'Tạm ngừng'}
               />
             </div>
-          )}
-          {adminLocked && hotel.ly_do_khoa && (
-            <p className="partner-hotel-detail-lock-note">
-              <span>Lý do khóa:</span> {hotel.ly_do_khoa}
-            </p>
           )}
         </div>
       </div>

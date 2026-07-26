@@ -4,6 +4,7 @@ import ActionButton, { ActionCell } from '../../../../components/common/ActionBu
 import FilterTabs from '../../../../components/common/management/FilterTabs';
 import FilterActions from '../../../../components/common/management/FilterActions';
 import ListPagination from '../../../../components/common/management/ListPagination';
+import { formatCurrency } from '../../../../utils/bookingDisplay';
 import { TRANG_THAI } from '../constants';
 import { getMainImage } from '../utils';
 
@@ -19,7 +20,6 @@ export default function RoomListSection({
   onViewRoom,
   onEditRoom,
   onToggleRoom,
-  onApplyFilters,
   onClearFilters,
   variant = 'partner',
   pagination,
@@ -33,12 +33,12 @@ export default function RoomListSection({
         <FilterTabs tabs={filterTabs} active={statusFilter} onChange={onStatusFilterChange} />
       )}
 
-      <div className="partner-room-filters partner-room-filters--room">
+      <div className="mgmt-toolbar mgmt-toolbar--filters partner-room-filters partner-room-filters--room">
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="room-type-filter">Loại phòng</label>
           <select
             id="room-type-filter"
-            className="search-input partner-room-filter-input"
+            className="mgmt-select-inline partner-room-filter-input"
             value={roomTypeFilter}
             onChange={(e) => onRoomTypeFilterChange(e.target.value)}
           >
@@ -50,26 +50,21 @@ export default function RoomListSection({
             ))}
           </select>
         </div>
-        {!showStatusTabs && (
-          <div className="partner-room-filter-field">
-            <label className="partner-room-filter-label" htmlFor="room-status-filter">Trạng thái</label>
-            <select
-              id="room-status-filter"
-              className="search-input partner-room-filter-input"
-              value={statusFilter}
-              onChange={(e) => onStatusFilterChange(e.target.value)}
-            >
-              <option value="all">Tất cả</option>
-              <option value="hoat_dong">Đang hoạt động</option>
-              <option value="an">Đã ẩn</option>
-            </select>
-          </div>
-        )}
+        <div className="partner-room-filter-field">
+          <label className="partner-room-filter-label" htmlFor="room-status-filter">Trạng thái</label>
+          <select
+            id="room-status-filter"
+            className="mgmt-select-inline partner-room-filter-input"
+            value={statusFilter || 'all'}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="hoat_dong">Đang hoạt động</option>
+            <option value="an">Đã ẩn</option>
+          </select>
+        </div>
         <div className="partner-room-filter-field partner-room-filter-field--action">
-          <FilterActions
-            onApply={onApplyFilters || (() => {})}
-            onClear={onClearFilters}
-          />
+          <FilterActions onClear={onClearFilters} />
         </div>
       </div>
 
@@ -92,23 +87,24 @@ export default function RoomListSection({
           </div>
         ) : (
           <div className="mgmt-table-scroll">
-            <table className="data-table partner-room-table">
+            <table className="data-table data-table-grid partner-room-table partner-room-types-table">
               <thead>
                 <tr>
-                  <th>Ảnh đại diện</th>
-                  <th>Tên loại phòng</th>
-                  <th>Diện tích</th>
-                  <th>Sức chứa</th>
-                  <th>Số giường</th>
-                  <th>Còn trống</th>
-                  <th>Trạng thái</th>
-                  <th className="table-action-cell table-action-cell--compact">Thao tác</th>
+                  <th className="partner-col-thumb">Ảnh đại diện</th>
+                  <th className="partner-col-name">Tên loại phòng</th>
+                  <th className="partner-col-area">Diện tích</th>
+                  <th className="partner-col-capacity">Sức chứa</th>
+                  <th className="partner-col-beds">Số giường</th>
+                  <th className="partner-col-count">Tổng số phòng</th>
+                  <th className="partner-col-money">Giá phòng</th>
+                  <th className="partner-col-status">Trạng thái</th>
+                  <th className="table-action-cell table-action-cell--compact partner-col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRooms.map((room) => {
                   const mainImg = getMainImage(room);
-                  const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai };
+                  const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai, cls: 'badge-default' };
                   const isActive = room.trang_thai === 'hoat_dong';
                   const partnerLocked = Boolean(room.khoa_do_doi_tac);
                   const adminLocked = !isAdmin && !isActive && !room.khoa_do_doi_tac;
@@ -116,12 +112,11 @@ export default function RoomListSection({
                   const toggleTitle = isAdmin
                     ? (partnerLocked ? 'Bị khóa do đối tác' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'))
                     : (adminLocked ? 'Admin đã khóa' : (isActive ? 'Ẩn loại phòng' : 'Mở loại phòng'));
-                  const conLai = room.phong_con_lai ?? room.so_luong_mo_ban ?? 0;
                   const tongPhong = room.so_luong_phong ?? 0;
 
                   return (
                     <tr key={room.ma_loai_phong}>
-                      <td>
+                      <td className="partner-col-thumb">
                         <div className="partner-room-thumb">
                           {mainImg ? (
                             <img src={resolveUploadUrl(mainImg.url)} alt="" />
@@ -130,17 +125,20 @@ export default function RoomListSection({
                           )}
                         </div>
                       </td>
-                      <td className="partner-room-type-name">{room.ten_loai?.toUpperCase()}</td>
-                      <td>{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
-                      <td>{room.suc_chua} người lớn</td>
-                      <td>{room.so_giuong}</td>
-                      <td>{conLai}/{tongPhong}</td>
-                      <td>
-                        <span className={`partner-room-status ${isActive ? 'partner-room-status--active' : 'partner-room-status--inactive'}`}>
-                          {st.label}
-                        </span>
+                      <td className="partner-room-type-name partner-col-name">{room.ten_loai?.toUpperCase()}</td>
+                      <td className="partner-col-area">{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
+                      <td className="partner-col-capacity">{room.suc_chua} người lớn</td>
+                      <td className="partner-col-beds">{room.so_giuong}</td>
+                      <td className="partner-col-count">{tongPhong}</td>
+                      <td className="partner-room-price-cell partner-col-money">
+                        {room.gia_co_ban != null
+                          ? formatCurrency(room.gia_co_ban)
+                          : '—'}
                       </td>
-                      <ActionCell>
+                      <td className="partner-col-status">
+                        <span className={`badge ${st.cls}`}>{st.label}</span>
+                      </td>
+                      <ActionCell className="partner-col-actions table-action-cell--compact">
                         <ActionButton
                           variant="view"
                           iconOnly

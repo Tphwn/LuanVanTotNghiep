@@ -78,7 +78,6 @@ const GuestBedPicker = ({
         <span className="search-picker-label">
           {soKhach} người lớn, {treEm} trẻ em, {soPhong} phòng
         </span>
-        <span className="search-picker-chevron" aria-hidden>▾</span>
       </button>
 
       {open && (

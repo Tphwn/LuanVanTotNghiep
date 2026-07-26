@@ -3,7 +3,7 @@ const PARTNER_PAGE_TITLES = [
   { prefix: '/partner/hotels', title: 'Khách sạn' },
   { prefix: '/partner/rooms', title: 'Loại phòng' },
   { prefix: '/partner/bookings', title: 'Đặt phòng' },
-  { prefix: '/partner/pricing', title: 'Quản lý giá và kho phòng' },
+  { prefix: '/partner/pricing', title: 'Giá & Kho' },
   { prefix: '/partner/promotions', title: 'Khuyến mãi' },
   { prefix: '/partner/finance/payouts', title: 'Chi tiết thanh toán' },
   { prefix: '/partner/finance', title: 'Tài chính' },

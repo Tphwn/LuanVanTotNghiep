@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import {
   fetchAdminBookingDetail,
@@ -18,12 +18,17 @@ import BookingCancelNotice from '../../../components/booking/BookingCancelNotice
 import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ReasonField from '../../../components/common/ReasonField';
+import {
+  buildAdminBookingsListPath,
+  bookingStatusToListTab,
+} from '../../../utils/adminListReturn';
 
 import {
   TRANG_THAI,
   PHUONG_THUC,
   getPaymentDisplay,
   getRefundBadgeMeta,
+  getBookingSpecialRequest,
   formatCurrency,
   formatDate,
   formatStayDateTime,
@@ -56,6 +61,7 @@ const getPriceTypeBadge = (type) => {
 export default function BookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   const {
@@ -70,6 +76,9 @@ export default function BookingDetailPage() {
   const [lyDo, setLyDo] = useState('');
   const [cancelError, setCancelError] = useState('');
   const [refundLoading, setRefundLoading] = useState(false);
+
+  const backTo = location.state?.returnTo
+    || buildAdminBookingsListPath(bookingStatusToListTab(detail?.trang_thai));
 
   useEffect(() => {
     if (id) {
@@ -121,6 +130,7 @@ export default function BookingDetailPage() {
       { label: 'Trả phòng', value: `${checkOut.date} · ${checkOut.time}` },
       { label: 'Số đêm', value: `${nights} đêm` },
       { label: 'Số khách', value: `${detail.so_khach || 0} khách` },
+      { label: 'Số phòng', value: `${detail.so_phong || 1} phòng` },
     ];
   }, [detail]);
 
@@ -129,16 +139,17 @@ export default function BookingDetailPage() {
 
     return [
       { label: 'Khách hàng', value: detail.khach_hang?.ho_ten || '—' },
-      { label: 'Email', value: detail.khach_hang?.nguoi_dung?.email || '—' },
+      { label: 'Email tài khoản', value: detail.khach_hang?.nguoi_dung?.email || '—' },
       { label: 'SĐT', value: detail.khach_hang?.nguoi_dung?.so_dien_thoai || '—' },
       { label: 'Người nhận phòng', value: detail.ten_nguoi_nhan || '—' },
       { label: 'SĐT người nhận', value: detail.sdt_nguoi_nhan || '—' },
-      { label: 'Ghi chú', value: detail.ghi_chu || '—' },
+      { label: 'Email liên hệ', value: detail.email_nguoi_nhan || detail.khach_hang?.nguoi_dung?.email || '—' },
+      { label: 'Ghi chú', value: getBookingSpecialRequest(detail) || '—' },
     ];
   }, [detail]);
 
   const handleBack = () => {
-    navigate('/admin/bookings');
+    navigate(backTo);
   };
 
   const closeCancelBox = () => {
@@ -180,7 +191,7 @@ export default function BookingDetailPage() {
     if (cancelAdminBooking.fulfilled.match(result)) {
       dispatch(fetchBookingStats());
       dispatch(fetchAdminBookings());
-      navigate('/admin/bookings');
+      navigate(backTo);
     }
   };
 
@@ -206,7 +217,10 @@ export default function BookingDetailPage() {
 
   const isCancelled = ['da_huy', 'tu_choi'].includes(detail.trang_thai);
   const refundInfo = detail.thong_tin_hoan_tien;
-  const refundBadge = getRefundBadgeMeta(refundInfo?.trang_thai_hoan);
+  const refundAmount = Number(refundInfo?.so_tien_hoan) || 0;
+  const refundBadge = refundAmount > 0
+    ? getRefundBadgeMeta(refundInfo?.trang_thai_hoan)
+    : null;
 
   const paymentMethod =
     PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
@@ -332,7 +346,7 @@ export default function BookingDetailPage() {
         )}
 
         {isCancelled && refundInfo && (
-          <BookingCancelNotice refundInfo={refundInfo} />
+          <BookingCancelNotice refundInfo={refundInfo} booking={detail} />
         )}
 
         <div className="booking-detail-grid">
