@@ -101,26 +101,26 @@ const AdminFinanceOverviewPanel = ({
         <StatCard
           title="Tổng doanh thu"
           value={fmt(cards.tong_doanh_thu)}
-          subtitle="Đơn hoàn thành hợp lệ"
+          subtitle="Tổng thanh toán"
           tone="neutral"
         />
         <StatCard
-          title="Giao dịch thành công"
-          value={`${cards.giao_dich_thanh_cong ?? 0}`}
-          subtitle="Giao dịch thanh toán"
-          tone="success"
+          title="Hoa hồng "
+          value={fmt(cards.hoa_hong_he_thong)}
+          subtitle="Hoa hồng ban đầu"
+          tone="info"
         />
         <StatCard
-          title="Chờ hoàn tiền"
-          value={`${cards.cho_hoan_tien ?? 0}`}
-          subtitle="Đơn cần xử lý"
+          title="Chi phí trợ giá"
+          value={fmt(cards.chi_phi_tro_gia)}
+          subtitle="Voucher do sàn tài trợ"
           tone="warning"
         />
         <StatCard
-          title="Hoa hồng hệ thống"
-          value={fmt(cards.hoa_hong_he_thong)}
-          subtitle="Tiền hệ thống giữ lại"
-          tone="info"
+          title="Hoa hồng thực nhận"
+          value={fmt(cards.doanh_thu_rong_san ?? cards.doanh_thu_thuc_nhan)}
+          subtitle="Hoa hồng − trợ giá"
+          tone="success"
         />
         <StatCard
           title="Chờ thanh toán đối tác"

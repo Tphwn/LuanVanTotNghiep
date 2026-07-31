@@ -146,6 +146,22 @@ const UsersPage = () => {
     });
   }, [nonAdminUsers, statusFilter, roleFilter, keyword]);
 
+  const emptyListMessage = useMemo(() => {
+    const hasExtraFilter = Boolean(keyword.trim()) || roleFilter !== "all";
+    if (statusFilter === "bi_khoa") {
+      return hasExtraFilter
+        ? "Không tìm thấy người dùng bị khóa phù hợp"
+        : "Danh sách người dùng bị khóa trống";
+    }
+    if (statusFilter === "hoat_dong") {
+      return hasExtraFilter
+        ? "Không tìm thấy người dùng đang hoạt động phù hợp"
+        : "Danh sách người dùng đang hoạt động trống";
+    }
+    if (hasExtraFilter) return "Không tìm thấy người dùng phù hợp";
+    return "Chưa có người dùng nào";
+  }, [statusFilter, roleFilter, keyword]);
+
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
@@ -280,7 +296,7 @@ const UsersPage = () => {
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>
         ) : filteredUsers.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không tìm thấy người dùng phù hợp</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <>

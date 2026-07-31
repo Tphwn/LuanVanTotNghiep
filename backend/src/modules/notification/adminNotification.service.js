@@ -42,8 +42,44 @@ const markAllRead = async (userId, loai) => {
   return { success: true };
 };
 
+const markAmenityProposalAdded = async (userId, id) => {
+  const marker = '[[AMENITY_ADDED]]';
+  const item = await prisma.thong_bao.findFirst({
+    where: {
+      ma_thong_bao: Number(id),
+      ma_nguoi_dung: parseInt(userId, 10),
+      loai: 'tien_nghi',
+    },
+  });
+  if (!item) throw new Error('Không tìm thấy đề xuất tiện nghi');
+
+  // Đánh dấu mọi bản sao thông báo cùng tiêu đề (mỗi admin 1 bản)
+  const siblings = await prisma.thong_bao.findMany({
+    where: {
+      loai: 'tien_nghi',
+      tieu_de: item.tieu_de,
+    },
+    select: { ma_thong_bao: true, noi_dung: true },
+  });
+
+  await prisma.$transaction(
+    siblings.map((row) => prisma.thong_bao.update({
+      where: { ma_thong_bao: row.ma_thong_bao },
+      data: {
+        da_doc: true,
+        noi_dung: String(row.noi_dung || '').includes(marker)
+          ? row.noi_dung
+          : `${row.noi_dung || ''}\n${marker}`.trim(),
+      },
+    })),
+  );
+
+  return prisma.thong_bao.findUnique({ where: { ma_thong_bao: item.ma_thong_bao } });
+};
+
 module.exports = {
   listNotifications,
   markRead,
   markAllRead,
+  markAmenityProposalAdded,
 };

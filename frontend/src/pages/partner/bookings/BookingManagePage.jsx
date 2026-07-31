@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   fetchPartnerBookings,
   clearMsg,
@@ -12,7 +12,11 @@ import ListPagination from '../../../components/common/management/ListPagination
 import useListPagination from '../../../hooks/useListPagination';
 import BookingTable from '../../../components/booking/BookingTable';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
-import { getPaymentDisplay } from '../../../utils/bookingDisplay';
+import {
+  getPaymentFilterKey,
+  isAdminCancelledBooking,
+  isCancelledBooking,
+} from '../../../utils/bookingDisplay';
 
 const toDateKey = (value) => {
   if (!value) return '';
@@ -29,42 +33,30 @@ const toDateKey = (value) => {
 
 const getLocalToday = () => toDateKey(new Date());
 
-const getPaymentFilterKey = (booking) => {
-  const pay = getPaymentDisplay(booking);
-  switch (pay.shortLabel) {
-    case 'Đã thanh toán':
-      return 'da_thanh_toan';
-    case 'Tại KS':
-      return 'tai_khach_san';
-    case 'Chờ TT':
-      return 'cho_thanh_toan';
-    case 'Đã hoàn':
-      return 'da_hoan';
-    case 'Chờ xử lý':
-      return 'cho_xu_ly';
-    case 'Không hoàn':
-      return 'khong_hoan';
-    default:
-      return 'khac';
-  }
-};
-
 const matchesStatusFilter = (booking, statusFilter) => {
   if (statusFilter === 'all') return true;
   if (statusFilter === 'cho_nhan_phong' || statusFilter === 'da_xac_nhan') {
     return ['da_xac_nhan', 'cho_xac_nhan'].includes(booking.trang_thai);
   }
+  if (statusFilter === 'huy_admin') {
+    return isAdminCancelledBooking(booking);
+  }
   if (statusFilter === 'da_huy') {
-    return ['da_huy', 'tu_choi'].includes(booking.trang_thai);
+    return isCancelledBooking(booking) && !isAdminCancelledBooking(booking);
   }
   return booking.trang_thai === statusFilter;
 };
 
 const isActiveStay = (booking) => booking.trang_thai === 'da_checkin';
 
+const VALID_STATUS_FROM_NOTIFY = [
+  'all', 'cho_nhan_phong', 'da_xac_nhan', 'da_huy', 'huy_admin', 'da_checkin', 'hoan_thanh',
+];
+
 const BookingManagePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: routeBookingId } = useParams();
   const {
     list = [],
@@ -73,14 +65,17 @@ const BookingManagePage = () => {
     successMsg = null,
   } = useSelector((state) => state.partnerBooking || {});
 
-  const [statusFilter, setStatusFilter] = useState('all');
+  const initialStatus = VALID_STATUS_FROM_NOTIFY.includes(location.state?.statusFilter)
+    ? location.state.statusFilter
+    : 'all';
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [keyword, setKeyword] = useState('');
   const [hotelFilter, setHotelFilter] = useState('all');
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [quickAction, setQuickAction] = useState(null);
-  const [assistantKey, setAssistantKey] = useState('all');
+  const [assistantKey, setAssistantKey] = useState(initialStatus === 'all' ? 'all' : initialStatus);
 
   const todayKey = useMemo(() => getLocalToday(), []);
   const tomorrowKey = useMemo(() => {
@@ -92,6 +87,15 @@ const BookingManagePage = () => {
   useEffect(() => {
     dispatch(fetchPartnerBookings());
   }, [dispatch]);
+
+  useEffect(() => {
+    const next = location.state?.statusFilter;
+    if (VALID_STATUS_FROM_NOTIFY.includes(next)) {
+      setStatusFilter(next);
+      setAssistantKey(next === 'all' ? 'all' : next);
+      setQuickAction(null);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (successMsg || error) {
@@ -469,6 +473,7 @@ const BookingManagePage = () => {
               <option value="da_checkin">Đang lưu trú</option>
               <option value="hoan_thanh">Đã hoàn thành</option>
               <option value="da_huy">Đã hủy</option>
+              <option value="huy_admin">Bị hủy (admin hủy)</option>
             </select>
 
             <select
@@ -480,10 +485,8 @@ const BookingManagePage = () => {
               <option value="all">Tất cả thanh toán</option>
               <option value="da_thanh_toan">Đã thanh toán</option>
               <option value="cho_thanh_toan">Chờ thanh toán</option>
-              <option value="tai_khach_san">Thanh toán tại KS</option>
-              <option value="cho_xu_ly">Chờ xử lý hoàn</option>
-              <option value="da_hoan">Đã hoàn</option>
-              <option value="khong_hoan">Không hoàn</option>
+              <option value="da_hoan">Đã hoàn tiền</option>
+              <option value="khong_hoan">Không hoàn tiền</option>
             </select>
 
             <FilterActions showApply={false} onClear={clearFilters} />
@@ -504,12 +507,12 @@ const BookingManagePage = () => {
               <table className="data-table data-table-grid">
                 <thead>
                   <tr>
-                    <th className="partner-col-code">Mã đơn</th>
                     <th className="partner-col-customer">Khách hàng</th>
                     <th className="partner-col-hotel">Khách sạn</th>
                     <th className="partner-col-date">Check-in</th>
                     <th className="partner-col-date">Check-out</th>
-                    <th className="partner-col-money">Tổng tiền</th>
+                    <th className="partner-col-money">Giá phòng gốc</th>
+                    <th className="partner-col-money">Tổng khách trả</th>
                     <th className="partner-col-pay">Thanh toán</th>
                     <th className="partner-col-status">Trạng thái</th>
                     <th className="partner-col-actions">Thao tác</th>

@@ -15,6 +15,7 @@ import {
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
+import AuthSplitLayout from '../../components/auth/AuthSplitLayout';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -71,7 +72,12 @@ export const AuthLoginPage = ({
       return;
     }
     setFlashToast('Đăng nhập thành công');
-    navigate(from || getRedirectRoute(authUser), { replace: true });
+
+    const isManagement =
+      authUser.vai_tro === ROLES.ADMIN || authUser.vai_tro === ROLES.DOI_TAC;
+    navigate(isManagement ? getRedirectRoute(authUser) : (from || getRedirectRoute(authUser)), {
+      replace: true,
+    });
   }, [allowedRoles, dispatch, from, navigate]);
 
   const handleGoogleCredential = useCallback(async (response) => {
@@ -101,10 +107,12 @@ export const AuthLoginPage = ({
   }, [allowGoogle, dispatch, redirectIfAllowed]);
 
   useEffect(() => {
-    if (!allowGoogle || !googleBtnRef.current) return undefined;
+    if (!sessionReady || !allowGoogle) return undefined;
+
+    let cancelled = false;
 
     const renderButton = () => {
-      if (!window.google?.accounts?.id || !googleBtnRef.current) return;
+      if (cancelled || !window.google?.accounts?.id || !googleBtnRef.current) return;
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredential,
@@ -125,13 +133,21 @@ export const AuthLoginPage = ({
 
     if (window.google?.accounts?.id) {
       renderButton();
-      return undefined;
+      return () => { cancelled = true; };
     }
 
     const existing = document.getElementById('google-gsi-script');
     if (existing) {
-      existing.addEventListener('load', renderButton);
-      return () => existing.removeEventListener('load', renderButton);
+      if (existing.dataset.loaded === '1' || window.google?.accounts?.id) {
+        renderButton();
+        return () => { cancelled = true; };
+      }
+      const onLoad = () => renderButton();
+      existing.addEventListener('load', onLoad);
+      return () => {
+        cancelled = true;
+        existing.removeEventListener('load', onLoad);
+      };
     }
 
     const script = document.createElement('script');
@@ -139,11 +155,16 @@ export const AuthLoginPage = ({
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
-    script.onload = renderButton;
-    script.onerror = () => setGoogleError('Đăng nhập thất bại. Không tải được Google Sign-In.');
+    script.onload = () => {
+      script.dataset.loaded = '1';
+      renderButton();
+    };
+    script.onerror = () => {
+      if (!cancelled) setGoogleError('Đăng nhập thất bại. Không tải được Google Sign-In.');
+    };
     document.body.appendChild(script);
-    return undefined;
-  }, [allowGoogle, handleGoogleCredential]);
+    return () => { cancelled = true; };
+  }, [sessionReady, allowGoogle, handleGoogleCredential]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -199,38 +220,28 @@ export const AuthLoginPage = ({
   useEffect(() => {
     if (!sessionReady || !redirectIfLoggedIn) return;
     if (token && user && allowedRoles.includes(user.vai_tro)) {
-      navigate(from || getRedirectRoute(user), { replace: true });
+      const isManagement = user.vai_tro === ROLES.ADMIN || user.vai_tro === ROLES.DOI_TAC;
+      navigate(isManagement ? getRedirectRoute(user) : (from || getRedirectRoute(user)), {
+        replace: true,
+      });
     }
   }, [user, token, navigate, from, allowedRoles, redirectIfLoggedIn, sessionReady]);
 
   if (!sessionReady) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#5a7a72',
-      }}
-      >
-        Đang chuẩn bị trang đăng nhập...
-      </div>
+      <AuthSplitLayout>
+        <div style={{ textAlign: 'center', color: '#5a7a72', padding: 40 }}>
+          Đang chuẩn bị trang đăng nhập...
+        </div>
+      </AuthSplitLayout>
     );
   }
 
   const displayError = localLoginError || error || googleError;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #e6f4ff 0%, #f0f2f5 100%)',
-      padding: '24px 16px',
-    }}
-    >
-      <Card style={{ width: '100%', maxWidth: '420px', textAlign: 'left' }}>
+    <AuthSplitLayout>
+      <Card className="auth-form-card" style={{ width: '100%', textAlign: 'left' }}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
           <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
             {copy.title}
@@ -348,7 +359,7 @@ export const AuthLoginPage = ({
           </p>
         )}
       </Card>
-    </div>
+    </AuthSplitLayout>
   );
 };
 

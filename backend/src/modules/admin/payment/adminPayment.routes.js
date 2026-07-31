@@ -12,6 +12,7 @@ router.patch('/refunds/:id/reject', ctrl.rejectRefund);
 router.get('/commissions', ctrl.getCommissions);
 router.get('/commissions/stats', ctrl.getCommissionStats);
 router.get('/commissions/by-partner', ctrl.getCommissionByPartner);
+router.patch('/commissions/confirm-batch', ctrl.confirmCommissionsBatch);
 router.get('/commissions/:id', ctrl.getCommissionById);
 router.patch('/commissions/:id/confirm', ctrl.confirmCommission);
 router.patch('/commissions/:id/hold', ctrl.holdCommission);

@@ -10,6 +10,7 @@ const {
   assertUniquePromotionCode,
   syncExpiredPromotions,
   isPastPromotionEndDate,
+  FIRST_BOOKING_PROMO_END,
 } = require('../../../utils/promotionRules');
 const { Prisma } = require('@prisma/client');
 
@@ -53,7 +54,6 @@ const buildWhere = (filters = {}) => {
     where.OR = [
       { ma_code: { contains: kw } },
       { ten: { contains: kw } },
-      { khach_san: { ten: { contains: kw } } },
     ];
   }
 
@@ -184,7 +184,11 @@ const createSystemPromotion = async (userId, payload) => {
     ngay_bat_dau,
     ngay_ket_thuc,
     so_luot_toi_da,
+    lan_dat_dau = false,
   } = payload;
+
+  const isFirstOrder = Boolean(lan_dat_dau);
+  const endDate = isFirstOrder ? FIRST_BOOKING_PROMO_END : ngay_ket_thuc;
 
   assertPromotionFormValues({
     ten,
@@ -194,17 +198,24 @@ const createSystemPromotion = async (userId, payload) => {
     giam_toi_da,
     don_hang_toi_thieu,
     ngay_bat_dau,
-    ngay_ket_thuc,
+    ngay_ket_thuc: endDate,
     so_luot_toi_da,
     loai_nguon: 'he_thong',
     ma_khach_san: null,
   }, { requireAll: true });
 
-  if (!loai_giam || gia_tri == null || !ngay_bat_dau || !ngay_ket_thuc) {
+  if (!loai_giam || gia_tri == null || !ngay_bat_dau || !endDate) {
     throw { statusCode: 400, message: 'Thiếu thông tin khuyến mãi bắt buộc' };
   }
 
   const code = await assertUniquePromotionCode(prisma, ma_code);
+
+  if (isFirstOrder) {
+    await prisma.khuyen_mai.updateMany({
+      where: { lan_dat_dau: true },
+      data: { lan_dat_dau: false },
+    });
+  }
 
   return prisma.khuyen_mai.create({
     data: {
@@ -218,7 +229,8 @@ const createSystemPromotion = async (userId, payload) => {
       giam_toi_da: giam_toi_da != null && giam_toi_da !== '' ? Number(giam_toi_da) : null,
       don_hang_toi_thieu: Number(don_hang_toi_thieu || 0),
       ngay_bat_dau: new Date(ngay_bat_dau),
-      ngay_ket_thuc: new Date(ngay_ket_thuc),
+      ngay_ket_thuc: new Date(endDate),
+      lan_dat_dau: isFirstOrder,
       so_luot_toi_da: so_luot_toi_da != null && so_luot_toi_da !== '' ? Number(so_luot_toi_da) : null,
       trang_thai: 'hoat_dong',
     },
@@ -230,6 +242,13 @@ const updatePromotion = async (id, payload) => {
   const promo = await prisma.khuyen_mai.findUnique({ where: { ma_khuyen_mai: Number(id) } });
   if (!promo) return null;
 
+  const nextLanDatDau = payload.lan_dat_dau !== undefined
+    ? Boolean(payload.lan_dat_dau)
+    : Boolean(promo.lan_dat_dau);
+  const nextEnd = nextLanDatDau
+    ? FIRST_BOOKING_PROMO_END
+    : (payload.ngay_ket_thuc || promo.ngay_ket_thuc);
+
   assertPromotionFormValues({
     ten: payload.ten != null ? payload.ten : promo.ten,
     ma_code: promo.ma_code,
@@ -238,11 +257,22 @@ const updatePromotion = async (id, payload) => {
     giam_toi_da: payload.giam_toi_da !== undefined ? payload.giam_toi_da : promo.giam_toi_da,
     don_hang_toi_thieu: payload.don_hang_toi_thieu != null ? payload.don_hang_toi_thieu : promo.don_hang_toi_thieu,
     ngay_bat_dau: payload.ngay_bat_dau || promo.ngay_bat_dau,
-    ngay_ket_thuc: payload.ngay_ket_thuc || promo.ngay_ket_thuc,
+    ngay_ket_thuc: nextEnd,
     so_luot_toi_da: payload.so_luot_toi_da !== undefined ? payload.so_luot_toi_da : promo.so_luot_toi_da,
     loai_nguon: promo.loai_nguon,
     ma_khach_san: promo.ma_khach_san,
   }, { existingNgayBatDau: promo.ngay_bat_dau });
+
+  if (nextLanDatDau && promo.loai_nguon !== 'he_thong') {
+    throw { statusCode: 400, message: 'Chỉ khuyến mãi hệ thống mới gắn cờ lần đặt đầu' };
+  }
+
+  if (nextLanDatDau) {
+    await prisma.khuyen_mai.updateMany({
+      where: { lan_dat_dau: true, ma_khuyen_mai: { not: Number(id) } },
+      data: { lan_dat_dau: false },
+    });
+  }
 
   const data = {};
   if (payload.ten != null) data.ten = String(payload.ten).trim();
@@ -255,7 +285,8 @@ const updatePromotion = async (id, payload) => {
     data.don_hang_toi_thieu = Number(payload.don_hang_toi_thieu);
   }
   if (payload.ngay_bat_dau) data.ngay_bat_dau = new Date(payload.ngay_bat_dau);
-  if (payload.ngay_ket_thuc) data.ngay_ket_thuc = new Date(payload.ngay_ket_thuc);
+  data.ngay_ket_thuc = new Date(nextEnd);
+  data.lan_dat_dau = nextLanDatDau;
   if (payload.so_luot_toi_da !== undefined) {
     data.so_luot_toi_da = payload.so_luot_toi_da != null && payload.so_luot_toi_da !== '' ? Number(payload.so_luot_toi_da) : null;
   }
@@ -274,14 +305,20 @@ const lockPromotion = async (id, adminUserId, lyDo) => {
     return getPromotionById(id);
   }
 
+  const isPartnerPromo = promo.loai_nguon === 'doi_tac';
+  const reason = (lyDo || '').trim();
+  // Khóa KM đối tác bắt buộc có lý do; KM hệ thống (admin tạo) không cần
+  if (isPartnerPromo && !reason) {
+    throw { statusCode: 400, message: 'Phải kèm lý do tạm ngưng khuyến mãi đối tác' };
+  }
+
   const now = new Date();
-  const khoaBoiAdmin = promo.loai_nguon === 'doi_tac';
 
   await prisma.$executeRaw`
     UPDATE khuyen_mai
     SET trang_thai = 'an',
-        ly_do = ${lyDo || null},
-        khoa_boi_admin = ${khoaBoiAdmin},
+        ly_do = ${isPartnerPromo ? reason : null},
+        khoa_boi_admin = ${isPartnerPromo},
         khoa_boi_doi_tac = FALSE,
         khoa_boi_id = ${Number(adminUserId)},
         thoi_gian_khoa = ${now},
@@ -295,7 +332,7 @@ const lockPromotion = async (id, adminUserId, lyDo) => {
   const ctx = await getNotifyContext(id);
   if (ctx?.khach_san?.ma_doi_tac) {
     await notifyPromotionLocked(ctx.khach_san.ma_doi_tac, {
-      tenKhuyenMai: ctx.ten, maCode: ctx.ma_code, lyDo,
+      tenKhuyenMai: ctx.ten, maCode: ctx.ma_code, lyDo: reason || null,
     });
   }
   return updated;

@@ -29,6 +29,8 @@ const upload = multer({
 
 router.get('/profile', authMiddleware, ctrl.getProfile);
 router.put('/profile', authMiddleware, upload.single('avatar'), ctrl.updateProfile);
+router.get('/banks', authMiddleware, ctrl.listBanks);
+router.put('/bank-account', authMiddleware, ctrl.updateBankAccount);
 router.put('/password', authMiddleware, ctrl.changePassword);
 router.put('/phone', authMiddleware, ctrl.changePhone);
 

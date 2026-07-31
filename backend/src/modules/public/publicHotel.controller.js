@@ -75,13 +75,14 @@ const searchHotels = async (req, res, next) => {
 
 const getHotelById = async (req, res, next) => {
   try {
-    const { ngay_nhan, ngay_tra, so_khach, tre_em, so_phong } = req.query;
+    const { ngay_nhan, ngay_tra, so_khach, tre_em, so_phong, tuoi_tre_em } = req.query;
     const hotel = await publicHotelService.getHotelById(req.params.id, {
       ngay_nhan,
       ngay_tra,
       so_khach,
       tre_em,
       so_phong,
+      tuoi_tre_em,
     });
     if (!hotel) return error(res, 'Khách sạn không tồn tại hoặc không khả dụng', HTTP.NOT_FOUND);
     return success(res, hotel);
@@ -92,13 +93,14 @@ const getHotelById = async (req, res, next) => {
 
 const getRoomById = async (req, res, next) => {
   try {
-    const { ngay_nhan, ngay_tra, so_khach, tre_em, so_phong } = req.query;
+    const { ngay_nhan, ngay_tra, so_khach, tre_em, so_phong, tuoi_tre_em } = req.query;
     const room = await publicHotelService.getRoomById(req.params.hotelId, req.params.roomId, {
       ngay_nhan,
       ngay_tra,
       so_khach,
       tre_em,
       so_phong,
+      tuoi_tre_em,
     });
     if (!room) return error(res, 'Loại phòng không tồn tại hoặc không khả dụng', HTTP.NOT_FOUND);
     return success(res, room);

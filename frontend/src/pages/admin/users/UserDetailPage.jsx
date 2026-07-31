@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { Calendar, Mail, Phone } from 'lucide-react';
+import { Calendar, Mail, Percent, Pencil, Phone } from 'lucide-react';
 import adminUserService from '../../../services/adminUserService';
 import BackButton from '../../../components/common/BackButton';
 import SummaryStats from '../../../components/common/management/SummaryStats';
@@ -16,6 +16,7 @@ import {
   buildAdminUsersListPath,
   userStatusToListTab,
 } from '../../../utils/adminListReturn';
+import EditPartnerModal from './components/EditPartnerModal';
 
 const PAGE_SIZE = 10;
 
@@ -64,9 +65,25 @@ export default function UserDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [flashMsg, setFlashMsg] = useState('');
 
   const backTo = location.state?.returnTo
     || buildAdminUsersListPath(userStatusToListTab(user?.trang_thai));
+
+  const loadUser = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await adminUserService.getUserById(id);
+      setUser(res.data.data);
+    } catch (err) {
+      setUser(null);
+      setError(err.response?.data?.message || 'Không tải được thông tin người dùng');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -88,6 +105,12 @@ export default function UserDetailPage() {
     if (id) load();
     return () => { isMounted = false; };
   }, [id]);
+
+  useEffect(() => {
+    if (!flashMsg) return undefined;
+    const t = setTimeout(() => setFlashMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [flashMsg]);
 
   const isCustomer = user?.vai_tro === 'khach_hang';
   const isPartner = user?.vai_tro === 'doi_tac';
@@ -140,6 +163,7 @@ export default function UserDetailPage() {
 
   const partnerTabs = useMemo(() => [
     { id: 'hotels', label: 'Khách sạn sở hữu' },
+    { id: 'bank', label: 'Tài khoản nhận tiền' },
     { id: 'reviews', label: 'Đánh giá về khách sạn' },
   ], []);
 
@@ -154,6 +178,7 @@ export default function UserDetailPage() {
     if (isCustomer && currentTab === 'reviews') return customer?.danh_gia || [];
     if (isPartner && currentTab === 'hotels') return partner?.khach_san || [];
     if (isPartner && currentTab === 'reviews') return partnerReviews;
+    if (isPartner && currentTab === 'bank') return [];
     return [];
   }, [isCustomer, isPartner, currentTab, customer, partner, partnerReviews]);
 
@@ -193,6 +218,22 @@ export default function UserDetailPage() {
         <BackButton to={backTo} />
       </div>
 
+      {flashMsg && (
+        <div className="mgmt-toast success" style={{ marginBottom: 12 }}>{flashMsg}</div>
+      )}
+
+      <EditPartnerModal
+        isOpen={editOpen}
+        user={user}
+        onClose={() => setEditOpen(false)}
+        onSuccess={(updated, message) => {
+          setEditOpen(false);
+          if (updated) setUser(updated);
+          else loadUser();
+          setFlashMsg(message || 'Cập nhật đối tác thành công');
+        }}
+      />
+
       <div className="admin-user-detail-hero content-card">
         <div className="admin-user-detail-hero-main">
           <div className="admin-user-detail-avatar" aria-hidden>
@@ -208,12 +249,57 @@ export default function UserDetailPage() {
               <li><Mail size={14} strokeWidth={2} /><span>{user.email}</span></li>
               <li><Phone size={14} strokeWidth={2} /><span>{user.so_dien_thoai || '—'}</span></li>
               <li><Calendar size={14} strokeWidth={2} /><span>Tham gia: {formatDate(user.ngay_tao)}</span></li>
+              {isPartner && (
+                <li>
+                  <Percent size={14} strokeWidth={2} />
+                  <span>
+                    Tỉ lệ hoa hồng:
+                    {' '}
+                    {partner?.phan_tram_hoa_hong != null && partner.phan_tram_hoa_hong !== ''
+                      ? `${Number(partner.phan_tram_hoa_hong)}%`
+                      : '15% (mặc định)'}
+                  </span>
+                </li>
+              )}
+              {isPartner && (
+                <li>
+                  <span className="admin-user-detail-hero-meta-plain">
+                    Địa chỉ:
+                    {' '}
+                    {partner?.dia_chi?.trim() || '—'}
+                  </span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
         <div className="admin-user-detail-hero-side">
-          <p><span>Mã tài khoản:</span> <strong>#{user.ma_nguoi_dung}</strong></p>
-          <p><span>Cập nhật:</span> <strong>{formatUpdateTime(user.dang_nhap_cuoi)}</strong></p>
+          <div className="admin-user-detail-hero-side-info">
+            <p><span>Mã tài khoản:</span> <strong>#{user.ma_nguoi_dung}</strong></p>
+            {isPartner && partner?.ma_doi_tac != null && (
+              <p><span>Mã đối tác:</span> <strong>#{partner.ma_doi_tac}</strong></p>
+            )}
+            {isPartner && (
+              <p>
+                <span>Mã số thuế:</span>
+                {' '}
+                <strong>{partner?.ma_so_thue || '—'}</strong>
+              </p>
+            )}
+            <p><span>Cập nhật:</span> <strong>{formatUpdateTime(user.dang_nhap_cuoi)}</strong></p>
+          </div>
+          {isPartner && (
+            <div className="admin-user-detail-hero-side-actions">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil size={15} style={{ marginRight: 6 }} />
+                Sửa tài khoản đối tác
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -327,6 +413,47 @@ export default function UserDetailPage() {
                     />
                   )}
                 </>
+              )}
+            </div>
+          )}
+
+          {isPartner && currentTab === 'bank' && (
+            <div className="admin-user-detail-tab-panel">
+              {!partner.so_tai_khoan && !partner.ten_ngan_hang ? (
+                <p className="empty-state-text">Đối tác chưa cập nhật tài khoản nhận tiền</p>
+              ) : (
+                <div className="mgmt-table-scroll">
+                  <table className="data-table data-table-grid admin-mgmt-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 72 }}>Logo</th>
+                        <th>Ngân hàng</th>
+                        <th>Số tài khoản</th>
+                        <th>Chủ tài khoản</th>
+                        <th style={{ width: 120 }}>Mã NH</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          {partner.logo_ngan_hang ? (
+                            <img
+                              src={partner.logo_ngan_hang}
+                              alt=""
+                              className="admin-user-bank-logo"
+                            />
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="admin-cell-name">{partner.ten_ngan_hang || '—'}</td>
+                        <td>{partner.so_tai_khoan || '—'}</td>
+                        <td>{partner.ten_chu_tai_khoan || '—'}</td>
+                        <td>{partner.ma_ngan_hang || '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

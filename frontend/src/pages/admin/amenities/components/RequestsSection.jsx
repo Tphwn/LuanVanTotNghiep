@@ -1,8 +1,14 @@
+import {
+  getAmenityProposalContent,
+  isAmenityProposalAdded,
+} from '../utils';
+
 const formatTime = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
 /** Danh sách đề xuất tiện nghi (từ thông báo admin), không còn duyệt/từ chối */
 export const RequestsSection = ({
   proposals = [],
+  amenities = [],
   loading = false,
   onMarkRead,
   onAddAmenity,
@@ -22,50 +28,62 @@ export const RequestsSection = ({
     ) : proposals.length === 0 ? (
       <p className="empty-state-text">Chưa có đề xuất tiện nghi từ đối tác</p>
     ) : (
-      <div className="table-scroll">
+      <div className="table-scroll mgmt-table-scroll">
         <table className="data-table data-table-grid admin-mgmt-table amenity-requests-table">
           <thead>
             <tr>
-              <th>Tiêu đề</th>
-              <th>Nội dung</th>
-              <th>Thời gian</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
+              <th className="amenity-req-col-title">Tiêu đề</th>
+              <th className="amenity-req-col-content">Nội dung</th>
+              <th className="amenity-req-col-time">Thời gian</th>
+              <th className="amenity-req-col-status">Trạng thái</th>
+              <th className="amenity-req-col-actions">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {proposals.map((n) => (
-              <tr key={n.ma_thong_bao}>
-                <td><strong>{n.tieu_de}</strong></td>
-                <td className="admin-review-content">{n.noi_dung}</td>
-                <td>{formatTime(n.ngay_gui)}</td>
-                <td>
-                  <span className={`badge ${n.da_doc ? 'badge-default' : 'badge-warning'}`}>
-                    {n.da_doc ? 'Đã xem' : 'Chưa xem'}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {!n.da_doc && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => onMarkRead?.(n.ma_thong_bao)}
-                      >
-                        Đánh dấu đã xem
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => onAddAmenity?.(n)}
-                    >
-                      Thêm tiện nghi
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {proposals.map((n) => {
+              const added = isAmenityProposalAdded(n, amenities);
+              return (
+                <tr key={n.ma_thong_bao}>
+                  <td className="amenity-req-col-title">
+                    <strong>{n.tieu_de}</strong>
+                  </td>
+                  <td className="amenity-req-col-content admin-review-content">
+                    {getAmenityProposalContent(n)}
+                  </td>
+                  <td className="amenity-req-col-time">{formatTime(n.ngay_gui)}</td>
+                  <td className="amenity-req-col-status">
+                    <span className={`badge ${added ? 'badge-success' : n.da_doc ? 'badge-default' : 'badge-warning'}`}>
+                      {added ? 'Đã thêm' : n.da_doc ? 'Đã xem' : 'Chưa xem'}
+                    </span>
+                  </td>
+                  <td className="amenity-req-col-actions table-action-cell">
+                    <div className="table-actions">
+                      {!added && !n.da_doc && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => onMarkRead?.(n.ma_thong_bao)}
+                        >
+                          Đánh dấu đã xem
+                        </button>
+                      )}
+                      {!added && (
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => onAddAmenity?.(n)}
+                        >
+                          Thêm tiện nghi
+                        </button>
+                      )}
+                      {added && (
+                        <span className="amenity-req-added-hint">Đã có trong danh mục</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

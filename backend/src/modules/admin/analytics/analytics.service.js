@@ -61,7 +61,7 @@ const dayKey = (date) => {
 
 const dayLabel = (key) => {
   const [, m, day] = key.split('-');
-  return `${Number(day)}/${Number(m)}`;
+  return `${day}/${Number(m)}`;
 };
 
 const buildDaySeries = (from, to) => {
@@ -234,19 +234,30 @@ const analyticsService = {
     const tongDatPhong = scoped.length;
     const tyLeHuy = tongDatPhong > 0 ? (cancelled.length / tongDatPhong) * 100 : 0;
 
-    const revenueSeries = buildEmptySeries(from, to, nhom);
-    const bookingSeries = buildEmptySeries(from, to, nhom);
+    const financeSeries = buildEmptySeries(from, to, nhom);
+    Object.keys(financeSeries).forEach((key) => {
+      financeSeries[key] = {
+        ...financeSeries[key],
+        gmv: 0,
+        hoa_hong: 0,
+        value: 0,
+        count: 0,
+      };
+    });
+
     scoped.forEach((b) => {
       const date = bookingDate(b);
       if (!date) return;
       const key = seriesBucketKey(date, nhom);
-      if (bookingSeries[key]) {
-        bookingSeries[key].count += 1;
-        bookingSeries[key].value += 1;
-      }
-      if (isRevenueBooking(b) && revenueSeries[key]) {
-        revenueSeries[key].value += bookingAmount(b);
-        revenueSeries[key].count += 1;
+      const bucket = financeSeries[key];
+      if (!bucket) return;
+      if (isRevenueBooking(b)) {
+        const gmv = bookingAmount(b);
+        const hh = toNumber(b.hoa_hong?.so_tien_hoa_hong);
+        bucket.gmv += gmv;
+        bucket.hoa_hong += hh;
+        bucket.value += gmv;
+        bucket.count += 1;
       }
     });
 
@@ -256,9 +267,17 @@ const analyticsService = {
       if (!hotel) return;
       const id = hotel.ma_khach_san;
       if (!hotelRevenue[id]) {
-        hotelRevenue[id] = { ma_khach_san: id, ten: hotel.ten, value: 0 };
+        hotelRevenue[id] = {
+          ma_khach_san: id,
+          ten: hotel.ten,
+          value: 0,
+          hoa_hong: 0,
+          so_don: 0,
+        };
       }
       hotelRevenue[id].value += bookingAmount(b);
+      hotelRevenue[id].hoa_hong += toNumber(b.hoa_hong?.so_tien_hoa_hong);
+      hotelRevenue[id].so_don += 1;
     });
 
     const statusMap = {};
@@ -267,6 +286,8 @@ const analyticsService = {
       if (!statusMap[st]) statusMap[st] = { name: st, value: 0 };
       statusMap[st].value += 1;
     });
+
+    const dienBien = Object.values(financeSeries);
 
     return {
       kpis: {
@@ -279,8 +300,20 @@ const analyticsService = {
       },
       nhom,
       charts: {
-        doanh_thu_theo_thoi_gian: Object.values(revenueSeries),
-        don_dat_theo_thoi_gian: Object.values(bookingSeries),
+        dien_bien_tai_chinh: dienBien,
+        // Giữ key cũ để tương thích chỗ khác (nếu có)
+        doanh_thu_theo_thoi_gian: dienBien.map((r) => ({
+          key: r.key,
+          label: r.label,
+          value: r.gmv,
+          count: r.count,
+        })),
+        don_dat_theo_thoi_gian: dienBien.map((r) => ({
+          key: r.key,
+          label: r.label,
+          value: r.count,
+          count: r.count,
+        })),
         top_khach_san_doanh_thu: topN(hotelRevenue, 5),
         phan_bo_trang_thai_don_dat: Object.values(statusMap),
       },
@@ -700,6 +733,7 @@ const analyticsService = {
     const { from, to } = parseDateRange(query);
     const partnerId = query.ma_doi_tac ? parseInt(query.ma_doi_tac, 10) : null;
     const hotelId = query.ma_khach_san ? parseInt(query.ma_khach_san, 10) : null;
+    const customerId = query.ma_khach_hang ? parseInt(query.ma_khach_hang, 10) : null;
     const cityFilter = (query.thanh_pho || '').trim();
 
     const [hotels, partners, customers, bookings] = await Promise.all([
@@ -727,7 +761,13 @@ const analyticsService = {
         select: {
           ma_khach_hang: true,
           ho_ten: true,
-          nguoi_dung: { select: { ngay_tao: true } },
+          nguoi_dung: {
+            select: {
+              ngay_tao: true,
+              email: true,
+              so_dien_thoai: true,
+            },
+          },
         },
         orderBy: { ho_ten: 'asc' },
       }),
@@ -829,12 +869,14 @@ const analyticsService = {
       .sort((a, b) => b.doanh_thu - a.doanh_thu || a.ten_doi_tac.localeCompare(b.ten_doi_tac, 'vi'));
 
     const customerMap = Object.fromEntries(customers.map((c) => [c.ma_khach_hang, c]));
-    const khachHangRows = Object.entries(customerStats)
+    let khachHangRows = Object.entries(customerStats)
       .map(([id, stats]) => {
         const c = customerMap[Number(id)];
         return {
           ma_khach_hang: Number(id),
           ten_khach_hang: c?.ho_ten || `KH #${id}`,
+          email: c?.nguoi_dung?.email || null,
+          so_dien_thoai: c?.nguoi_dung?.so_dien_thoai || null,
           ngay_dang_ky: c?.nguoi_dung?.ngay_tao || null,
           lan_cuoi_dat: stats.lan_cuoi_dat || null,
           tong_don: stats.tong_don,
@@ -842,6 +884,10 @@ const analyticsService = {
         };
       })
       .sort((a, b) => b.tong_chi_tieu - a.tong_chi_tieu || b.tong_don - a.tong_don);
+
+    if (customerId && !Number.isNaN(customerId)) {
+      khachHangRows = khachHangRows.filter((r) => r.ma_khach_hang === customerId);
+    }
 
     const cities = [
       ...new Set(hotels.map((h) => hotelCity(h)).filter(Boolean)),
@@ -858,6 +904,12 @@ const analyticsService = {
           ten: h.ten,
           ma_doi_tac: h.ma_doi_tac,
           thanh_pho: hotelCity(h),
+        })),
+        khach_hang: customers.map((c) => ({
+          ma_khach_hang: c.ma_khach_hang,
+          ten: c.ho_ten || `KH #${c.ma_khach_hang}`,
+          email: c.nguoi_dung?.email || null,
+          so_dien_thoai: c.nguoi_dung?.so_dien_thoai || null,
         })),
         thanh_pho: cities,
       },

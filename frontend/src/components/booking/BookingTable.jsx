@@ -1,7 +1,7 @@
 import { Eye, X } from 'lucide-react';
 import ActionButton, { ActionCell } from '../common/ActionButton';
 import {
-  TRANG_THAI,
+  getBookingStatusDisplay,
   getPaymentDisplay,
   formatCurrency,
   formatDate,
@@ -34,10 +34,7 @@ export default function BookingTable({
     <tbody>
       {bookings.map((b) => {
         const hotel = b.loai_phong?.khach_san;
-        const stBadge = TRANG_THAI[b.trang_thai] || {
-          label: b.trang_thai,
-          cls: 'badge-default',
-        };
+        const stBadge = getBookingStatusDisplay(b);
         const pay = getPaymentDisplay(b);
         const customerName = b.khach_hang?.ho_ten || b.ten_nguoi_nhan || '—';
         const phone = b.sdt_nguoi_nhan || b.khach_hang?.sdt || '';
@@ -52,9 +49,6 @@ export default function BookingTable({
 
         return (
           <tr key={b.ma_dat_phong} className={rowClass || undefined}>
-            <td className="mgmt-table-cell-code partner-col-code">
-              <span className="mgmt-cell-code" title={b.ma_don_hang}>{b.ma_don_hang}</span>
-            </td>
             <td className="partner-col-customer">
               <div className="booking-customer-cell">
                 <div className="admin-cell-name">{customerName}</div>
@@ -86,6 +80,9 @@ export default function BookingTable({
                   <span className="booking-today-badge booking-today-badge--out">Hôm nay</span>
                 )}
               </div>
+            </td>
+            <td className="partner-col-money" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {formatCurrency(b.tong_tien_goc)}
             </td>
             <td className="partner-col-money" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
               {formatCurrency(b.thanh_toan_cuoi)}

@@ -24,9 +24,10 @@ import {
 } from '../../../utils/adminListReturn';
 
 import {
-  TRANG_THAI,
-  PHUONG_THUC,
+  getBookingStatusDisplay,
   getPaymentDisplay,
+  getPaymentGatewayLabel,
+  getBookingVatAmount,
   getRefundBadgeMeta,
   getBookingSpecialRequest,
   formatCurrency,
@@ -100,14 +101,7 @@ export default function BookingDetailPage() {
     return () => clearTimeout(timer);
   }, [successMsg, error, dispatch]);
 
-  const bookingStatus = useMemo(() => {
-    if (!detail) return { label: '—', cls: 'badge-default' };
-
-    return TRANG_THAI[detail.trang_thai] || {
-      label: detail.trang_thai,
-      cls: 'badge-default',
-    };
-  }, [detail]);
+  const bookingStatus = useMemo(() => getBookingStatusDisplay(detail), [detail]);
 
   const paymentInfo = useMemo(() => getPaymentDisplay(detail), [detail]);
 
@@ -222,18 +216,38 @@ export default function BookingDetailPage() {
     ? getRefundBadgeMeta(refundInfo?.trang_thai_hoan)
     : null;
 
-  const paymentMethod =
-    PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—';
+  const paymentMethod = getPaymentGatewayLabel(detail);
+  const vatAmount = getBookingVatAmount(detail);
+  const discountAmount = Number(detail.tien_giam) || 0;
+  const promoCode = detail.khuyen_mai?.ma_code || null;
+  const showPromo = discountAmount > 0 && Boolean(promoCode);
+
+  const paymentColumns = showPromo
+    ? ['Tiền ban đầu', 'Tiền phí (VAT)', 'Mã giảm', 'Tiền thanh toán', 'Trạng thái', 'Phương thức']
+    : ['Tiền ban đầu', 'Tiền phí (VAT)', 'Tiền thanh toán', 'Trạng thái', 'Phương thức'];
 
   const paymentRows = [
     {
       key: 'payment',
-      cells: [
-        formatCurrency(detail.thanh_toan_cuoi),
-        <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
-        paymentMethod,
-      ],
-      cellProps: [{ style: { fontWeight: 500 } }, {}, {}],
+      cells: showPromo
+        ? [
+          formatCurrency(detail.tong_tien_goc),
+          formatCurrency(vatAmount),
+          `${promoCode} (−${formatCurrency(discountAmount)})`,
+          formatCurrency(detail.thanh_toan_cuoi),
+          <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
+          paymentMethod,
+        ]
+        : [
+          formatCurrency(detail.tong_tien_goc),
+          formatCurrency(vatAmount),
+          formatCurrency(detail.thanh_toan_cuoi),
+          <span className={`badge ${paymentInfo.badge}`}>{paymentInfo.label}</span>,
+          paymentMethod,
+        ],
+      cellProps: showPromo
+        ? [{ style: { fontWeight: 500 } }, {}, {}, { style: { fontWeight: 600 } }, {}, {}]
+        : [{ style: { fontWeight: 500 } }, {}, { style: { fontWeight: 600 } }, {}, {}],
     },
   ];
 
@@ -356,7 +370,7 @@ export default function BookingDetailPage() {
 
         <BookingSectionTable
           title="Thanh toán"
-          columns={['Tổng tiền', 'Trạng thái', 'Phương thức']}
+          columns={paymentColumns}
           rows={paymentRows}
         />
 

@@ -26,6 +26,7 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Giá cao → thấp' },
   { value: 'stars_desc', label: 'Hạng sao cao nhất' },
   { value: 'rating_desc', label: 'Đánh giá cao nhất' },
+  { value: 'popularity_desc', label: 'Độ phổ biến' },
 ];
 
 const STAR_OPTIONS = [5, 4, 3, 2, 1];
@@ -46,6 +47,7 @@ const buildHotelDetailUrl = (hotelId, filters) => {
   if (filters.ngay_tra) params.set('ngay_tra', filters.ngay_tra);
   if (filters.so_khach) params.set('so_khach', filters.so_khach);
   if (filters.tre_em) params.set('tre_em', filters.tre_em);
+  if (filters.tuoi_tre_em) params.set('tuoi_tre_em', filters.tuoi_tre_em);
   if (filters.so_phong) params.set('so_phong', filters.so_phong);
   const qs = params.toString();
   return `/hotels/${hotelId}${qs ? `?${qs}` : ''}`;
@@ -200,6 +202,7 @@ const HotelSearchPage = () => {
       so_khach: searchParams.get('so_khach') || 2,
       tre_em: searchParams.get('tre_em') || 0,
       so_phong: searchParams.get('so_phong') || 1,
+      tuoi_tre_em: searchParams.get('tuoi_tre_em') || '',
     });
     return {
       ma_dia_diem: searchParams.get('ma_dia_diem') || '',
@@ -208,6 +211,7 @@ const HotelSearchPage = () => {
       so_khach: String(guests.so_khach),
       tre_em: String(guests.tre_em),
       so_phong: String(guests.so_phong),
+      tuoi_tre_em: guests.tuoi_tre_em.join(','),
     };
   }, [searchParams]);
 
@@ -219,6 +223,7 @@ const HotelSearchPage = () => {
       so_khach: Number(filters.so_khach) || 2,
       tre_em: Number(filters.tre_em) || 0,
       so_phong: Number(filters.so_phong) || 1,
+      tuoi_tre_em: filters.tuoi_tre_em || '',
     };
     if (filters.ma_dia_diem) init.ma_dia_diem = filters.ma_dia_diem;
     if (filters.ngay_nhan) init.ngay_nhan = filters.ngay_nhan;
@@ -348,6 +353,9 @@ const HotelSearchPage = () => {
     else if (sortBy === 'stars_desc') list.sort((a, b) => (b.so_sao || 0) - (a.so_sao || 0));
     else if (sortBy === 'rating_desc') {
       list.sort((a, b) => (b.diem_trung_binh || 0) - (a.diem_trung_binh || 0));
+    } else if (sortBy === 'popularity_desc') {
+      list.sort((a, b) => (b.so_dat || 0) - (a.so_dat || 0)
+        || (b.diem_trung_binh || 0) - (a.diem_trung_binh || 0));
     }
 
     return list;

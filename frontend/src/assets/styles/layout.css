@@ -438,7 +438,9 @@ body {
 }
 
 .partner-notify-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   width: 100%;
   text-align: left;
   padding: 12px 16px;
@@ -446,25 +448,104 @@ body {
   border-bottom: 1px solid #f5f5f5;
   background: #fff;
   cursor: pointer;
+  transition: background 0.15s;
+}
+
+.partner-notify-item:hover {
+  background: #fafafa;
 }
 
 .partner-notify-item.is-unread {
-  background: #f8fdfb;
+  background: #f0f9ff;
+}
+
+.partner-notify-item.is-unread:hover {
+  background: #e8f4fc;
+}
+
+.partner-notify-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partner-notify-icon--success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.partner-notify-icon--warning {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.partner-notify-icon--system {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.partner-notify-icon--finance {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.partner-notify-icon--promo {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.partner-notify-icon--amenity {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.partner-notify-icon--partner {
+  background: #d1fae5;
+  color: #0f766e;
+}
+
+.partner-notify-icon--hotel {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.partner-notify-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.partner-notify-item-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .partner-notify-item-title {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 13px;
-  color: #1a2e28;
-  margin-bottom: 4px;
+  color: #1e293b;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  line-height: 1.35;
 }
 
 .partner-notify-unread-dot {
-  color: #3C7363;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: #2563eb;
 }
 
 .partner-notify-type {
@@ -478,13 +559,13 @@ body {
 
 .partner-notify-item-content {
   font-size: 12px;
-  color: #5a7a72;
+  color: #64748b;
   line-height: 1.5;
 }
 
 .partner-notify-item-time {
   font-size: 11px;
-  color: #aaa;
+  color: #94a3b8;
   margin-top: 6px;
 }
 
@@ -1311,22 +1392,56 @@ body {
   color: #1a2e28;
 }
 
-.partner-finance-page .partner-finance-tabs {
+.partner-finance-page .partner-finance-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 14px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.partner-finance-page .partner-finance-toolbar-hotel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+
+.partner-finance-page .partner-finance-toolbar-hotel label {
+  font-size: 12px;
+  font-weight: 550;
+  color: #5a7a72;
+}
+
+.partner-finance-page .partner-finance-toolbar-hotel .mgmt-select-inline {
+  width: 100%;
+  max-width: none;
+  height: 36px;
+}
+
+.partner-finance-page .partner-finance-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f3f4f6;
 }
 
 .partner-finance-page .partner-finance-tab {
-  border: 1px solid #c5d9d2;
-  background: #fff;
-  color: #1a2e28;
+  border: none;
+  background: transparent;
+  color: #374151;
   border-radius: 8px;
-  padding: 7px 12px;
+  padding: 7px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1334,15 +1449,15 @@ body {
 }
 
 .partner-finance-page .partner-finance-tab:hover {
-  border-color: #3C7363;
-  background: #f3faf7;
+  color: #1a2e28;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .partner-finance-page .partner-finance-tab.is-active {
-  border-color: #3C7363;
-  background: #e8f5f0;
-  color: #2a5c4e;
-  box-shadow: inset 0 0 0 1px #3C7363;
+  border: none;
+  background: #fff;
+  color: #1a2e28;
+  box-shadow: 0 1px 2px rgba(26, 46, 40, 0.1);
 }
 
 .partner-finance-page .partner-finance-filter-card {
@@ -1485,15 +1600,19 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.admin-finance-metrics--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .admin-finance-metric {
   display: flex;
   flex-direction: column;
   min-height: 108px;
   padding: 14px 16px;
   background: #fff;
-  border: 1px solid #d4ede6;
+  border: 2px solid #cfe6dd;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(26, 46, 40, 0.04);
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
 }
 
 .admin-finance-metric-label {
@@ -1529,8 +1648,12 @@ body {
   visibility: hidden;
 }
 
-.admin-finance-metric--neutral {
-  background: #f4faf7;
+.admin-finance-metric--neutral,
+.admin-finance-metric--info,
+.admin-finance-metric--warning,
+.admin-finance-metric--success,
+.admin-finance-metric--danger {
+  background: #fff;
   border-color: #cfe6dd;
 }
 
@@ -1538,36 +1661,16 @@ body {
   color: #3C7363;
 }
 
-.admin-finance-metric--info {
-  background: #f3f8ff;
-  border-color: #d4e4fb;
-}
-
 .admin-finance-metric--info .admin-finance-metric-value {
   color: #2563eb;
-}
-
-.admin-finance-metric--warning {
-  background: #fffbf0;
-  border-color: #f3e0b5;
 }
 
 .admin-finance-metric--warning .admin-finance-metric-value {
   color: #b45309;
 }
 
-.admin-finance-metric--success {
-  background: #f3fbf6;
-  border-color: #c6ead5;
-}
-
 .admin-finance-metric--success .admin-finance-metric-value {
   color: #15803d;
-}
-
-.admin-finance-metric--danger {
-  background: #fff6f6;
-  border-color: #f0c9c9;
 }
 
 .admin-finance-metric--danger .admin-finance-metric-value {
@@ -1580,7 +1683,8 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .admin-finance-metrics--4 {
+  .admin-finance-metrics--4,
+  .admin-finance-metrics--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1588,7 +1692,8 @@ body {
 @media (max-width: 720px) {
   .admin-finance-metrics--6,
   .admin-finance-metrics--5,
-  .admin-finance-metrics--4 {
+  .admin-finance-metrics--4,
+  .admin-finance-metrics--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1596,7 +1701,8 @@ body {
 @media (max-width: 480px) {
   .admin-finance-metrics--6,
   .admin-finance-metrics--5,
-  .admin-finance-metrics--4 {
+  .admin-finance-metrics--4,
+  .admin-finance-metrics--3 {
     grid-template-columns: 1fr;
   }
 }
@@ -1962,6 +2068,19 @@ body {
   grid-column: 1 / -1;
 }
 
+.partner-finance-page .partner-finance-chart-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.partner-finance-page .partner-finance-chart-card-heading {
+  min-width: 0;
+  flex: 1;
+}
+
 .partner-finance-page .partner-finance-chart-card-header h4 {
   margin: 0 0 4px;
   font-size: 15px;
@@ -1973,6 +2092,111 @@ body {
   margin: 0 0 10px;
   font-size: 12px;
   color: #5a7a72;
+}
+
+.partner-finance-page .partner-finance-chart-card-actions {
+  flex-shrink: 0;
+}
+
+.partner-finance-page .partner-finance-ky-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eef5f2;
+  border: 1px solid #d4ede6;
+}
+
+.partner-finance-page .partner-finance-ky-btn {
+  border: none;
+  background: transparent;
+  color: #5a7a72;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.partner-finance-page .partner-finance-ky-btn:hover {
+  color: #1a2e28;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.partner-finance-page .partner-finance-ky-btn.is-active {
+  background: #fff;
+  color: #3C7363;
+  box-shadow: 0 1px 2px rgba(26, 46, 40, 0.08);
+}
+
+.partner-finance-page .partner-finance-reconciliation {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  min-height: 220px;
+}
+
+.partner-finance-page .partner-finance-reconciliation-chart {
+  position: relative;
+  min-width: 0;
+}
+
+.partner-finance-page .partner-finance-reconciliation-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #1a2e28;
+}
+
+.partner-finance-page .partner-finance-reconciliation-center strong {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.partner-finance-page .partner-finance-reconciliation-center span {
+  font-size: 13px;
+  color: #5a7a72;
+}
+
+.partner-finance-page .partner-finance-reconciliation-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-finance-page .partner-finance-reconciliation-legend li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: #1a2e28;
+}
+
+.partner-finance-page .partner-finance-reconciliation-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.partner-finance-page .partner-finance-reconciliation-name {
+  color: #5a7a72;
+}
+
+.partner-finance-page .partner-finance-reconciliation-legend strong {
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .partner-finance-page .partner-finance-chart-empty {
@@ -2221,6 +2445,85 @@ body {
   gap: 16px;
 }
 
+.payout-period-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payout-period-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.payout-period-status-dot {
+  font-size: 13px;
+  color: #5a7a72;
+}
+
+.payout-period-block-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e28;
+}
+
+.payout-period-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.payout-period-field--full {
+  grid-column: 1 / -1;
+}
+
+.payout-period-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a7a72;
+  margin-bottom: 4px;
+}
+
+.payout-period-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a2e28;
+  line-height: 1.45;
+}
+
+.payout-period-value--warn {
+  color: #b45309;
+}
+
+.payout-period-bank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payout-period-bank-meta {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5a7a72;
+  margin-top: 2px;
+}
+
+.payout-finance-value--xl {
+  font-size: 22px !important;
+  color: #3C7363 !important;
+}
+
+@media (max-width: 720px) {
+  .payout-period-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .partner-finance-payout-detail-page .payout-overview-identity {
   display: flex;
   align-items: flex-start;
@@ -2263,10 +2566,11 @@ body {
   flex-direction: column;
   gap: 8px;
   min-height: 96px;
-  padding: 16px 18px;
+  padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #cfe6dd;
   background: #fff;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
 }
 
 .partner-finance-payout-detail-page .payout-finance-label {
@@ -2283,23 +2587,19 @@ body {
   color: #0f172a;
 }
 
-.partner-finance-payout-detail-page .payout-finance-card--deduct {
-  background: #fff7ed;
-  border-color: #fed7aa;
+.partner-finance-payout-detail-page .payout-finance-card--deduct,
+.partner-finance-payout-detail-page .payout-finance-card--receive {
+  background: #fff;
+  border-color: #cfe6dd;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
 }
 
 .partner-finance-payout-detail-page .payout-finance-card--deduct .payout-finance-value {
   color: #c2410c;
 }
 
-.partner-finance-payout-detail-page .payout-finance-card--receive {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  box-shadow: 0 1px 0 rgba(22, 163, 74, 0.08);
-}
-
 .partner-finance-payout-detail-page .payout-finance-card--receive .payout-finance-label {
-  color: #047857;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -2582,7 +2882,25 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .partner-finance-page .partner-finance-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .partner-finance-page .partner-finance-toolbar-hotel {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
   .partner-finance-page .partner-finance-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .partner-finance-page .partner-finance-chart-card-header {
+    flex-direction: column;
+  }
+
+  .partner-finance-page .partner-finance-reconciliation {
     grid-template-columns: 1fr;
   }
 
@@ -2623,22 +2941,33 @@ body {
   max-width: 100%;
 }
 
-.partner-finance-page .partner-finance-commission-table,
-.partner-finance-page .partner-finance-revenue-table,
+.partner-finance-page .partner-finance-commission-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.partner-finance-page .partner-finance-revenue-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
 .partner-finance-page .partner-finance-recent-table {
   width: 100%;
   min-width: 1000px;
   table-layout: auto;
 }
 
+/* Mã đơn | KS | Doanh thu | Tỷ lệ | HH sàn | Thực nhận | Đối soát | Thao tác */
 .partner-finance-page .partner-finance-commission-table th:nth-child(1),
 .partner-finance-page .partner-finance-commission-table td:nth-child(1) {
-  width: 16%;
+  width: 14%;
 }
 
 .partner-finance-page .partner-finance-commission-table th:nth-child(2),
 .partner-finance-page .partner-finance-commission-table td:nth-child(2) {
-  width: 22%;
+  width: 18%;
 }
 
 .partner-finance-page .partner-finance-commission-table th:nth-child(3),
@@ -2647,12 +2976,12 @@ body {
 .partner-finance-page .partner-finance-commission-table td:nth-child(5),
 .partner-finance-page .partner-finance-commission-table th:nth-child(6),
 .partner-finance-page .partner-finance-commission-table td:nth-child(6) {
-  width: 13%;
+  width: 12%;
 }
 
 .partner-finance-page .partner-finance-commission-table th:nth-child(4),
 .partner-finance-page .partner-finance-commission-table td:nth-child(4) {
-  width: 8%;
+  width: 7%;
 }
 
 .partner-finance-page .partner-finance-commission-table th:nth-child(7),
@@ -2660,14 +2989,24 @@ body {
   width: 15%;
 }
 
+.partner-finance-page .partner-finance-commission-table th:nth-child(8),
+.partner-finance-page .partner-finance-commission-table td:nth-child(8) {
+  width: 10%;
+  min-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+/* Mã đơn | KS | Nhận/Trả | Hoàn thành | Tổng tiền | TT | Thanh toán | Thao tác */
 .partner-finance-page .partner-finance-revenue-table th:nth-child(1),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(1) {
-  width: 11%;
+  width: 14%;
 }
 
 .partner-finance-page .partner-finance-revenue-table th:nth-child(2),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(2) {
-  width: 18%;
+  width: 20%;
 }
 
 .partner-finance-page .partner-finance-revenue-table th:nth-child(3),
@@ -2677,40 +3016,120 @@ body {
 
 .partner-finance-page .partner-finance-revenue-table th:nth-child(4),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(4) {
-  width: 12%;
+  width: 11%;
 }
 
 .partner-finance-page .partner-finance-revenue-table th:nth-child(5),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(5) {
-  width: 10%;
+  width: 12%;
 }
 
 .partner-finance-page .partner-finance-revenue-table th:nth-child(6),
-.partner-finance-page .partner-finance-revenue-table td:nth-child(6) {
-  width: 11%;
+.partner-finance-page .partner-finance-revenue-table td:nth-child(6),
+.partner-finance-page .partner-finance-revenue-table th:nth-child(7),
+.partner-finance-page .partner-finance-revenue-table td:nth-child(7) {
+  width: 12%;
 }
 
-.partner-finance-page .partner-finance-revenue-table th:nth-child(7),
-.partner-finance-page .partner-finance-revenue-table td:nth-child(7),
 .partner-finance-page .partner-finance-revenue-table th:nth-child(8),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(8) {
-  width: 9%;
-}
-
-.partner-finance-page .partner-finance-revenue-table th:nth-child(9),
-.partner-finance-page .partner-finance-revenue-table td:nth-child(9) {
-  width: 6%;
+  width: 8%;
+  min-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  word-break: normal;
 }
 
 .partner-finance-page .partner-finance-commission-table th,
-.partner-finance-page .partner-finance-commission-table td,
+.partner-finance-page .partner-finance-commission-table td {
+  padding: 10px 8px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.partner-finance-page .partner-finance-commission-table thead th {
+  padding: 10px 8px;
+  line-height: 1.25;
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partner-finance-page .partner-finance-commission-table tbody td {
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partner-finance-page .partner-finance-commission-table tbody td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.partner-finance-page .partner-finance-commission-table .partner-finance-cell-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.partner-finance-page .partner-finance-commission-table td.table-action-cell,
+.partner-finance-page .partner-finance-commission-table th:nth-child(8) {
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.partner-finance-page .partner-finance-commission-table td.table-action-cell .table-actions {
+  justify-content: center;
+}
+
 .partner-finance-page .partner-finance-revenue-table th,
 .partner-finance-page .partner-finance-revenue-table td {
   padding: 10px 8px;
-  white-space: normal;
-  word-break: break-word;
   font-size: 13px;
   vertical-align: middle;
+}
+
+.partner-finance-page .partner-finance-revenue-table thead th {
+  padding: 10px 8px;
+  line-height: 1.25;
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partner-finance-page .partner-finance-revenue-table tbody td {
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partner-finance-page .partner-finance-revenue-table tbody td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.partner-finance-page .partner-finance-revenue-table .partner-finance-cell-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.partner-finance-page .partner-finance-revenue-table td.table-action-cell,
+.partner-finance-page .partner-finance-revenue-table th:nth-child(8) {
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.partner-finance-page .partner-finance-revenue-table td.table-action-cell .table-actions {
+  justify-content: center;
 }
 
 .partner-finance-page .partner-finance-cell-ellipsis,
@@ -2800,7 +3219,7 @@ body {
 }
 
 .data-table th {
-  text-align: left;
+  text-align: center;
   padding: 10px 14px;
   background: #f9fafb;
   color: #64748b;
@@ -4087,12 +4506,13 @@ a.comm-receipt-order:hover {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+/* ── Ô tổng thống nhất (admin + đối tác) ── */
 .mgmt-stat-card {
   background: #fff;
-  border-radius: 10px;
-  padding: 10px 14px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 2px solid #cfe6dd;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
 }
 
 .mgmt-stat-card--filter {
@@ -4104,41 +4524,42 @@ a.comm-receipt-order:hover {
 }
 
 .mgmt-stat-card--filter:hover {
-  border-color: #b8ddd4;
-}
-
-.mgmt-stat-card--filter.is-active {
   border-color: #3C7363;
-  box-shadow: 0 0 0 1px #3C7363;
 }
 
-/* ── Màu ô thống kê / filter theo trạng thái ── */
-.mgmt-stat-card--tone-success { background: #f0fdf4; border-color: #bbf7d0; }
+/* Ô đang chọn: viền xanh đậm hơn */
+.mgmt-stat-card--filter.is-active {
+  border-color: #2f5c4f;
+  box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
+}
+
+/* Nền trắng + viền xanh nhạt; màu số liệu theo trạng thái */
+.mgmt-stat-card--tone-success,
+.mgmt-stat-card--tone-warning,
+.mgmt-stat-card--tone-danger,
+.mgmt-stat-card--tone-info,
+.mgmt-stat-card--tone-neutral,
+.mgmt-stat-card--tone-muted {
+  background: #fff;
+  border-color: #cfe6dd;
+}
+
 .mgmt-stat-card--tone-success .mgmt-stat-value { color: #16a34a; }
-
-.mgmt-stat-card--tone-warning { background: #fffbeb; border-color: #fde68a; }
 .mgmt-stat-card--tone-warning .mgmt-stat-value { color: #d97706; }
-
-.mgmt-stat-card--tone-danger { background: #fef2f2; border-color: #fecaca; }
 .mgmt-stat-card--tone-danger .mgmt-stat-value { color: #dc2626; }
-
-.mgmt-stat-card--tone-info { background: #eff6ff; border-color: #bfdbfe; }
 .mgmt-stat-card--tone-info .mgmt-stat-value { color: #2563eb; }
-
-.mgmt-stat-card--tone-neutral { background: #f0f7f4; border-color: #cfe6dd; }
 .mgmt-stat-card--tone-neutral .mgmt-stat-value { color: #3C7363; }
-
-.mgmt-stat-card--tone-muted { background: #f4f5f7; border-color: #e2e5ea; }
 .mgmt-stat-card--tone-muted .mgmt-stat-value { color: #64748b; }
 
-.mgmt-stat-card--filter.mgmt-stat-card--tone-success:hover { border-color: #86efac; }
-.mgmt-stat-card--filter.mgmt-stat-card--tone-warning:hover { border-color: #fcd34d; }
-.mgmt-stat-card--filter.mgmt-stat-card--tone-danger:hover { border-color: #fca5a5; }
-.mgmt-stat-card--filter.mgmt-stat-card--tone-info:hover { border-color: #93c5fd; }
-.mgmt-stat-card--filter.mgmt-stat-card--tone-neutral:hover { border-color: #b8ddd4; }
-.mgmt-stat-card--filter.mgmt-stat-card--tone-muted:hover { border-color: #cbd0d8; }
+.mgmt-stat-card--filter.mgmt-stat-card--tone-success:hover,
+.mgmt-stat-card--filter.mgmt-stat-card--tone-warning:hover,
+.mgmt-stat-card--filter.mgmt-stat-card--tone-danger:hover,
+.mgmt-stat-card--filter.mgmt-stat-card--tone-info:hover,
+.mgmt-stat-card--filter.mgmt-stat-card--tone-neutral:hover,
+.mgmt-stat-card--filter.mgmt-stat-card--tone-muted:hover {
+  border-color: #3C7363;
+}
 
-/* Ô đang chọn: giữ viền nhấn tối để nổi bật trên nền màu */
 .mgmt-stat-card--filter.is-active,
 .mgmt-stat-card--filter.mgmt-stat-card--tone-success.is-active,
 .mgmt-stat-card--filter.mgmt-stat-card--tone-warning.is-active,
@@ -4146,8 +4567,8 @@ a.comm-receipt-order:hover {
 .mgmt-stat-card--filter.mgmt-stat-card--tone-info.is-active,
 .mgmt-stat-card--filter.mgmt-stat-card--tone-neutral.is-active,
 .mgmt-stat-card--filter.mgmt-stat-card--tone-muted.is-active {
-  border-color: #1a2e28;
-  box-shadow: inset 0 0 0 1.5px #1a2e28;
+  border-color: #2f5c4f;
+  box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
 }
 
 .partner-hotels-page .partner-hotels-clear-slot {
@@ -4430,61 +4851,56 @@ a.comm-receipt-order:hover {
   gap: 4px;
   padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #cfe6dd;
   background: #fff;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .partner-booking-assistant-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26, 46, 40, 0.06);
+  border-color: #3C7363;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.08);
 }
 
 .partner-booking-assistant-card.is-active {
-  box-shadow: 0 0 0 2px rgba(60, 115, 99, 0.22);
+  border-color: #2f5c4f;
+  box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
 }
 
-.partner-booking-assistant-card--warning {
-  background: #fff7ed;
-  border-color: #fdba74;
+.partner-booking-assistant-card--warning,
+.partner-booking-assistant-card--danger,
+.partner-booking-assistant-card--info,
+.partner-booking-assistant-card--success,
+.partner-booking-assistant-card--muted {
+  background: #fff;
+  border-color: #cfe6dd;
+}
+
+.partner-booking-assistant-card--warning.is-active,
+.partner-booking-assistant-card--danger.is-active,
+.partner-booking-assistant-card--info.is-active,
+.partner-booking-assistant-card--success.is-active,
+.partner-booking-assistant-card--muted.is-active {
+  border-color: #2f5c4f;
+  box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
 }
 
 .partner-booking-assistant-card--warning .partner-booking-assistant-card-count {
   color: #c2410c;
 }
 
-.partner-booking-assistant-card--danger {
-  background: #fef2f2;
-  border-color: #fca5a5;
-}
-
 .partner-booking-assistant-card--danger .partner-booking-assistant-card-count {
   color: #dc2626;
-}
-
-.partner-booking-assistant-card--info {
-  background: #f0f9ff;
-  border-color: #bae6fd;
 }
 
 .partner-booking-assistant-card--info .partner-booking-assistant-card-count {
   color: #0284c7;
 }
 
-.partner-booking-assistant-card--success {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
 .partner-booking-assistant-card--success .partner-booking-assistant-card-count {
   color: #16a34a;
-}
-
-.partner-booking-assistant-card--muted {
-  background: #f8fafc;
-  border-color: #e2e8f0;
 }
 
 .partner-booking-assistant-card--muted .partner-booking-assistant-card-count {
@@ -4710,18 +5126,20 @@ a.comm-receipt-order:hover {
 .admin-users-page .mgmt-stat-card--filter,
 .admin-bookings-page .mgmt-stat-card--filter,
 .partner-hotels-page .mgmt-stat-card--filter,
-.partner-bookings-page .mgmt-stat-card--filter {
-  min-height: 56px;
-  padding: 8px 14px;
+.partner-bookings-page .mgmt-stat-card--filter,
+.partner-room-mgmt .mgmt-stat-card--filter {
+  min-height: 64px;
+  padding: 14px 16px;
 }
 
 .admin-hotels-page .mgmt-stat-card--filter.is-active,
 .admin-users-page .mgmt-stat-card--filter.is-active,
 .admin-bookings-page .mgmt-stat-card--filter.is-active,
 .partner-hotels-page .mgmt-stat-card--filter.is-active,
-.partner-bookings-page .mgmt-stat-card--filter.is-active {
-  border-color: #3C7363;
-  box-shadow: inset 0 0 0 1px #3C7363;
+.partner-bookings-page .mgmt-stat-card--filter.is-active,
+.partner-room-mgmt .mgmt-stat-card--filter.is-active {
+  border-color: #2f5c4f;
+  box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
 }
 
 .admin-hotels-page .mgmt-stat-label,
@@ -4940,6 +5358,27 @@ a.comm-receipt-order:hover {
   letter-spacing: 0.05em;
   color: #64748b;
   white-space: nowrap;
+  text-align: center;
+}
+
+/* Tiêu đề cột bảng quản lý (admin + đối tác): luôn căn giữa */
+.mgmt-page .data-table thead th,
+.mgmt-list-page .data-table thead th,
+.admin-finance-page .data-table thead th,
+.admin-finance-recent-table thead th,
+.partner-bookings-page .data-table thead th,
+.partner-hotels-page .data-table thead th,
+.partner-pricing-page .data-table thead th,
+.partner-promotions-page .data-table thead th,
+.partner-reviews-page .data-table thead th,
+.partner-room-mgmt .data-table thead th,
+.partner-finance-page .data-table thead th,
+.amenity-list-table thead th,
+.amenity-requests-table thead th,
+.admin-promotions-table thead th,
+.admin-bookings-page .data-table thead th,
+.admin-reports-table thead th {
+  text-align: center;
 }
 
 .admin-mgmt-table tbody tr:hover td {
@@ -4953,7 +5392,6 @@ a.comm-receipt-order:hover {
   text-align: center;
 }
 
-/* Bảng quản lý: số liệu căn giữa, tên (KH / KS / loại phòng) căn trái */
 .mgmt-page .data-table th,
 .mgmt-page .data-table td,
 .admin-mgmt-table th,
@@ -4966,48 +5404,47 @@ a.comm-receipt-order:hover {
   vertical-align: middle;
 }
 
-.mgmt-page .data-table .partner-col-customer,
-.mgmt-page .data-table .partner-col-hotel,
-.mgmt-page .data-table .partner-col-room,
-.mgmt-page .data-table .partner-col-name,
-.mgmt-page .data-table .partner-col-partner,
-.mgmt-page .data-table .partner-room-name-cell,
-.mgmt-page .data-table .partner-room-type-name,
-.mgmt-page .data-table .admin-review-customer,
-.mgmt-page .data-table .admin-review-hotel,
-.mgmt-page .data-table .admin-review-room,
-.mgmt-page .data-table .admin-promo-col-name,
-.mgmt-page .data-table .admin-hotels-name-col,
-.mgmt-page .data-table .mgmt-col-name,
-.mgmt-page .data-table .mgmt-col-hotel,
-.mgmt-page .data-table .mgmt-col-customer,
-.mgmt-page .data-table .mgmt-col-room,
-.mgmt-page .data-table .mgmt-col-address,
-.mgmt-page .data-table .hotels-address-cell,
-.mgmt-page .data-table .partner-col-address,
-.mgmt-page .data-table .amenity-name-cell,
-.mgmt-page .data-table th.amenity-name-head,
+.mgmt-page .data-table td.partner-col-customer,
+.mgmt-page .data-table td.partner-col-hotel,
+.mgmt-page .data-table td.partner-col-room,
+.mgmt-page .data-table td.partner-col-name,
+.mgmt-page .data-table td.partner-col-partner,
+.mgmt-page .data-table td.partner-room-name-cell,
+.mgmt-page .data-table td.partner-room-type-name,
+.mgmt-page .data-table td.admin-review-customer,
+.mgmt-page .data-table td.admin-review-hotel,
+.mgmt-page .data-table td.admin-review-room,
+.mgmt-page .data-table td.admin-promo-col-name,
+.mgmt-page .data-table td.admin-hotels-name-col,
+.mgmt-page .data-table td.mgmt-col-name,
+.mgmt-page .data-table td.mgmt-col-hotel,
+.mgmt-page .data-table td.mgmt-col-customer,
+.mgmt-page .data-table td.mgmt-col-room,
+.mgmt-page .data-table td.mgmt-col-address,
+.mgmt-page .data-table td.hotels-address-cell,
+.mgmt-page .data-table td.partner-col-address,
+.mgmt-page .data-table td.amenity-name-cell,
 .mgmt-page .data-table td:has(> .admin-cell-name),
 .mgmt-page .data-table td:has(> .mgmt-cell-name),
 .mgmt-page .data-table td:has(.admin-cell-name),
 .mgmt-page .data-table td:has(.mgmt-cell-name),
 .mgmt-page .data-table td:has(.mgmt-cell-address),
-.admin-mgmt-table .mgmt-col-name,
-.admin-mgmt-table .mgmt-col-hotel,
-.admin-mgmt-table .mgmt-col-customer,
-.admin-mgmt-table .mgmt-col-room,
-.admin-mgmt-table .mgmt-col-address,
-.admin-mgmt-table .hotels-address-cell,
+.admin-mgmt-table td.mgmt-col-name,
+.admin-mgmt-table td.mgmt-col-hotel,
+.admin-mgmt-table td.mgmt-col-customer,
+.admin-mgmt-table td.mgmt-col-room,
+.admin-mgmt-table td.mgmt-col-address,
+.admin-mgmt-table td.hotels-address-cell,
 .admin-mgmt-table td:has(> .mgmt-cell-name),
 .admin-mgmt-table td:has(.mgmt-cell-name),
 .admin-mgmt-table td:has(.mgmt-cell-address),
-.admin-finance-page .data-table .mgmt-col-name,
-.admin-finance-page .data-table .mgmt-col-hotel,
-.admin-finance-page .data-table .mgmt-col-customer,
+.admin-finance-page .data-table td.mgmt-col-name,
+.admin-finance-page .data-table td.mgmt-col-hotel,
+.admin-finance-page .data-table td.mgmt-col-customer,
 .admin-finance-page .data-table td:has(.mgmt-cell-name),
-.admin-finance-recent-table .mgmt-col-name,
-.admin-finance-recent-table .mgmt-col-hotel,
-.admin-finance-recent-table .mgmt-col-customer {
+.admin-finance-recent-table td.mgmt-col-name,
+.admin-finance-recent-table td.mgmt-col-hotel,
+.admin-finance-recent-table td.mgmt-col-customer {
   text-align: left;
 }
 
@@ -5368,6 +5805,32 @@ a.comm-receipt-order:hover {
 .partner-reviews-filters {
   overflow-x: visible;
 }
+.admin-promotions-filters,
+.partner-promotions-page .mgmt-toolbar--filters {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.admin-promotions-filters-fields,
+.partner-promotions-filters-fields {
+  display: contents;
+}
+
+.admin-promotions-filters > .mgmt-filter-field--action,
+.partner-promotions-page .mgmt-toolbar--filters > .mgmt-filter-field--action {
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: 0;
+  align-self: flex-end;
+  white-space: nowrap;
+}
 
 .admin-reviews-page .mgmt-table-scroll,
 .partner-reviews-page .mgmt-table-scroll {
@@ -5381,10 +5844,44 @@ a.comm-receipt-order:hover {
 }
 
 .admin-reviews-filters .mgmt-filter-field,
-.admin-promotions-filters .mgmt-filter-field,
-.partner-reviews-filters .mgmt-filter-field,
-.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-field {
+.partner-reviews-filters .mgmt-filter-field {
   width: 190px;
+}
+
+.admin-promotions-filters .mgmt-filter-field,
+.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-field {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.admin-promotions-filters .mgmt-filter-field.mgmt-filter-field--grow,
+.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-field.mgmt-filter-field--grow {
+  flex: 1.35 1 0;
+}
+
+.admin-promotions-filters .mgmt-filter-field .mgmt-select-inline,
+.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-field .mgmt-select-inline {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+}
+
+.admin-promotions-filters .mgmt-filter-label,
+.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-label {
+  font-size: 11px;
+}
+
+.admin-promotions-filters .mgmt-filter-field.mgmt-filter-field--action,
+.partner-promotions-page .mgmt-toolbar--filters .mgmt-filter-field.mgmt-filter-field--action {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: auto;
 }
 
 .mgmt-toolbar--filters.mgmt-toolbar-row {
@@ -5871,13 +6368,12 @@ a.comm-receipt-order:hover {
 }
 
 /* Toàn bộ cột theo % — không cộng thêm px để tránh tràn */
-.partner-bookings-page .partner-col-code { width: 12%; }
-.partner-bookings-page .partner-col-customer { width: 15%; }
-.partner-bookings-page .partner-col-hotel { width: 15%; }
+.partner-bookings-page .partner-col-customer { width: 16%; }
+.partner-bookings-page .partner-col-hotel { width: 16%; }
 .partner-bookings-page .partner-col-date { width: 9%; }
-.partner-bookings-page .partner-col-money { width: 11%; }
+.partner-bookings-page .partner-col-money { width: 12%; }
 .partner-bookings-page .partner-col-pay { width: 12%; }
-.partner-bookings-page .partner-col-status { width: 11%; }
+.partner-bookings-page .partner-col-status { width: 12%; }
 .partner-bookings-page .partner-col-actions { width: 6%; }
 
 .partner-bookings-page .partner-col-pay,
@@ -5945,8 +6441,8 @@ a.comm-receipt-order:hover {
   vertical-align: middle;
 }
 
-.admin-bookings-page .mgmt-table-scroll .data-table .partner-col-customer,
-.admin-bookings-page .mgmt-table-scroll .data-table .partner-col-hotel {
+.admin-bookings-page .mgmt-table-scroll .data-table td.partner-col-customer,
+.admin-bookings-page .mgmt-table-scroll .data-table td.partner-col-hotel {
   text-align: left;
 }
 
@@ -5971,13 +6467,12 @@ a.comm-receipt-order:hover {
   width: 100%;
 }
 
-.admin-bookings-page .partner-col-code { width: 12%; }
 .admin-bookings-page .partner-col-customer { width: 16%; }
-.admin-bookings-page .partner-col-hotel { width: 18%; }
+.admin-bookings-page .partner-col-hotel { width: 16%; }
 .admin-bookings-page .partner-col-date { width: 9%; }
-.admin-bookings-page .partner-col-money { width: 11%; }
-.admin-bookings-page .partner-col-pay { width: 11%; }
-.admin-bookings-page .partner-col-status { width: 11%; }
+.admin-bookings-page .partner-col-money { width: 12%; }
+.admin-bookings-page .partner-col-pay { width: 12%; }
+.admin-bookings-page .partner-col-status { width: 12%; }
 .admin-bookings-page .partner-col-actions { width: 6%; }
 
 .admin-bookings-page .partner-col-pay,
@@ -6212,8 +6707,8 @@ a.comm-receipt-order:hover {
 .partner-pricing-page .partner-col-name { width: 24%; }
 .partner-pricing-page .partner-col-address { width: auto; }
 
-.partner-pricing-page .partner-col-name,
-.partner-pricing-page .partner-col-address {
+.partner-pricing-page td.partner-col-name,
+.partner-pricing-page td.partner-col-address {
   overflow: visible;
   text-align: left;
 }
@@ -6645,7 +7140,7 @@ a.comm-receipt-order:hover {
 }
 
 .amenity-list-table thead th.amenity-name-head {
-  text-align: left;
+  text-align: center;
 }
 
 .amenity-list-table .amenity-col-icon {
@@ -6653,7 +7148,10 @@ a.comm-receipt-order:hover {
   text-align: center;
 }
 
-.amenity-list-table .amenity-name-head,
+.amenity-list-table thead th.amenity-name-head {
+  width: 48%;
+}
+
 .amenity-list-table td.amenity-name-cell {
   width: 48%;
   text-align: left;
@@ -6729,21 +7227,78 @@ a.comm-receipt-order:hover {
 
 .amenity-requests-table th,
 .amenity-requests-table td {
-  padding: 8px 12px;
+  padding: 8px 10px;
+  vertical-align: middle;
 }
 
 .amenity-requests-table thead th {
-  padding: 8px 12px;
+  padding: 8px 10px;
+  white-space: nowrap;
 }
 
-.amenity-requests-table .table-action-cell {
-  width: 72px;
+.amenity-requests-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.amenity-requests-table .amenity-req-col-title {
+  width: 22%;
+  word-break: break-word;
+}
+
+.amenity-requests-table .amenity-req-col-content {
+  width: 46%;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.amenity-requests-table .amenity-req-col-time {
+  width: 12%;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.amenity-requests-table .amenity-req-col-status {
+  width: 9%;
+  text-align: center;
+}
+
+.amenity-requests-table .amenity-req-col-actions,
+.amenity-requests-table th.amenity-req-col-actions {
+  width: 11%;
+  text-align: center;
+}
+
+.amenity-requests-table .table-action-cell,
+.amenity-requests-card .amenity-requests-table td.table-action-cell {
+  width: 11%;
+  min-width: 0;
+  padding: 6px 8px !important;
+  text-align: center !important;
+}
+
+.amenity-requests-table .table-actions,
+.amenity-requests-card .amenity-requests-table td.table-action-cell .table-actions {
+  gap: 6px;
+  justify-content: center !important;
+  flex-wrap: wrap;
+}
+
+.amenity-requests-table .amenity-req-col-status .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 72px;
-  padding: 4px 10px !important;
+  white-space: nowrap;
 }
 
-.amenity-requests-table .table-actions {
-  gap: 10px;
+.amenity-req-added-hint {
+  font-size: 12px;
+  color: #5a7a72;
+  white-space: nowrap;
 }
 
 .amenity-list-card .mgmt-table-scroll .amenity-list-table,
@@ -8470,7 +9025,7 @@ a.comm-receipt-order:hover {
 
 .admin-user-detail-hero {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: space-between;
   gap: 24px;
   padding: 24px 28px;
@@ -8532,19 +9087,42 @@ a.comm-receipt-order:hover {
 
 .admin-user-detail-hero-side {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 220px;
   text-align: right;
   font-size: 13px;
   color: #5a7a72;
   line-height: 1.7;
+  align-self: stretch;
 }
 
-.admin-user-detail-hero-side p {
+.admin-user-detail-hero-side-info p {
   margin: 0;
 }
 
 .admin-user-detail-hero-side strong {
   color: #1a2e28;
   font-weight: 600;
+}
+
+.admin-user-detail-hero-side-actions {
+  margin-top: auto;
+}
+
+.admin-user-detail-hero-meta-plain {
+  color: inherit;
+}
+
+.admin-user-bank-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
 }
 
 .admin-user-detail-stat-grid {
@@ -8554,12 +9132,15 @@ a.comm-receipt-order:hover {
 }
 
 .admin-user-detail-stat-card {
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: 12px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-height: 88px;
+  background: #fff;
+  border: 2px solid #cfe6dd;
+  box-shadow: 0 1px 3px rgba(60, 115, 99, 0.05);
 }
 
 .admin-user-detail-stat-label {
@@ -8567,7 +9148,8 @@ a.comm-receipt-order:hover {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.85;
+  color: #64748b;
+  opacity: 1;
 }
 
 .admin-user-detail-stat-value {
@@ -8577,27 +9159,27 @@ a.comm-receipt-order:hover {
 }
 
 .admin-user-detail-stat-card--blue {
-  background: #e8f4fc;
+  background: #fff;
   color: #1d4ed8;
 }
 
 .admin-user-detail-stat-card--yellow {
-  background: #fef9e7;
+  background: #fff;
   color: #b45309;
 }
 
 .admin-user-detail-stat-card--grey {
-  background: #f3f4f6;
+  background: #fff;
   color: #4b5563;
 }
 
 .admin-user-detail-stat-card--green {
-  background: #e8f5f1;
+  background: #fff;
   color: #2d8a5e;
 }
 
 .admin-user-detail-stat-card--purple {
-  background: #f3e8ff;
+  background: #fff;
   color: #7c3aed;
 }
 
@@ -8808,6 +9390,15 @@ a.comm-receipt-order:hover {
 
   .admin-user-detail-hero-side {
     text-align: left;
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .admin-user-detail-hero-side-actions {
+    width: 100%;
+  }
+
+  .admin-user-detail-hero-side-actions .btn {
     width: 100%;
   }
 
@@ -10091,24 +10682,6 @@ a.comm-receipt-order:hover {
   color: #14532d;
 }
 
-.partner-notify-item--hidden {
-  background: #fff8f8 !important;
-  border-left: 3px solid #f87171;
-}
-
-.partner-notify-item--visible {
-  background: #f0fdf4 !important;
-  border-left: 3px solid #4ade80;
-}
-
-.partner-notify-item--hidden .partner-notify-item-title {
-  color: #7f1d1d;
-}
-
-.partner-notify-item--visible .partner-notify-item-title {
-  color: #14532d;
-}
-
 /* ── Ô nhập lý do dùng chung (ReasonField) ── */
 .reason-field {
   margin-top: 16px;
@@ -10369,6 +10942,27 @@ a.comm-receipt-order:hover {
   margin-top: 4px;
   font-size: 11px;
   color: #94a3b8;
+}
+
+.partner-bank-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d4ede6;
+  border-radius: 8px;
+  background: #f5faf8;
+  font-size: 13px;
+  color: #1a2e28;
+}
+
+.partner-bank-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #fff;
 }
 
 .partner-account-form-actions {
@@ -10722,7 +11316,10 @@ a.comm-receipt-order:hover {
   vertical-align: middle;
 }
 
-.admin-reports-table th.is-name,
+.admin-reports-table thead th.is-name {
+  text-align: center;
+}
+
 .admin-reports-table td.is-name {
   text-align: left;
   white-space: normal;
@@ -10804,7 +11401,7 @@ a.comm-receipt-order:hover {
 }
 
 .admin-reports-kpi-grid--2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .admin-reports-kpi-grid--6 {
@@ -10881,6 +11478,97 @@ a.comm-receipt-order:hover {
   font-size: 13px;
   text-align: center;
   padding: 16px;
+}
+
+.admin-reports-hotel-tooltip {
+  min-width: 220px;
+  max-width: 300px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-reports-hotel-tooltip-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.admin-reports-hotel-tooltip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-reports-hotel-tooltip-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 5px;
+  color: #475569;
+}
+
+.admin-reports-hotel-tooltip-list li:last-child {
+  margin-bottom: 0;
+}
+
+.admin-reports-hotel-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.admin-reports-hotel-tooltip-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-reports-hotel-tooltip-list b {
+  margin-left: auto;
+  color: #0f172a;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-reports-donut-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+}
+
+.admin-reports-donut-center {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.admin-reports-donut-center strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-reports-donut-center span {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .admin-reports-rank-grid {
@@ -11434,12 +12122,46 @@ button.partner-dashboard-task-card,
 }
 
 /* ── Admin promotions table ── */
+.admin-promo-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a2e28;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.admin-promo-checkbox-label input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
 .admin-promotions-page .mgmt-stats-grid {
   margin-bottom: 16px;
 }
 
 .admin-promotions-filters {
   margin: 0 0 14px;
+}
+
+.admin-promotions-page,
+.partner-promotions-page {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.admin-promotions-page .mgmt-table-scroll,
+.partner-promotions-page .mgmt-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.admin-promotions-page .content-card,
+.partner-promotions-page .content-card {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-promo-usage-num {
@@ -11470,7 +12192,10 @@ button.partner-dashboard-task-card,
 .admin-promo-col-status { width: 11%; }
 .admin-promo-col-actions { width: 11%; }
 
-.admin-promotions-table th.admin-promo-col-name,
+.admin-promotions-table thead th.admin-promo-col-name {
+  text-align: center;
+}
+
 .admin-promotions-table td.admin-promo-col-name {
   text-align: left;
 }
@@ -11549,4 +12274,123 @@ button.partner-dashboard-task-card,
 .admin-promotions-table .table-actions {
   text-align: center;
   justify-content: center;
+}
+
+/* ===== AUTH SPLIT (login / register) ===== */
+.app-shell > .main-panel-full:has(.auth-split) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.auth-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background: #3c7363;
+}
+
+.app-shell .auth-split {
+  height: calc(100vh - 72px);
+  max-height: calc(100vh - 72px);
+  min-height: 0;
+  flex: 1;
+}
+
+.auth-split-brand {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background-color: #3c7363;
+  background-image: url('/auth/hotel-brand.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+}
+
+.auth-split-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: clamp(16px, 3.5vh, 36px) clamp(20px, 4vw, 48px);
+  background: linear-gradient(165deg, #f7faf8 0%, #eef4f1 55%, #e8f0ec 100%);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.auth-split-form-inner {
+  width: 100%;
+  max-width: 420px;
+  margin: auto 0;
+}
+
+.auth-split-form-inner .auth-form-card {
+  width: 100%;
+  max-width: none;
+  box-shadow: 0 12px 40px rgba(26, 46, 40, 0.1);
+  border: 1px solid rgba(60, 115, 99, 0.1);
+  border-radius: 16px;
+}
+
+@media (max-width: 900px) {
+  .app-shell .auth-split {
+    height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px);
+  }
+
+  .auth-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(160px, 34vh) minmax(0, 1fr);
+  }
+
+  .auth-split-brand {
+    background-position: center 30%;
+  }
+
+  .auth-split-form {
+    padding: 16px 14px 22px;
+    align-items: flex-start;
+  }
+
+  .auth-split-form-inner {
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-split {
+    grid-template-rows: minmax(140px, 30vh) minmax(0, 1fr);
+  }
+
+  .auth-split-form {
+    padding: 14px 12px 20px;
+  }
+
+  .auth-split-form-inner .auth-form-card {
+    padding: 18px 16px;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 901px) {
+  .auth-split-form {
+    padding: 14px 24px;
+  }
+
+  .auth-split-form-inner .auth-form-card {
+    padding: 18px 20px;
+  }
+}
+
+@media (max-height: 640px) and (max-width: 900px) {
+  .auth-split {
+    grid-template-rows: minmax(120px, 26vh) minmax(0, 1fr);
+  }
 }

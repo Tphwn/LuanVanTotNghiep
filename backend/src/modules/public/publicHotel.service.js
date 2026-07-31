@@ -10,6 +10,7 @@ const {
   countActiveBookedRooms,
   countActiveBookedRoomsMap,
 } = require('../../utils/bookingHelpers');
+const { buildStayInvoice, parseChildAges } = require('../../utils/stayPricing');
 
 const resolveAdults = (soKhach) => Math.max(Number(soKhach) || 1, 1);
 
@@ -22,24 +23,49 @@ const resolveRoomCount = (soPhong, adults) => {
 
 const resolveGuestsPerRoom = (soKhach, treEm, soPhong) => {
   const adults = resolveAdults(soKhach);
-  const children = resolveChildren(treEm);
   const rooms = resolveRoomCount(soPhong, adults);
-  const totalGuests = adults + children;
-  return Math.ceil(totalGuests / rooms);
+  return Math.ceil(adults / rooms);
 };
 
-const buildSearchContext = (soKhach, treEm, soPhong = 1) => {
+const buildSearchContext = (soKhach, treEm, soPhong = 1, tuoiTreEm = []) => {
   const adults = resolveAdults(soKhach);
   const children = resolveChildren(treEm);
   const roomCount = resolveRoomCount(soPhong, adults);
-  const totalGuests = adults + children;
-  const guestsPerRoom = Math.ceil(totalGuests / roomCount);
+  const guestsPerRoom = Math.ceil(adults / roomCount);
   return {
     adults,
     children,
-    totalGuests,
+    totalGuests: adults + children,
     guestsPerRoom,
     roomCount,
+    tuoi_tre_em: parseChildAges(tuoiTreEm),
+  };
+};
+
+const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx) => {
+  const roomCount = searchCtx.roomCount || 1;
+  const tienPhong = Number(pricing.tong_luong_tru) * roomCount;
+  const invoice = buildStayInvoice({
+    tien_phong: tienPhong,
+    so_dem: pricing.so_dem,
+    so_phong: roomCount,
+    tuoi_tre_em: searchCtx.tuoi_tre_em,
+    tuoi_toi_da_mien_phi: hotelPolicy?.tuoi_toi_da_mien_phi,
+    phu_thu_tre_em: hotelPolicy?.phu_thu_tre_em,
+    phan_tram_vat: hotelPolicy?.phan_tram_vat ?? 10,
+  });
+  const nights = Math.max(Number(pricing.so_dem) || 1, 1);
+  const preVatTotal = invoice.tien_phong + invoice.phu_thu_tre_em;
+  return {
+    ...room,
+    gia_co_ban: Number(room.gia_co_ban),
+    gia_hien_thi: Math.round(preVatTotal / nights / roomCount),
+    gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
+    tong_gia: preVatTotal,
+    tong_thanh_toan: invoice.thanh_toan_cuoi,
+    so_dem: pricing.so_dem,
+    so_phong_dat: roomCount,
+    chi_tiet_gia: invoice,
   };
 };
 
@@ -101,6 +127,22 @@ const getHotelReviewStatsMap = async (hotelIds) => {
         ? Math.round(Number(row.diem_trung_binh) * 10) / 10
         : 0,
     };
+    return acc;
+  }, {});
+};
+
+const getHotelBookingCountMap = async (hotelIds) => {
+  if (!hotelIds.length) return {};
+  const rows = await prisma.$queryRaw`
+    SELECT lp.ma_khach_san AS ma_khach_san, COUNT(dp.ma_dat_phong) AS so_dat
+    FROM loai_phong lp
+    INNER JOIN dat_phong dp ON dp.ma_loai_phong = lp.ma_loai_phong
+    WHERE lp.ma_khach_san IN (${Prisma.join(hotelIds)})
+      AND dp.trang_thai IN ('cho_xac_nhan', 'da_xac_nhan', 'da_checkin', 'hoan_thanh')
+    GROUP BY lp.ma_khach_san
+  `;
+  return rows.reduce((acc, row) => {
+    acc[Number(row.ma_khach_san)] = Number(row.so_dat) || 0;
     return acc;
   }, {});
 };
@@ -192,7 +234,7 @@ const publicHotelService = {
    * Chỗ nghỉ nổi bật: nhóm theo điểm đến, trong mỗi điểm đến sắp xếp
    * khách sạn theo số lượt đặt nhiều nhất.
    */
-  getFeaturedByDestination: async ({ limitPerDest = 2 } = {}) => {
+  getFeaturedByDestination: async ({ limitPerDest = 4 } = {}) => {
     const hotels = await prisma.khach_san.findMany({
       where: {
         trang_thai: 'hoat_dong',
@@ -211,19 +253,7 @@ const publicHotelService = {
 
     const hotelIds = hotels.map((h) => h.ma_khach_san);
 
-    const bookingRows = await prisma.$queryRaw`
-      SELECT lp.ma_khach_san AS ma_khach_san, COUNT(dp.ma_dat_phong) AS so_dat
-      FROM loai_phong lp
-      INNER JOIN dat_phong dp ON dp.ma_loai_phong = lp.ma_loai_phong
-      WHERE lp.ma_khach_san IN (${Prisma.join(hotelIds)})
-        AND dp.trang_thai IN ('cho_xac_nhan', 'da_xac_nhan', 'da_checkin', 'hoan_thanh')
-      GROUP BY lp.ma_khach_san
-    `;
-    const bookingMap = bookingRows.reduce((acc, row) => {
-      acc[Number(row.ma_khach_san)] = Number(row.so_dat) || 0;
-      return acc;
-    }, {});
-
+    const bookingMap = await getHotelBookingCountMap(hotelIds);
     const reviewMap = await getHotelReviewStatsMap(hotelIds);
 
     let mapped = hotels.map((hotel) => {
@@ -339,10 +369,13 @@ const publicHotelService = {
     });
 
     const withImages = await attachHotelImages(mapped);
-    const reviewMap = await getHotelReviewStatsMap(withImages.map((h) => h.ma_khach_san));
+    const hotelIds = withImages.map((h) => h.ma_khach_san);
+    const reviewMap = await getHotelReviewStatsMap(hotelIds);
+    const bookingMap = await getHotelBookingCountMap(hotelIds);
 
     return withImages.map((hotel) => ({
       ...hotel,
+      so_dat: bookingMap[hotel.ma_khach_san] || 0,
       so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
       diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
     }));
@@ -432,10 +465,13 @@ const publicHotelService = {
     }
 
     const withImages = await attachHotelImages(hotelResults);
-    const reviewMap = await getHotelReviewStatsMap(withImages.map((h) => h.ma_khach_san));
+    const hotelIds = withImages.map((h) => h.ma_khach_san);
+    const reviewMap = await getHotelReviewStatsMap(hotelIds);
+    const bookingMap = await getHotelBookingCountMap(hotelIds);
 
     return withImages.map((hotel) => ({
       ...hotel,
+      so_dat: bookingMap[hotel.ma_khach_san] || 0,
       so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
       diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
     }));
@@ -444,11 +480,11 @@ const publicHotelService = {
   searchRooms: async (params) => publicHotelService.searchHotels(params),
 
   getRoomById: async (hotelId, roomId, {
-    ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1,
+    ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1, tuoi_tre_em = '',
   } = {}) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
-    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
+    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong, tuoi_tre_em);
 
     const hotel = await prisma.khach_san.findFirst({
       where: {
@@ -477,6 +513,9 @@ const publicHotelService = {
             so_luong_mo_ban: true,
             dien_tich: true,
             so_giuong: true,
+            so_giuong_don: true,
+            so_giuong_doi: true,
+            so_giuong_lon: true,
             mo_ta: true,
             trang_thai: true,
             loai_phong_tien_nghi: {
@@ -500,15 +539,9 @@ const publicHotelService = {
     if (!target) return null;
 
     const pricing = await calcStayPrice(target.ma_loai_phong, target.gia_co_ban, checkIn, checkOut);
-    const roomCount = searchCtx.roomCount || 1;
+    const roomMapped = mapRoomWithInvoice(target, pricing, flatHotel, searchCtx);
     const [roomWithImages] = await attachRoomImages([{
-      ...target,
-      gia_co_ban: Number(target.gia_co_ban),
-      gia_hien_thi: pricing.gia_tu_dem,
-      gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
-      tong_gia: pricing.tong_luong_tru * roomCount,
-      so_dem: pricing.so_dem,
-      so_phong_dat: roomCount,
+      ...roomMapped,
       tien_nghi: (target.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
     }]);
 
@@ -517,15 +550,7 @@ const publicHotelService = {
         .filter((r) => r.ma_loai_phong !== Number(roomId) && r.phong_con_lai >= searchCtx.roomCount)
         .map(async (room) => {
           const p = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-          return {
-            ...room,
-            gia_co_ban: Number(room.gia_co_ban),
-            gia_hien_thi: p.gia_tu_dem,
-            gia_goc: p.co_giam_gia ? p.gia_goc_dem : null,
-            tong_gia: p.tong_luong_tru * roomCount,
-            so_dem: p.so_dem,
-            so_phong_dat: roomCount,
-          };
+          return mapRoomWithInvoice(room, p, flatHotel, searchCtx);
         })
     );
     const otherWithImages = await attachRoomImages(otherRooms);
@@ -547,6 +572,7 @@ const publicHotelService = {
       phu_thu_thu_cung: flatHotel.phu_thu_thu_cung != null ? Number(flatHotel.phu_thu_thu_cung) : null,
       tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
       phu_thu_tre_em: flatHotel.phu_thu_tre_em != null ? Number(flatHotel.phu_thu_tre_em) : null,
+      phan_tram_vat: flatHotel.phan_tram_vat != null ? Number(flatHotel.phan_tram_vat) : 10,
       chinh_sach_huy: flatHotel.chinh_sach_huy.map((p) => ({
         ma_chinh_sach: p.ma_chinh_sach,
         so_ngay_truoc: p.so_ngay_truoc,
@@ -555,17 +581,25 @@ const publicHotelService = {
       })),
     }]);
 
+    const reviewData = await getHotelReviewData(flatHotel.ma_khach_san);
+
     return {
       ...roomWithImages,
-      khach_san: hotelWithImages,
+      khach_san: {
+        ...hotelWithImages,
+        so_danh_gia: reviewData.so_danh_gia,
+        diem_trung_binh: reviewData.diem_trung_binh,
+      },
       loai_phong_khac: otherWithImages,
     };
   },
 
-  getHotelById: async (id, { ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1 } = {}) => {
+  getHotelById: async (id, {
+    ngay_nhan, ngay_tra, so_khach = 2, tre_em = 0, so_phong = 1, tuoi_tre_em = '',
+  } = {}) => {
     const checkIn = parseDate(ngay_nhan);
     const checkOut = parseDate(ngay_tra);
-    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
+    const searchCtx = buildSearchContext(so_khach, tre_em, so_phong, tuoi_tre_em);
 
     const hotel = await prisma.khach_san.findFirst({
       where: {
@@ -594,6 +628,9 @@ const publicHotelService = {
             so_luong_mo_ban: true,
             dien_tich: true,
             so_giuong: true,
+            so_giuong_don: true,
+            so_giuong_doi: true,
+            so_giuong_lon: true,
             mo_ta: true,
             trang_thai: true,
             loai_phong_tien_nghi: {
@@ -617,13 +654,7 @@ const publicHotelService = {
       roomsWithAvailability.map(async (room) => {
         const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
         return {
-          ...room,
-          gia_co_ban: Number(room.gia_co_ban),
-          gia_hien_thi: pricing.gia_tu_dem,
-          gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
-          tong_gia: pricing.tong_luong_tru * searchCtx.roomCount,
-          so_dem: pricing.so_dem,
-          so_phong_dat: searchCtx.roomCount,
+          ...mapRoomWithInvoice(room, pricing, flatHotel, searchCtx),
           tien_nghi: (room.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
         };
       })
@@ -660,6 +691,7 @@ const publicHotelService = {
       noi_quy_khac: parseNoiQuyKhac(flatHotel.noi_quy_khac),
       tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
       phu_thu_tre_em: flatHotel.phu_thu_tre_em,
+      phan_tram_vat: flatHotel.phan_tram_vat != null ? Number(flatHotel.phan_tram_vat) : 10,
       chinh_sach_huy: (flatHotel.chinh_sach_huy || []).map((p) => ({
         so_ngay_truoc: p.so_ngay_truoc,
         phan_tram_hoan: p.phan_tram_hoan,

@@ -5,6 +5,7 @@ import FilterTabs from '../../../../components/common/management/FilterTabs';
 import FilterActions from '../../../../components/common/management/FilterActions';
 import ListPagination from '../../../../components/common/management/ListPagination';
 import { formatCurrency } from '../../../../utils/bookingDisplay';
+import { formatBedLabel } from '../../../../utils/bedDisplay';
 import { TRANG_THAI } from '../constants';
 import { getMainImage } from '../utils';
 
@@ -79,11 +80,21 @@ export default function RoomListSection({
           <div style={{ textAlign: 'center', padding: 40, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : rooms.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Khách sạn này chưa có loại phòng nào</p>
+            <p className="empty-state-text">
+              {isAdmin
+                ? 'Khách sạn này chưa có danh sách loại phòng'
+                : 'Khách sạn này chưa có loại phòng nào'}
+            </p>
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không có loại phòng phù hợp bộ lọc</p>
+            <p className="empty-state-text">
+              {statusFilter === 'an'
+                ? 'Danh sách loại phòng đã ẩn trống'
+                : statusFilter === 'hoat_dong'
+                  ? 'Danh sách loại phòng đang hoạt động trống'
+                  : 'Không tìm thấy loại phòng phù hợp'}
+            </p>
           </div>
         ) : (
           <div className="mgmt-table-scroll">
@@ -128,7 +139,7 @@ export default function RoomListSection({
                       <td className="partner-room-type-name partner-col-name">{room.ten_loai?.toUpperCase()}</td>
                       <td className="partner-col-area">{room.dien_tich ? `${room.dien_tich} m²` : '—'}</td>
                       <td className="partner-col-capacity">{room.suc_chua} người lớn</td>
-                      <td className="partner-col-beds">{room.so_giuong}</td>
+                      <td className="partner-col-beds">{room.loai_giuong || formatBedLabel(room)}</td>
                       <td className="partner-col-count">{tongPhong}</td>
                       <td className="partner-room-price-cell partner-col-money">
                         {room.gia_co_ban != null

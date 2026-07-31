@@ -4,21 +4,34 @@ const { mapRefund, mapRefunds } = require('../../../utils/refundMapper');
 const {
   syncEligibleCommissions,
   COMMISSION_STATUS,
+  calculateCommissionBreakdown,
+  DEFAULT_COMMISSION_RATE,
 } = require('../../../utils/commissionHelpers');
 const {
   expireUnpaidOnlineHolds,
   purgeCancelledUnpaidBookings,
 } = require('../../../utils/unpaidBookingCleanup');
+const {
+  mapBankAccount,
+  hasCompleteBankAccount,
+  parsePayoutProofNote,
+} = require('../../../utils/bankAccountHelpers');
 
 const mapCommissionRow = (row) => {
   if (!row) return null;
-  const doanhThu = Number(row.dat_phong?.thanh_toan_cuoi) || 0;
-  const tienHh = Number(row.so_tien_hoa_hong) || 0;
+  const breakdown = calculateCommissionBreakdown(
+    row.dat_phong,
+    Number(row.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+  );
   const admin = row.doi_soat_boi;
   return {
     ...row,
-    doanh_thu_don: doanhThu,
-    tien_doi_tac_nhan: Math.max(0, doanhThu - tienHh),
+    so_tien_hoa_hong: breakdown.so_tien_hoa_hong,
+    tien_tro_gia_san: breakdown.tien_tro_gia_san,
+    hoa_hong_rong: breakdown.hoa_hong_rong,
+    doanh_thu_don: breakdown.gmv_doi_tac,
+    tien_khach_tra: Number(row.dat_phong?.thanh_toan_cuoi) || 0,
+    tien_doi_tac_nhan: breakdown.tien_doi_tac_nhan,
     ngay_hoan_thanh: row.ngay_tinh || row.dat_phong?.ngay_tra_phong,
     admin_doi_soat: admin
       ? { ma_nguoi_dung: admin.ma_nguoi_dung, email: admin.email }
@@ -111,6 +124,17 @@ const COMMISSION_INCLUDE = {
       phuong_thuc_tt: true,
       ten_nguoi_nhan: true,
       sdt_nguoi_nhan: true,
+      ghi_chu: true,
+      khuyen_mai: {
+        select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+      },
+      hoan_tien: {
+        select: {
+          ma_hoan_tien: true,
+          trang_thai: true,
+          so_tien_hoan: true,
+        },
+      },
       khach_hang: {
         select: {
           ho_ten: true,
@@ -317,20 +341,18 @@ const adminPaymentService = {
     ];
 
     if (phuong_thuc && phuong_thuc !== 'all') {
-      if (phuong_thuc === 'tai_khach_san') {
+      if (phuong_thuc === 'vnpay') {
         and.push({
           OR: [
-            { cong_thanh_toan: { contains: 'khách sạn' } },
-            { phuong_thuc: { contains: 'khách sạn' } },
-            { dat_phong: { phuong_thuc_tt: 'tai_khach_san' } },
+            { cong_thanh_toan: { contains: 'VNPay' } },
+            { cong_thanh_toan: { contains: 'vnpay' } },
           ],
         });
-      } else if (phuong_thuc === 'truc_tuyen') {
+      } else if (phuong_thuc === 'momo') {
         and.push({
           OR: [
-            { phuong_thuc: { contains: 'Trực tuyến' } },
-            { phuong_thuc: { contains: 'truc_tuyen' } },
-            { dat_phong: { phuong_thuc_tt: 'truc_tuyen' } },
+            { cong_thanh_toan: { contains: 'MoMo' } },
+            { cong_thanh_toan: { contains: 'momo' } },
           ],
         });
       }
@@ -625,6 +647,12 @@ const adminPaymentService = {
     if (found.trang_thai === COMMISSION_STATUS.TAM_GIU) {
       throw new Error('Đơn đang tạm giữ — hãy bỏ tạm giữ trước khi đối soát');
     }
+    if (found.trang_thai === COMMISSION_STATUS.DA_THANH_TOAN) {
+      throw new Error('Đơn đã thanh toán đối tác, không thể đối soát lại');
+    }
+    if (found.trang_thai !== COMMISSION_STATUS.CHO_DOI_SOAT) {
+      throw new Error('Chỉ đối soát được đơn đang chờ đối soát');
+    }
 
     await prisma.hoa_hong.update({
       where: { ma_hoa_hong: maHh },
@@ -644,6 +672,68 @@ const adminPaymentService = {
       include: COMMISSION_INCLUDE,
     });
     return mapCommissionRow(await enrichCommissionAudit(row));
+  },
+
+  /** Đối soát hàng loạt các đơn chờ đối soát → đã đối soát (sang tab thanh toán ĐT) */
+  confirmCommissionsBatch: async (ids, adminId) => {
+    const list = Array.isArray(ids)
+      ? [...new Set(ids.map((x) => Number(x)).filter((n) => !Number.isNaN(n) && n > 0))]
+      : [];
+    if (!list.length) {
+      throw new Error('Vui lòng chọn ít nhất một đơn để đối soát');
+    }
+
+    const rows = await prisma.hoa_hong.findMany({
+      where: { ma_hoa_hong: { in: list } },
+      select: { ma_hoa_hong: true, trang_thai: true },
+    });
+    if (!rows.length) throw new Error('Không tìm thấy hoa hồng');
+
+    const eligible = rows.filter((r) => r.trang_thai === COMMISSION_STATUS.CHO_DOI_SOAT);
+    if (!eligible.length) {
+      throw new Error('Không có đơn nào đang chờ đối soát trong danh sách đã chọn');
+    }
+
+    const eligibleIds = eligible.map((r) => r.ma_hoa_hong);
+    const adminVal = adminId ? Number(adminId) : null;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.hoa_hong.updateMany({
+        where: {
+          ma_hoa_hong: { in: eligibleIds },
+          trang_thai: COMMISSION_STATUS.CHO_DOI_SOAT,
+        },
+        data: { trang_thai: COMMISSION_STATUS.DA_DOI_SOAT },
+      });
+
+      for (const maHh of eligibleIds) {
+        // eslint-disable-next-line no-await-in-loop
+        await tx.$executeRaw`
+          UPDATE hoa_hong
+          SET ngay_doi_soat = NOW(),
+              doi_soat_boi_id = ${adminVal}
+          WHERE ma_hoa_hong = ${maHh}
+            AND trang_thai = ${COMMISSION_STATUS.DA_DOI_SOAT}
+        `;
+      }
+    });
+
+    const updated = await prisma.hoa_hong.findMany({
+      where: { ma_hoa_hong: { in: eligibleIds } },
+      include: COMMISSION_INCLUDE,
+    });
+    const mapped = [];
+    for (const row of updated) {
+      // eslint-disable-next-line no-await-in-loop
+      mapped.push(mapCommissionRow(await enrichCommissionAudit(row)));
+    }
+
+    const skipped = list.length - eligibleIds.length;
+    return {
+      so_luong: eligibleIds.length,
+      bo_qua: skipped,
+      items: mapped,
+    };
   },
 
   holdCommission: async (id, ghiChu) => {
@@ -717,7 +807,7 @@ const adminPaymentService = {
 
     const idRows = await prisma.$queryRaw`
       SELECT ma_hoa_hong FROM hoa_hong
-      WHERE trang_thai IN ('da_thu', 'da_thanh_toan', 'tam_giu')
+      WHERE trang_thai IN ('da_thu', 'da_thanh_toan')
     `;
     const ids = (idRows || []).map((r) => Number(r.ma_hoa_hong)).filter(Boolean);
     if (!ids.length) return [];
@@ -751,16 +841,18 @@ const adminPaymentService = {
     });
 
     const enriched = await Promise.all(rows.map((r) => enrichCommissionAudit(r)));
-    const payoutRows = enriched.filter((r) => {
-      if (r.trang_thai === COMMISSION_STATUS.TAM_GIU) return Boolean(r.ngay_doi_soat);
-      return true;
-    });
+    // Tab thanh toán đối tác chỉ lấy đơn đã đối soát (da_thu) và đã thanh toán
+    const payoutRows = enriched.filter((r) => (
+      r.trang_thai === COMMISSION_STATUS.DA_DOI_SOAT
+      || r.trang_thai === 'da_thu'
+      || r.trang_thai === 'da_thanh_toan'
+      || r.trang_thai === COMMISSION_STATUS.DA_THANH_TOAN
+    ));
 
     // partnerMeta + buckets theo đợt
     const partnerMeta = new Map();
     const pendingByPartner = new Map();
     const paidByBatch = new Map();
-    const heldByPartner = new Map();
 
     const ensureMeta = (r) => {
       const pid = r.ma_doi_tac;
@@ -782,16 +874,24 @@ const adminPaymentService = {
       tong_hoa_hong: 0,
       so_tien: 0,
       ngay_thanh_toan: null,
+      ngay_doi_soat: null,
       phuong_thuc: null,
       ma_gd_doi_tac: null,
+      ghi_chu: null,
+      hotels: new Set(),
     });
 
     for (const r of payoutRows) {
       ensureMeta(r);
       const pid = r.ma_doi_tac;
-      const doanhThu = Number(r.dat_phong?.thanh_toan_cuoi) || 0;
-      const hh = Number(r.so_tien_hoa_hong) || 0;
-      const partnerAmt = Math.max(0, doanhThu - hh);
+      const breakdown = calculateCommissionBreakdown(
+        r.dat_phong,
+        Number(r.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+      );
+      const doanhThu = breakdown.gmv_doi_tac;
+      const hh = breakdown.so_tien_hoa_hong;
+      const partnerAmt = breakdown.tien_doi_tac_nhan;
+      const hotelName = r.dat_phong?.loai_phong?.khach_san?.ten;
 
       if (r.trang_thai === COMMISSION_STATUS.DA_DOI_SOAT || r.trang_thai === 'da_thu') {
         if (!pendingByPartner.has(pid)) pendingByPartner.set(pid, emptyBucket());
@@ -800,6 +900,11 @@ const adminPaymentService = {
         b.tong_doanh_thu += doanhThu;
         b.tong_hoa_hong += hh;
         b.so_tien += partnerAmt;
+        if (hotelName) b.hotels.add(hotelName);
+        if (r.ngay_doi_soat) {
+          const ds = new Date(r.ngay_doi_soat);
+          if (!b.ngay_doi_soat || ds > new Date(b.ngay_doi_soat)) b.ngay_doi_soat = ds;
+        }
       } else if (r.trang_thai === 'da_thanh_toan' || r.trang_thai === COMMISSION_STATUS.DA_THANH_TOAN) {
         const maGd = r.ma_gd_doi_tac
           || (r.ngay_thanh_toan_doi_tac
@@ -819,6 +924,11 @@ const adminPaymentService = {
         b.tong_doanh_thu += doanhThu;
         b.tong_hoa_hong += hh;
         b.so_tien += partnerAmt;
+        if (hotelName) b.hotels.add(hotelName);
+        if (r.ngay_doi_soat) {
+          const ds = new Date(r.ngay_doi_soat);
+          if (!b.ngay_doi_soat || ds > new Date(b.ngay_doi_soat)) b.ngay_doi_soat = ds;
+        }
         if (r.ngay_thanh_toan_doi_tac) {
           const paidAt = new Date(r.ngay_thanh_toan_doi_tac);
           if (!b.ngay_thanh_toan || paidAt > new Date(b.ngay_thanh_toan)) {
@@ -827,13 +937,7 @@ const adminPaymentService = {
         }
         if (r.phuong_thuc_tt_doi_tac) b.phuong_thuc = r.phuong_thuc_tt_doi_tac;
         if (r.ma_gd_doi_tac) b.ma_gd_doi_tac = r.ma_gd_doi_tac;
-      } else if (r.trang_thai === COMMISSION_STATUS.TAM_GIU) {
-        if (!heldByPartner.has(pid)) heldByPartner.set(pid, emptyBucket());
-        const b = heldByPartner.get(pid);
-        b.so_don += 1;
-        b.tong_doanh_thu += doanhThu;
-        b.tong_hoa_hong += hh;
-        b.so_tien += partnerAmt;
+        if (r.ghi_chu) b.ghi_chu = r.ghi_chu;
       }
     }
 
@@ -867,6 +971,7 @@ const adminPaymentService = {
         ma_doi_tac: pid,
         ten_cong_ty: meta?.ten_cong_ty || `Đối tác #${pid}`,
         so_khach_san: meta?.hotels.size || 0,
+        danh_sach_khach_san: [...b.hotels],
         so_don: b.so_don,
         so_don_da_doi_soat: b.so_don,
         so_don_cho_tt: b.so_don,
@@ -877,13 +982,21 @@ const adminPaymentService = {
         so_tien_can_thanh_toan: b.so_tien,
         so_tien_thanh_toan: b.so_tien,
         ngay_thanh_toan: null,
+        ngay_doi_soat: b.ngay_doi_soat,
         phuong_thuc_tt: null,
+        ghi_chu: null,
+        minh_chung: {
+          phuong_thuc: null,
+          ma_giao_dich: null,
+          ghi_chu: null,
+        },
         trang_thai: 'cho_thanh_toan',
       });
     }
 
     for (const b of paidByBatch.values()) {
       const meta = partnerMeta.get(b.ma_doi_tac);
+      const proof = parsePayoutProofNote(b.ghi_chu);
       list.push({
         ma_dot: b.batch_key,
         ma_gd_doi_tac: b.ma_gd_doi_tac || null,
@@ -892,6 +1005,7 @@ const adminPaymentService = {
         ma_doi_tac: b.ma_doi_tac,
         ten_cong_ty: meta?.ten_cong_ty || `Đối tác #${b.ma_doi_tac}`,
         so_khach_san: meta?.hotels.size || 0,
+        danh_sach_khach_san: [...b.hotels],
         so_don: b.so_don,
         so_don_da_doi_soat: b.so_don,
         so_don_cho_tt: 0,
@@ -902,33 +1016,16 @@ const adminPaymentService = {
         so_tien_can_thanh_toan: 0,
         so_tien_thanh_toan: b.so_tien,
         ngay_thanh_toan: b.ngay_thanh_toan,
+        ngay_doi_soat: b.ngay_doi_soat,
         phuong_thuc_tt: b.phuong_thuc,
+        ghi_chu: b.ghi_chu,
+        minh_chung: {
+          phuong_thuc: b.phuong_thuc || null,
+          ma_giao_dich: proof.ma_gd_ngan_hang || null,
+          ghi_chu: proof.noi_dung_chuyen_khoan || b.ghi_chu || null,
+          ky_thanh_toan: proof.ky_thanh_toan || null,
+        },
         trang_thai: 'da_thanh_toan',
-      });
-    }
-
-    for (const [pid, b] of heldByPartner) {
-      const meta = partnerMeta.get(pid);
-      list.push({
-        ma_dot: `held-${pid}`,
-        ma_gd_doi_tac: null,
-        ten_dot: 'Đợt tạm giữ',
-        so_dot: null,
-        ma_doi_tac: pid,
-        ten_cong_ty: meta?.ten_cong_ty || `Đối tác #${pid}`,
-        so_khach_san: meta?.hotels.size || 0,
-        so_don: b.so_don,
-        so_don_da_doi_soat: b.so_don,
-        so_don_cho_tt: 0,
-        so_don_da_tt: 0,
-        so_don_tam_giu: b.so_don,
-        tong_doanh_thu: b.tong_doanh_thu,
-        tong_hoa_hong: b.tong_hoa_hong,
-        so_tien_can_thanh_toan: 0,
-        so_tien_thanh_toan: b.so_tien,
-        ngay_thanh_toan: null,
-        phuong_thuc_tt: null,
-        trang_thai: 'tam_giu',
       });
     }
 
@@ -946,6 +1043,23 @@ const adminPaymentService = {
       return tb - ta;
     });
 
+    const partnerIds = [...new Set(list.map((x) => x.ma_doi_tac))];
+    if (partnerIds.length) {
+      const bankRows = await prisma.doi_tac.findMany({
+        where: { ma_doi_tac: { in: partnerIds } },
+        select: {
+          ma_doi_tac: true,
+          so_tai_khoan: true,
+          ten_chu_tai_khoan: true,
+          ma_ngan_hang: true,
+        },
+      });
+      const bankMap = new Map(bankRows.map((p) => [p.ma_doi_tac, hasCompleteBankAccount(p)]));
+      list.forEach((row) => {
+        row.tai_khoan_da_cap_nhat = Boolean(bankMap.get(row.ma_doi_tac));
+      });
+    }
+
     return list;
   },
 
@@ -955,30 +1069,15 @@ const adminPaymentService = {
       trang_thai: 'all',
     });
 
-    const tongCho = list.reduce((s, x) => s + (Number(x.so_tien_can_thanh_toan) || 0), 0);
+    const tongCho = list
+      .filter((x) => x.trang_thai === 'cho_thanh_toan')
+      .reduce((s, x) => s + (Number(x.so_tien_can_thanh_toan) || 0), 0);
 
-    const paidIdRows = await prisma.$queryRaw`
-      SELECT ma_hoa_hong FROM hoa_hong WHERE trang_thai = 'da_thanh_toan'
-    `;
-    const paidIds = (paidIdRows || []).map((r) => Number(r.ma_hoa_hong)).filter(Boolean);
-    let tongDaThanhToan = 0;
-    if (paidIds.length) {
-      const paidRows = await prisma.hoa_hong.findMany({
-        where: { ma_hoa_hong: { in: paidIds } },
-        include: { dat_phong: { select: { thanh_toan_cuoi: true } } },
-      });
-      tongDaThanhToan = paidRows.reduce((s, r) => {
-        const dt = Number(r.dat_phong?.thanh_toan_cuoi) || 0;
-        const hh = Number(r.so_tien_hoa_hong) || 0;
-        return s + Math.max(0, dt - hh);
-      }, 0);
-    }
+    const tongDaThanhToan = list
+      .filter((x) => x.trang_thai === 'da_thanh_toan')
+      .reduce((s, x) => s + (Number(x.so_tien_thanh_toan) || 0), 0);
 
-    const heldCount = await prisma.$queryRaw`
-      SELECT COUNT(*) AS cnt
-      FROM hoa_hong
-      WHERE trang_thai = 'tam_giu' AND ngay_doi_soat IS NOT NULL
-    `;
+    const tongHoaHongSan = list.reduce((s, x) => s + (Number(x.tong_hoa_hong) || 0), 0);
 
     const partners = await prisma.doi_tac.findMany({
       select: { ma_doi_tac: true, ten_cong_ty: true },
@@ -991,12 +1090,13 @@ const adminPaymentService = {
 
     return {
       tong_cho_thanh_toan: tongCho,
+      tong_hoa_hong_san: tongHoaHongSan,
       tong_da_thanh_toan: tongDaThanhToan,
       so_doi_tac_cho: new Set(
         list.filter((x) => x.trang_thai === 'cho_thanh_toan').map((x) => x.ma_doi_tac),
       ).size,
       so_dot_da_thanh_toan: list.filter((x) => x.trang_thai === 'da_thanh_toan').length,
-      so_ky_tam_giu: Number(heldCount?.[0]?.cnt || 0),
+      so_ky_tam_giu: list.filter((x) => x.trang_thai === 'tam_giu').length,
       partners,
       hotels,
     };
@@ -1010,10 +1110,23 @@ const adminPaymentService = {
     if (!batches.length) throw new Error('Không có dữ liệu thanh toán cho đối tác này');
 
     const partnerId = Number(maDoiTac);
+    const partner = await prisma.doi_tac.findUnique({
+      where: { ma_doi_tac: partnerId },
+      select: {
+        ma_doi_tac: true,
+        ten_cong_ty: true,
+        so_tai_khoan: true,
+        ten_chu_tai_khoan: true,
+        ma_ngan_hang: true,
+        ten_ngan_hang: true,
+        logo_ngan_hang: true,
+      },
+    });
+
     const idRows = await prisma.$queryRaw`
       SELECT ma_hoa_hong FROM hoa_hong
       WHERE ma_doi_tac = ${partnerId}
-        AND trang_thai IN ('da_thu', 'da_thanh_toan', 'tam_giu')
+        AND trang_thai IN ('da_thu', 'da_thanh_toan')
     `;
     const ids = (idRows || []).map((r) => Number(r.ma_hoa_hong)).filter(Boolean);
     const rows = ids.length
@@ -1024,9 +1137,7 @@ const adminPaymentService = {
       })
       : [];
     const enriched = await Promise.all(rows.map((r) => enrichCommissionAudit(r)));
-    const commissions = enriched
-      .filter((r) => r.trang_thai !== COMMISSION_STATUS.TAM_GIU || r.ngay_doi_soat)
-      .map(mapCommissionRow);
+    const commissions = enriched.map(mapCommissionRow);
 
     const maGdToDot = new Map();
     for (const b of batches) {
@@ -1046,7 +1157,6 @@ const adminPaymentService = {
     let ngayThanhToan = null;
     let soDonDaTt = 0;
     let soDonChoTt = 0;
-    let soDonTamGiu = 0;
     const hotels = new Set();
 
     const bookings = commissions.map((c) => {
@@ -1057,11 +1167,12 @@ const adminPaymentService = {
       tongDoanhThu += tongTien;
       tongHoaHong += tienHh;
 
-      const hotelId = c.dat_phong?.loai_phong?.khach_san?.ma_khach_san;
-      if (hotelId) hotels.add(hotelId);
+      const hotelName = c.dat_phong?.loai_phong?.khach_san?.ten;
+      if (hotelName) hotels.add(hotelName);
 
       let tenDot = null;
       let soDot = null;
+      let maDot = null;
       if (c.trang_thai === 'da_thanh_toan' || c.trang_thai === COMMISSION_STATUS.DA_THANH_TOAN) {
         daNhan += partnerAmount;
         soDonDaTt += 1;
@@ -1073,50 +1184,63 @@ const adminPaymentService = {
           || (c.ngay_thanh_toan_doi_tac
             ? `LEGACY-${partnerId}-${new Date(c.ngay_thanh_toan_doi_tac).toISOString()}`
             : null);
+        maDot = maGd;
         const meta = maGd ? maGdToDot.get(maGd) : null;
         tenDot = meta?.ten_dot || null;
         soDot = meta?.so_dot ?? null;
-      } else if (c.trang_thai === 'da_thu' || c.trang_thai === COMMISSION_STATUS.DA_DOI_SOAT) {
+      } else {
         conChoNhan += partnerAmount;
         soDonChoTt += 1;
         tenDot = 'Đợt chờ thanh toán';
-      } else if (c.trang_thai === COMMISSION_STATUS.TAM_GIU) {
-        soDonTamGiu += 1;
-        tenDot = 'Đợt tạm giữ';
+        maDot = `pending-${partnerId}`;
       }
 
+      const proof = parsePayoutProofNote(c.ghi_chu);
       return {
         ma_hoa_hong: c.ma_hoa_hong,
         ma_dat_phong: c.dat_phong?.ma_dat_phong || null,
         ma_don_hang: c.dat_phong?.ma_don_hang || '—',
-        khach_san: c.dat_phong?.loai_phong?.khach_san?.ten || '—',
+        khach_hang: c.dat_phong?.khach_hang?.ho_ten
+          || c.dat_phong?.ten_nguoi_nhan
+          || '—',
+        khach_san: hotelName || '—',
         loai_phong: c.dat_phong?.loai_phong?.ten_loai || '—',
+        ngay_nhan_phong: c.dat_phong?.ngay_nhan_phong || null,
+        ngay_tra_phong: c.dat_phong?.ngay_tra_phong || null,
         ngay_hoan_thanh: c.dat_phong?.ngay_tra_phong || c.ngay_hoan_thanh || null,
         tong_tien: tongTien,
+        ty_le_hoa_hong: Number(c.ty_le_hoa_hong) || 0,
         tien_hoa_hong: tienHh,
         tien_doi_tac_nhan: partnerAmount,
         trang_thai: c.trang_thai,
         ma_gd_doi_tac: c.ma_gd_doi_tac || null,
+        ngay_doi_soat: c.ngay_doi_soat || null,
         ngay_thanh_toan_doi_tac: c.ngay_thanh_toan_doi_tac || null,
+        phuong_thuc_tt_doi_tac: c.phuong_thuc_tt_doi_tac || null,
+        ghi_chu: c.ghi_chu || null,
+        minh_chung: {
+          phuong_thuc: c.phuong_thuc_tt_doi_tac || null,
+          ma_giao_dich: proof.ma_gd_ngan_hang || null,
+          ghi_chu: proof.noi_dung_chuyen_khoan || null,
+        },
         ten_dot: tenDot,
         so_dot: soDot,
+        ma_dot: maDot,
       };
     });
 
-    let trangThai = 'da_thanh_toan';
-    if (soDonChoTt > 0 && soDonDaTt > 0) trangThai = 'thanh_toan_mot_phan';
-    else if (soDonChoTt > 0) trangThai = 'cho_thanh_toan';
-    else if (soDonTamGiu > 0 && soDonDaTt === 0) trangThai = 'tam_giu';
-
+    const trangThai = soDonChoTt > 0 ? 'cho_thanh_toan' : 'da_thanh_toan';
     const first = batches[0];
     return {
       ma_doi_tac: partnerId,
-      ten_cong_ty: first.ten_cong_ty,
+      ten_cong_ty: partner?.ten_cong_ty || first.ten_cong_ty,
+      tai_khoan_ngan_hang: mapBankAccount(partner),
       so_khach_san: hotels.size || first.so_khach_san || 0,
+      danh_sach_khach_san: [...hotels],
       so_don_da_doi_soat: bookings.length,
       so_don_cho_tt: soDonChoTt,
       so_don_da_tt: soDonDaTt,
-      so_don_tam_giu: soDonTamGiu,
+      so_don_tam_giu: 0,
       tong_doanh_thu: tongDoanhThu,
       tong_hoa_hong: tongHoaHong,
       so_tien_can_thanh_toan: conChoNhan,
@@ -1138,6 +1262,33 @@ const adminPaymentService = {
       throw new Error('Mã đối tác không hợp lệ');
     }
 
+    const partner = await prisma.doi_tac.findUnique({
+      where: { ma_doi_tac: partnerId },
+      select: {
+        so_tai_khoan: true,
+        ten_chu_tai_khoan: true,
+        ma_ngan_hang: true,
+        ten_ngan_hang: true,
+      },
+    });
+    if (!hasCompleteBankAccount(partner)) {
+      throw new Error('Đối tác chưa cập nhật tài khoản nhận tiền. Không thể xác nhận thanh toán.');
+    }
+
+    const maGdNganHang = String(payload.ma_gd_ngan_hang || '').trim();
+    const noiDungCk = String(payload.noi_dung_chuyen_khoan || '').trim();
+    const kyThanhToan = String(payload.ky_thanh_toan || '').trim();
+
+    if (!maGdNganHang) {
+      throw new Error('Vui lòng nhập mã giao dịch ngân hàng');
+    }
+    if (!noiDungCk) {
+      throw new Error('Vui lòng nhập nội dung chuyển khoản');
+    }
+    if (kyThanhToan !== 'tuan' && kyThanhToan !== 'thang') {
+      throw new Error('Vui lòng chọn kỳ thanh toán theo tuần hoặc tháng');
+    }
+
     const pendingRows = await prisma.$queryRaw`
       SELECT COUNT(*) AS cnt FROM hoa_hong
       WHERE ma_doi_tac = ${partnerId} AND trang_thai = 'da_thu'
@@ -1145,13 +1296,6 @@ const adminPaymentService = {
     const pending = Number(pendingRows?.[0]?.cnt || 0);
 
     if (!pending) {
-      const paidRows = await prisma.$queryRaw`
-        SELECT COUNT(*) AS cnt FROM hoa_hong
-        WHERE ma_doi_tac = ${partnerId} AND trang_thai = 'da_thanh_toan'
-      `;
-      if (Number(paidRows?.[0]?.cnt || 0) > 0) {
-        return adminPaymentService.getPartnerPayoutById(partnerId);
-      }
       throw new Error('Không có đơn chờ thanh toán cho đối tác này. Hãy đối soát hoa hồng trước.');
     }
 
@@ -1162,10 +1306,19 @@ const adminPaymentService = {
     };
     const methodKey = payload.phuong_thuc || 'chuyen_khoan';
     const phuongThuc = methodMap[methodKey] || String(payload.phuong_thuc || 'Chuyển khoản ngân hàng');
-    const ghiChu = payload.ghi_chu ? String(payload.ghi_chu).trim() : null;
 
-    // Mã thanh toán riêng cho mỗi đợt (đối soát → thanh toán một lần)
-    const maGd = `TT-${partnerId}-${Date.now()}`;
+    const maDotPayload = String(payload.ma_dot || '').trim();
+    const maGd = /^TT-\d+-\d+$/.test(maDotPayload)
+      ? maDotPayload
+      : `TT-${partnerId}-${Date.now()}`;
+
+    const kyLabel = kyThanhToan === 'tuan' ? 'Theo tuần' : 'Theo tháng';
+    const ghiChu = [
+      `Mã đợt: ${maGd}`,
+      `Mã GD ngân hàng: ${maGdNganHang}`,
+      `Kỳ thanh toán: ${kyLabel}`,
+      `Nội dung CK: ${noiDungCk}`,
+    ].join(' | ');
 
     await prisma.$executeRaw`
       UPDATE hoa_hong

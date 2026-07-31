@@ -4,6 +4,7 @@ import { Building2, KeyRound } from 'lucide-react';
 import BackButton from '../../../components/common/BackButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import adminUserService from '../../../services/adminUserService';
+import { sanitizePhoneInput, validatePhone } from '../../../utils/authValidation';
 
 const INITIAL_FORM = {
   ten_cong_ty: '',
@@ -38,7 +39,8 @@ const CreatePartnerPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'so_dien_thoai' ? sanitizePhoneInput(value) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -49,9 +51,10 @@ const CreatePartnerPage = () => {
     if (!formData.ten_cong_ty.trim()) errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
     if (!formData.email.trim()) errors.email = 'Email đăng nhập là bắt buộc';
     else if (!emailRegex.test(formData.email.trim())) errors.email = 'Email đăng nhập không hợp lệ';
-    if (!formData.so_dien_thoai.trim()) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
+    const phoneErr = validatePhone(formData.so_dien_thoai);
+    if (phoneErr) errors.so_dien_thoai = phoneErr;
     if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
-    else if (formData.mat_khau.length < 6) errors.mat_khau = '';
+    else if (formData.mat_khau.length < 6) errors.mat_khau = 'Mật khẩu tối thiểu 6 ký tự';
     if (formData.phan_tram_hoa_hong !== '') {
       const pct = Number(formData.phan_tram_hoa_hong);
       if (Number.isNaN(pct) || pct < 0 || pct > 100) {
@@ -197,6 +200,8 @@ const CreatePartnerPage = () => {
               <input
                 type="tel"
                 name="so_dien_thoai"
+                inputMode="numeric"
+                maxLength={10}
                 className="search-input create-partner-input"
                 value={formData.so_dien_thoai}
                 onChange={handleChange}

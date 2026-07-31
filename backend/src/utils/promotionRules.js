@@ -35,17 +35,44 @@ const isPastPromotionEndDate = (ngayKetThuc, at = new Date()) => (
  * Cập nhật khuyến mãi quá hạn sang het_han.
  * VD: 1/7–10/7 → từ 11/7 trở đi là hết hạn.
  */
+/** Ngày kết thúc kỹ thuật cho KM lần đặt đầu (không hết hạn thực tế). */
+const FIRST_BOOKING_PROMO_END = '2099-12-31';
+
 const syncExpiredPromotions = async (prismaClient, scopeWhere = {}) => {
   const today = toLocalDateString();
   const { count } = await prismaClient.khuyen_mai.updateMany({
     where: {
       ...scopeWhere,
+      lan_dat_dau: false,
       trang_thai: { in: EXPIRABLE_STATUSES },
       ngay_ket_thuc: { lt: new Date(`${today}T00:00:00.000Z`) },
     },
     data: { trang_thai: 'het_han' },
   });
   return count;
+};
+
+const isCustomerFirstBooking = async (prismaClient, maKhachHang, excludeMaDatPhong = null) => {
+  const where = { ma_khach_hang: Number(maKhachHang) };
+  if (excludeMaDatPhong != null) {
+    where.ma_dat_phong = { not: Number(excludeMaDatPhong) };
+  }
+  const count = await prismaClient.dat_phong.count({ where });
+  return count === 0;
+};
+
+const findActiveFirstBookingPromo = async (prismaClient) => {
+  await syncExpiredPromotions(prismaClient);
+  return prismaClient.khuyen_mai.findFirst({
+    where: {
+      lan_dat_dau: true,
+      loai_nguon: 'he_thong',
+      trang_thai: 'hoat_dong',
+      khoa_boi_admin: false,
+      khoa_boi_doi_tac: false,
+    },
+    orderBy: { ma_khuyen_mai: 'desc' },
+  });
 };
 
 const BLOCKED_APPLY_STATUSES = ['an', 'het_han', 'cho_duyet', 'tu_choi'];
@@ -165,7 +192,12 @@ const calculatePromotionDiscount = (promo, orderTotal) => {
   return Math.max(0, discount);
 };
 
-const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date() }) => {
+const assertPromotionApplicable = (promo, {
+  maKhachSan,
+  tongTien,
+  at = new Date(),
+  isFirstBooking = null,
+} = {}) => {
   if (!promo) throwValidation('Mã khuyến mãi không tồn tại');
 
   if (promo.khoa_boi_admin) {
@@ -175,7 +207,9 @@ const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date(
     throwValidation('Mã khuyến mãi đã bị khóa bởi đối tác, không thể áp dụng');
   }
 
-  if (isPastPromotionEndDate(promo.ngay_ket_thuc, at)) {
+  const isFirstOrderPromo = Boolean(promo.lan_dat_dau);
+
+  if (!isFirstOrderPromo && isPastPromotionEndDate(promo.ngay_ket_thuc, at)) {
     throwValidation('Mã khuyến mãi đã hết hạn');
   }
 
@@ -198,8 +232,12 @@ const assertPromotionApplicable = (promo, { maKhachSan, tongTien, at = new Date(
   if (today < start) {
     throwValidation('Mã khuyến mãi chưa đến thời gian áp dụng');
   }
-  if (today > end) {
+  if (!isFirstOrderPromo && today > end) {
     throwValidation('Mã khuyến mãi đã hết hạn');
+  }
+
+  if (isFirstOrderPromo && isFirstBooking === false) {
+    throwValidation('Mã khuyến mãi chỉ áp dụng cho lần đặt phòng đầu tiên của bạn');
   }
 
   if (promo.loai_nguon === 'doi_tac') {
@@ -261,17 +299,31 @@ const assertCustomerHasNotUsedPromotion = async (
   }
 };
 
+const decrementPromotionUsage = async (tx, maKhuyenMai) => {
+  const id = Number(maKhuyenMai);
+  if (!id || Number.isNaN(id)) return;
+  await tx.$executeRaw`
+    UPDATE khuyen_mai
+    SET so_luot_da_dung = GREATEST(COALESCE(so_luot_da_dung, 0) - 1, 0)
+    WHERE ma_khuyen_mai = ${id}
+  `;
+};
+
 module.exports = {
   EXPIRABLE_STATUSES,
   BLOCKED_APPLY_STATUSES,
+  FIRST_BOOKING_PROMO_END,
   toLocalDateString,
   toDbDateString,
   startOfDay,
   isPastPromotionEndDate,
   syncExpiredPromotions,
+  isCustomerFirstBooking,
+  findActiveFirstBookingPromo,
   assertPromotionFormValues,
   assertUniquePromotionCode,
   calculatePromotionDiscount,
   assertPromotionApplicable,
   assertCustomerHasNotUsedPromotion,
+  decrementPromotionUsage,
 };

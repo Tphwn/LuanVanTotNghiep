@@ -263,6 +263,21 @@ const ReportsPage = () => {
     setTuNgay("");
     setDenNgay("");
   };
+
+  const emptyListMessage = (() => {
+    const hasExtra = typeFilter !== "all" || timePreset !== "all";
+    if (statusFilter === "cho_xu_ly" && !hasExtra) {
+      return "Danh sách báo cáo chờ xử lý trống";
+    }
+    if (statusFilter === "da_chap_nhan" && !hasExtra) {
+      return "Danh sách báo cáo đã chấp nhận trống";
+    }
+    if (statusFilter === "tu_choi" && !hasExtra) {
+      return "Danh sách báo cáo từ chối trống";
+    }
+    if (statusFilter !== "all" || hasExtra) return "Không tìm thấy báo cáo phù hợp";
+    return "Chưa có báo cáo nào";
+  })();
   const dash = dashboard || {};
 
   const {
@@ -437,7 +452,7 @@ const ReportsPage = () => {
               <div style={{ textAlign: "center", padding: 48, color: "#5a7a72"}}> Đang tải...</div>
             ) : reports.length === 0 ? (
               <div className="empty-state">
-                <p className="empty-state-text">Không có báo cáo phù hợp bộ lọc</p>
+                <p className="empty-state-text">{emptyListMessage}</p>
               </div>
             ) : (
               <div style={{ overflowX: "auto"}}>

@@ -1,9 +1,13 @@
 const { PrismaClient } = require('@prisma/client');
 const { countActiveBookedRooms, calcRoomAvailability } = require('../../utils/bookingHelpers');
 const { isLockedByAdminRoom } = require('../../utils/partnerLockHelpers');
+const {
+  parseBedCounts,
+  validateBedsByCapacity,
+  formatBedLabel,
+} = require('../../utils/bedHelpers');
 const prisma = new PrismaClient();
 
-// ===== HÀM BỔ TRỢ =====
 const safeInt = (val) => parseInt(val) || 0;
 const safeFloat = (val) => parseFloat(val) || 0.0;
 const parseJsonField = (value, fallback) => {
@@ -76,6 +80,7 @@ exports.getMyRooms = async (req, res) => {
       return {
         ...room,
         ...availability,
+        loai_giuong: formatBedLabel(room),
         loai_phong_tien_nghi: tienNghi,
         hinh_anh: hinhAnh,
       };
@@ -107,9 +112,9 @@ const validateRoomFormData = (data) => {
   const dienTich = safeInt(data.dien_tich);
   if (!dienTich || dienTich < 10) return 'Diện tích phải từ 10 m² trở lên';
   const sucChua = safeInt(data.suc_chua);
-  if (!sucChua || sucChua < 1) return 'Sức chứa phải từ 1 trở lên';
-  const soGiuong = safeInt(data.so_giuong);
-  if (!soGiuong || soGiuong < 1) return 'Số giường phải từ 1 trở lên';
+  if (!sucChua || sucChua < 1) return 'Số người lớn phải từ 1 trở lên';
+  const bedError = validateBedsByCapacity(sucChua, data);
+  if (bedError) return bedError;
   const soPhong = safeInt(data.so_luong_phong);
   if (!soPhong || soPhong < 1) return 'Số lượng phòng phải từ 1 trở lên';
   const gia = safeFloat(data.gia_co_ban);
@@ -137,6 +142,7 @@ exports.createRoomType = async (req, res) => {
     }
 
     const soPhong = safeInt(data.so_luong_phong);
+    const beds = parseBedCounts(data);
 
     const result = await prisma.$transaction(async (tx) => {
       const newRoom = await tx.loai_phong.create({
@@ -148,7 +154,10 @@ exports.createRoomType = async (req, res) => {
           suc_chua: safeInt(data.suc_chua),
           so_luong_phong: soPhong,
           so_luong_mo_ban: soPhong,
-          so_giuong: safeInt(data.so_giuong),
+          so_giuong: beds.so_giuong,
+          so_giuong_don: beds.so_giuong_don,
+          so_giuong_doi: beds.so_giuong_doi,
+          so_giuong_lon: beds.so_giuong_lon,
           mo_ta: data.mo_ta || '',
           trang_thai: 'hoat_dong',
           loai_phong_tien_nghi: {
@@ -199,6 +208,7 @@ exports.updateRoomType = async (req, res) => {
 
     const soPhong = safeInt(data.so_luong_phong);
     const newMoBan = calcMoBanOnTotalChange(existing, soPhong);
+    const beds = parseBedCounts(data);
 
     await prisma.$transaction(async (tx) => {
       await tx.loai_phong.update({
@@ -210,7 +220,10 @@ exports.updateRoomType = async (req, res) => {
           suc_chua: safeInt(data.suc_chua),
           so_luong_phong: soPhong,
           so_luong_mo_ban: newMoBan,
-          so_giuong: safeInt(data.so_giuong),
+          so_giuong: beds.so_giuong,
+          so_giuong_don: beds.so_giuong_don,
+          so_giuong_doi: beds.so_giuong_doi,
+          so_giuong_lon: beds.so_giuong_lon,
           mo_ta: data.mo_ta,
         },
       });

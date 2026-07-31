@@ -29,6 +29,7 @@ const HotelSearchBar = ({
     initialValues.so_khach,
     initialValues.tre_em,
     initialValues.so_phong,
+    initialValues.tuoi_tre_em,
   ]);
 
   const validate = (data) => {
@@ -117,6 +118,7 @@ const HotelSearchBar = ({
               soKhach={form.so_khach}
               treEm={form.tre_em}
               soPhong={form.so_phong}
+              tuoiTreEm={form.tuoi_tre_em}
               open={guestOpen}
               onOpenChange={setGuestOpen}
               onChange={(patch) => updateForm(patch)}

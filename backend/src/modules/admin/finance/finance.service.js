@@ -3,17 +3,23 @@ const {
   resolveTransactionDisplayStatus,
   TX_DISPLAY_STATUS,
 } = require('../../../utils/paymentMapper');
+const {
+  calculateCommissionBreakdown,
+  DEFAULT_COMMISSION_RATE,
+} = require('../../../utils/commissionHelpers');
 
 const partnerAmountFromBooking = (booking, commissionRow) => {
-  const gross = Number(booking?.thanh_toan_cuoi) || 0;
-  const commission = Number(commissionRow?.so_tien_hoa_hong) || 0;
-  const refund = booking?.hoan_tien?.trang_thai === 'da_hoan'
-    ? Number(booking.hoan_tien.so_tien_hoan) || 0
-    : 0;
+  const breakdown = calculateCommissionBreakdown(
+    booking,
+    Number(commissionRow?.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+  );
   return {
-    gross,
-    commission,
-    partnerNet: Math.max(0, gross - commission - refund),
+    gross: Number(booking?.thanh_toan_cuoi) || 0,
+    gmvPartner: breakdown.gmv_doi_tac,
+    commission: breakdown.so_tien_hoa_hong,
+    troGia: breakdown.tien_tro_gia_san,
+    partnerNet: breakdown.tien_doi_tac_nhan,
+    netCommission: breakdown.hoa_hong_rong,
   };
 };
 
@@ -91,6 +97,9 @@ const adminFinanceService = {
           thanh_toan: true,
           hoan_tien: true,
           hoa_hong: true,
+          khuyen_mai: {
+            select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+          },
           loai_phong: {
             select: {
               khach_san: {
@@ -115,6 +124,9 @@ const adminFinanceService = {
           dat_phong: {
             include: {
               hoan_tien: true,
+              khuyen_mai: {
+                select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+              },
             },
           },
         },
@@ -170,6 +182,7 @@ const adminFinanceService = {
 
     let tongDoanhThu = 0;
     let hoaHongHeThong = 0;
+    let chiPhiTroGia = 0;
 
     revenueBookings.forEach((booking) => {
       const refund = booking.hoan_tien?.trang_thai === 'da_hoan'
@@ -178,12 +191,12 @@ const adminFinanceService = {
       const gross = Number(booking.thanh_toan_cuoi) || 0;
       if (refund >= gross * 0.99 && gross > 0) return;
 
-      const commission = booking.hoa_hong
-        ? Number(booking.hoa_hong.so_tien_hoa_hong) || 0
-        : 0;
+      const rate = Number(booking.hoa_hong?.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE;
+      const breakdown = calculateCommissionBreakdown(booking, rate);
 
       tongDoanhThu += gross;
-      hoaHongHeThong += commission;
+      hoaHongHeThong += breakdown.so_tien_hoa_hong;
+      chiPhiTroGia += breakdown.tien_tro_gia_san;
     });
 
     // Khớp tab Thanh toán ĐT: chờ TT = đã đối soát (da_thu), đã TT = da_thanh_toan
@@ -192,7 +205,13 @@ const adminFinanceService = {
     const partnersChoTt = new Map();
 
     commissions.forEach((row) => {
-      const { partnerNet } = partnerAmountFromBooking(row.dat_phong, row);
+      const { partnerNet, commission, troGia } = partnerAmountFromBooking(row.dat_phong, row);
+      // Bổ sung đơn hủy có hoa hồng (không nằm trong revenueBookings hoàn thành)
+      if (['da_huy', 'tu_choi'].includes(row.dat_phong?.trang_thai)) {
+        hoaHongHeThong += commission;
+        chiPhiTroGia += troGia;
+        tongDoanhThu += Number(row.dat_phong?.thanh_toan_cuoi) || 0;
+      }
       if (row.trang_thai === 'da_thanh_toan') {
         daThanhToanDoiTac += partnerNet;
       } else if (row.trang_thai === 'da_thu') {
@@ -210,6 +229,8 @@ const adminFinanceService = {
         }
       }
     });
+
+    const doanhThuRongSan = hoaHongHeThong - chiPhiTroGia;
 
     const partnersChoList = Array.from(partnersChoTt.values())
       .sort((a, b) => b.so_tien - a.so_tien)
@@ -234,13 +255,16 @@ const adminFinanceService = {
         giao_dich_thanh_cong: successPayments,
         cho_hoan_tien: pendingRefunds,
         hoa_hong_he_thong: hoaHongHeThong,
+        chi_phi_tro_gia: chiPhiTroGia,
+        doanh_thu_rong_san: doanhThuRongSan,
         cho_thanh_toan_doi_tac: choThanhToanDoiTac,
         da_thanh_toan_doi_tac: daThanhToanDoiTac,
       },
       tong_doanh_thu: tongDoanhThu,
       tong_hoa_hong: hoaHongHeThong,
+      chi_phi_tro_gia: chiPhiTroGia,
       tong_hoan_tien: 0,
-      doanh_thu_thuc_nhan: hoaHongHeThong,
+      doanh_thu_thuc_nhan: doanhThuRongSan,
       so_don_thanh_cong: successPayments,
       so_don_hoan_tien: pendingRefunds,
       viec_hom_nay: {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   fetchMyHotels, fetchDiaDiem, fetchAmenitiesForHotel,
@@ -19,16 +19,22 @@ import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirm
 import { ACTIVITY_FILTER, TAB_FILTER } from './constants';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
 
+const VALID_TABS = ['all', 'da_duyet', 'cho_duyet', 'tu_choi', 'khong_hoat_dong'];
+
 const HotelsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const partnerHotelState = useSelector((state) => state.partnerHotel);
   const { list = [], diaDiem = [], loading, error, successMsg } = partnerHotelState || {};
 
   const [flashMsg, setFlashMsg] = useState(location.state?.toast || '');
   const [keyword, setKeyword] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'all',
+  );
   const [diaDiemFilter, setDiaDiemFilter] = useState('all');
   const [activityFilter, setActivityFilter] = useState('all');
   const [starFilter, setStarFilter] = useState('all');
@@ -40,6 +46,22 @@ const HotelsPage = () => {
     dispatch(fetchDiaDiem());
     dispatch(fetchAmenitiesForHotel());
   }, [dispatch]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'all';
+    if (VALID_TABS.includes(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'all') {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
 
   useEffect(() => {
     if (!flashMsg) return undefined;
@@ -136,7 +158,7 @@ const HotelsPage = () => {
 
   const clearFilters = () => {
     setKeyword('');
-    setActiveTab('all');
+    handleTabChange('all');
     setDiaDiemFilter('all');
     setActivityFilter('all');
     setStarFilter('all');
@@ -179,7 +201,7 @@ const HotelsPage = () => {
         searchPlaceholder="Tìm theo tên hoặc địa chỉ..."
         tabs={filterTabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       >
         <select
           className="mgmt-select-inline partner-hotels-location-filter"

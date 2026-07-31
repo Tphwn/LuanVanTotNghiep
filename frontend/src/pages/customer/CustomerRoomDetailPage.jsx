@@ -7,6 +7,7 @@ import CustomerAmenityTag from '../../components/customer/CustomerAmenityTag';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
+import { formatBedLabel } from '../../utils/bedDisplay';
 import { resolveSearchForm } from '../../utils/hotelSearchStorage';
 import { ROOM_CATEGORY_GROUPS } from '../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../admin/amenities/utils';
@@ -36,6 +37,7 @@ const CustomerRoomDetailPage = () => {
       ngay_tra: searchParams.get('ngay_tra') || '',
       so_khach: searchParams.get('so_khach') || '',
       tre_em: searchParams.get('tre_em') || '',
+      tuoi_tre_em: searchParams.get('tuoi_tre_em') || '',
       so_phong: searchParams.get('so_phong') || '',
     });
     return {
@@ -45,6 +47,9 @@ const CustomerRoomDetailPage = () => {
       so_khach: String(resolved.so_khach),
       tre_em: String(resolved.tre_em || 0),
       so_phong: String(resolved.so_phong || 1),
+      ...(resolved.tuoi_tre_em?.length
+        ? { tuoi_tre_em: resolved.tuoi_tre_em.join(',') }
+        : {}),
     };
   }, [searchParams]);
 
@@ -174,6 +179,7 @@ const CustomerRoomDetailPage = () => {
               sucChua={room.suc_chua}
               dienTich={room.dien_tich}
               soGiuong={room.so_giuong}
+              bedLabel={room.loai_giuong || formatBedLabel(room)}
             />
             {room.phong_con_lai != null && (
               <p className={`room-detail-stock${isSoldOut ? ' room-detail-stock--sold-out' : ''}`}>

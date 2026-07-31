@@ -33,6 +33,7 @@ const registerRoutes = (app) => {
   app.use('/api/public', require('../modules/public/publicHotel.routes'));
   app.use('/api/public/partner-contact', require('../modules/partnerContact/partnerContact.routes'));
   app.use('/api/customer/bookings', require('../modules/customer/customerBooking.routes'));
+  app.use('/api/customer/payments', require('../modules/customer/customerPayment.routes'));
 
   app.use('/api/admin/partner-requests', ...adminGuard, require('../modules/admin/partnerRequest/adminPartnerRequest.routes'));
 };

@@ -14,6 +14,9 @@ const adminUserService = {
 
   createPartner: (data) =>
     api.post("/admin/users/partner", data),
+
+  updatePartner: (id, data) =>
+    api.put(`/admin/users/${id}/partner`, data),
 };
 
 export default adminUserService;

@@ -22,6 +22,7 @@ const INIT_FORM = {
   phu_thu_thu_cung: '',
   tuoi_toi_da_mien_phi: 6,
   phu_thu_tre_em: '',
+  phan_tram_vat: 10,
   noi_quy_khac: [],
 };
 
@@ -79,6 +80,7 @@ const HotelFormContent = ({
       phu_thu_thu_cung: toMoneyString(hotel.phu_thu_thu_cung),
       tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi ?? 6,
       phu_thu_tre_em: toMoneyString(hotel.phu_thu_tre_em),
+      phan_tram_vat: hotel.phan_tram_vat ?? 10,
       noi_quy_khac: parseNoiQuyKhac(hotel.noi_quy_khac),
     } : { ...INIT_FORM }
   );
@@ -561,7 +563,7 @@ const HotelFormContent = ({
                   </label>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
                       Phụ thu thú cưng (VNĐ/đêm)
@@ -605,6 +607,23 @@ const HotelFormContent = ({
                       value={formatThousands(form.phu_thu_tre_em)}
                       onChange={(e) => setForm({ ...form, phu_thu_tre_em: onlyDigits(e.target.value) })}
                       placeholder="VD: 150.000"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' }}>
+                      % Phí VAT
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="search-input"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      value={form.phan_tram_vat}
+                      onChange={(e) => setForm({ ...form, phan_tram_vat: e.target.value })}
+                      onWheel={blurOnWheel}
+                      placeholder="VD: 10"
                     />
                   </div>
                 </div>

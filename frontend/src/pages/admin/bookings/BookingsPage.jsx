@@ -18,30 +18,14 @@ import BookingTable from '../../../components/booking/BookingTable';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 import AdminBookingCancelModal from './components/AdminBookingCancelModal';
 import { buildAdminBookingsListPath } from '../../../utils/adminListReturn';
-import { getPaymentDisplay } from '../../../utils/bookingDisplay';
+import {
+  getPaymentFilterKey,
+  isAdminCancelledBooking,
+  isCancelledBooking,
+} from '../../../utils/bookingDisplay';
 
 const PAGE_SIZE = 10;
-const VALID_STATUS_TABS = ['all', 'da_xac_nhan', 'da_checkin', 'hoan_thanh', 'da_huy'];
-
-const getPaymentFilterKey = (booking) => {
-  const pay = getPaymentDisplay(booking);
-  switch (pay.shortLabel) {
-    case 'Đã thanh toán':
-      return 'da_thanh_toan';
-    case 'Tại KS':
-      return 'tai_khach_san';
-    case 'Chờ TT':
-      return 'cho_thanh_toan';
-    case 'Đã hoàn':
-      return 'da_hoan';
-    case 'Chờ xử lý':
-      return 'cho_xu_ly';
-    case 'Không hoàn':
-      return 'khong_hoan';
-    default:
-      return 'khac';
-  }
-};
+const VALID_STATUS_TABS = ['all', 'da_xac_nhan', 'da_checkin', 'hoan_thanh', 'da_huy', 'huy_admin'];
 
 const AdminBookingsPage = () => {
   const dispatch = useDispatch();
@@ -81,9 +65,10 @@ const AdminBookingsPage = () => {
   }, [searchParams, statusFilter]);
 
   useEffect(() => {
+    const trangThaiApi = statusFilter === 'huy_admin' ? 'da_huy' : statusFilter;
     dispatch(fetchAdminBookings({
       keyword,
-      trang_thai: statusFilter,
+      trang_thai: trangThaiApi,
       ma_doi_tac: partnerFilter !== 'all' ? partnerFilter : '',
       ks_id: hotelFilter !== 'all' ? hotelFilter : '',
       tu_ngay: checkInDate,
@@ -136,9 +121,37 @@ const AdminBookingsPage = () => {
   };
 
   const displayList = useMemo(() => {
-    if (paymentFilter === 'all') return list;
-    return list.filter((booking) => getPaymentFilterKey(booking) === paymentFilter);
-  }, [list, paymentFilter]);
+    let rows = list;
+    if (statusFilter === 'huy_admin') {
+      rows = rows.filter((booking) => isAdminCancelledBooking(booking));
+    } else if (statusFilter === 'da_huy') {
+      rows = rows.filter((booking) => isCancelledBooking(booking) && !isAdminCancelledBooking(booking));
+    }
+    if (paymentFilter !== 'all') {
+      rows = rows.filter((booking) => getPaymentFilterKey(booking) === paymentFilter);
+    }
+    return rows;
+  }, [list, paymentFilter, statusFilter]);
+
+  const emptyListMessage = useMemo(() => {
+    const hasFilter = Boolean(keyword.trim())
+      || statusFilter !== 'all'
+      || partnerFilter !== 'all'
+      || hotelFilter !== 'all'
+      || paymentFilter !== 'all'
+      || Boolean(checkInDate)
+      || Boolean(checkOutDate);
+    if (!hasFilter) return 'Chưa có đơn đặt phòng nào';
+    if (statusFilter === 'da_xac_nhan') return 'Không tìm thấy đơn chờ check-in';
+    if (statusFilter === 'da_checkin') return 'Không tìm thấy đơn đã check-in';
+    if (statusFilter === 'hoan_thanh') return 'Không tìm thấy đơn hoàn thành';
+    if (statusFilter === 'da_huy') return 'Không tìm thấy đơn đã hủy';
+    if (statusFilter === 'huy_admin') return 'Không tìm thấy đơn bị hủy bởi admin';
+    return 'Không tìm thấy đơn';
+  }, [
+    keyword, statusFilter, partnerFilter, hotelFilter,
+    paymentFilter, checkInDate, checkOutDate,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(displayList.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -341,6 +354,7 @@ const AdminBookingsPage = () => {
               <option value="da_checkin">Đã check-in</option>
               <option value="hoan_thanh">Hoàn thành</option>
               <option value="da_huy">Đã hủy</option>
+              <option value="huy_admin">Bị hủy (admin hủy)</option>
             </select>
 
             <select
@@ -352,10 +366,8 @@ const AdminBookingsPage = () => {
               <option value="all">Tất cả thanh toán</option>
               <option value="da_thanh_toan">Đã thanh toán</option>
               <option value="cho_thanh_toan">Chờ thanh toán</option>
-              <option value="tai_khach_san">Thanh toán tại KS</option>
-              <option value="cho_xu_ly">Chờ xử lý hoàn</option>
-              <option value="da_hoan">Đã hoàn</option>
-              <option value="khong_hoan">Không hoàn</option>
+              <option value="da_hoan">Đã hoàn tiền</option>
+              <option value="khong_hoan">Không hoàn tiền</option>
             </select>
 
             <FilterActions showApply={false} onClear={clearFilters} />
@@ -368,7 +380,7 @@ const AdminBookingsPage = () => {
           <div style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>Đang tải dữ liệu...</div>
         ) : displayList.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không có đơn đặt phòng nào</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <>
@@ -376,12 +388,12 @@ const AdminBookingsPage = () => {
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
                   <tr>
-                    <th className="partner-col-code">Mã đơn</th>
                     <th className="partner-col-customer">Khách hàng</th>
                     <th className="partner-col-hotel">Khách sạn</th>
                     <th className="partner-col-date">Check-in</th>
                     <th className="partner-col-date">Check-out</th>
-                    <th className="partner-col-money">Tổng tiền</th>
+                    <th className="partner-col-money">Giá phòng gốc</th>
+                    <th className="partner-col-money">Tổng khách trả</th>
                     <th className="partner-col-pay">Thanh toán</th>
                     <th className="partner-col-status">Trạng thái</th>
                     <th className="partner-col-actions">Thao tác</th>

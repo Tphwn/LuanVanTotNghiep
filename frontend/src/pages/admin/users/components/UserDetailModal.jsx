@@ -158,6 +158,28 @@ export default function UserDetailModal({ userId, onClose }) {
                   />
                   <InfoBlock label="Ngày cấp tài khoản" value={formatDate(partner.ngay_cap_tai_khoan)} />
                 </div>
+                <div className="admin-user-detail-info-card">
+                  <h3 className="admin-user-detail-info-title">Tài khoản nhận tiền</h3>
+                  <InfoBlock label="Ngân hàng" value={partner.ten_ngan_hang} />
+                  <InfoBlock label="Số tài khoản" value={partner.so_tai_khoan} />
+                  <InfoBlock label="Chủ tài khoản" value={partner.ten_chu_tai_khoan} />
+                  {partner.logo_ngan_hang ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                      <img
+                        src={partner.logo_ngan_hang}
+                        alt=""
+                        style={{ width: 28, height: 28, objectFit: 'contain' }}
+                      />
+                      <span style={{ fontSize: 13, color: '#5a7a72' }}>Chỉ xem — đối tác tự cập nhật</span>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>
+                      {partner.so_tai_khoan
+                        ? 'Chỉ xem — đối tác tự cập nhật'
+                        : 'Đối tác chưa cập nhật tài khoản nhận tiền'}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </>

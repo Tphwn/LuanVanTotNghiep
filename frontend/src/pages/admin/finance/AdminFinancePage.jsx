@@ -9,6 +9,7 @@ import {
   fetchCommissionStats,
   fetchCommissionById,
   confirmCommission,
+  confirmCommissionsBatch,
   holdCommission,
   releaseCommissionHold,
   fetchPartnerPayouts,
@@ -33,6 +34,34 @@ import AdminFinanceOverviewPanel from './AdminFinanceOverviewPanel';
 // ===== HELPERS =====
 const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(v || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+
+const toInputDate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/** Khoảng ngày theo tuần (T2–CN) hoặc tháng hiện tại */
+const getCommPeriodRange = (period) => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  if (period === 'week') {
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const start = new Date(now);
+    start.setDate(now.getDate() + mondayOffset);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { tu_ngay: toInputDate(start), den_ngay: toInputDate(end) };
+  }
+  if (period === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { tu_ngay: toInputDate(start), den_ngay: toInputDate(end) };
+  }
+  return { tu_ngay: '', den_ngay: '' };
+};
 
 const fmtPaymentDateTime = (d) => {
   if (!d) return '—';
@@ -141,24 +170,31 @@ const AdminFinancePage = () => {
   const [commFilter, setCommFilter] = useState({
     doi_tac_id: 'all',
     khach_san_id: 'all',
-    trang_thai: 'all',
+    trang_thai: 'chua_thu',
+    period: '',
     tu_ngay: '',
     den_ngay: '',
   });
+  const [selectedCommIds, setSelectedCommIds] = useState([]);
   const [payoutFilter, setPayoutFilter] = useState({
     doi_tac_id: 'all',
     khach_san_id: 'all',
     trang_thai: 'all',
+    period: '',
+    tu_ngay: '',
+    den_ngay: '',
   });
 
   const loadCommissions = (filters = commFilter) => {
-    dispatch(fetchCommissions(filters));
-    dispatch(fetchCommissionStats(filters));
+    const { period, ...apiFilters } = filters;
+    dispatch(fetchCommissions(apiFilters));
+    dispatch(fetchCommissionStats(apiFilters));
   };
 
   const loadPartnerPayouts = (filters = payoutFilter) => {
-    dispatch(fetchPartnerPayouts(filters));
-    dispatch(fetchPartnerPayoutStats(filters));
+    const { period, ...apiFilters } = filters;
+    dispatch(fetchPartnerPayouts(apiFilters));
+    dispatch(fetchPartnerPayoutStats(apiFilters));
   };
 
   useEffect(() => {
@@ -177,6 +213,12 @@ const AdminFinancePage = () => {
       return () => clearTimeout(t);
     }
   }, [successMsg, error, dispatch]);
+
+  useEffect(() => {
+    if (!payoutFormError || payoutAction) return undefined;
+    const t = setTimeout(() => setPayoutFormError(''), 4000);
+    return () => clearTimeout(t);
+  }, [payoutFormError, payoutAction]);
 
   useEffect(() => {
     if (!successMsg) return;
@@ -199,10 +241,17 @@ const AdminFinancePage = () => {
 
   useEffect(() => {
     if (tab !== 'commissions') return undefined;
+    setSelectedCommIds([]);
     const t = setTimeout(() => loadCommissions(commFilter), 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, commFilter]);
+
+  useEffect(() => {
+    setSelectedCommIds((prev) => prev.filter((id) => (
+      commissions.some((c) => c.ma_hoa_hong === id && c.trang_thai === 'chua_thu')
+    )));
+  }, [commissions]);
 
   useEffect(() => {
     if (tab !== 'partner') return undefined;
@@ -211,22 +260,50 @@ const AdminFinancePage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, payoutFilter]);
 
+  const applyCommPeriod = (period) => {
+    const range = getCommPeriodRange(period);
+    setCommFilter((prev) => ({
+      ...prev,
+      period,
+      tu_ngay: range.tu_ngay,
+      den_ngay: range.den_ngay,
+    }));
+  };
+
+  const applyPayoutPeriod = (period) => {
+    const range = getCommPeriodRange(period);
+    setPayoutFilter((prev) => ({
+      ...prev,
+      period,
+      tu_ngay: range.tu_ngay,
+      den_ngay: range.den_ngay,
+    }));
+  };
+
   const handleConfirmCommAction = async () => {
     if (!commAction) return;
     setCommActionLoading(true);
     try {
-      if (commAction.type === 'confirm') {
+      if (commAction.type === 'confirm-batch') {
+        await dispatch(confirmCommissionsBatch(commAction.ids)).unwrap();
+        setSelectedCommIds([]);
+      } else if (commAction.type === 'confirm') {
         await dispatch(confirmCommission(commAction.id)).unwrap();
       } else if (commAction.type === 'hold') {
         await dispatch(holdCommission(commAction.id)).unwrap();
       } else if (commAction.type === 'release') {
         await dispatch(releaseCommissionHold(commAction.id)).unwrap();
       }
+      const actionType = commAction.type;
       setCommAction(null);
       if (commModalId) {
         dispatch(fetchCommissionById(commModalId));
       }
       loadCommissions();
+      if (actionType === 'confirm' || actionType === 'confirm-batch') {
+        dispatch(fetchPartnerPayoutStats());
+        dispatch(fetchPartnerPayouts());
+      }
     } catch {
       // error handled in slice
     } finally {
@@ -281,38 +358,53 @@ const AdminFinancePage = () => {
   const rfPg = useListPagination(refunds, 10, [refunds]);
   const commPg = useListPagination(commissions, 10, [commissions]);
 
-  const partnerPayoutSummaries = useMemo(() => {
-    const map = new Map();
-    for (const row of partnerPayouts || []) {
-      const id = row.ma_doi_tac;
-      if (!map.has(id)) {
-        map.set(id, {
-          ma_doi_tac: id,
-          ten_cong_ty: row.ten_cong_ty || `Đối tác #${id}`,
-          tong_doanh_thu: 0,
-          tong_hoa_hong: 0,
-          da_thanh_toan: 0,
-          cho_thanh_toan: 0,
-          so_don_cho_tt: 0,
-        });
-      }
-      const s = map.get(id);
-      s.tong_doanh_thu += Number(row.tong_doanh_thu) || 0;
-      s.tong_hoa_hong += Number(row.tong_hoa_hong) || 0;
-      if (row.trang_thai === 'cho_thanh_toan') {
-        s.cho_thanh_toan += Number(row.so_tien_can_thanh_toan) || 0;
-        s.so_don_cho_tt += Number(row.so_don_cho_tt || row.so_don) || 0;
-      } else if (row.trang_thai === 'da_thanh_toan') {
-        s.da_thanh_toan += Number(row.so_tien_thanh_toan) || 0;
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.cho_thanh_toan !== a.cho_thanh_toan) return b.cho_thanh_toan - a.cho_thanh_toan;
-      return String(a.ten_cong_ty).localeCompare(String(b.ten_cong_ty), 'vi');
-    });
-  }, [partnerPayouts]);
+  const eligibleCommIds = useMemo(
+    () => commissions.filter((c) => c.trang_thai === 'chua_thu').map((c) => c.ma_hoa_hong),
+    [commissions],
+  );
 
-  const payoutPg = useListPagination(partnerPayoutSummaries, 10, [partnerPayoutSummaries]);
+  const pagedEligibleCommIds = useMemo(
+    () => commPg.pagedItems
+      .filter((c) => c.trang_thai === 'chua_thu')
+      .map((c) => c.ma_hoa_hong),
+    [commPg.pagedItems],
+  );
+
+  const allPagedEligibleSelected = pagedEligibleCommIds.length > 0
+    && pagedEligibleCommIds.every((id) => selectedCommIds.includes(id));
+
+  const toggleSelectComm = (id) => {
+    setSelectedCommIds((prev) => (
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    ));
+  };
+
+  const toggleSelectAllPagedEligible = () => {
+    if (allPagedEligibleSelected) {
+      setSelectedCommIds((prev) => prev.filter((id) => !pagedEligibleCommIds.includes(id)));
+      return;
+    }
+    setSelectedCommIds((prev) => [...new Set([...prev, ...pagedEligibleCommIds])]);
+  };
+
+  const payoutStatusLabel = (status) => {
+    if (status === 'cho_thanh_toan') return 'Chờ thanh toán';
+    if (status === 'da_thanh_toan') return 'Đã thanh toán';
+    return status || '—';
+  };
+
+  const payoutStatusColor = (status) => {
+    if (status === 'cho_thanh_toan') return '#b45309';
+    if (status === 'da_thanh_toan') return '#16a34a';
+    return '#5a7a72';
+  };
+
+  const payoutAmountOf = (row) => {
+    if (row.trang_thai === 'cho_thanh_toan') return Number(row.so_tien_can_thanh_toan) || 0;
+    return Number(row.so_tien_thanh_toan) || 0;
+  };
+
+  const payoutPg = useListPagination(partnerPayouts || [], 10, [partnerPayouts]);
 
   const payoutHotelsForPartner = useMemo(() => {
     const hotels = partnerPayoutStats?.hotels || [];
@@ -337,8 +429,11 @@ const AdminFinancePage = () => {
       </div>
       <Toast
         toast={
-          successMsg || error
-            ? { message: successMsg || error, type: successMsg ? 'success' : 'error' }
+          successMsg || error || (!payoutAction && payoutFormError)
+            ? {
+              message: successMsg || error || payoutFormError,
+              type: successMsg ? 'success' : 'error',
+            }
             : null
         }
       />
@@ -414,8 +509,8 @@ const AdminFinancePage = () => {
                 onChange={(e) => setTxFilter({ ...txFilter, phuong_thuc: e.target.value })}
               >
                 <option value="all">Tất cả</option>
-                <option value="truc_tuyen">Trực tuyến</option>
-                <option value="tai_khach_san">Tại khách sạn</option>
+                <option value="vnpay">VNPay</option>
+                <option value="momo">MoMo</option>
               </select>
             </div>
             <div className="mgmt-filter-field">
@@ -458,7 +553,14 @@ const AdminFinancePage = () => {
             {loading ? (
               <div style={{ textAlign:'center', padding:40, color:'#5a7a72'}}> Đang tải...</div>
             ) : transactions.length === 0 ? (
-              <div className="empty-state"><p className="empty-state-text">Chưa có giao dịch</p></div>
+              <div className="empty-state">
+                <p className="empty-state-text">
+                  {(txFilter.trang_thai !== 'all' || txFilter.phuong_thuc !== 'all'
+                    || txFilter.tu_ngay || txFilter.den_ngay || txFilter.keyword)
+                    ? 'Không tìm thấy giao dịch phù hợp'
+                    : 'Chưa có giao dịch nào'}
+                </p>
+              </div>
             ) : (
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
@@ -490,7 +592,7 @@ const AdminFinancePage = () => {
                         </td>
                         <td className="mgmt-col-customer">{formatTxCustomer(tx)}</td>
                         <td style={{ fontWeight:500 }}>{fmt(tx.so_tien)}</td>
-                        <td style={{ whiteSpace:'nowrap' }}>{tx.phuong_thuc || '—'}</td>
+                        <td style={{ whiteSpace:'nowrap' }}>{tx.cong_thanh_toan || tx.phuong_thuc || '—'}</td>
                         <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                         <ActionCell compact>
                           <ActionButton
@@ -593,7 +695,15 @@ const AdminFinancePage = () => {
             {loading ? (
               <div style={{ textAlign:'center', padding:40, color:'#5a7a72' }}>Đang tải...</div>
             ) : refunds.length === 0 ? (
-              <div className="empty-state"><p className="empty-state-text">Chưa có yêu cầu hoàn tiền</p></div>
+              <div className="empty-state">
+                <p className="empty-state-text">
+                  {(rfFilter.trang_thai !== 'all' || rfFilter.tu_ngay || rfFilter.den_ngay || rfFilter.keyword)
+                    ? (rfFilter.trang_thai === 'cho_xu_ly'
+                      ? 'Danh sách hoàn tiền chờ xử lý trống'
+                      : 'Không tìm thấy yêu cầu hoàn tiền phù hợp')
+                    : 'Chưa có yêu cầu hoàn tiền nào'}
+                </p>
+              </div>
             ) : (
               <table className="data-table data-table-grid admin-mgmt-table">
                 <thead>
@@ -725,7 +835,7 @@ const AdminFinancePage = () => {
                 onChange={(e) => setCommFilter({ ...commFilter, khach_san_id: e.target.value })}
               >
                 <option value="all">
-                  {commFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                  {commFilter.doi_tac_id === 'all' ? 'Chọn đối tác trước' : 'Tất cả khách sạn của đối tác'}
                 </option>
                 {commissionHotelsForPartner.map((h) => (
                   <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
@@ -733,7 +843,33 @@ const AdminFinancePage = () => {
               </select>
             </div>
             <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="comm-status">Trạng thái đối soát</label>
+              <label className="mgmt-filter-label" htmlFor="comm-period">Khoảng thời gian</label>
+              <select
+                id="comm-period"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={commFilter.period}
+                onChange={(e) => {
+                  const period = e.target.value;
+                  if (period === 'week' || period === 'month') {
+                    applyCommPeriod(period);
+                    return;
+                  }
+                  setCommFilter({
+                    ...commFilter,
+                    period: '',
+                    tu_ngay: '',
+                    den_ngay: '',
+                  });
+                }}
+              >
+                <option value="">Tùy chọn / Tất cả</option>
+                <option value="week">Trong tuần</option>
+                <option value="month">Trong tháng</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="comm-status">Trạng thái</label>
               <select
                 id="comm-status"
                 className="mgmt-select-inline"
@@ -755,7 +891,11 @@ const AdminFinancePage = () => {
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={commFilter.tu_ngay}
-                onChange={(e) => setCommFilter({ ...commFilter, tu_ngay: e.target.value })}
+                onChange={(e) => setCommFilter({
+                  ...commFilter,
+                  period: '',
+                  tu_ngay: e.target.value,
+                })}
               />
             </div>
             <div className="mgmt-filter-field">
@@ -766,7 +906,11 @@ const AdminFinancePage = () => {
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={commFilter.den_ngay}
-                onChange={(e) => setCommFilter({ ...commFilter, den_ngay: e.target.value })}
+                onChange={(e) => setCommFilter({
+                  ...commFilter,
+                  period: '',
+                  den_ngay: e.target.value,
+                })}
               />
             </div>
             <div className="mgmt-filter-field mgmt-filter-field--action">
@@ -777,25 +921,72 @@ const AdminFinancePage = () => {
                   setCommFilter({
                     doi_tac_id: 'all',
                     khach_san_id: 'all',
-                    trang_thai: 'all',
+                    trang_thai: 'chua_thu',
+                    period: '',
                     tu_ngay: '',
                     den_ngay: '',
                   });
+                  setSelectedCommIds([]);
                 }}
               >
                 Xóa lọc
               </button>
             </div>
           </div>
-{/* ===== HOA HỒNG ===== */}
+
           <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Danh sách hoa hồng ({commissions.length})</h3>
+            <div className="content-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <h3 className="content-card-title" style={{ margin: 0 }}>
+                Danh sách hoa hồng ({commissions.length})
+                {selectedCommIds.length > 0 && (
+                  <span style={{ marginLeft: 8, fontWeight: 500, color: '#3C7363' }}>
+                    · Đã chọn {selectedCommIds.length}
+                  </span>
+                )}
+              </h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {eligibleCommIds.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setSelectedCommIds(eligibleCommIds)}
+                  >
+                    Chọn tất cả chờ đối soát ({eligibleCommIds.length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={selectedCommIds.length === 0}
+                  onClick={() => setCommAction({
+                    type: 'confirm-batch',
+                    ids: selectedCommIds,
+                    count: selectedCommIds.length,
+                  })}
+                >
+                  <Check size={16} style={{ marginRight: 6 }} />
+                  Xác nhận đối soát
+                  {selectedCommIds.length > 0 ? ` (${selectedCommIds.length})` : ''}
+                </button>
+              </div>
             </div>
             {commissions.length === 0 ? (
               <div className="empty-state">
                 <p className="empty-state-text">
-                  Chưa có hoa hồng. 
+                  {commFilter.trang_thai === 'chua_thu'
+                    ? 'Danh sách hoa hồng chờ đối soát trống'
+                    : commFilter.trang_thai === 'da_thu'
+                      ? 'Danh sách hoa hồng đã đối soát trống'
+                      : commFilter.trang_thai === 'da_thanh_toan'
+                        ? 'Danh sách hoa hồng đã thanh toán trống'
+                        : commFilter.trang_thai === 'tam_giu'
+                          ? 'Danh sách hoa hồng tạm giữ trống'
+                          : (commFilter.doi_tac_id !== 'all'
+                            || commFilter.khach_san_id !== 'all'
+                            || commFilter.tu_ngay
+                            || commFilter.den_ngay)
+                            ? 'Không tìm thấy đơn hoa hồng phù hợp'
+                            : 'Chưa có đơn hoa hồng nào'}
                 </p>
               </div>
             ) : (
@@ -803,11 +994,19 @@ const AdminFinancePage = () => {
                 <table className="data-table data-table-grid admin-mgmt-table">
                   <thead>
                     <tr>
+                      <th style={{ width: 44 }} scope="col">
+                        <input
+                          type="checkbox"
+                          aria-label="Chọn tất cả đơn chờ đối soát trên trang"
+                          checked={allPagedEligibleSelected}
+                          disabled={pagedEligibleCommIds.length === 0}
+                          onChange={toggleSelectAllPagedEligible}
+                        />
+                      </th>
                       <th>Mã đơn</th>
-                      <th className="mgmt-col-hotel">Khách sạn</th>
                       <th className="mgmt-col-name">Đối tác</th>
-                      <th>Ngày hoàn</th>
-                      <th>Tổng tiền đơn</th>
+                      <th>Ngày hoàn thành</th>
+                      <th>Tiền ban đầu</th>
                       <th>Tỷ lệ HH</th>
                       <th>Tiền hoa hồng</th>
                       <th>Tiền đối tác nhận</th>
@@ -821,10 +1020,20 @@ const AdminFinancePage = () => {
                       const doanhThu = c.doanh_thu_don ?? c.dat_phong?.thanh_toan_cuoi;
                       const tienDoiTac = c.tien_doi_tac_nhan
                         ?? Math.max(0, Number(doanhThu || 0) - Number(c.so_tien_hoa_hong || 0));
+                      const canSelect = c.trang_thai === 'chua_thu';
+                      const checked = selectedCommIds.includes(c.ma_hoa_hong);
                       return (
-                        <tr key={c.ma_hoa_hong}>
+                        <tr key={c.ma_hoa_hong} className={checked ? 'is-selected' : undefined}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Chọn đơn #${c.dat_phong?.ma_don_hang || c.ma_hoa_hong}`}
+                              checked={checked}
+                              disabled={!canSelect}
+                              onChange={() => canSelect && toggleSelectComm(c.ma_hoa_hong)}
+                            />
+                          </td>
                           <td className="mgmt-table-cell-code">#{c.dat_phong?.ma_don_hang}</td>
-                          <td className="mgmt-col-hotel">{c.dat_phong?.loai_phong?.khach_san?.ten || '—'}</td>
                           <td className="mgmt-col-name">{c.doi_tac?.ten_cong_ty || '—'}</td>
                           <td style={{ fontSize: 13, color: '#5a7a72' }}>
                             {fmtDate(c.ngay_hoan_thanh || c.dat_phong?.ngay_tra_phong)}
@@ -868,30 +1077,24 @@ const AdminFinancePage = () => {
       {/* ===== THANH TOÁN ĐỐI TÁC ===== */}
       {tab === 'partner' && (
         <>
-          <div className="admin-finance-metrics admin-finance-metrics--4">
+          <div className="admin-finance-metrics admin-finance-metrics--3">
             <StatCard
-              title="Tổng tiền chờ thanh toán"
+              title="Chờ thanh toán đối tác"
               value={fmt(partnerPayoutStats?.tong_cho_thanh_toan)}
-              subtitle="Sau khi trừ hoa hồng hệ thống"
+              subtitle="Thực trả các đơn đã đối soát"
               tone="warning"
             />
             <StatCard
-              title="Tổng tiền đã thanh toán"
-              value={fmt(partnerPayoutStats?.tong_da_thanh_toan)}
-              subtitle="Các đợt đã chuyển đối tác"
-              tone="success"
-            />
-            <StatCard
-              title="Số đối tác chờ thanh toán"
-              value={`${partnerPayoutStats?.so_doi_tac_cho || 0}`}
-              subtitle="Có đợt chờ xử lý"
+              title="Tổng hoa hồng sàn"
+              value={fmt(partnerPayoutStats?.tong_hoa_hong_san)}
+              subtitle="Theo bộ lọc hiện tại"
               tone="info"
             />
             <StatCard
-              title="Số kỳ thanh toán tạm giữ"
-              value={`${partnerPayoutStats?.so_ky_tam_giu || 0}`}
-              subtitle="Đơn đang tạm khóa"
-              tone="danger"
+              title="Đã thanh toán đối tác"
+              value={fmt(partnerPayoutStats?.tong_da_thanh_toan)}
+              subtitle="Các đợt đã chuyển đối tác"
+              tone="success"
             />
           </div>
 
@@ -926,7 +1129,7 @@ const AdminFinancePage = () => {
                 onChange={(e) => setPayoutFilter({ ...payoutFilter, khach_san_id: e.target.value })}
               >
                 <option value="all">
-                  {payoutFilter.doi_tac_id === 'all' ? '' : 'Tất cả khách sạn của đối tác'}
+                  {payoutFilter.doi_tac_id === 'all' ? 'Chọn đối tác trước' : 'Tất cả khách sạn của đối tác'}
                 </option>
                 {payoutHotelsForPartner.map((h) => (
                   <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
@@ -934,7 +1137,7 @@ const AdminFinancePage = () => {
               </select>
             </div>
             <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="payout-status">Trạng thái thanh toán</label>
+              <label className="mgmt-filter-label" htmlFor="payout-status">Trạng thái</label>
               <select
                 id="payout-status"
                 className="mgmt-select-inline"
@@ -947,6 +1150,62 @@ const AdminFinancePage = () => {
                 <option value="da_thanh_toan">Đã thanh toán</option>
               </select>
             </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-period">Khoảng thời gian</label>
+              <select
+                id="payout-period"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.period}
+                onChange={(e) => {
+                  const period = e.target.value;
+                  if (period === 'week' || period === 'month') {
+                    applyPayoutPeriod(period);
+                    return;
+                  }
+                  setPayoutFilter({
+                    ...payoutFilter,
+                    period: '',
+                    tu_ngay: '',
+                    den_ngay: '',
+                  });
+                }}
+              >
+                <option value="">Tùy chọn / Tất cả</option>
+                <option value="week">Trong tuần</option>
+                <option value="month">Trong tháng</option>
+              </select>
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-from">Từ ngày trả</label>
+              <input
+                id="payout-from"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.tu_ngay}
+                onChange={(e) => setPayoutFilter({
+                  ...payoutFilter,
+                  period: '',
+                  tu_ngay: e.target.value,
+                })}
+              />
+            </div>
+            <div className="mgmt-filter-field">
+              <label className="mgmt-filter-label" htmlFor="payout-to">Đến ngày trả</label>
+              <input
+                id="payout-to"
+                type="date"
+                className="mgmt-select-inline"
+                style={inputSt}
+                value={payoutFilter.den_ngay}
+                onChange={(e) => setPayoutFilter({
+                  ...payoutFilter,
+                  period: '',
+                  den_ngay: e.target.value,
+                })}
+              />
+            </div>
             <div className="mgmt-filter-field mgmt-filter-field--action">
               <button
                 type="button"
@@ -956,6 +1215,9 @@ const AdminFinancePage = () => {
                     doi_tac_id: 'all',
                     khach_san_id: 'all',
                     trang_thai: 'all',
+                    period: '',
+                    tu_ngay: '',
+                    den_ngay: '',
                   });
                 }}
               >
@@ -967,10 +1229,10 @@ const AdminFinancePage = () => {
           <div className="content-card">
             <div className="content-card-header">
               <h3 className="content-card-title">
-                Danh sách thanh toán đối tác ({partnerPayoutSummaries.length})
+                Kỳ thanh toán đối tác ({(partnerPayouts || []).length})
               </h3>
             </div>
-            {!partnerPayoutSummaries.length ? (
+            {!(partnerPayouts || []).length ? (
               <div className="empty-state">
                 <p className="empty-state-text">
                   Chưa có dữ liệu thanh toán đối tác. Sau khi đối soát hoa hồng, đối tác sẽ xuất hiện trong danh sách.
@@ -981,54 +1243,82 @@ const AdminFinancePage = () => {
                 <table className="data-table data-table-grid admin-mgmt-table">
                   <thead>
                     <tr>
-                      <th>Mã đối tác</th>
-                      <th className="mgmt-col-name">Tên đối tác</th>
-                      <th>Tổng doanh thu</th>
-                      <th>Tổng hoa hồng</th>
-                      <th>Đã thanh toán</th>
-                      <th>Chờ thanh toán</th>
+                      <th className="mgmt-col-name">Đối tác</th>
+                      <th>Kỳ / Đợt</th>
+                      <th>Số đơn</th>
+                      <th>Tổng gốc</th>
+                      <th>Hoa hồng sàn</th>
+                      <th>Thực trả</th>
+                      <th>Trạng thái</th>
                       <th className="table-action-cell--compact" scope="col">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payoutPg.pagedItems.map((row) => {
-                      const canConfirm = row.cho_thanh_toan > 0 && row.so_don_cho_tt > 0;
+                      const canConfirm = row.trang_thai === 'cho_thanh_toan'
+                        && (Number(row.so_don_cho_tt || row.so_don) || 0) > 0;
+                      const thucTra = payoutAmountOf(row);
                       return (
-                        <tr key={row.ma_doi_tac}>
-                          <td className="mgmt-table-cell-code">#{row.ma_doi_tac}</td>
-                          <td className="mgmt-col-name" style={{ fontWeight: 500 }}>{row.ten_cong_ty}</td>
+                        <tr key={`${row.ma_doi_tac}-${row.ma_dot || row.trang_thai}`}>
+                          <td className="mgmt-col-name" style={{ fontWeight: 500 }}>
+                            {row.ten_cong_ty}
+                            <div style={{ fontSize: 12, color: '#7a9a92', marginTop: 2 }}>
+                              #{row.ma_doi_tac}
+                            </div>
+                          </td>
+                          <td>
+                            {row.ten_dot || '—'}
+                            {row.ma_gd_doi_tac ? (
+                              <div style={{ fontSize: 12, color: '#7a9a92', marginTop: 2 }}>
+                                {row.ma_gd_doi_tac}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td>{row.so_don || 0}</td>
                           <td>{fmt(row.tong_doanh_thu)}</td>
                           <td style={{ color: '#b36b00', fontWeight: 500 }}>{fmt(row.tong_hoa_hong)}</td>
-                          <td style={{ color: '#16a34a', fontWeight: 600 }}>{fmt(row.da_thanh_toan)}</td>
-                          <td style={{ color: '#b45309', fontWeight: 700 }}>{fmt(row.cho_thanh_toan)}</td>
+                          <td style={{ fontWeight: 700, color: payoutStatusColor(row.trang_thai) }}>
+                            {fmt(thucTra)}
+                          </td>
+                          <td style={{ fontWeight: 600, color: payoutStatusColor(row.trang_thai) }}>
+                            {payoutStatusLabel(row.trang_thai)}
+                          </td>
                           <ActionCell>
                             <ActionButton
                               variant="view"
                               iconOnly
                               icon={Eye}
                               title="Xem chi tiết"
-                              onClick={() => navigate(`/admin/finance/partner-payouts/${row.ma_doi_tac}`)}
+                              onClick={() => navigate(
+                                `/admin/finance/partner-payouts/${row.ma_doi_tac}?ma_dot=${encodeURIComponent(row.ma_dot || '')}`,
+                              )}
                             />
-                            <ActionButton
-                              variant="confirm"
-                              iconOnly
-                              icon={Check}
-                              title={canConfirm
-                                ? `Thanh toán ${row.so_don_cho_tt} đơn đang chờ`
-                                : 'Không có đơn chờ thanh toán'}
-                              disabled={!canConfirm}
-                              onClick={() => {
-                                if (!canConfirm) return;
-                                setPayoutFormError('');
-                                setPayoutAction({
-                                  type: 'confirm',
-                                  id: row.ma_doi_tac,
-                                  name: row.ten_cong_ty,
-                                  amount: row.cho_thanh_toan,
-                                  soDon: row.so_don_cho_tt,
-                                });
-                              }}
-                            />
+                            {canConfirm && (
+                              <ActionButton
+                                variant="confirm"
+                                iconOnly
+                                icon={Check}
+                                title={row.tai_khoan_da_cap_nhat
+                                  ? `Xác nhận thanh toán ${row.so_don_cho_tt || row.so_don} đơn`
+                                  : 'Đối tác chưa cập nhật tài khoản nhận tiền'}
+                                onClick={() => {
+                                  if (!row.tai_khoan_da_cap_nhat) {
+                                    setPayoutFormError(
+                                      'Đối tác chưa cập nhật tài khoản nhận tiền. Không thể xác nhận thanh toán.',
+                                    );
+                                    return;
+                                  }
+                                  setPayoutFormError('');
+                                  setPayoutAction({
+                                    type: 'confirm',
+                                    id: row.ma_doi_tac,
+                                    name: row.ten_cong_ty,
+                                    amount: thucTra,
+                                    soDon: row.so_don_cho_tt || row.so_don,
+                                  });
+                                }}
+                              />
+                            )}
                           </ActionCell>
                         </tr>
                       );
@@ -1039,7 +1329,7 @@ const AdminFinancePage = () => {
             )}
             {payoutPg.showPagination && (
               <ListPagination
-                total={partnerPayoutSummaries.length}
+                total={(partnerPayouts || []).length}
                 currentPage={payoutPg.currentPage}
                 totalPages={payoutPg.totalPages}
                 rangeFrom={payoutPg.rangeFrom}
@@ -1096,7 +1386,9 @@ const AdminFinancePage = () => {
             ? `Tạm giữ hoa hồng đơn #${commAction?.code || ''}? Đơn sẽ không được đối soát/thanh toán cho đến khi bỏ tạm giữ.`
             : commAction?.type === 'release'
               ? `Bỏ tạm giữ đơn #${commAction?.code || ''}?`
-              : `Xác nhận đối soát hoa hồng đơn #${commAction?.code || ''}? Đơn sẽ chuyển sang thanh toán đối tác.`
+              : commAction?.type === 'confirm-batch'
+                ? `Đối soát ${commAction?.count || selectedCommIds.length} đơn đã chọn? Các đơn sẽ chuyển sang trạng thái "Đã đối soát" và xuất hiện ở tab Thanh toán đối tác.`
+                : `Xác nhận đối soát hoa hồng đơn #${commAction?.code || ''}? Đơn sẽ chuyển sang thanh toán đối tác.`
         }
         confirmText={
           commAction?.type === 'hold' ? 'Tạm giữ'
@@ -1122,6 +1414,7 @@ const AdminFinancePage = () => {
 
       <PartnerPayoutConfirmModal
         open={!!payoutAction && payoutAction.type === 'confirm'}
+        partnerId={payoutAction?.id}
         partnerName={payoutAction?.name}
         amount={payoutAction?.amount}
         soDon={payoutAction?.soDon}

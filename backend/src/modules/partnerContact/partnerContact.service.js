@@ -3,6 +3,7 @@ const {
   validateEmail,
   validatePhone,
 } = require('../../utils/authValidation');
+const { notifyPartnerContactRequest } = require('../../utils/adminNotify');
 
 const SCALE_OPTIONS = ['Dưới 10 phòng', '10 - 30 phòng', 'Trên 30 phòng'];
 
@@ -89,17 +90,41 @@ const createRequest = async (data) => {
   const payload = validatePayload(data);
   await assertValidCity(payload.tinh_thanh);
 
-  return prisma.yeu_cau_hop_tac.create({
+  const created = await prisma.yeu_cau_hop_tac.create({
     data: payload,
     select: {
       ma_yeu_cau: true,
       ho_ten: true,
       email: true,
+      so_dien_thoai: true,
       ten_co_so: true,
+      tinh_thanh: true,
       trang_thai: true,
       ngay_yeu_cau: true,
     },
   });
+
+  try {
+    await notifyPartnerContactRequest({
+      maYeuCau: created.ma_yeu_cau,
+      hoTen: created.ho_ten,
+      tenCoSo: created.ten_co_so,
+      email: created.email,
+      soDienThoai: created.so_dien_thoai,
+      tinhThanh: created.tinh_thanh,
+    });
+  } catch {
+    /* không chặn luồng gửi yêu cầu nếu thông báo lỗi */
+  }
+
+  return {
+    ma_yeu_cau: created.ma_yeu_cau,
+    ho_ten: created.ho_ten,
+    email: created.email,
+    ten_co_so: created.ten_co_so,
+    trang_thai: created.trang_thai,
+    ngay_yeu_cau: created.ngay_yeu_cau,
+  };
 };
 
 const listRequests = async ({ trang_thai, keyword, page = 1, limit = 20 }) => {

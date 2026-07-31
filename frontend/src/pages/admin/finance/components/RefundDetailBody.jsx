@@ -27,9 +27,6 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
-/**
- * Bố cục chi tiết hoàn tiền dùng chung cho modal / page.
- */
 export default function RefundDetailBody({
   refundDetail,
   canApprove,

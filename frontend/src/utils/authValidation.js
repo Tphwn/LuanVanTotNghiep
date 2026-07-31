@@ -11,7 +11,7 @@ export const AUTH_MSG = {
   EMAIL_FORMAT: 'Email không đúng định dạng.',
   EMAIL_MAX: 'Email tối đa 100 ký tự.',
   EMAIL_NO_SPACE: 'Email không được chứa khoảng trắng.',
-  EMAIL_EXISTS: 'Email không được trùng với tài khoản khác.',
+  EMAIL_EXISTS: 'Email đã được đăng ký vui lòng chọn email khác.',
 
   PASSWORD_REQUIRED: 'Mật khẩu không được để trống.',
   PASSWORD_MIN: 'Mật khẩu phải có ít nhất 6 ký tự.',
@@ -27,6 +27,11 @@ export const AUTH_MSG = {
   PHONE_START: 'Số điện thoại phải bắt đầu bằng 0.',
   PHONE_DIGITS: 'Số điện thoại không được chứa chữ cái.',
 };
+
+/** Chỉ giữ chữ số, giới hạn độ dài (mặc định 10 — SĐT VN). */
+export const sanitizePhoneInput = (value, maxLength = 10) => (
+  String(value ?? '').replace(/\D/g, '').slice(0, maxLength)
+);
 
 export const validateEmail = (email, { required = true } = {}) => {
   const value = String(email ?? '');

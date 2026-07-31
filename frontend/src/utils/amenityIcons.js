@@ -6,7 +6,7 @@ import {
   PawPrint, Wine, Flower2, Lock, GlassWater, Shield, Accessibility, Users, Baby, Bus,
   Luggage, Phone, KeyRound, Monitor, Car, Utensils, Pill, Bike, Ship, Gamepad2, Trees,
   CircleDot, Blinds, Armchair, Microwave, Refrigerator, WashingMachine, Store,
-  ShowerHead, Cigarette, Landmark, PlugZap, Bath,
+  ShowerHead, Cigarette, Landmark, PlugZap, Bath, Ticket, Mic2, Umbrella, Trash2, Flag,
 } from 'lucide-react';
 
 export const AMENITY_ICON_MAP = {};
@@ -49,8 +49,17 @@ export const suggestIconSlugFromName = (name) => {
     { keys: ['bữa sáng', 'breakfast'], slug: 'breakfast' },
     { keys: ['nhà hàng', 'restaurant', 'buffet'], slug: 'restaurant' },
     { keys: ['tủ lạnh', 'fridge', 'refrigerator'], slug: 'fridge' },
-    { keys: ['gym', 'thể hình', 'fitness'], slug: 'gym' },
-    { keys: ['spa', 'massa', 'massage'], slug: 'massage' },
+    { keys: ['spa'], slug: 'spa' },
+    { keys: ['xông khô', 'sauna', 'xong kho'], slug: 'sauna' },
+    { keys: ['mát-xa', 'massage', 'mat xa'], slug: 'massage' },
+    { keys: ['karaoke'], slug: 'karaoke' },
+    { keys: ['vé', 'ticket'], slug: 'ticket' },
+    { keys: ['dép', 'slippers'], slug: 'slippers' },
+    { keys: ['ô ', 'ô dù', 'umbrella'], slug: 'umbrella' },
+    { keys: ['thùng rác', 'trash'], slug: 'bin' },
+    { keys: ['sân gôn', 'golf'], slug: 'golf' },
+    { keys: ['sàn gỗ', 'thảm', 'parquet'], slug: 'floor' },
+    { keys: ['gym', 'thể hình', 'fitness', 'phòng tập'], slug: 'gym' },
     { keys: ['điều hòa', 'máy lạnh', 'máy điều hòa'], slug: 'ac' },
     { keys: ['tivi', 'truyền hình', 'tv'], slug: 'tv' },
     { keys: ['bồn tắm', 'bathtub'], slug: 'bathtub' },
@@ -187,6 +196,14 @@ export const SLUG_TO_LUCIDE = {
   reception: 'ConciergeBell',
   atm: 'Landmark',
   smoke: 'Cigarette',
+  ticket: 'Ticket',
+  karaoke: 'Mic2',
+  sauna: 'Sparkles',
+  slippers: 'Shirt',
+  umbrella: 'Umbrella',
+  floor: 'CircleDot',
+  bin: 'Trash2',
+  golf: 'Flag',
   default: 'CircleDot',
 };
 
@@ -247,6 +264,14 @@ const SLUG_ICON_MAP = {
   reception: ConciergeBell,
   atm: Landmark,
   smoke: Cigarette,
+  ticket: Ticket,
+  karaoke: Mic2,
+  sauna: Sparkles,
+  slippers: Shirt,
+  umbrella: Umbrella,
+  floor: CircleDot,
+  bin: Trash2,
+  golf: Flag,
   default: CircleDot,
 };
 

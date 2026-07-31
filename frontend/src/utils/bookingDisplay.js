@@ -164,6 +164,54 @@ const getRefundStatus = (booking) =>
   || booking?.thong_tin_hoan_tien?.trang_thai_hoan
   || null;
 
+/** Đơn bị admin hủy (ghi chú [Admin hủy] hoặc cờ huy_boi_admin) */
+export const isAdminCancelledBooking = (booking) => {
+  if (!isCancelledBooking(booking)) return false;
+  if (booking?.huy_boi_admin || booking?.thong_tin_hoan_tien?.huy_boi_admin) return true;
+  return Boolean(booking?.ghi_chu?.trim().startsWith('[Admin hủy]'));
+};
+
+/** Nhãn trạng thái đơn — tách “Bị hủy (admin hủy)” */
+export const getBookingStatusDisplay = (booking) => {
+  if (!booking) return { label: '—', cls: 'badge-default', key: '' };
+  if (isAdminCancelledBooking(booking)) {
+    return { label: 'Bị hủy (admin hủy)', cls: 'badge-danger', key: 'huy_admin' };
+  }
+  const st = TRANG_THAI[booking.trang_thai] || {
+    label: booking.trang_thai,
+    cls: 'badge-default',
+  };
+  return { ...st, key: booking.trang_thai };
+};
+
+/** VAT khách đóng = thanh_toan_cuoi − (tong_tien_goc − tien_giam) */
+export const getBookingVatAmount = (booking) => {
+  const goc = Number(booking?.tong_tien_goc) || 0;
+  const giam = Number(booking?.tien_giam) || 0;
+  const paid = Number(booking?.thanh_toan_cuoi) || 0;
+  return Math.max(0, Math.round(paid - Math.max(0, goc - giam)));
+};
+
+/** Cổng TT: VNPay / MoMo / Tại khách sạn — không hiện “Trực tuyến” chung */
+export const getPaymentGatewayLabel = (booking) => {
+  if (!booking) return '—';
+  if (booking.phuong_thuc_tt === 'tai_khach_san') return 'Tại khách sạn';
+
+  const raw = [
+    booking.thanh_toan?.cong_thanh_toan,
+    booking.thanh_toan?.phuong_thuc,
+    booking.cong_thanh_toan,
+  ].filter(Boolean).join(' ');
+
+  if (/momo/i.test(raw)) return 'MoMo';
+  if (/vnpay/i.test(raw)) return 'VNPay';
+  if (raw && !/trực tuyến|truc_tuyen|online/i.test(raw)) {
+    return String(raw).trim();
+  }
+  if (booking.phuong_thuc_tt === 'truc_tuyen') return 'Thanh toán online';
+  return '—';
+};
+
 export const getPaymentDisplay = (booking) => {
   if (isCancelledBooking(booking)) {
     const refundStatus = getRefundStatus(booking);
@@ -172,72 +220,58 @@ export const getPaymentDisplay = (booking) => {
       ?? booking?.hoan_tien?.so_tien_hoan
       ?? 0,
     );
-    const hasPendingRefund = ['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus) && refundAmount > 0;
 
     if (refundStatus === 'da_hoan' && refundAmount > 0) {
-      const meta = REFUND_BADGE.da_hoan;
       return {
-        shortLabel: 'Đã hoàn',
-        label: meta.label,
+        shortLabel: 'Đã hoàn tiền',
+        label: 'Đã hoàn tiền',
         cls: 'mgmt-status-text--active',
-        badge: meta.cls,
+        badge: 'badge-success',
+        filterKey: 'da_hoan',
       };
     }
 
-    if (hasPendingRefund) {
-      const meta = REFUND_BADGE.cho_xu_ly;
+    // Đang chờ xử lý hoàn → vẫn coi đã thanh toán (chưa hoàn xong)
+    if (['cho_xu_ly', 'dang_xu_ly'].includes(refundStatus) && refundAmount > 0) {
       return {
-        shortLabel: 'Chờ xử lý',
-        label: meta.label,
-        cls: 'mgmt-status-text--pending',
-        badge: meta.cls,
+        shortLabel: 'Đã thanh toán',
+        label: 'Đã thanh toán',
+        cls: 'mgmt-status-text--active',
+        badge: 'badge-success',
+        filterKey: 'da_thanh_toan',
       };
     }
 
-    if (refundStatus === 'tu_choi') {
-      const meta = REFUND_BADGE.tu_choi;
-      return {
-        shortLabel: 'Không hoàn',
-        label: meta.label,
-        cls: 'mgmt-status-text--danger',
-        badge: meta.cls,
-      };
-    }
-
-    // Đã hủy nhưng không phát sinh số tiền hoàn (> 0) → không hiện "Chờ xử lý"
     return {
-      shortLabel: 'Không hoàn',
+      shortLabel: 'Không hoàn tiền',
       label: 'Không hoàn tiền',
       cls: 'mgmt-status-text--muted',
       badge: 'badge-default',
+      filterKey: 'khong_hoan',
     };
   }
 
-  if (isOnlinePaid(booking)) {
+  if (isOnlinePaid(booking) || booking?.thanh_toan?.trang_thai === 'thanh_cong') {
     return {
       shortLabel: 'Đã thanh toán',
       label: 'Đã thanh toán',
       cls: 'mgmt-status-text--active',
       badge: 'badge-success',
-    };
-  }
-
-  if (booking?.phuong_thuc_tt === 'tai_khach_san') {
-    return {
-      shortLabel: 'Tại KS',
-      label: 'Thanh toán tại khách sạn',
-      cls: 'mgmt-status-text--pending',
-      badge: 'badge-warning',
+      filterKey: 'da_thanh_toan',
     };
   }
 
   return {
-    shortLabel: 'Chờ TT',
+    shortLabel: 'Chờ thanh toán',
     label: 'Chờ thanh toán',
     cls: 'mgmt-status-text--pending',
     badge: 'badge-warning',
+    filterKey: 'cho_thanh_toan',
   };
 };
+
+export const getPaymentFilterKey = (booking) =>
+  getPaymentDisplay(booking).filterKey || 'khac';
 
 export const formatCurrency = (amount) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);

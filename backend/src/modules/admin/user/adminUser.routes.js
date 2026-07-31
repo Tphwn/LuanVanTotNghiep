@@ -11,6 +11,8 @@ router.get('/', controller.getUsers);
 
 router.post('/partner', upload.single('avatar'), controller.createPartner);
 
+router.put('/:id/partner', controller.updatePartner);
+
 router.get('/:id', controller.getUserById);
 
 router.patch('/:id/lock', controller.lockUser);

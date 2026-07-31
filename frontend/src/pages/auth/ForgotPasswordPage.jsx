@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import ROUTES from '../../constants/routes';
@@ -12,6 +12,25 @@ import {
   validatePasswordConfirm,
 } from '../../utils/authValidation';
 import { getLoginRouteByRole, PORTAL_COPY } from '../../utils/authPortal';
+
+const OTP_FALLBACK_TTL_SEC = 10 * 60;
+
+const formatOtpRemain = (totalSec) => {
+  const sec = Math.max(0, Number(totalSec) || 0);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const resolveOtpExpiresAt = (payload) => {
+  if (payload?.otp_het_han) {
+    const t = new Date(payload.otp_het_han).getTime();
+    if (Number.isFinite(t)) return t;
+  }
+  const ttl = Number(payload?.otp_ttl_seconds);
+  if (Number.isFinite(ttl) && ttl > 0) return Date.now() + ttl * 1000;
+  return Date.now() + OTP_FALLBACK_TTL_SEC * 1000;
+};
 
 /**
  * @param {'shared'|'admin'} [props.mode]
@@ -27,6 +46,8 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [otpRemainSec, setOtpRemainSec] = useState(0);
 
   const isAdminPortal = mode === 'admin';
   const copy = isAdminPortal ? PORTAL_COPY[ROLES.ADMIN] : PORTAL_COPY.shared;
@@ -37,6 +58,20 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
   const buildRolePayload = () => (
     isAdminPortal ? { vai_tro: ROLES.ADMIN } : {}
   );
+
+  const startOtpCountdown = useCallback((payload) => {
+    setOtpExpiresAt(resolveOtpExpiresAt(payload));
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'otp' || !otpExpiresAt) return undefined;
+    const tick = () => {
+      setOtpRemainSec(Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [step, otpExpiresAt]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -52,9 +87,11 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
         email: email.trim(),
         ...buildRolePayload(),
       });
-      setInfo(res.data?.data?.message || res.data?.message || 'Mã OTP đã được gửi.');
+      const data = res.data?.data || res.data || {};
+      setInfo(data.message || 'Mã OTP đã được gửi.');
       setStep('otp');
       setOtp('');
+      startOtpCountdown(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Không gửi được OTP');
     } finally {
@@ -80,6 +117,8 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
       setResetToken(token);
       setInfo('Xác thực thành công. Nhập mật khẩu mới.');
       setStep('password');
+      setOtpExpiresAt(null);
+      setOtpRemainSec(0);
     } catch (err) {
       setError(err.response?.data?.message || 'OTP không hợp lệ');
     } finally {
@@ -119,7 +158,10 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
         purpose: 'reset',
         ...buildRolePayload(),
       });
-      setInfo(res.data?.data?.message || res.data?.message || 'Đã gửi lại mã OTP.');
+      const data = res.data?.data || res.data || {};
+      setInfo(data.message || 'Đã gửi lại mã OTP.');
+      startOtpCountdown(data);
+      setOtp('');
     } catch (err) {
       setError(err.response?.data?.message || 'Không gửi lại được OTP');
     } finally {
@@ -182,6 +224,32 @@ export const AuthForgotPasswordPage = ({ mode = 'shared' }) => {
           }}
           >
             {info}
+          </div>
+        )}
+
+        {step === 'otp' && (
+          <div style={{
+            marginBottom: 'var(--spacing-md)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: otpRemainSec > 0 ? '#f0f7f5' : '#fff7e6',
+            border: `1px solid ${otpRemainSec > 0 ? '#c5ddd2' : '#ffd591'}`,
+            color: otpRemainSec > 0 ? '#3C7363' : '#ad6800',
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+          >
+            <span>
+              {otpRemainSec > 0 ? 'Thời gian hiệu lực mã OTP' : 'Mã OTP đã hết hạn'}
+            </span>
+            <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>
+              {otpRemainSec > 0
+                ? formatOtpRemain(otpRemainSec)
+                : '0:00 — vui lòng gửi lại mã'}
+            </strong>
           </div>
         )}
 

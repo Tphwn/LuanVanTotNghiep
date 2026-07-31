@@ -4,7 +4,11 @@ import publicHotelService from '../../services/publicHotelService';
 import ROUTES from '../../constants/routes';
 import { resolveUploadUrl } from '../../utils/media';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { searchFormToParams } from '../../utils/hotelSearchStorage';
+import {
+  searchFormToParams,
+  loadSearchForm,
+  saveSearchForm,
+} from '../../utils/hotelSearchStorage';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
 import '../../assets/styles/home.css';
 
@@ -62,6 +66,12 @@ const HomePage = () => {
     publicHotelService.getFeaturedByDestination()
       .then((res) => setFeatured(res.data?.data || []))
       .catch(() => setFeatured([]));
+
+    // Trang chủ mặc định: Tất cả địa điểm (khách tự chọn điểm đến khi cần)
+    const saved = loadSearchForm();
+    if (saved?.ma_dia_diem) {
+      saveSearchForm({ ...saved, ma_dia_diem: '' });
+    }
   }, []);
 
   const handleSearch = (data) => {
@@ -98,6 +108,7 @@ const HomePage = () => {
       <HotelSearchBar
         variant="hero"
         locations={locations}
+        initialValues={{ ma_dia_diem: '' }}
         onSearch={handleSearch}
       />
 

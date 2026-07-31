@@ -226,6 +226,23 @@ const ReviewsPage = () => {
     setDenNgay('');
   };
 
+  const hasActiveFilters = Boolean(partnerFilter)
+    || Boolean(hotelFilter)
+    || starFilter !== 'all'
+    || statusFilter !== 'all'
+    || timePreset !== 'all';
+
+  const emptyListMessage = (() => {
+    if (statusFilter === 'an' && !partnerFilter && !hotelFilter && starFilter === 'all' && timePreset === 'all') {
+      return 'Danh sách đánh giá đã ẩn trống';
+    }
+    if (statusFilter === 'hien_thi' && !partnerFilter && !hotelFilter && starFilter === 'all' && timePreset === 'all') {
+      return 'Danh sách đánh giá đang hiển thị trống';
+    }
+    if (hasActiveFilters) return 'Không tìm thấy đánh giá phù hợp';
+    return 'Chưa có đánh giá nào';
+  })();
+
   const statItems = useMemo(() => [
     { label: 'Tổng đánh giá', value: stats.tong_danh_gia ?? 0 },
     { label: 'Điểm trung bình', value: formatAvgScore(stats.diem_trung_binh) },
@@ -385,7 +402,7 @@ const ReviewsPage = () => {
           <div className="admin-reviews-loading">Đang tải...</div>
         ) : danhSach.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không có đánh giá phù hợp bộ lọc</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <>

@@ -209,6 +209,90 @@ const notifyPromotionUnlocked = async (maDoiTac, { tenKhuyenMai, maCode }) => {
   });
 };
 
+/** Khách đặt phòng thành công (đã thanh toán / trả tại KS) */
+const notifyNewBooking = async (maDoiTac, {
+  maDonHang,
+  maDatPhong,
+  tenKhachSan,
+  tenLoaiPhong,
+  tenNguoiNhan,
+  ngayNhan,
+  ngayTra,
+  soTien,
+}) => {
+  const amount = Number(soTien) || 0;
+  const amountLabel = new Intl.NumberFormat('vi-VN').format(amount);
+  const fmtDate = (d) => {
+    const x = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(x.getTime())) return '—';
+    const dd = String(x.getDate()).padStart(2, '0');
+    const mm = String(x.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${x.getFullYear()}`;
+  };
+
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Có đơn đặt phòng mới',
+    noi_dung: [
+      `Đơn #${maDonHang || maDatPhong} tại "${tenKhachSan || '—'}"`,
+      `(${tenLoaiPhong || 'phòng'})`,
+      `— ${tenNguoiNhan || 'Khách'}`,
+      `nhận ${fmtDate(ngayNhan)} · trả ${fmtDate(ngayTra)}.`,
+      amount > 0 ? `Giá trị ${amountLabel} ₫.` : null,
+      'Vào Quản lý đặt phòng để xem chi tiết.',
+    ].filter(Boolean).join(' '),
+    loai: 'dat_phong',
+  });
+};
+
+/** Khách hoặc admin hủy đơn */
+const notifyBookingCancelled = async (maDoiTac, {
+  maDonHang,
+  maDatPhong,
+  tenKhachSan,
+  lyDo,
+  cancelledBy = 'khach',
+}) => {
+  const byLabel = cancelledBy === 'admin' ? 'quản trị viên' : 'khách hàng';
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Đơn đặt phòng đã bị hủy',
+    noi_dung: [
+      `Đơn #${maDonHang || maDatPhong} tại "${tenKhachSan || '—'}"`,
+      `đã bị ${byLabel} hủy.`,
+      lyDo ? `Lý do: ${lyDo}.` : null,
+      'Vào Quản lý đặt phòng → Đã hủy để xem.',
+    ].filter(Boolean).join(' '),
+    loai: 'dat_phong',
+  });
+};
+
+/** Khách gửi đánh giá / phản hồi sau lưu trú */
+const notifyNewReview = async (maDoiTac, {
+  maDonHang,
+  maDatPhong,
+  tenKhachSan,
+  tenKhachHang,
+  soSao,
+  noiDung,
+}) => {
+  const stars = Number(soSao) || 0;
+  const excerpt = noiDung
+    ? (String(noiDung).trim().length > 120
+      ? `${String(noiDung).trim().slice(0, 120)}…`
+      : String(noiDung).trim())
+    : null;
+
+  return notifyPartner(maDoiTac, {
+    tieu_de: 'Khách hàng gửi đánh giá mới',
+    noi_dung: [
+      `${tenKhachHang || 'Khách'} đã đánh giá ${stars}/5`,
+      `đơn #${maDonHang || maDatPhong} tại "${tenKhachSan || '—'}".`,
+      excerpt ? `Nội dung: "${excerpt}"` : null,
+      'Vào Quản lý đánh giá để xem và phản hồi.',
+    ].filter(Boolean).join(' '),
+    loai: 'danh_gia',
+  });
+};
+
 module.exports = {
   notifyPartner,
   notifyAmenityAdded,
@@ -228,4 +312,7 @@ module.exports = {
   notifyPromotionRejected,
   notifyPromotionLocked,
   notifyPromotionUnlocked,
+  notifyNewBooking,
+  notifyBookingCancelled,
+  notifyNewReview,
 };

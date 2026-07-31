@@ -24,9 +24,9 @@ exports.list = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);
     if (!doiTacId) return res.status(403).json({ success: false, message: 'Không phải đối tác' });
-    const { ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay } = req.query;
+    const { ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay, keyword } = req.query;
     const result = await partnerPromotionService.list(doiTacId, {
-      ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay,
+      ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay, keyword,
     });
     res.json({ success: true, data: result.data, stats: result.stats });
   } catch (err) {

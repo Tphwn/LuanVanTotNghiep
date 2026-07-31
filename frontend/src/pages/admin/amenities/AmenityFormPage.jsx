@@ -71,7 +71,7 @@ const buildEditInitialState = (existing) => {
   };
 };
 
-const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedName = '' }) => {
+const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedName = '', fromProposalId = null }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -155,15 +155,28 @@ const AmenityFormFields = ({ isEdit, editInitial, amenityId, onDone, suggestedNa
       if (notifyScope === 'one') payload.ma_doi_tac = Number(partnerId);
     }
 
+    const proposalId = !isEdit
+      ? (fromProposalId || Number(sessionStorage.getItem('amenityFromProposalId') || 0) || null)
+      : null;
+
     try {
       if (isEdit) {
         await dispatch(updateAmenity({ id: amenityId, data: payload })).unwrap();
       } else {
         await dispatch(addAmenity(payload)).unwrap();
+        if (proposalId) {
+          try {
+            await api.patch(`/admin/notifications/${proposalId}/amenity-added`);
+          } catch (markErr) {
+            console.warn('Không đánh dấu đề xuất đã thêm:', markErr?.response?.data || markErr);
+          } finally {
+            sessionStorage.removeItem('amenityFromProposalId');
+          }
+        }
       }
       navigate('/admin/amenities', {
         state: {
-          tab: scope === 'phong' ? 'room' : 'hotel',
+          tab: proposalId ? 'requests' : (scope === 'phong' ? 'room' : 'hotel'),
           toast: isEdit ? 'Cập nhật tiện nghi thành công' : 'Thêm tiện nghi thành công',
         },
       });
@@ -301,6 +314,7 @@ export default function AmenityFormPage() {
 
   const isEdit = Boolean(id);
   const suggestedName = location.state?.suggestedName || '';
+  const fromProposalId = location.state?.fromProposalId || null;
 
   const existing = useMemo(
     () => (isEdit ? list.find((item) => String(item.ma_tien_nghi) === String(id)) : null),
@@ -345,6 +359,7 @@ export default function AmenityFormPage() {
         editInitial={editInitial}
         amenityId={id}
         suggestedName={suggestedName}
+        fromProposalId={fromProposalId}
       />
 
       <style>{`

@@ -308,6 +308,7 @@ const CustomerHotelDetailPage = () => {
       ngay_tra: searchParams.get('ngay_tra') || '',
       so_khach: searchParams.get('so_khach') || '',
       tre_em: searchParams.get('tre_em') || '',
+      tuoi_tre_em: searchParams.get('tuoi_tre_em') || '',
       so_phong: searchParams.get('so_phong') || '',
     });
     return {
@@ -317,6 +318,9 @@ const CustomerHotelDetailPage = () => {
       so_khach: String(resolved.so_khach),
       tre_em: String(resolved.tre_em || 0),
       so_phong: String(resolved.so_phong || 1),
+      ...(resolved.tuoi_tre_em?.length
+        ? { tuoi_tre_em: resolved.tuoi_tre_em.join(',') }
+        : {}),
     };
   }, [searchParams]);
 

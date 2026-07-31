@@ -1,17 +1,81 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell } from 'lucide-react';
+import {
+  Bell,
+  Building2,
+  Handshake,
+  Sparkles,
+  TicketPercent,
+  Wallet,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-
-const formatTime = (d) => new Date(d).toLocaleString('vi-VN');
+import { formatNotifyDateTime, formatRelativeTime } from '../../utils/formatRelativeTime';
 
 const LOAI_LABEL = {
   tien_nghi: 'Tiện nghi',
   he_thong: 'Hệ thống',
   dat_phong: 'Đặt phòng',
-  thanh_toan: 'Thanh toán',
+  thanh_toan: 'Tài chính',
   danh_gia: 'Đánh giá',
   khuyen_mai: 'Khuyến mãi',
+};
+
+/**
+ * Icon + tone theo nhóm nghiệp vụ admin (không dùng màu nền để phân loại sự kiện).
+ * Nền item chỉ phản ánh đã đọc / chưa đọc.
+ */
+const getAdminNotifyMeta = (n) => {
+  const title = String(n.tieu_de || '').toLowerCase();
+  const loai = n.loai;
+
+  if (loai === 'thanh_toan' || title.includes('hoàn tiền')) {
+    return {
+      kind: 'finance',
+      Icon: Wallet,
+      badge: 'Tài chính',
+      path: '/admin/finance?tab=refunds',
+    };
+  }
+  if (loai === 'khuyen_mai' || title.includes('khuyến mãi')) {
+    return {
+      kind: 'promo',
+      Icon: TicketPercent,
+      badge: 'Khuyến mãi',
+      path: '/admin/promotions',
+    };
+  }
+  if (loai === 'tien_nghi' || title.includes('tiện nghi')) {
+    return {
+      kind: 'amenity',
+      Icon: Sparkles,
+      badge: 'Tiện nghi',
+      path: '/admin/amenities',
+      state: { tab: 'requests' },
+    };
+  }
+  if (title.includes('hợp tác')) {
+    return {
+      kind: 'partner',
+      Icon: Handshake,
+      badge: 'Hợp tác',
+      path: '/admin/partner-requests',
+    };
+  }
+  if (title.includes('khách sạn')) {
+    return {
+      kind: 'hotel',
+      Icon: Building2,
+      badge: 'Khách sạn',
+      path: '/admin/hotels?tab=cho_duyet',
+    };
+  }
+
+  return {
+    kind: 'system',
+    Icon: Bell,
+    badge: LOAI_LABEL[loai] || 'Hệ thống',
+    path: null,
+  };
 };
 
 const AdminNotificationBell = () => {
@@ -68,9 +132,10 @@ const AdminNotificationBell = () => {
 
   const handleClickItem = async (n) => {
     if (!n.da_doc) await markRead(n.ma_thong_bao);
-    if (n.loai === 'tien_nghi') {
+    const meta = getAdminNotifyMeta(n);
+    if (meta.path) {
       setOpen(false);
-      navigate('/admin/amenities', { state: { tab: 'requests' } });
+      navigate(meta.path, meta.state ? { state: meta.state } : undefined);
     }
   };
 
@@ -112,24 +177,40 @@ const AdminNotificationBell = () => {
           <div className="partner-notify-dropdown-body">
             {items.length === 0 ? (
               <div className="partner-notify-empty">Chưa có thông báo</div>
-            ) : items.map((n) => (
-              <button
-                key={n.ma_thong_bao}
-                type="button"
-                onClick={() => handleClickItem(n)}
-                className={`partner-notify-item${n.da_doc ? '' : ' is-unread'}`}
-              >
-                <div className="partner-notify-item-title">
-                  {!n.da_doc && <span className="partner-notify-unread-dot">●</span>}
-                  {n.tieu_de}
-                  {LOAI_LABEL[n.loai] && (
-                    <span className="partner-notify-type">{LOAI_LABEL[n.loai]}</span>
-                  )}
-                </div>
-                <div className="partner-notify-item-content">{n.noi_dung}</div>
-                <div className="partner-notify-item-time">{formatTime(n.ngay_gui)}</div>
-              </button>
-            ))}
+            ) : items.map((n) => {
+              const meta = getAdminNotifyMeta(n);
+              const Icon = meta.Icon;
+              const unread = !n.da_doc;
+
+              return (
+                <button
+                  key={n.ma_thong_bao}
+                  type="button"
+                  onClick={() => handleClickItem(n)}
+                  className={`partner-notify-item${unread ? ' is-unread' : ''}`}
+                >
+                  <span className={`partner-notify-icon partner-notify-icon--${meta.kind}`} aria-hidden>
+                    <Icon size={14} strokeWidth={2.4} />
+                  </span>
+
+                  <div className="partner-notify-item-main">
+                    <div className="partner-notify-item-title-row">
+                      <div className="partner-notify-item-title">
+                        {n.tieu_de}
+                        {meta.badge && (
+                          <span className="partner-notify-type">{meta.badge}</span>
+                        )}
+                      </div>
+                      {unread && <span className="partner-notify-unread-dot" aria-label="Chưa đọc" />}
+                    </div>
+                    <div className="partner-notify-item-content">{n.noi_dung}</div>
+                    <div className="partner-notify-item-time" title={formatNotifyDateTime(n.ngay_gui)}>
+                      {formatRelativeTime(n.ngay_gui)}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

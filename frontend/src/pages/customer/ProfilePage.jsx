@@ -8,6 +8,7 @@ import useToast from '../../hooks/useToast';
 import {
   AUTH_MSG,
   validatePhone,
+  sanitizePhoneInput,
   validatePassword,
   validatePasswordConfirm,
   validateNewPasswordNotSame,
@@ -254,9 +255,11 @@ function ProfilePage() {
                   className={infoFieldErrors.so_dien_thoai ? 'input-invalid' : ''}
                   value={infoForm.so_dien_thoai}
                   onChange={(e) => {
-                    setInfoForm({ ...infoForm, so_dien_thoai: e.target.value });
+                    setInfoForm({ ...infoForm, so_dien_thoai: sanitizePhoneInput(e.target.value) });
                     setInfoFieldErrors((prev) => ({ ...prev, so_dien_thoai: undefined }));
                   }}
+                  inputMode="numeric"
+                  maxLength={10}
                   placeholder="09xxxxxxxx"
                 />
                 {infoFieldErrors.so_dien_thoai && (

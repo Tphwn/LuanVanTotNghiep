@@ -79,3 +79,44 @@ export const formatTimeAgo = (date) => {
   if (hrs < 24) return `${hrs} giờ trước`;
   return `${Math.floor(hrs / 24)} ngày trước`;
 };
+
+const AMENITY_ADDED_MARKER = '[[AMENITY_ADDED]]';
+
+const normalizeAmenityText = (value) => (
+  String(value || '')
+    .trim()
+    .toLocaleLowerCase('vi')
+    .replace(/\s+/g, ' ')
+);
+
+export const extractAmenityProposalName = (proposal) => {
+  const fromTitle = String(proposal?.tieu_de || '').match(/Đề xuất tiện nghi mới:\s*(.+)$/i);
+  if (fromTitle?.[1]) return fromTitle[1].trim();
+  const fromBody = String(proposal?.noi_dung || '').match(/đề xuất thêm tiện nghi\s+"([^"]+)"/i);
+  return fromBody?.[1]?.trim() || '';
+};
+
+export const getAmenityProposalContent = (proposal) => (
+  String(proposal?.noi_dung || '')
+    .replace(AMENITY_ADDED_MARKER, '')
+    .replace(/\n+/g, ' ')
+    .trim()
+);
+
+/** Khớp đúng hoặc tên tiện nghi nằm trong câu đề xuất (vd: "Hướng biển" ⊂ "...view phòng hướng biển") */
+const isAmenityNameMatched = (proposedName, amenityName) => {
+  const proposed = normalizeAmenityText(proposedName);
+  const amenity = normalizeAmenityText(amenityName);
+  if (!proposed || !amenity) return false;
+  if (proposed === amenity) return true;
+  if (amenity.length >= 4 && proposed.includes(amenity)) return true;
+  if (proposed.length >= 4 && amenity.includes(proposed)) return true;
+  return false;
+};
+
+export const isAmenityProposalAdded = (proposal, amenities = []) => {
+  if (String(proposal?.noi_dung || '').includes(AMENITY_ADDED_MARKER)) return true;
+  const proposedName = extractAmenityProposalName(proposal);
+  if (!proposedName) return false;
+  return amenities.some((item) => isAmenityNameMatched(proposedName, item?.ten));
+};

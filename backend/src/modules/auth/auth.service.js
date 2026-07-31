@@ -11,6 +11,14 @@ const {
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const OTP_TTL_MS = 10 * 60 * 1000;
+
+const buildOtpMeta = (hetHan) => {
+  const expires = hetHan instanceof Date ? hetHan : new Date(hetHan);
+  return {
+    otp_het_han: expires.toISOString(),
+    otp_ttl_seconds: Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000)),
+  };
+};
 const SHARED_PORTAL_ROLES = new Set(['khach_hang', 'doi_tac']);
 
 const assertPortalRole = (nguoiDung, vai_tro) => {
@@ -82,12 +90,13 @@ const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
   if (emailExists) {
     if (emailExists.reset_token === 'register' && emailExists.vai_tro === 'khach_hang') {
       const otp = generateOtp();
-      await setUserOtp(emailExists.ma_nguoi_dung, otp, 'register');
+      const hetHan = await setUserOtp(emailExists.ma_nguoi_dung, otp, 'register');
       await sendOtpEmail({ to: email, otp, purpose: 'register' });
       return {
         needs_otp: true,
         email,
         message: 'Email đã đăng ký nhưng chưa xác thực. Đã gửi lại mã OTP.',
+        ...buildOtpMeta(hetHan),
       };
     }
     throw { statusCode: 400, message: MSG.EMAIL_EXISTS };
@@ -96,6 +105,7 @@ const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
   if (phoneExists) throw { statusCode: 400, message: MSG.PHONE_EXISTS };
   const matKhauHash = await hash(mat_khau);
   const otp = generateOtp();
+  const otpHetHan = new Date(Date.now() + OTP_TTL_MS);
   const nguoiDung = await prisma.nguoi_dung.create({
     data: {
       email,
@@ -103,9 +113,9 @@ const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
       mat_khau: matKhauHash,
       vai_tro: 'khach_hang',
       otp_code: otp,
-      otp_het_han: new Date(Date.now() + OTP_TTL_MS),
+      otp_het_han: otpHetHan,
       reset_token: 'register',
-      token_het_han: new Date(Date.now() + OTP_TTL_MS),
+      token_het_han: otpHetHan,
     },
   });
   await prisma.khach_hang.create({
@@ -129,6 +139,7 @@ const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
     needs_otp: true,
     email,
     message: 'Đã gửi mã OTP tới email. Vui lòng xác thực để hoàn tất đăng ký.',
+    ...buildOtpMeta(otpHetHan),
   };
 };
 
@@ -189,11 +200,12 @@ const resendOtp = async ({ email, purpose = 'register', vai_tro }) => {
   }
   const otpPurpose = purpose === 'reset' ? 'reset' : 'register';
   const otp = generateOtp();
-  await setUserOtp(nguoiDung.ma_nguoi_dung, otp, otpPurpose);
+  const hetHan = await setUserOtp(nguoiDung.ma_nguoi_dung, otp, otpPurpose);
   await sendOtpEmail({ to: email, otp, purpose: otpPurpose });
   return {
     message: 'Đã gửi lại mã OTP tới email',
     email,
+    ...buildOtpMeta(hetHan),
   };
 };
 
@@ -351,11 +363,12 @@ const forgotPassword = async ({ email, vai_tro }) => {
   assertPortalRole(nguoiDung, vai_tro);
 
   const otp = generateOtp();
+  const otpHetHan = new Date(Date.now() + OTP_TTL_MS);
   await prisma.nguoi_dung.update({
     where: { ma_nguoi_dung: nguoiDung.ma_nguoi_dung },
     data: {
       otp_code: otp,
-      otp_het_han: new Date(Date.now() + OTP_TTL_MS),
+      otp_het_han: otpHetHan,
       reset_token: null,
       token_het_han: null,
     },
@@ -370,7 +383,11 @@ const forgotPassword = async ({ email, vai_tro }) => {
     };
   }
 
-  return { message: 'Mã OTP đã được gửi.', email };
+  return {
+    message: 'Mã OTP đã được gửi.',
+    email,
+    ...buildOtpMeta(otpHetHan),
+  };
 };
 
 const verifyResetOtp = async ({ email, otp, vai_tro }) => {

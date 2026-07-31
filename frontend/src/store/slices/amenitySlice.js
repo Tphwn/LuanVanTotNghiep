@@ -59,7 +59,7 @@ export const fetchAmenityProposals = createAsyncThunk(
   async () => {
     const res = await api.get('/admin/notifications', { params: { loai: 'tien_nghi' } });
     const items = res.data.data?.items || [];
-    return items.filter((n) => String(n.tieu_de || '').startsWith('Đề xuất tiện nghi'));
+    return items.filter((n) => String(n.tieu_de || '').startsWith('Đề xuất tiện nghi mới:'));
   },
 );
 

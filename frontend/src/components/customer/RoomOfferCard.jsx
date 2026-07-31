@@ -6,6 +6,7 @@ import CustomerAmenityTags from './CustomerAmenityTags';
 import CustomerPriceOffer from './CustomerPriceOffer';
 import RoomDetailModal from './RoomDetailModal';
 import { resolveUploadUrl } from '../../utils/media';
+import { formatBedLabel } from '../../utils/bedDisplay';
 
 const MAX_ROOM_AMENITIES = 5;
 
@@ -69,6 +70,7 @@ const RoomOfferCard = ({
             sucChua={room.suc_chua}
             dienTich={room.dien_tich}
             soGiuong={room.so_giuong}
+            bedLabel={room.loai_giuong || formatBedLabel(room)}
           />
           <CustomerAmenityTags
             items={room.tien_nghi || []}

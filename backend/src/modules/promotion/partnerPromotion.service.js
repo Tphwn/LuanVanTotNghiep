@@ -6,6 +6,15 @@ const {
   syncExpiredPromotions,
   isPastPromotionEndDate,
 } = require('../../utils/promotionRules');
+const { notifyPromotionPendingApproval } = require('../../utils/adminNotify');
+
+const getPartnerName = async (doiTacId) => {
+  const partner = await prisma.doi_tac.findUnique({
+    where: { ma_doi_tac: Number(doiTacId) },
+    select: { ten_cong_ty: true },
+  });
+  return partner?.ten_cong_ty || '—';
+};
 
 const assertHotelOwnership = async (maKhachSan, doiTacId) => {
   const hotel = await prisma.khach_san.findFirst({
@@ -28,7 +37,7 @@ const getPartnerHotelIds = async (doiTacId) => {
 };
 
 const buildListWhere = (hotelIds, filters = {}) => {
-  const { ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay } = filters;
+  const { ma_khach_san, loai_giam, trang_thai, tu_ngay, den_ngay, keyword } = filters;
   const where = {
     loai_nguon: 'doi_tac',
     ma_khach_san: { in: hotelIds },
@@ -38,6 +47,13 @@ const buildListWhere = (hotelIds, filters = {}) => {
   if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
   if (tu_ngay) where.ngay_ket_thuc = { gte: new Date(tu_ngay) };
   if (den_ngay) where.ngay_bat_dau = { lte: new Date(den_ngay) };
+  if (keyword && String(keyword).trim()) {
+    const kw = String(keyword).trim();
+    where.OR = [
+      { ma_code: { contains: kw } },
+      { ten: { contains: kw } },
+    ];
+  }
   return where;
 };
 
@@ -206,6 +222,19 @@ const partnerPromotionService = {
       include: { khach_san: { select: { ten: true } } },
     });
 
+    try {
+      await notifyPromotionPendingApproval({
+        maKhuyenMai: created.ma_khuyen_mai,
+        maCode: created.ma_code,
+        ten: created.ten,
+        tenKhachSan: created.khach_san?.ten,
+        tenDoiTac: await getPartnerName(doiTacId),
+        isResubmit: false,
+      });
+    } catch {
+      /* ignore */
+    }
+
     return enrichPartnerAuditFields(created);
   },
 
@@ -266,6 +295,21 @@ const partnerPromotionService = {
       SET khoa_boi_doi_tac = FALSE, khoa_boi_admin = FALSE
       WHERE ma_khuyen_mai = ${id}
     `;
+
+    if (promo.trang_thai !== 'cho_duyet') {
+      try {
+        await notifyPromotionPendingApproval({
+          maKhuyenMai: updated.ma_khuyen_mai,
+          maCode: updated.ma_code,
+          ten: updated.ten,
+          tenKhachSan: updated.khach_san?.ten,
+          tenDoiTac: await getPartnerName(doiTacId),
+          isResubmit: true,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
 
     return enrichPartnerAuditFields(updated);
   },

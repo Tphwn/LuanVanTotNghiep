@@ -96,6 +96,17 @@ export const confirmCommission = createAsyncThunk('adminFinance/confirmComm', as
   }
 });
 
+export const confirmCommissionsBatch = createAsyncThunk(
+  'adminFinance/confirmCommBatch',
+  async (ids, { rejectWithValue }) => {
+    try {
+      return (await api.patch(`${PAYMENTS_API}/commissions/confirm-batch`, { ids })).data.data;
+    } catch (e) {
+      return rejectWithValue(e.response?.data?.message || 'Lỗi đối soát hàng loạt');
+    }
+  },
+);
+
 export const holdCommission = createAsyncThunk('adminFinance/holdComm', async (id, { rejectWithValue }) => {
   try {
     return (await api.patch(`${PAYMENTS_API}/commissions/${id}/hold`)).data.data;
@@ -263,6 +274,14 @@ const adminFinanceSlice = createSlice({
         upsertCommission(st, a.payload);
       })
       .addCase(confirmCommission.rejected, (st, a) => { st.error = a.payload; })
+      .addCase(confirmCommissionsBatch.fulfilled, (st, a) => {
+        const count = a.payload?.so_luong || 0;
+        st.successMsg = count > 0
+          ? `Đã đối soát ${count} đơn — chuyển sang thanh toán đối tác`
+          : 'Không có đơn nào được đối soát';
+        (a.payload?.items || []).forEach((row) => upsertCommission(st, row));
+      })
+      .addCase(confirmCommissionsBatch.rejected, (st, a) => { st.error = a.payload; })
       .addCase(holdCommission.fulfilled, (st, a) => {
         st.successMsg = 'Đã tạm giữ hoa hồng';
         upsertCommission(st, a.payload);
@@ -283,7 +302,7 @@ const adminFinanceSlice = createSlice({
       })
       .addCase(fetchPartnerPayoutById.rejected, (st) => { st.partnerPayoutDetailLoading = false; })
       .addCase(confirmPartnerPayout.fulfilled, (st, a) => {
-        st.successMsg = 'Đã xác nhận thanh toán đối tác';
+        st.successMsg = 'Xác nhận thanh toán đối tác thành công';
         st.partnerPayoutDetail = a.payload;
       })
       .addCase(confirmPartnerPayout.rejected, (st, a) => { st.error = a.payload; })

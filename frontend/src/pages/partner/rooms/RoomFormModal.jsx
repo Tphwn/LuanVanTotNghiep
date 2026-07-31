@@ -1,12 +1,20 @@
 import { useState, useRef } from 'react';
-import { X, Star } from 'lucide-react';
+import { X, Star, Megaphone, Plus, Trash2 } from 'lucide-react';
 import api from '../../../services/api';
 import { resolveUploadUrl } from '../../../utils/media';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import {
+  BED_TYPE_OPTIONS,
+  getBedSleepCapacity,
+  bedsToRows,
+  rowsToBeds,
+  validateBedsByCapacity,
+} from '../../../utils/bedDisplay';
 import { RoomAmenityPicker } from './components/RoomAmenityGroups';
 import PartnerRoomSubmitConfirmModal from './components/PartnerRoomSubmitConfirmModal';
 
 const MAX_ROOM_IMAGES = 30;
+const MAX_BED_PER_TYPE = 10;
 
 const parsePriceInput = (value) => Number(String(value || '').replace(/\./g, '').replace(/\D/g, '') || 0);
 
@@ -24,25 +32,51 @@ const buildRoomContextTag = (roomId, roomName) => {
   return `[loại phòng:moi:${name}]`;
 };
 
+const defaultBeds = (room) => {
+  if (!room) {
+    return { so_giuong_don: 0, so_giuong_doi: 1, so_giuong_lon: 0 };
+  }
+  if (
+    room.so_giuong_don != null
+    || room.so_giuong_doi != null
+    || room.so_giuong_lon != null
+  ) {
+    return {
+      so_giuong_don: Number(room.so_giuong_don) || 0,
+      so_giuong_doi: Number(room.so_giuong_doi) || 0,
+      so_giuong_lon: Number(room.so_giuong_lon) || 0,
+    };
+  }
+  return {
+    so_giuong_don: 0,
+    so_giuong_doi: Number(room.so_giuong) || 1,
+    so_giuong_lon: 0,
+  };
+};
+
+const nextBedRowId = () => `bed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
 const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   const isEdit = !!room;
+  const initialBeds = defaultBeds(isEdit ? room : null);
   const [form, setForm] = useState(isEdit ? {
     ten_loai: room.ten_loai,
     dien_tich: room.dien_tich || '',
-    suc_chua: room.suc_chua,
+    so_nguoi_lon: room.suc_chua ?? '',
+    so_tre_em: '',
     so_luong_phong: room.so_luong_phong,
     gia_co_ban: room.gia_co_ban ? formatPriceInput(room.gia_co_ban) : '',
-    so_giuong: room.so_giuong || 1,
     tien_nghi_ids: room.loai_phong_tien_nghi?.map((x) => x.ma_tien_nghi) || [],
   } : {
     ten_loai: '',
     dien_tich: '',
-    suc_chua: '',
+    so_nguoi_lon: '',
+    so_tre_em: '',
     so_luong_phong: '',
     gia_co_ban: '',
-    so_giuong: 1,
     tien_nghi_ids: [],
   });
+  const [bedRows, setBedRows] = useState(() => bedsToRows(initialBeds, { stamp: 'init' }));
 
   const [images, setImages] = useState(
     isEdit
@@ -69,8 +103,56 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
 
   const updateField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
-    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined, so_giuong: undefined }));
     if (formAlert) setFormAlert('');
+  };
+
+  const clearBedError = () => {
+    setFieldErrors((prev) => ({ ...prev, so_giuong: undefined, so_nguoi_lon: undefined }));
+    if (formAlert) setFormAlert('');
+  };
+
+  const syncAdultsToBedCap = (nextRows) => {
+    const cap = getBedSleepCapacity(rowsToBeds(nextRows));
+    setForm((prev) => {
+      const adults = Number(prev.so_nguoi_lon);
+      if (!prev.so_nguoi_lon || Number.isNaN(adults)) return prev;
+      if (cap > 0 && adults > cap) {
+        return { ...prev, so_nguoi_lon: cap };
+      }
+      return prev;
+    });
+  };
+
+  const updateBedRow = (id, patch) => {
+    setBedRows((prev) => {
+      const next = prev.map((row) => (row.id === id ? { ...row, ...patch } : row));
+      syncAdultsToBedCap(next);
+      return next;
+    });
+    clearBedError();
+  };
+
+  const addBedRow = () => {
+    const used = new Set(bedRows.map((r) => r.type));
+    const nextType = BED_TYPE_OPTIONS.find((o) => !used.has(o.type))?.type;
+    if (!nextType) return;
+    setBedRows((prev) => {
+      const next = [...prev, { id: nextBedRowId(), type: nextType, qty: 1 }];
+      syncAdultsToBedCap(next);
+      return next;
+    });
+    clearBedError();
+  };
+
+  const removeBedRow = (id) => {
+    setBedRows((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((row) => row.id !== id);
+      syncAdultsToBedCap(next);
+      return next;
+    });
+    clearBedError();
   };
 
   const applyValidationErrors = (errors) => {
@@ -85,8 +167,12 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
     if (!message) return {};
     if (message.includes('Tên loại')) return { ten_loai: message };
     if (message.includes('Diện tích')) return { dien_tich: message };
-    if (message.includes('Sức chứa')) return { suc_chua: message };
-    if (message.includes('Số giường')) return { so_giuong: message };
+    if (message.includes('Sức chứa') || message.includes('người lớn') || message.includes('Số khách')) {
+      return { so_nguoi_lon: message };
+    }
+    if (message.includes('giường') || message.includes('Giường') || message.includes('Phòng đơn') || message.includes('Phòng đôi')) {
+      return { so_giuong: message };
+    }
     if (message.includes('Số lượng phòng')) return { so_luong_phong: message };
     if (message.includes('Giá cơ bản')) return { gia_co_ban: message };
     if (message.includes('ảnh')) return { images: message };
@@ -173,6 +259,7 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
 
   const validateForm = () => {
     const errors = {};
+    const beds = rowsToBeds(bedRows);
     if (!form.ten_loai?.trim()) errors.ten_loai = 'Tên loại phòng là bắt buộc';
     if (form.dien_tich === '' || form.dien_tich === null || form.dien_tich === undefined) {
       errors.dien_tich = 'Diện tích là bắt buộc';
@@ -180,17 +267,30 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
       const dienTich = Number(form.dien_tich);
       if (Number.isNaN(dienTich) || dienTich < 10) errors.dien_tich = 'Diện tích phải từ 10 m² trở lên';
     }
-    if (form.suc_chua === '' || form.suc_chua === null || form.suc_chua === undefined) {
-      errors.suc_chua = 'Sức chứa là bắt buộc';
-    } else {
-      const sucChua = Number(form.suc_chua);
-      if (Number.isNaN(sucChua) || sucChua < 1) errors.suc_chua = 'Sức chứa phải từ 1 trở lên';
+    const types = bedRows.map((r) => r.type);
+    if (new Set(types).size !== types.length) {
+      errors.so_giuong = 'Mỗi loại giường chỉ được chọn một lần';
+    } else if (beds.so_giuong < 1) {
+      errors.so_giuong = 'Vui lòng chọn ít nhất 1 giường';
     }
-    if (!form.so_giuong) {
-      errors.so_giuong = 'Số giường là bắt buộc';
+
+    if (form.so_nguoi_lon === '' || form.so_nguoi_lon === null || form.so_nguoi_lon === undefined) {
+      errors.so_nguoi_lon = 'Số người lớn là bắt buộc';
     } else {
-      const soGiuong = Number(form.so_giuong);
-      if (Number.isNaN(soGiuong) || soGiuong < 1) errors.so_giuong = 'Số giường phải từ 1 trở lên';
+      const adults = Number(form.so_nguoi_lon);
+      if (Number.isNaN(adults) || adults < 1) {
+        errors.so_nguoi_lon = 'Số người lớn phải từ 1 trở lên';
+      } else if (!errors.so_giuong) {
+        const bedErr = validateBedsByCapacity(adults, beds);
+        if (bedErr) errors.so_nguoi_lon = bedErr;
+      }
+    }
+
+    if (form.so_tre_em !== '' && form.so_tre_em != null) {
+      const children = Number(form.so_tre_em);
+      if (Number.isNaN(children) || children < 0) {
+        errors.so_tre_em = 'Số trẻ em phải từ 0 trở lên';
+      }
     }
     if (form.so_luong_phong === '' || form.so_luong_phong === null || form.so_luong_phong === undefined) {
       errors.so_luong_phong = 'Số lượng phòng là bắt buộc';
@@ -230,14 +330,18 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
     }
 
     const giaCoBan = parsePriceInput(form.gia_co_ban);
+    const beds = rowsToBeds(bedRows);
     const formData = new FormData();
     formData.append('ma_khach_san', hotelId);
     formData.append('ten_loai', form.ten_loai.trim());
     formData.append('gia_co_ban', giaCoBan);
     formData.append('dien_tich', Number(form.dien_tich));
-    formData.append('suc_chua', Number(form.suc_chua));
+    formData.append('suc_chua', Number(form.so_nguoi_lon));
     formData.append('so_luong_phong', Number(form.so_luong_phong));
-    formData.append('so_giuong', Number(form.so_giuong));
+    formData.append('so_giuong', beds.so_giuong);
+    formData.append('so_giuong_don', beds.so_giuong_don);
+    formData.append('so_giuong_doi', beds.so_giuong_doi);
+    formData.append('so_giuong_lon', beds.so_giuong_lon);
     formData.append('mo_ta', '');
     formData.append('tien_nghi_ids', JSON.stringify(form.tien_nghi_ids));
 
@@ -305,6 +409,16 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
   });
   const labelSt = { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: '#1a2e28' };
   const errSt = { margin: '4px 0 0', fontSize: 12, color: '#e05c5c' };
+  const beds = rowsToBeds(bedRows);
+  const bedSleepCap = getBedSleepCapacity(beds);
+  const canAddBedRow = bedRows.length < BED_TYPE_OPTIONS.length;
+  const adultsValue = form.so_nguoi_lon === '' ? null : Number(form.so_nguoi_lon);
+  const adultsOverCap = (
+    bedSleepCap > 0
+    && adultsValue != null
+    && !Number.isNaN(adultsValue)
+    && adultsValue > bedSleepCap
+  );
 
   return (
     <div>
@@ -340,50 +454,218 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
           {fieldErrors.ten_loai && <p style={errSt}>{fieldErrors.ten_loai}</p>}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label style={labelSt}>
-              Diện tích (m²)
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelSt}>
+            Diện tích (m²)
+            {' '}
+            <span style={{ color: '#e05c5c' }}>*</span>
+          </label>
+          <input
+            type="number"
+            style={inputStyle('dien_tich')}
+            placeholder="25"
+            value={form.dien_tich}
+            onChange={(e) => updateField('dien_tich', e.target.value)}
+          />
+          {fieldErrors.dien_tich && <p style={errSt}>{fieldErrors.dien_tich}</p>}
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 8,
+          }}
+          >
+            <label style={{ ...labelSt, marginBottom: 0 }}>
+              Cấu hình giường
               {' '}
               <span style={{ color: '#e05c5c' }}>*</span>
             </label>
-            <input
-              type="number"
-              style={inputStyle('dien_tich')}
-              placeholder="25"
-              value={form.dien_tich}
-              onChange={(e) => updateField('dien_tich', e.target.value)}
-            />
-            {fieldErrors.dien_tich && <p style={errSt}>{fieldErrors.dien_tich}</p>}
-          </div>
-          <div>
-            <label style={labelSt}>
-              Sức chứa (khách)
-              {' '}
-              <span style={{ color: '#e05c5c' }}>*</span>
-            </label>
-            <input
-              type="number"
-              style={inputStyle('suc_chua')}
-              value={form.suc_chua}
-              onChange={(e) => updateField('suc_chua', e.target.value)}
-            />
-            {fieldErrors.suc_chua && <p style={errSt}>{fieldErrors.suc_chua}</p>}
-          </div>
-          <div>
-            <label style={labelSt}>
-              Số giường
-              {' '}
-              <span style={{ color: '#e05c5c' }}>*</span>
-            </label>
-            <select
-              style={inputStyle('so_giuong')}
-              value={form.so_giuong}
-              onChange={(e) => updateField('so_giuong', e.target.value)}
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={addBedRow}
+              disabled={!canAddBedRow}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: canAddBedRow ? 1 : 0.5 }}
             >
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} giường</option>)}
-            </select>
-            {fieldErrors.so_giuong && <p style={errSt}>{fieldErrors.so_giuong}</p>}
+              <Plus size={14} />
+              Thêm loại giường
+            </button>
+          </div>
+
+          <div style={{
+            border: fieldErrors.so_giuong ? '1px solid #ffb3b3' : '1px solid #e5e7eb',
+            borderRadius: 10,
+            padding: '12px 14px',
+            background: '#f8faf9',
+          }}
+          >
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 88px 36px',
+              gap: 10,
+              marginBottom: 8,
+            }}
+            >
+              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>Loại giường</span>
+              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>Số lượng</span>
+              <span />
+            </div>
+
+            {bedRows.map((row) => {
+              const usedByOthers = new Set(
+                bedRows.filter((r) => r.id !== row.id).map((r) => r.type),
+              );
+              return (
+                <div
+                  key={row.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 88px 36px',
+                    gap: 10,
+                    alignItems: 'center',
+                    marginBottom: 8,
+                  }}
+                >
+                  <select
+                    value={row.type}
+                    onChange={(e) => updateBedRow(row.id, { type: e.target.value })}
+                    style={{
+                      ...inputSt,
+                      background: '#fff',
+                      height: 40,
+                    }}
+                  >
+                    {BED_TYPE_OPTIONS.map((opt) => (
+                      <option
+                        key={opt.type}
+                        value={opt.type}
+                        disabled={usedByOthers.has(opt.type)}
+                      >
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_BED_PER_TYPE}
+                    value={row.qty}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        updateBedRow(row.id, { qty: '' });
+                        return;
+                      }
+                      const n = Math.min(MAX_BED_PER_TYPE, Math.max(1, Number(raw) || 1));
+                      updateBedRow(row.id, { qty: n });
+                    }}
+                    style={{
+                      ...inputSt,
+                      background: '#fff',
+                      height: 40,
+                      textAlign: 'center',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Xóa loại giường"
+                    onClick={() => removeBedRow(row.id)}
+                    disabled={bedRows.length <= 1}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      border: 'none',
+                      background: 'transparent',
+                      color: bedRows.length <= 1 ? '#cbd5e1' : '#94a3b8',
+                      cursor: bedRows.length <= 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              );
+            })}
+
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#3C7363' }}>
+              Sức chứa giường:
+              {' '}
+              <strong>
+                {bedSleepCap}
+                {' '}
+                người lớn
+              </strong>
+              {' '}
+              (đơn=1, đôi/lớn=2)
+            </p>
+          </div>
+
+          {fieldErrors.so_giuong && <p style={errSt}>{fieldErrors.so_giuong}</p>}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={labelSt}>
+              Số người lớn tối đa
+              {' '}
+              <span style={{ color: '#e05c5c' }}>*</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={bedSleepCap > 0 ? bedSleepCap : undefined}
+              style={{
+                ...inputStyle('so_nguoi_lon'),
+                border: (fieldErrors.so_nguoi_lon || adultsOverCap) ? '1px solid #ffb3b3' : inputSt.border,
+              }}
+              placeholder={bedSleepCap > 0 ? `Tối đa ${bedSleepCap}` : 'Chọn giường trước'}
+              value={form.so_nguoi_lon}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') {
+                  updateField('so_nguoi_lon', '');
+                  return;
+                }
+                const n = Math.floor(Number(raw) || 0);
+                if (n < 1) {
+                  updateField('so_nguoi_lon', '');
+                  return;
+                }
+                if (bedSleepCap > 0 && n > bedSleepCap) {
+                  updateField('so_nguoi_lon', bedSleepCap);
+                  return;
+                }
+                updateField('so_nguoi_lon', n);
+              }}
+            />
+            {(fieldErrors.so_nguoi_lon || adultsOverCap) && (
+              <p style={errSt}>
+                {fieldErrors.so_nguoi_lon
+                  || `Số lượng giường không đủ đáp ứng cho ${adultsValue} khách. Vui lòng thêm giường hoặc giảm số khách tối đa.`}
+              </p>
+            )}
+          </div>
+          <div>
+            <label style={labelSt}>Số trẻ em (tham khảo)</label>
+            <input
+              type="number"
+              min={0}
+              style={inputStyle('so_tre_em')}
+              placeholder="0"
+              value={form.so_tre_em}
+              onChange={(e) => updateField('so_tre_em', e.target.value)}
+            />
+            {fieldErrors.so_tre_em && <p style={errSt}>{fieldErrors.so_tre_em}</p>}
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#888', lineHeight: 1.4 }}>
+              Chỉ tham khảo khi khai báo — không lưu. Tìm phòng theo người lớn; trẻ em tính phụ thu khi đặt.
+            </p>
           </div>
         </div>
 
@@ -401,8 +683,18 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
               onChange={(e) => updateField('so_luong_phong', e.target.value)}
             />
             {fieldErrors.so_luong_phong && <p style={errSt}>{fieldErrors.so_luong_phong}</p>}
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#888' }}>
-              Tất cả phòng sẽ được mở bán ngay khi tạo loại phòng
+            <p style={{
+              margin: '6px 0 0',
+              fontSize: 11,
+              color: '#888',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 6,
+              lineHeight: 1.4,
+            }}
+            >
+              <Megaphone size={14} style={{ flexShrink: 0, marginTop: 1, color: '#3C7363' }} aria-hidden />
+              <span>Tất cả phòng sẽ được mở bán ngay khi tạo loại phòng</span>
             </p>
           </div>
           <div>
@@ -432,7 +724,7 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
           />
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-outline btn-sm"
             style={{ marginTop: 8 }}
             onClick={() => setShowPropose(!showPropose)}
           >
@@ -467,7 +759,11 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
           Hình ảnh loại phòng
           {' '}
           <span style={{ fontWeight: 400, color: '#888', textTransform: 'none' }}>
-            ({images.length}/{MAX_ROOM_IMAGES})
+            (
+            {images.length}
+            /
+            {MAX_ROOM_IMAGES}
+            )
           </span>
         </h4>
         <label style={{
@@ -485,7 +781,11 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
         >
           <div style={{ fontSize: 13, color: '#3C7363', fontWeight: 500 }}>Kéo thả hoặc click để chọn ảnh</div>
           <div style={{ fontSize: 12, color: '#5a7a72' }}>
-            Hỗ trợ JPG, PNG (Tối đa {MAX_ROOM_IMAGES} ảnh)
+            Hỗ trợ JPG, PNG (Tối đa
+            {' '}
+            {MAX_ROOM_IMAGES}
+            {' '}
+            ảnh)
           </div>
           <input
             ref={fileRef}

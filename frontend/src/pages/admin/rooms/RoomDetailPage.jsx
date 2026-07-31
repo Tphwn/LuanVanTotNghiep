@@ -161,9 +161,9 @@ const RoomDetailPage = () => {
           <InfoItem label="Mô tả"value={room.mo_ta ||"Chưa có mô tả"} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px"}}>
             <InfoItem label="Diện tích"value={room.dien_tich ? `${room.dien_tich} m²` :"—"} />
-            <InfoItem label="Sức chứa"value={`${room.suc_chua} khách`} />
-            <InfoItem label="Số giường"value={`${room.so_giuong} giường`} />
-            <InfoItem label="Loại giường"value={room.loai_giuong} />
+            <InfoItem label="Sức chứa" value={`${room.suc_chua} người lớn`} />
+            <InfoItem label="Số giường" value={`${room.so_giuong} giường`} />
+            <InfoItem label="Loại giường" value={room.loai_giuong || '—'} />
           </div>
         </div>
 

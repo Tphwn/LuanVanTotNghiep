@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import adminUserService from '../../../../services/adminUserService';
+import { sanitizePhoneInput, validatePhone } from '../../../../utils/authValidation';
 
 const INITIAL_FORM = {
   ten_cong_ty: '',
@@ -25,7 +26,8 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'so_dien_thoai' ? sanitizePhoneInput(value) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -35,7 +37,8 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
     if (!formData.ten_cong_ty.trim()) errors.ten_cong_ty = 'Tên công ty / đối tác là bắt buộc';
     if (!formData.email.trim()) errors.email = 'Email đăng nhập là bắt buộc';
     else if (!emailRegex.test(formData.email.trim())) errors.email = 'Email đăng nhập không hợp lệ';
-    if (!formData.so_dien_thoai.trim()) errors.so_dien_thoai = 'Số điện thoại là bắt buộc';
+    const phoneErr = validatePhone(formData.so_dien_thoai);
+    if (phoneErr) errors.so_dien_thoai = phoneErr;
     if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
     else if (formData.mat_khau.length < 6) errors.mat_khau = 'Mật khẩu tối thiểu 6 ký tự';
     if (formData.phan_tram_hoa_hong !== '') {
@@ -129,7 +132,7 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
             <div>
               <label style={labelStyle}>Số điện thoại <span style={{ color: '#e05c5c' }}>*</span></label>
-              <input type="tel" placeholder="0987654321" {...inputProps('so_dien_thoai')} />
+              <input type="tel" inputMode="numeric" maxLength={10} placeholder="0987654321" {...inputProps('so_dien_thoai')} />
               {fieldErrors.so_dien_thoai && <p style={errStyle}>{fieldErrors.so_dien_thoai}</p>}
             </div>
             <div>

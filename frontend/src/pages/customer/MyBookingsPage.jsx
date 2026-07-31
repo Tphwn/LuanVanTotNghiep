@@ -274,18 +274,10 @@ const MyBookingsPage = () => {
                     <div className="my-booking-action-stack">
                       <CustomerButton
                         className="my-booking-pay-btn"
-                        to={ROUTES.CUSTOMER.PAYMENT.replace(':id', b.ma_dat_phong)}
-                        state={{ backTo: ROUTES.CUSTOMER.MY_BOOKINGS }}
+                        to={ROUTES.CUSTOMER.TRANSACTION_DETAIL.replace(':id', b.ma_dat_phong)}
                       >
-                        Quay lại thanh toán
+                        Xem giao dịch
                       </CustomerButton>
-                      <button
-                        type="button"
-                        className="my-booking-cancel-btn"
-                        onClick={() => openCancel(b, 'payment')}
-                      >
-                        Hủy thanh toán
-                      </button>
                     </div>
                   )}
                   {!b.can_thanh_toan && (b.co_the_huy || canCancelBooking(b.trang_thai)) && (

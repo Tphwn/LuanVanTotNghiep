@@ -5,6 +5,11 @@ const {
   validatePassword,
   validatePhone,
 } = require('../../utils/authValidation');
+const {
+  validateBankAccount,
+  mapBankAccount,
+} = require('../../utils/bankAccountHelpers');
+const { getVietQrBanks, findBankByCodeOrBin } = require('../../utils/vietQrBanks');
 
 const getPartnerProfile = async (userId) => {
   const user = await prisma.nguoi_dung.findUnique({
@@ -34,7 +39,11 @@ const getPartnerProfile = async (userId) => {
     ten_cong_ty: partner.ten_cong_ty,
     ma_so_thue: partner.ma_so_thue,
     dia_chi: partner.dia_chi,
+    phan_tram_hoa_hong: partner.phan_tram_hoa_hong != null
+      ? Number(partner.phan_tram_hoa_hong)
+      : 15,
     trang_thai: partner.trang_thai,
+    tai_khoan_ngan_hang: mapBankAccount(partner),
   };
 };
 
@@ -49,7 +58,7 @@ const updateProfile = async (userId, data, avatarUrl) => {
   }
 
   const partnerId = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung.ma_doi_tac;
-  const { ten_hien_thi, so_dien_thoai } = data;
+  const { ten_hien_thi, so_dien_thoai, dia_chi } = data;
 
   if (so_dien_thoai !== undefined) {
     const phoneErr = validatePhone(so_dien_thoai);
@@ -68,6 +77,11 @@ const updateProfile = async (userId, data, avatarUrl) => {
 
   const partnerUpdate = {};
   if (ten_hien_thi !== undefined) partnerUpdate.ten_cong_ty = ten_hien_thi.trim();
+  if (dia_chi !== undefined) {
+    partnerUpdate.dia_chi = dia_chi == null || String(dia_chi).trim() === ''
+      ? null
+      : String(dia_chi).trim();
+  }
   if (avatarUrl) partnerUpdate.anh_dai_dien = avatarUrl;
 
   await prisma.$transaction(async (tx) => {
@@ -88,6 +102,49 @@ const updateProfile = async (userId, data, avatarUrl) => {
 
   return getPartnerProfile(userId);
 };
+
+const updateBankAccount = async (userId, payload = {}) => {
+  const user = await prisma.nguoi_dung.findUnique({
+    where: { ma_nguoi_dung: parseInt(userId, 10) },
+    include: { doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: true },
+  });
+
+  if (!user?.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung) {
+    throw new Error('Không tìm thấy hồ sơ đối tác');
+  }
+
+  const so_tai_khoan = String(payload.so_tai_khoan || '').trim();
+  const ten_chu_tai_khoan = String(payload.ten_chu_tai_khoan || '').trim();
+  const ma_ngan_hang = String(payload.ma_ngan_hang || '').trim();
+
+  const validationError = validateBankAccount({
+    so_tai_khoan,
+    ten_chu_tai_khoan,
+    ma_ngan_hang,
+  });
+  if (validationError) throw new Error(validationError);
+
+  const bank = await findBankByCodeOrBin(ma_ngan_hang);
+  if (!bank) {
+    throw new Error('Ngân hàng không hợp lệ. Vui lòng chọn lại từ danh sách');
+  }
+
+  const partnerId = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung.ma_doi_tac;
+  await prisma.doi_tac.update({
+    where: { ma_doi_tac: partnerId },
+    data: {
+      so_tai_khoan,
+      ten_chu_tai_khoan,
+      ma_ngan_hang: bank.code || bank.bin,
+      ten_ngan_hang: bank.short_name || bank.name,
+      logo_ngan_hang: bank.logo || null,
+    },
+  });
+
+  return getPartnerProfile(userId);
+};
+
+const listBanks = async () => getVietQrBanks();
 
 const changePassword = async (userId, { mat_khau_cu, mat_khau_moi }) => {
   const user = await prisma.nguoi_dung.findUnique({
@@ -147,6 +204,8 @@ const changePhone = async (userId, so_dien_thoai) => {
 module.exports = {
   getPartnerProfile,
   updateProfile,
+  updateBankAccount,
+  listBanks,
   changePassword,
   changePhone,
 };

@@ -100,6 +100,11 @@ const getUserById = async (id) => {
           trang_thai: true,
           phan_tram_hoa_hong: true,
           ngay_cap_tai_khoan: true,
+          so_tai_khoan: true,
+          ten_chu_tai_khoan: true,
+          ma_ngan_hang: true,
+          ten_ngan_hang: true,
+          logo_ngan_hang: true,
           khach_san: {
             select: {
               ma_khach_san: true,
@@ -286,10 +291,88 @@ const createPartner = async (data, adminId) => {
   });
 };
 
+const updatePartner = async (userId, data) => {
+  const MSG = require('../../../constants/messages');
+  const id = Number(userId);
+
+  const existing = await prisma.nguoi_dung.findUnique({
+    where: { ma_nguoi_dung: id },
+    include: {
+      doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung: true,
+    },
+  });
+
+  if (!existing || existing.vai_tro !== 'doi_tac' || !existing.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung) {
+    throw { statusCode: 404, message: 'Không tìm thấy tài khoản đối tác' };
+  }
+
+  const partner = existing.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
+  const email = String(data.email || '').trim();
+  const phone = String(data.so_dien_thoai || '').trim();
+
+  if (email && email !== existing.email) {
+    const emailExists = await prisma.nguoi_dung.findFirst({
+      where: { email, NOT: { ma_nguoi_dung: id } },
+    });
+    if (emailExists) throw { statusCode: 400, message: MSG.EMAIL_EXISTS };
+  }
+
+  if (phone && phone !== existing.so_dien_thoai) {
+    const phoneExists = await prisma.nguoi_dung.findFirst({
+      where: { so_dien_thoai: phone, NOT: { ma_nguoi_dung: id } },
+    });
+    if (phoneExists) throw { statusCode: 400, message: MSG.PHONE_EXISTS };
+  }
+
+  const nextStatus = data.trang_thai === 'bi_khoa' ? 'bi_khoa' : 'hoat_dong';
+  const userUpdate = {
+    email,
+    so_dien_thoai: phone,
+    trang_thai: nextStatus,
+  };
+
+  if (data.mat_khau) {
+    userUpdate.mat_khau = await hash(data.mat_khau);
+  }
+
+  const partnerUpdate = {
+    ten_cong_ty: String(data.ten_cong_ty || '').trim(),
+    ma_so_thue: data.ma_so_thue ? String(data.ma_so_thue).trim() : null,
+    dia_chi: data.dia_chi ? String(data.dia_chi).trim() : null,
+    phan_tram_hoa_hong: data.phan_tram_hoa_hong == null || data.phan_tram_hoa_hong === ''
+      ? 15
+      : Number(data.phan_tram_hoa_hong),
+    trang_thai: nextStatus,
+  };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.nguoi_dung.update({
+      where: { ma_nguoi_dung: id },
+      data: userUpdate,
+    });
+
+    await tx.doi_tac.update({
+      where: { ma_doi_tac: partner.ma_doi_tac },
+      data: partnerUpdate,
+    });
+
+    if (existing.trang_thai !== nextStatus) {
+      if (nextStatus === 'bi_khoa') {
+        await lockPartnerResources(tx, partner.ma_doi_tac);
+      } else {
+        await unlockPartnerResources(tx, partner.ma_doi_tac);
+      }
+    }
+  });
+
+  return getUserById(id);
+};
+
 module.exports = {
   getUsers,
   getUserById,
   lockUser,
   unlockUser,
   createPartner,
+  updatePartner,
 };

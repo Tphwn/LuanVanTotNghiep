@@ -63,13 +63,17 @@ const CommissionDetailModal = ({ commissionId, onClose, onRequestAction }) => {
     const dp = detail.dat_phong;
     const tongTruocGiam = Number(dp?.tong_tien_goc) || 0;
     const khuyenMai = Number(dp?.tien_giam) || 0;
-    const tongThanhToan = Number(detail.doanh_thu_don ?? dp?.thanh_toan_cuoi) || 0;
+    // Tiền khách thực trả (có VAT), không dùng doanh_thu_don (GMV gốc)
+    const tongThanhToan = Number(detail.tien_khach_tra ?? dp?.thanh_toan_cuoi) || 0;
+    const afterDiscount = Math.max(0, tongTruocGiam - khuyenMai);
+    const vat = Math.max(0, tongThanhToan - afterDiscount);
     const tyLe = Number(detail.ty_le_hoa_hong) || 0;
     const tienHh = Number(detail.so_tien_hoa_hong) || 0;
-    const tienDoiTac = Number(
-      detail.tien_doi_tac_nhan ?? Math.max(0, tongThanhToan - tienHh),
-    );
-    return { tongTruocGiam, khuyenMai, tongThanhToan, tyLe, tienHh, tienDoiTac };
+    const tienTroGia = Number(detail.tien_tro_gia_san) || 0;
+    const tienDoiTac = Number(detail.tien_doi_tac_nhan) || 0;
+    return {
+      tongTruocGiam, khuyenMai, vat, tongThanhToan, tyLe, tienHh, tienTroGia, tienDoiTac,
+    };
   }, [detail]);
 
   if (!commissionId) return null;
@@ -163,6 +167,13 @@ const CommissionDetailModal = ({ commissionId, onClose, onRequestAction }) => {
                     value={`- ${formatCurrency(money.khuyenMai)}`}
                     tone="muted"
                   />
+                  {money.vat > 0 && (
+                    <MoneyLine
+                      label="VAT"
+                      value={`+ ${formatCurrency(money.vat)}`}
+                      tone="muted"
+                    />
+                  )}
                   <MoneyLine
                     label="Tổng khách thanh toán"
                     value={formatCurrency(money.tongThanhToan)}
@@ -173,6 +184,13 @@ const CommissionDetailModal = ({ commissionId, onClose, onRequestAction }) => {
                     value={`- ${formatCurrency(money.tienHh)}`}
                     tone="deduct"
                   />
+                  {money.tienTroGia > 0 && (
+                    <MoneyLine
+                      label="Trợ giá sàn"
+                      value={`+ ${formatCurrency(money.tienTroGia)}`}
+                      tone="muted"
+                    />
+                  )}
                   <div className="comm-receipt-money-divider" />
                   <div className="comm-receipt-partner-total">
                     <span>Tiền đối tác nhận</span>

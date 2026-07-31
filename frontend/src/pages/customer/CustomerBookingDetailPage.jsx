@@ -7,7 +7,6 @@ import ROUTES from '../../constants/routes';
 import {
   CUSTOMER_PAYMENT_STATUS,
   formatBookingDate,
-  formatCurrency,
 } from '../../utils/bookingDisplay';
 import { setFlashToast } from '../../utils/flashToast';
 import '../../assets/styles/home.css';
@@ -16,6 +15,8 @@ const PAYMENT_METHOD_LABEL = {
   online: 'Trực tuyến',
   tai_khach_san: 'Tại khách sạn',
 };
+
+const fmtVnd = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VNĐ`;
 
 const getStatusTone = (status) => {
   if (status === 'da_huy' || status === 'tu_choi') return 'cancel';
@@ -105,6 +106,7 @@ export default function CustomerBookingDetailPage() {
 
   const { khach_san, loai_phong, luu_tru, nguoi_dat, thanh_toan } = booking;
   const statusTone = getStatusTone(booking.trang_thai);
+  const isCancelled = booking.trang_thai === 'da_huy' || booking.trang_thai === 'tu_choi';
   const thueVat = Math.max(
     0,
     Number(thanh_toan?.tong_tien || 0) - Number(thanh_toan?.tam_tinh || 0) + Number(thanh_toan?.giam_gia || 0),
@@ -121,9 +123,18 @@ export default function CustomerBookingDetailPage() {
           >
             ← Quay lại
           </button>
-          <span className={`my-booking-status my-booking-status--${statusTone}`}>
-            {booking.trang_thai_label}
-          </span>
+          <div className="booking-detail-toolbar-right">
+            {booking.ma_don && (
+              <span className="booking-detail-order-id">
+                ID đặt chỗ:
+                {' '}
+                {booking.ma_don}
+              </span>
+            )}
+            <span className={`my-booking-status my-booking-status--${statusTone}`}>
+              {booking.trang_thai_label}
+            </span>
+          </div>
         </div>
 
         <section className="booking-detail-block">
@@ -131,7 +142,6 @@ export default function CustomerBookingDetailPage() {
           <div className="booking-detail-split">
             <div className="booking-detail-split-col">
               <InfoField label="Họ tên" value={nguoi_dat?.ho_ten} />
-              <InfoField label="Mã đơn" value={booking.ma_don} />
               <InfoField label="Đặt ngày" value={formatBookingDate(booking.ngay_dat)} />
               <InfoField label="Ghi chú" value={nguoi_dat?.ghi_chu || 'Không có'} />
             </div>
@@ -147,6 +157,8 @@ export default function CustomerBookingDetailPage() {
           <InfoField label="Khách sạn" value={khach_san?.ten} />
           <InfoField label="Loại phòng" value={loai_phong?.ten_loai} />
           <InfoField label="Địa chỉ" value={khach_san?.dia_chi} />
+
+          <h3 className="booking-detail-cluster-title">Thông tin phòng</h3>
           <div className="booking-detail-split booking-detail-split--room">
             <div className="booking-detail-split-col">
               <InfoField label="Số giường" value={loai_phong?.loai_giuong} />
@@ -154,8 +166,6 @@ export default function CustomerBookingDetailPage() {
                 label="Diện tích"
                 value={loai_phong?.dien_tich != null ? `${loai_phong.dien_tich}m2` : '—'}
               />
-              <InfoField label="Ngày nhận phòng" value={formatBookingDate(luu_tru?.ngay_nhan)} />
-              <InfoField label="Người lớn" value={luu_tru?.so_nguoi_lon ?? 0} />
             </div>
             <div className="booking-detail-split-col">
               <InfoField
@@ -163,13 +173,29 @@ export default function CustomerBookingDetailPage() {
                 value={loai_phong?.suc_chua ? `${loai_phong.suc_chua} Khách` : '—'}
               />
               <InfoField label="Số phòng" value={luu_tru?.so_phong ?? 1} />
+            </div>
+          </div>
+
+          <h3 className="booking-detail-cluster-title">Lịch trình</h3>
+          <div className="booking-detail-split">
+            <div className="booking-detail-split-col">
+              <InfoField label="Ngày nhận phòng" value={formatBookingDate(luu_tru?.ngay_nhan)} />
+            </div>
+            <div className="booking-detail-split-col">
               <InfoField label="Ngày trả phòng" value={formatBookingDate(luu_tru?.ngay_tra)} />
+            </div>
+          </div>
+
+          <h3 className="booking-detail-cluster-title">Khách lưu trú</h3>
+          <div className="booking-detail-split">
+            <div className="booking-detail-split-col">
+              <InfoField label="Người lớn" value={luu_tru?.so_nguoi_lon ?? 0} />
+            </div>
+            <div className="booking-detail-split-col">
               <InfoField label="Trẻ em" value={luu_tru?.so_tre_em ?? 0} />
             </div>
           </div>
         </section>
-
-      
 
         <section className="booking-detail-block booking-detail-block--payment">
           <h2 className="booking-detail-block-title">Chi tiết thanh toán</h2>
@@ -177,11 +203,11 @@ export default function CustomerBookingDetailPage() {
             <div className="booking-detail-split-col">
               <InfoField
                 label="Giá mỗi đêm"
-                value={thanh_toan?.gia_moi_dem != null ? formatCurrency(thanh_toan.gia_moi_dem) : '—'}
+                value={thanh_toan?.gia_moi_dem != null ? fmtVnd(thanh_toan.gia_moi_dem) : '—'}
               />
               <InfoField
                 label="Giảm giá"
-                value={thanh_toan?.giam_gia != null ? formatCurrency(thanh_toan.giam_gia) : '—'}
+                value={thanh_toan?.giam_gia != null ? fmtVnd(thanh_toan.giam_gia) : '—'}
               />
               <InfoField
                 label="Trạng thái thanh toán"
@@ -190,54 +216,66 @@ export default function CustomerBookingDetailPage() {
             </div>
             <div className="booking-detail-split-col">
               <InfoField label="Số đêm ở" value={luu_tru?.so_dem ?? 0} />
-              <InfoField label="Thuế & VAT" value={formatCurrency(thueVat)} />
+              <InfoField label="Thuế & VAT" value={fmtVnd(thueVat)} />
               <InfoField
                 label="Phương thức thanh toán"
                 value={PAYMENT_METHOD_LABEL[thanh_toan?.phuong_thuc] || thanh_toan?.phuong_thuc}
               />
             </div>
           </div>
-          {(booking.trang_thai === 'da_huy' || booking.trang_thai === 'tu_choi') && (
-          <section className="booking-detail-block booking-detail-block--cancel">
-            <h2 className="booking-detail-block-title">
-              {booking.huy_boi_admin ? 'Đơn bị admin hủy' : 'Thông tin hủy đơn'}
-            </h2>
-            {booking.ly_do_huy && (
-              <InfoField
-                label={booking.huy_boi_admin ? 'Lý do admin hủy' : 'Lý do hủy'}
-                value={booking.ly_do_huy}
-              />
-            )}
-            {booking.tom_tat_hoan_tien && (
-              <div className="booking-detail-cancel-note">
-                <span className="booking-detail-cancel-note-label">Hoàn tiền</span>
-                <p>{booking.tom_tat_hoan_tien}</p>
+          {isCancelled && (
+            <section className="booking-detail-block booking-detail-block--cancel">
+              <h2 className="booking-detail-block-title">
+                {booking.huy_boi_admin ? 'Đơn bị admin hủy' : 'Thông tin hủy đơn'}
+              </h2>
+              {booking.ly_do_huy && (
+                <p className="booking-detail-cancel-reason">
+                  <span className="booking-detail-cancel-reason-label">
+                    {booking.huy_boi_admin ? 'Lý do admin hủy' : 'Lý do hủy'}
+                    :
+                  </span>
+                  {' '}
+                  {booking.ly_do_huy}
+                </p>
+              )}
+              {booking.tom_tat_hoan_tien && (
+                <p className="booking-detail-cancel-summary">{booking.tom_tat_hoan_tien}</p>
+              )}
+              {booking.hoan_tien?.trang_thai_label && (
+                <div className="booking-detail-cancel-status">
+                  <span className="booking-detail-cancel-status-label">Trạng thái hoàn tiền</span>
+                  <span className={`refund-status-badge refund-status-badge--${booking.hoan_tien.trang_thai || 'none'}`}>
+                    {booking.hoan_tien.trang_thai_label}
+                  </span>
+                </div>
+              )}
+            </section>
+          )}
+          {isCancelled ? (
+            <div className="booking-detail-totals">
+              <div className="booking-detail-total-row booking-detail-total-row--muted">
+                <span className="booking-detail-total-label">Tổng tiền đã thanh toán (Ban đầu)</span>
+                <strong className="booking-detail-total-amount booking-detail-total-amount--muted">
+                  {thanh_toan?.tong_tien != null ? fmtVnd(thanh_toan.tong_tien) : '—'}
+                </strong>
               </div>
-            )}
-            {booking.hoan_tien?.so_tien_hoan > 0 && (
-              <InfoField
-                label="Số tiền hoàn"
-                value={
-                  booking.huy_boi_admin
-                    ? `100% — ${formatCurrency(booking.hoan_tien.so_tien_hoan)}`
-                    : formatCurrency(booking.hoan_tien.so_tien_hoan)
-                }
-              />
-            )}
-            {booking.hoan_tien?.trang_thai_label && (
-              <InfoField
-                label="Trạng thái hoàn tiền"
-                value={booking.hoan_tien.trang_thai_label}
-              />
-            )}
-          </section>
-        )}
-          <div className="booking-detail-total-row">
-            <span className="booking-detail-total-label">Tổng thanh toán</span>
-            <strong className="booking-detail-total-amount">
-              {thanh_toan?.tong_tien != null ? formatCurrency(thanh_toan.tong_tien) : '—'}
-            </strong>
-          </div>
+              {Number(booking.hoan_tien?.so_tien_hoan) > 0 && (
+                <div className="booking-detail-total-row booking-detail-total-row--refund">
+                  <span className="booking-detail-total-label">Tổng tiền được hoàn trả</span>
+                  <strong className="booking-detail-total-amount booking-detail-total-amount--refund">
+                    {fmtVnd(booking.hoan_tien.so_tien_hoan)}
+                  </strong>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="booking-detail-total-row">
+              <span className="booking-detail-total-label">Tổng thanh toán</span>
+              <strong className="booking-detail-total-amount">
+                {thanh_toan?.tong_tien != null ? fmtVnd(thanh_toan.tong_tien) : '—'}
+              </strong>
+            </div>
+          )}
         </section>
 
         {booking.can_thanh_toan && (

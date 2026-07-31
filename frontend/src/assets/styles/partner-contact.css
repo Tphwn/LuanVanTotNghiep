@@ -181,6 +181,11 @@
   color: var(--color-text);
 }
 
+.form-required {
+  color: #e05c5c;
+  font-weight: 700;
+}
+
 .form-control {
   padding: 11px 14px;
   border: 1px solid var(--color-border);

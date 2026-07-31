@@ -43,5 +43,8 @@ exports.rejectRefund = async (req, res) => {
 };
 
 exports.confirmCommission = wrap(async (req) => svc.confirmCommission(req.params.id, req.user?.id));
+exports.confirmCommissionsBatch = wrap(async (req) => (
+  svc.confirmCommissionsBatch(req.body?.ids || req.body?.ma_hoa_hong_ids, req.user?.id)
+));
 exports.holdCommission = wrap(async (req) => svc.holdCommission(req.params.id, req.body?.ghi_chu));
 exports.releaseCommissionHold = wrap(async (req) => svc.releaseCommissionHold(req.params.id));

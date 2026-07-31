@@ -43,16 +43,9 @@ const buildRoomWhere = (filters = {}) => {
   return where;
 };
 
-const getLoaiGiuongLabel = (soGiuong, sucChua) => {
-  const n = Number(soGiuong) || 1;
-  const sc = Number(sucChua) || 1;
-  if (n === 1) {
-    if (sc >= 4) return '1 giường đôi lớn + sofa';
-    if (sc >= 2) return '1 giường đôi';
-    return '1 giường đơn';
-  }
-  return `${n} giường đơn`;
-};
+const { formatBedLabel } = require('../../../utils/bedHelpers');
+
+const getLoaiGiuongLabel = (room) => formatBedLabel(room);
 
 const computeInventory = (room, daDat = 0) => {
   const tong = Number(room.so_luong_phong);
@@ -183,7 +176,7 @@ const getRoomTypeById = async (id) => {
   return {
     ...room,
     hinh_anh,
-    loai_giuong: getLoaiGiuongLabel(room.so_giuong, room.suc_chua),
+    loai_giuong: getLoaiGiuongLabel(room),
     ...calcRoomAvailability(room, daDat),
     tinh_trang_phong: computeInventory(room, daDat),
     gia: gia,

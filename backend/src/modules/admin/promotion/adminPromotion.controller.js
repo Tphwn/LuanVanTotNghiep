@@ -73,16 +73,16 @@ exports.lockPromotion = async (req, res, next) => {
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
     }
-    const lyDo = req.body?.ly_do?.trim();
-    if (!lyDo) {
-      return res.status(400).json({ success: false, message: 'Phải kèm lý do tạm ngưng' });
-    }
+    const lyDo = req.body?.ly_do?.trim() || '';
     const data = await service.lockPromotion(id, req.user.id, lyDo);
     if (!data) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy khuyến mãi' });
     }
     res.json({ success: true, data, message: 'Đã tạm ngưng khuyến mãi' });
   } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ success: false, message: err.message });
+    }
     next(err);
   }
 };

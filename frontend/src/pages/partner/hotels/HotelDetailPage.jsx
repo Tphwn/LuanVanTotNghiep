@@ -357,6 +357,10 @@ export default function HotelDetailPage() {
                     value: hotel.tuoi_toi_da_mien_phi != null ? `${hotel.tuoi_toi_da_mien_phi} tuổi` : '—',
                   },
                   { label: 'Phụ thu trẻ em', value: formatMoneyVnd(hotel.phu_thu_tre_em) },
+                  {
+                    label: '% Phí VAT',
+                    value: hotel.phan_tram_vat != null ? `${Number(hotel.phan_tram_vat)}%` : '10%',
+                  },
                 ]}
               />
 

@@ -6,7 +6,7 @@ import api from '../../services/api';
 import { formatCurrency } from '../../utils/bookingDisplay';
 import ROUTES from '../../constants/routes';
 import ReportDateFilter from './reports/components/ReportDateFilter';
-import { ChartCard, CountLine, RevenueLine } from './reports/components/ReportUI';
+import { ChartCard, RevenueBookingTrend } from './reports/components/ReportUI';
 import {
   getPresetRange,
   PRESET_PERIOD_LABEL,
@@ -166,14 +166,10 @@ const DashboardPage = () => {
 
           <div className="admin-dashboard-body">
             <section className="admin-dashboard-charts">
-              <ChartCard title={`Doanh thu theo: ${periodLabel}`}>
-                <RevenueLine data={charts.doanh_thu_theo_thoi_gian} />
-              </ChartCard>
-              <ChartCard title={`Đơn đặt theo: ${periodLabel}`}>
-                <CountLine
-                  data={charts.don_dat_theo_thoi_gian}
-                  name="Đơn đặt"
-                  color="#3C7363"
+              <ChartCard title={`Doanh thu & đơn đặt theo: ${periodLabel}`}>
+                <RevenueBookingTrend
+                  revenueData={charts.doanh_thu_theo_thoi_gian}
+                  bookingData={charts.don_dat_theo_thoi_gian}
                 />
               </ChartCard>
             </section>

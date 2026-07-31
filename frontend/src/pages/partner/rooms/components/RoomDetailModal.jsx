@@ -5,6 +5,7 @@ import {
 import { resolveUploadUrl } from '../../../../utils/media';
 import { TRANG_THAI } from '../constants';
 import { fmt } from '../utils';
+import { formatBedLabel } from '../../../../utils/bedDisplay';
 import { ROOM_CATEGORY_GROUPS } from '../../../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../../../admin/amenities/utils';
 
@@ -126,7 +127,7 @@ export default function RoomDetailModal({ room, onClose }) {
           </div>
           <div className="partner-room-detail-item">
             <BedDouble size={16} strokeWidth={1.75} />
-            <span>Số giường: <strong>{room.so_giuong}</strong></span>
+            <span>Số giường: <strong>{room.loai_giuong || formatBedLabel(room)}</strong></span>
           </div>
           <div className="partner-room-detail-item">
             <Home size={16} strokeWidth={1.75} />

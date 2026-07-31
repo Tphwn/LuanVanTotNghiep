@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const { isLockedByAdminRoom } = require('../../utils/partnerLockHelpers');
+const { parseBedCounts, validateBedsByCapacity } = require('../../utils/bedHelpers');
 
 const roomService = {
 
@@ -42,8 +43,11 @@ const roomService = {
 
     const {
       ten_loai, dien_tich, suc_chua, so_luong_phong,
-      gia_co_ban, mo_ta, so_giuong = 1, tien_nghi_ids = [],
+      gia_co_ban, mo_ta, tien_nghi_ids = [],
     } = data;
+    const beds = parseBedCounts(data);
+    const bedError = validateBedsByCapacity(suc_chua, beds);
+    if (bedError) throw new Error(bedError);
 
     return await prisma.loai_phong.create({
       data: {
@@ -55,7 +59,10 @@ const roomService = {
         so_luong_mo_ban: Number(so_luong_phong),
         gia_co_ban: Number(gia_co_ban),
         mo_ta,
-        so_giuong: Number(so_giuong),
+        so_giuong: beds.so_giuong,
+        so_giuong_don: beds.so_giuong_don,
+        so_giuong_doi: beds.so_giuong_doi,
+        so_giuong_lon: beds.so_giuong_lon,
         trang_thai: 'hoat_dong',
         loai_phong_tien_nghi: {
           create: tien_nghi_ids.map(id => ({
@@ -82,8 +89,11 @@ const roomService = {
 
     const {
       ten_loai, dien_tich, suc_chua, so_luong_phong,
-      gia_co_ban, mo_ta, so_giuong, tien_nghi_ids = [],
+      gia_co_ban, mo_ta, tien_nghi_ids = [],
     } = data;
+    const beds = parseBedCounts(data);
+    const bedError = validateBedsByCapacity(suc_chua, beds);
+    if (bedError) throw new Error(bedError);
 
     // Xóa tiện nghi cũ rồi tạo lại
     await prisma.loai_phong_tien_nghi.deleteMany({
@@ -111,7 +121,10 @@ const roomService = {
         })(),
         gia_co_ban: Number(gia_co_ban),
         mo_ta,
-        so_giuong: Number(so_giuong),
+        so_giuong: beds.so_giuong,
+        so_giuong_don: beds.so_giuong_don,
+        so_giuong_doi: beds.so_giuong_doi,
+        so_giuong_lon: beds.so_giuong_lon,
         loai_phong_tien_nghi: {
           create: tien_nghi_ids.map(id => ({
             ma_tien_nghi: Number(id),

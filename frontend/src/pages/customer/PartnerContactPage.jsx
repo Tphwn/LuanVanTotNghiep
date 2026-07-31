@@ -4,7 +4,7 @@ import partnerContactService from '../../services/partnerContactService';
 import publicHotelService from '../../services/publicHotelService';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
-import { validateEmail, validatePhone } from '../../utils/authValidation';
+import { validateEmail, validatePhone, sanitizePhoneInput } from '../../utils/authValidation';
 import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/partner-contact.css';
 
@@ -55,7 +55,8 @@ const PartnerContactPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'phone' ? sanitizePhoneInput(value) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -234,7 +235,11 @@ const PartnerContactPage = () => {
             <h3 className="form-group-title">Thông tin người đại diện</h3>
             <div className="form-grid">
               <div className="form-group">
-                <label htmlFor="fullName">Họ và tên *</label>
+                <label htmlFor="fullName">
+                  Họ và tên
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <input
                   id="fullName"
                   type="text"
@@ -248,11 +253,18 @@ const PartnerContactPage = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="phone">Số điện thoại *</label>
+                <label htmlFor="phone">
+                  Số điện thoại
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <input
                   id="phone"
                   type="tel"
                   name="phone"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
                   value={formData.phone}
                   onChange={handleInputChange}
                   className={`form-control${fieldErrors.phone ? ' input-invalid' : ''}`}
@@ -262,7 +274,11 @@ const PartnerContactPage = () => {
               </div>
 
               <div className="form-group full-width">
-                <label htmlFor="email">Email liên hệ *</label>
+                <label htmlFor="email">
+                  Email liên hệ
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <input
                   id="email"
                   type="email"
@@ -279,7 +295,11 @@ const PartnerContactPage = () => {
             <h3 className="form-group-title">Thông tin cơ sở lưu trú</h3>
             <div className="form-grid">
               <div className="form-group">
-                <label htmlFor="hotelName">Tên Khách sạn/Homestay *</label>
+                <label htmlFor="hotelName">
+                  Tên Khách sạn/Homestay
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <input
                   id="hotelName"
                   type="text"
@@ -293,7 +313,11 @@ const PartnerContactPage = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="scale">Quy mô số phòng *</label>
+                <label htmlFor="scale">
+                  Quy mô số phòng
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <select
                   id="scale"
                   name="scale"
@@ -309,7 +333,11 @@ const PartnerContactPage = () => {
               </div>
 
               <div className="form-group full-width">
-                <label htmlFor="city">Tỉnh / Thành phố *</label>
+                <label htmlFor="city">
+                  Tỉnh / Thành phố
+                  {' '}
+                  <span className="form-required" aria-hidden>*</span>
+                </label>
                 <select
                   id="city"
                   name="city"

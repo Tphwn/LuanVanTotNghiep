@@ -39,6 +39,36 @@ export default function HotelListSection({
 }) {
   const showPartnerFilter = Boolean(partnerOptions?.length);
 
+  const emptyListMessage = (() => {
+    const hasExtraFilter = Boolean(partnerFilter)
+      || Boolean(hotelNameFilter)
+      || Boolean(locationFilter);
+    if (statusFilter === 'cho_duyet') {
+      return hasExtraFilter
+        ? 'Không tìm thấy khách sạn chờ duyệt phù hợp'
+        : 'Danh sách khách sạn chờ duyệt trống';
+    }
+    if (statusFilter === 'bi_khoa' || statusFilter === 'tu_choi') {
+      return hasExtraFilter
+        ? 'Không tìm thấy khách sạn bị khóa phù hợp'
+        : 'Danh sách khách sạn bị khóa trống';
+    }
+    if (statusFilter === 'hoat_dong') {
+      return hasExtraFilter
+        ? 'Không tìm thấy khách sạn đang hoạt động phù hợp'
+        : 'Danh sách khách sạn đang hoạt động trống';
+    }
+    if (statusFilter === 'inactive') {
+      return hasExtraFilter
+        ? 'Không tìm thấy khách sạn ngưng hoạt động phù hợp'
+        : 'Danh sách khách sạn ngưng hoạt động trống';
+    }
+    if (hasExtraFilter || (statusFilter && statusFilter !== 'all')) {
+      return 'Không tìm thấy khách sạn phù hợp';
+    }
+    return 'Chưa có khách sạn nào';
+  })();
+
   return (
     <>
       {filterTabs?.length > 0 && (
@@ -121,7 +151,7 @@ export default function HotelListSection({
 
         {filteredHotels.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không có khách sạn phù hợp bộ lọc</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <div className="mgmt-table-scroll">

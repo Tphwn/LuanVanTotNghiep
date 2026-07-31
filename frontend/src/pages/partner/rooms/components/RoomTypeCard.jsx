@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { TRANG_THAI } from '../constants';
 import { fmt, getMainImage } from '../utils';
+import { formatBedLabel } from '../../../../utils/bedDisplay';
 
 export default function RoomTypeCard({ room, onEdit, onToggle, onManageImages }) {
   const st = TRANG_THAI[room.trang_thai] || { label: room.trang_thai, cls: 'badge-default' };
@@ -84,7 +85,7 @@ export default function RoomTypeCard({ room, onEdit, onToggle, onManageImages })
           </div>
           <div className="rt-detail-row">
             <BedDouble size={14} strokeWidth={1.8} />
-            <span><strong>Số giường:</strong> {room.so_giuong} giường</span>
+            <span><strong>Số giường:</strong> {room.loai_giuong || formatBedLabel(room)}</span>
           </div>
           <div className="rt-detail-row">
             <Home size={14} strokeWidth={1.8} />

@@ -8,6 +8,7 @@ const POLICY_FIELDS = [
   'phu_thu_thu_cung',
   'tuoi_toi_da_mien_phi',
   'phu_thu_tre_em',
+  'phan_tram_vat',
   'noi_quy_khac',
 ];
 
@@ -19,6 +20,7 @@ const DEFAULT_POLICY = {
   phu_thu_thu_cung: null,
   tuoi_toi_da_mien_phi: null,
   phu_thu_tre_em: null,
+  phan_tram_vat: 10,
   noi_quy_khac: null,
 };
 
@@ -57,6 +59,15 @@ const parseHotelRulesInput = (body) => {
   }
   if (body.phu_thu_tre_em !== undefined) {
     rules.phu_thu_tre_em = parseMoneyInt(body.phu_thu_tre_em);
+  }
+  if (body.phan_tram_vat !== undefined) {
+    const raw = String(body.phan_tram_vat).trim().replace(',', '.');
+    if (raw === '') {
+      rules.phan_tram_vat = 10;
+    } else {
+      const n = Number(raw);
+      rules.phan_tram_vat = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 10;
+    }
   }
 
   if (body.noi_quy_khac !== undefined) {

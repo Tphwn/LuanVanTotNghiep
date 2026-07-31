@@ -154,8 +154,15 @@ const AmenitiesPage = () => {
 
   const handleAddFromProposal = (proposal) => {
     const match = String(proposal.tieu_de || '').match(/Đề xuất tiện nghi mới:\s*(.+)$/i);
+    const proposalId = proposal.ma_thong_bao;
+    if (proposalId) {
+      sessionStorage.setItem('amenityFromProposalId', String(proposalId));
+    }
     navigate('/admin/amenities/create', {
-      state: { suggestedName: match?.[1]?.trim() || '' },
+      state: {
+        suggestedName: match?.[1]?.trim() || '',
+        fromProposalId: proposalId,
+      },
     });
   };
 
@@ -242,6 +249,7 @@ const AmenitiesPage = () => {
       ) : (
         <RequestsSection
           proposals={proposals}
+          amenities={list}
           loading={false}
           onMarkRead={handleMarkProposalRead}
           onAddAmenity={handleAddFromProposal}

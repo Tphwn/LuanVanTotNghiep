@@ -18,6 +18,14 @@ const EMPTY_STATS = {
   total: 0, cho_duyet: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
 };
 
+const formatPromoUsage = (item) => {
+  const used = Math.max(0, Number(item?.so_luot_da_dung) || 0);
+  if (item?.so_luot_toi_da != null) {
+    return `${used} / ${item.so_luot_toi_da}`;
+  }
+  return String(used);
+};
+
 const LOAI_GIAM = {
   phan_tram: 'Phần trăm (%)',
   so_tien: 'Số tiền (VNĐ)',
@@ -142,7 +150,7 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             />
             <InfoRow
               label="Số lượt sử dụng"
-              value={`${item.so_luot_da_dung}${item.so_luot_toi_da != null ? ` / ${item.so_luot_toi_da}` : ''}`}
+              value={formatPromoUsage(item)}
             />
             {item.ly_do && <InfoRow label="Lý do" value={item.ly_do} />}
             {item.khoa_boi_admin && (
@@ -345,6 +353,7 @@ const PartnerPromotionsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const { toast, showToast } = useToast();
 
+  const [keyword, setKeyword] = useState('');
   const [hotelFilter, setHotelFilter] = useState('');
   const [loaiGiamFilter, setLoaiGiamFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -366,6 +375,7 @@ const PartnerPromotionsPage = () => {
     setLoading(true);
     try {
       const params = { ...getDateRange(timePreset, tuNgay, denNgay) };
+      if (keyword.trim()) params.keyword = keyword.trim();
       if (hotelFilter) params.ma_khach_san = hotelFilter;
       if (loaiGiamFilter !== 'all') params.loai_giam = loaiGiamFilter;
       if (statusFilter !== 'all') params.trang_thai = statusFilter;
@@ -380,7 +390,7 @@ const PartnerPromotionsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay, showToast]);
+  }, [keyword, hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay, showToast]);
 
   useEffect(() => {
     api.get('/partner/promotions/hotels').then((res) => {
@@ -395,6 +405,7 @@ const PartnerPromotionsPage = () => {
   }, [loadPromotions]);
 
   const clearFilters = () => {
+    setKeyword('');
     setHotelFilter('');
     setLoaiGiamFilter('all');
     setStatusFilter('all');
@@ -565,7 +576,7 @@ const PartnerPromotionsPage = () => {
   const {
     pagedItems, currentPage, totalPages, setPage, pageNumbers, rangeFrom, rangeTo, showPagination,
   } = useListPagination(items, PAGE_SIZE, [
-    hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay,
+    keyword, hotelFilter, loaiGiamFilter, statusFilter, timePreset, tuNgay, denNgay,
   ]);
 
   const confirmCfg = confirmTarget ? CONFIRM_CONFIG[confirmTarget.action] : null;
@@ -584,91 +595,105 @@ const PartnerPromotionsPage = () => {
       <SummaryStats items={statItems} />
 
       <div className="mgmt-toolbar mgmt-toolbar--filters">
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="partner-promo-hotel">Khách sạn</label>
-          <select
-            id="partner-promo-hotel"
-            className="mgmt-select-inline"
-            value={hotelFilter}
-            onChange={(e) => setHotelFilter(e.target.value)}
-          >
-            <option value="">Tất cả khách sạn</option>
-            {hotels.map((h) => (
-              <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
-            ))}
-          </select>
-        </div>
+        <div className="partner-promotions-filters-fields">
+          <div className="mgmt-filter-field mgmt-filter-field--grow">
+            <label className="mgmt-filter-label" htmlFor="partner-promo-keyword">Tìm kiếm</label>
+            <input
+              id="partner-promo-keyword"
+              type="search"
+              className="mgmt-select-inline"
+              placeholder="Mã khuyến mãi, tên khuyến mãi..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="partner-promo-loaigiam">Loại khuyến mãi</label>
-          <select
-            id="partner-promo-loaigiam"
-            className="mgmt-select-inline"
-            value={loaiGiamFilter}
-            onChange={(e) => setLoaiGiamFilter(e.target.value)}
-          >
-            <option value="all">Tất cả loại</option>
-            <option value="phan_tram">Phần trăm (%)</option>
-            <option value="so_tien">Số tiền (VNĐ)</option>
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="partner-promo-hotel">Khách sạn</label>
+            <select
+              id="partner-promo-hotel"
+              className="mgmt-select-inline"
+              value={hotelFilter}
+              onChange={(e) => setHotelFilter(e.target.value)}
+            >
+              <option value="">Tất cả khách sạn</option>
+              {hotels.map((h) => (
+                <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="partner-promo-status">Trạng thái</label>
-          <select
-            id="partner-promo-status"
-            className="mgmt-select-inline"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="cho_duyet">Chờ duyệt</option>
-            <option value="hoat_dong">Đang hoạt động</option>
-            <option value="an">Bị khóa</option>
-            <option value="tu_choi">Từ chối</option>
-            <option value="het_han">Hết hạn</option>
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="partner-promo-loaigiam">Loại khuyến mãi</label>
+            <select
+              id="partner-promo-loaigiam"
+              className="mgmt-select-inline"
+              value={loaiGiamFilter}
+              onChange={(e) => setLoaiGiamFilter(e.target.value)}
+            >
+              <option value="all">Tất cả loại</option>
+              <option value="phan_tram">Phần trăm (%)</option>
+              <option value="so_tien">Số tiền (VNĐ)</option>
+            </select>
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="partner-promo-time">Thời gian</label>
-          <select
-            id="partner-promo-time"
-            className="mgmt-select-inline"
-            value={timePreset}
-            onChange={(e) => setTimePreset(e.target.value)}
-          >
-            {TIME_PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="partner-promo-status">Trạng thái</label>
+            <select
+              id="partner-promo-status"
+              className="mgmt-select-inline"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="cho_duyet">Chờ duyệt</option>
+              <option value="hoat_dong">Đang hoạt động</option>
+              <option value="an">Bị khóa</option>
+              <option value="tu_choi">Từ chối</option>
+              <option value="het_han">Hết hạn</option>
+            </select>
+          </div>
 
-        {timePreset === 'custom' && (
-          <>
-            <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
-              <input
-                id="partner-promo-from"
-                type="date"
-                className="mgmt-select-inline"
-                value={tuNgay}
-                onChange={(e) => setTuNgay(e.target.value)}
-              />
-            </div>
-            <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="partner-promo-to">Đến ngày</label>
-              <input
-                id="partner-promo-to"
-                type="date"
-                className="mgmt-select-inline"
-                value={denNgay}
-                min={tuNgay}
-                onChange={(e) => setDenNgay(e.target.value)}
-              />
-            </div>
-          </>
-        )}
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="partner-promo-time">Thời gian</label>
+            <select
+              id="partner-promo-time"
+              className="mgmt-select-inline"
+              value={timePreset}
+              onChange={(e) => setTimePreset(e.target.value)}
+            >
+              {TIME_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {timePreset === 'custom' && (
+            <>
+              <div className="mgmt-filter-field">
+                <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
+                <input
+                  id="partner-promo-from"
+                  type="date"
+                  className="mgmt-select-inline"
+                  value={tuNgay}
+                  onChange={(e) => setTuNgay(e.target.value)}
+                />
+              </div>
+              <div className="mgmt-filter-field">
+                <label className="mgmt-filter-label" htmlFor="partner-promo-to">Đến ngày</label>
+                <input
+                  id="partner-promo-to"
+                  type="date"
+                  className="mgmt-select-inline"
+                  value={denNgay}
+                  min={tuNgay}
+                  onChange={(e) => setDenNgay(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="mgmt-filter-field mgmt-filter-field--action">
           <FilterActions showApply={false} onClear={clearFilters} />
@@ -712,9 +737,7 @@ const PartnerPromotionsPage = () => {
                         <td className="partner-col-type">{LOAI_GIAM[item.loai_giam] || item.loai_giam}</td>
                         <td className="partner-col-daterange">{formatDate(item.ngay_bat_dau)} – {formatDate(item.ngay_ket_thuc)}</td>
                         <td className="partner-col-count">
-                          {item.so_luot_toi_da != null
-                            ? `${item.so_luot_da_dung} / ${item.so_luot_toi_da}`
-                            : item.so_luot_da_dung}
+                          {formatPromoUsage(item)}
                         </td>
                         <td className="partner-col-status">
                           <span className={`badge ${st.cls}`}>{st.label}</span>

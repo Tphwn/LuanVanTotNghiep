@@ -11,6 +11,36 @@ const getMyBookings = async (req, res, next) => {
   }
 };
 
+const getMyTransactions = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getMyTransactions(userId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getMyRefunds = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getMyRefunds(userId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getMyRefundById = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.getMyRefundById(userId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const createBooking = async (req, res, next) => {
   try {
     const userId = req.user?.id || req.user?.ma_nguoi_dung;
@@ -95,6 +125,9 @@ const getReviewByBookingId = async (req, res, next) => {
 
 module.exports = {
   getMyBookings,
+  getMyTransactions,
+  getMyRefunds,
+  getMyRefundById,
   getBookingById,
   getReviewByBookingId,
   createBooking,

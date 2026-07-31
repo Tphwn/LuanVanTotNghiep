@@ -2,28 +2,24 @@ import { formatCurrency } from '../../../../utils/bookingDisplay';
 import {
   ChartCard,
   ChartGrid,
-  CountLine,
+  FinanceDualTrend,
   KpiCard,
   KpiGrid,
-  MoneyBar,
-  RevenueLine,
   Section,
-  SimplePie,
+  StatusDonut,
+  TopHotelsBar,
   mapStatusLabels,
 } from './ReportUI';
 
-const PRESET_PERIOD_LABEL = {
-  today: 'ngày',
-  week: 'tuần',
-  month: 'tháng',
-  year: 'năm',
-  custom: 'tùy chọn',
-};
-
-const ReportOverviewPanel = ({ data, preset = 'month' }) => {
+const ReportOverviewPanel = ({ data }) => {
   const kpis = data?.kpis || {};
   const charts = data?.charts || {};
-  const periodLabel = PRESET_PERIOD_LABEL[preset] || PRESET_PERIOD_LABEL[data?.preset] || 'tháng';
+  const financeTrend = charts.dien_bien_tai_chinh
+    || (charts.doanh_thu_theo_thoi_gian || []).map((r) => ({
+      ...r,
+      gmv: r.value,
+      hoa_hong: 0,
+    }));
 
   return (
     <div className="admin-reports-panel">
@@ -38,24 +34,23 @@ const ReportOverviewPanel = ({ data, preset = 'month' }) => {
         </KpiGrid>
       </Section>
 
-      <Section title="Biểu đồ tổng quan">
+      <Section title="Diễn biến tài chính & hoa hồng">
         <ChartGrid>
-          <ChartCard title={`Doanh thu theo: ${periodLabel}`}>
-            <RevenueLine data={charts.doanh_thu_theo_thoi_gian || charts.doanh_thu_theo_thang} />
+          <ChartCard title="Diễn biến Doanh thu GMV & Hoa hồng Sàn thu về" wide>
+            <FinanceDualTrend data={financeTrend} />
           </ChartCard>
-          <ChartCard title={`Đơn đặt theo: ${periodLabel}`}>
-            <CountLine
-              data={charts.don_dat_theo_thoi_gian || charts.booking_theo_thang}
-              name="Đơn đặt"
-            />
-          </ChartCard>
-          <ChartCard title="Top 5 khách sạn theo doanh thu">
-            <MoneyBar data={charts.top_khach_san_doanh_thu} horizontal />
+        </ChartGrid>
+      </Section>
+
+      <Section title="Hiệu suất khách sạn & trạng thái đơn">
+        <ChartGrid>
+          <ChartCard title="Top 5 khách sạn xuất sắc nhất">
+            <TopHotelsBar data={charts.top_khach_san_doanh_thu || []} />
           </ChartCard>
           <ChartCard title="Phân bố trạng thái đơn đặt">
-            <SimplePie
+            <StatusDonut
               data={mapStatusLabels(
-                charts.phan_bo_trang_thai_don_dat || charts.phan_bo_trang_thai_booking
+                charts.phan_bo_trang_thai_don_dat || charts.phan_bo_trang_thai_booking || [],
               )}
             />
           </ChartCard>

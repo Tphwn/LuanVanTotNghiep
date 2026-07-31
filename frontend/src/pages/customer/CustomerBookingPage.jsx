@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { MapPin, Star } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import customerBookingService from '../../services/customerBookingService';
 import RoomSpecs from '../../components/customer/RoomSpecs';
 import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
+import { formatBedLabel } from '../../utils/bedDisplay';
+import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { resolveBookingQuery } from '../../utils/bookingNavigation';
@@ -15,6 +17,7 @@ import {
   buildAccommodationPolicyGroups,
   buildCancellationPolicyItems,
 } from '../../utils/hotelPolicyUtils';
+import { sanitizePhoneInput } from '../../utils/authValidation';
 import '../../assets/styles/home.css';
 
 const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
@@ -25,6 +28,13 @@ const fmtShortDate = (d) => {
   const day = String(dt.getDate()).padStart(2, '0');
   const month = String(dt.getMonth() + 1).padStart(2, '0');
   return `${day}-${month}`;
+};
+
+const hotelStars = (n) => Math.max(0, Math.min(5, Number(n) || 0));
+
+const scoreOn10 = (avg5) => {
+  const v = Number(avg5) || 0;
+  return (Math.round(v * 2 * 10) / 10).toFixed(1);
 };
 
 const PolicyList = ({ items, variant }) => {
@@ -99,6 +109,7 @@ const CustomerBookingPage = () => {
     ngay_tra: searchParams.get('ngay_tra') || '',
     so_khach: searchParams.get('so_khach') || '',
     tre_em: searchParams.get('tre_em') || '',
+    tuoi_tre_em: searchParams.get('tuoi_tre_em') || '',
     so_phong: searchParams.get('so_phong') || '',
     ma_dia_diem: searchParams.get('ma_dia_diem') || '',
   }), [searchParams]);
@@ -109,6 +120,7 @@ const CustomerBookingPage = () => {
   const ngayTra = bookingParams.ngay_tra;
   const soKhach = bookingParams.so_khach;
   const treEm = bookingParams.tre_em;
+  const tuoiTreEm = bookingParams.tuoi_tre_em;
   const soPhong = bookingParams.so_phong;
 
   const [room, setRoom] = useState(null);
@@ -130,7 +142,8 @@ const CustomerBookingPage = () => {
     so_khach: soKhach,
     tre_em: treEm,
     so_phong: soPhong,
-  }), [ngayNhan, ngayTra, soKhach, treEm, soPhong]);
+    tuoi_tre_em: tuoiTreEm,
+  }), [ngayNhan, ngayTra, soKhach, treEm, soPhong, tuoiTreEm]);
 
   const backUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -139,10 +152,11 @@ const CustomerBookingPage = () => {
     if (ngayTra) params.set('ngay_tra', ngayTra);
     if (soKhach) params.set('so_khach', soKhach);
     if (bookingParams.tre_em != null) params.set('tre_em', bookingParams.tre_em);
+    if (bookingParams.tuoi_tre_em) params.set('tuoi_tre_em', bookingParams.tuoi_tre_em);
     if (bookingParams.so_phong) params.set('so_phong', bookingParams.so_phong);
     const qs = params.toString();
     return `/hotels/${maKhachSan}${qs ? `?${qs}` : ''}`;
-  }, [maKhachSan, ngayNhan, ngayTra, soKhach, bookingParams.tre_em, bookingParams.so_phong, searchParams]);
+  }, [maKhachSan, ngayNhan, ngayTra, soKhach, bookingParams.tre_em, bookingParams.tuoi_tre_em, bookingParams.so_phong, searchParams]);
 
   const nights = useMemo(() => {
     if (room?.so_dem) return room.so_dem;
@@ -168,12 +182,33 @@ const CustomerBookingPage = () => {
   const guestCount = Math.max(Number(soKhach) || 1, 1);
 
   const priceBreakdown = useMemo(() => {
-    const total = Number(room?.tong_gia) || 0;
-    const taxFees = Math.round(total - total / 1.1);
-    const roomSubtotal = total - taxFees;
-    const avgNight = room?.gia_hien_thi || (nights ? Math.round(roomSubtotal / nights / roomCount) : roomSubtotal);
-    return { total, taxFees, roomSubtotal, avgNight };
-  }, [room, nights, roomCount]);
+    const invoice = room?.chi_tiet_gia;
+    if (invoice) {
+      const tienPhong = Number(invoice.tien_phong) || 0;
+      const soDem = Math.max(Number(invoice.so_dem) || nights, 1);
+      return {
+        tienPhong,
+        tienPhongMotDem: Math.round(tienPhong / soDem),
+        phuThuTreEm: Number(invoice.phu_thu_tre_em) || 0,
+        thueVat: Number(invoice.thue_vat) || 0,
+        phanTramVat: Number(invoice.phan_tram_vat) || 0,
+        total: Number(invoice.thanh_toan_cuoi) || Number(room?.tong_thanh_toan) || 0,
+        soDem,
+      };
+    }
+    const total = Number(room?.tong_thanh_toan) || Number(room?.tong_gia) || 0;
+    const tienPhong = Number(room?.tong_gia) || total;
+    const soDem = Math.max(nights, 1);
+    return {
+      tienPhong,
+      tienPhongMotDem: Math.round(tienPhong / soDem),
+      phuThuTreEm: 0,
+      thueVat: 0,
+      phanTramVat: Number(hotel?.phan_tram_vat) || 10,
+      total,
+      soDem,
+    };
+  }, [room, nights, hotel?.phan_tram_vat]);
 
   useEffect(() => {
     if (!token) {
@@ -231,6 +266,10 @@ const CustomerBookingPage = () => {
         ngay_tra: ngayTra,
         so_khach: guestCount,
         so_phong: roomCount,
+        tre_em: Number(treEm) || 0,
+        tuoi_tre_em: tuoiTreEm
+          ? String(tuoiTreEm).split(',').map((v) => Number(v.trim())).filter((n) => Number.isFinite(n))
+          : [],
         ten_nguoi_nhan: form.ten_nguoi_nhan.trim(),
         sdt_nguoi_nhan: form.sdt_nguoi_nhan.trim(),
         email: form.email.trim(),
@@ -286,11 +325,41 @@ const CustomerBookingPage = () => {
       <div className="booking-confirm-header">
         <BackButton to={backUrl} className="booking-confirm-back" />
         <div className="booking-confirm-header-row">
-          <div className="booking-confirm-header-text">
-            <h1 className="booking-confirm-title">Xác nhận đặt phòng</h1>
-            <p className="booking-confirm-subtitle">
-              Kiểm tra thông tin khách và chính sách trước khi thanh toán
-            </p>
+          <div className="booking-confirm-brand-bar">
+            <Link to={ROUTES.HOME} className="booking-confirm-brand" aria-label="Trang chủ">
+              <img
+                src={resolveUploadUrl('/uploads/logo.png')}
+                alt="Hotel Booking"
+                className="booking-confirm-brand-logo"
+              />
+            </Link>
+            <div className="booking-confirm-brand-divider" aria-hidden />
+            <div className="booking-confirm-hotel-meta">
+              <h1 className="booking-confirm-hotel-title">{hotel?.ten || 'Khách sạn'}</h1>
+              <div className="booking-confirm-hotel-rating">
+                {hotelStars(hotel?.so_sao) > 0 && (
+                  <span className="booking-confirm-hotel-stars" aria-label={`${hotelStars(hotel?.so_sao)} sao`}>
+                    {Array.from({ length: hotelStars(hotel?.so_sao) }, (_, i) => (
+                      <Star key={i} size={14} fill="#f5b301" stroke="#f5b301" aria-hidden />
+                    ))}
+                  </span>
+                )}
+                {Number(hotel?.diem_trung_binh) > 0 && (
+                  <strong className="booking-confirm-hotel-score">
+                    {scoreOn10(hotel.diem_trung_binh)}
+                    /10
+                  </strong>
+                )}
+                {Number(hotel?.so_danh_gia) > 0 && (
+                  <span className="booking-confirm-hotel-reviews">
+                    (
+                    {fmt(hotel.so_danh_gia)}
+                    {' '}
+                    đánh giá)
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <BookingFlowStepper current={1} />
         </div>
@@ -299,7 +368,12 @@ const CustomerBookingPage = () => {
       <div className="booking-confirm-layout">
         <form id="booking-confirm-form" className="booking-confirm-main" onSubmit={handleSubmit}>
           <div className="booking-confirm-card">
-            <h2 className="booking-confirm-section-title">Thông tin khách hàng</h2>
+            <h2 className="booking-confirm-page-title">Xác nhận đặt phòng</h2>
+            <p className="booking-confirm-page-desc">
+              Kiểm tra thông tin khách và chính sách trước khi thanh toán
+            </p>
+
+            <h3 className="booking-confirm-section-title">Thông tin khách hàng</h3>
 
             <div className="booking-confirm-field">
               <label className="booking-confirm-label" htmlFor="ten_nguoi_nhan">
@@ -322,11 +396,16 @@ const CustomerBookingPage = () => {
                 </label>
                 <input
                   id="sdt_nguoi_nhan"
+                  type="tel"
+                  inputMode="numeric"
                   className="booking-confirm-input"
                   value={form.sdt_nguoi_nhan}
-                  onChange={(e) => setForm((p) => ({ ...p, sdt_nguoi_nhan: e.target.value }))}
+                  onChange={(e) => setForm((p) => ({
+                    ...p,
+                    sdt_nguoi_nhan: sanitizePhoneInput(e.target.value),
+                  }))}
                   required
-                  maxLength={15}
+                  maxLength={10}
                 />
               </div>
               <div className="booking-confirm-field">
@@ -443,6 +522,7 @@ const CustomerBookingPage = () => {
               sucChua={room?.suc_chua}
               dienTich={room?.dien_tich}
               soGiuong={room?.so_giuong}
+              bedLabel={room?.loai_giuong || formatBedLabel(room || {})}
             />
           </div>
 
@@ -450,28 +530,83 @@ const CustomerBookingPage = () => {
             <h2 className="booking-confirm-section-title">Chi tiết giá</h2>
 
             <div className="booking-confirm-price-row">
-              <span>Giá phòng / đêm</span>
-              <strong>{fmt(priceBreakdown.avgNight)} VNĐ</strong>
-            </div>
-            <div className="booking-confirm-price-sub">
-              <span>{roomCount} phòng {room?.ten_loai}</span>
-              <span>{nights} đêm</span>
+              <span>Tiền phòng / đêm</span>
+              <strong>
+                {fmt(priceBreakdown.tienPhongMotDem)}
+                {' '}
+                đ
+              </strong>
             </div>
 
             <div className="booking-confirm-price-row">
-              <span>Thuế và phí</span>
-              <strong>{fmt(priceBreakdown.taxFees)} VNĐ</strong>
+              <span>
+                Giá phòng (
+                {priceBreakdown.soDem}
+                {' '}
+                đêm)
+              </span>
+              <strong>
+                {fmt(priceBreakdown.tienPhong)}
+                {' '}
+                đ
+              </strong>
+            </div>
+            <div className="booking-confirm-price-sub">
+              <span>
+                (
+                {roomCount}
+                x)
+                {' '}
+                {room?.ten_loai}
+                {' '}
+                (
+                {priceBreakdown.soDem}
+                {' '}
+                đêm)
+              </span>
+            </div>
+
+            <div className="booking-confirm-price-row">
+              <span>Phụ thu trẻ em</span>
+              <strong>
+                {fmt(priceBreakdown.phuThuTreEm)}
+                {' '}
+                đ
+              </strong>
+            </div>
+
+            <div className="booking-confirm-price-row">
+              <span>
+                Thuế và phí (VAT
+                {' '}
+                {priceBreakdown.phanTramVat}
+                %)
+              </span>
+              <strong>
+                {fmt(priceBreakdown.thueVat)}
+                {' '}
+                đ
+              </strong>
             </div>
 
             <div className="booking-confirm-price-total">
               <div>
-                <span className="booking-confirm-price-total-label">Tổng cộng</span>
+                <span className="booking-confirm-price-total-label">Tổng thanh toán</span>
                 <span className="booking-confirm-price-total-sub">
-                  / {roomCount} phòng, {nights} đêm
+                  /
+                  {roomCount}
+                  {' '}
+                  phòng,
+                  {' '}
+                  {nights}
+                  {' '}
+                  đêm
                 </span>
               </div>
               <strong className="booking-confirm-price-total-value">
-                {fmt(priceBreakdown.total)} VNĐ
+                {fmt(priceBreakdown.total)}
+                {' '}
+                đ
               </strong>
             </div>
 

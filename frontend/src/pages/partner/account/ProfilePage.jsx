@@ -7,10 +7,15 @@ import useToast from '../../../hooks/useToast';
 import {
   AUTH_MSG,
   validatePhone,
+  sanitizePhoneInput,
   validatePassword,
   validatePasswordConfirm,
   validateNewPasswordNotSame,
 } from '../../../utils/authValidation';
+import {
+  validateBankAccountForm,
+  sanitizeAccountNumberInput,
+} from '../../../utils/bankAccountValidation';
 
 const formatDate = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
@@ -38,13 +43,24 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingPwd, setSavingPwd] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
+  const [banks, setBanks] = useState([]);
+  const [banksLoading, setBanksLoading] = useState(false);
   const { toast, showToast } = useToast();
 
   const [infoForm, setInfoForm] = useState({
     ten_hien_thi: '',
     so_dien_thoai: '',
+    dia_chi: '',
   });
   const [infoFieldErrors, setInfoFieldErrors] = useState({});
+
+  const [bankForm, setBankForm] = useState({
+    so_tai_khoan: '',
+    ten_chu_tai_khoan: '',
+    ma_ngan_hang: '',
+  });
+  const [bankFieldErrors, setBankFieldErrors] = useState({});
 
   const [pwdForm, setPwdForm] = useState({
     mat_khau_cu: '',
@@ -59,6 +75,15 @@ const ProfilePage = () => {
     xac_nhan_mat_khau: false,
   });
 
+  const syncBankForm = (data) => {
+    const tk = data?.tai_khoan_ngan_hang || {};
+    setBankForm({
+      so_tai_khoan: tk.so_tai_khoan || '',
+      ten_chu_tai_khoan: tk.ten_chu_tai_khoan || '',
+      ma_ngan_hang: tk.ma_ngan_hang || '',
+    });
+  };
+
   const loadProfile = async () => {
     setLoading(true);
     try {
@@ -66,9 +91,11 @@ const ProfilePage = () => {
       const data = res.data.data;
       setProfile(data);
       setInfoForm({
-        ten_hien_thi: data.ten_hien_thi || '',
+        ten_hien_thi: data.ten_hien_thi || data.ten_cong_ty || '',
         so_dien_thoai: data.so_dien_thoai || '',
+        dia_chi: data.dia_chi || '',
       });
+      syncBankForm(data);
     } catch (err) {
       showToast(err.response?.data?.message || 'Không tải được thông tin tài khoản', 'error');
     } finally {
@@ -76,9 +103,28 @@ const ProfilePage = () => {
     }
   };
 
+  const loadBanks = async () => {
+    setBanksLoading(true);
+    try {
+      const res = await api.get('/partner/account/banks');
+      setBanks(res.data.data || []);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Không tải được danh sách ngân hàng', 'error');
+    } finally {
+      setBanksLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'bank' && banks.length === 0 && !banksLoading) {
+      loadBanks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const validateInfoForm = () => {
     const errors = {};
@@ -86,7 +132,7 @@ const ProfilePage = () => {
     const phone = infoForm.so_dien_thoai.trim();
 
     if (!ten) {
-      errors.ten_hien_thi = 'Tên hiển thị không được để trống.';
+      errors.ten_hien_thi = 'Tên công ty / đối tác không được để trống.';
     }
 
     const phoneErr = validatePhone(phone);
@@ -109,14 +155,17 @@ const ProfilePage = () => {
     try {
       const ten = infoForm.ten_hien_thi.trim();
       const phone = infoForm.so_dien_thoai.trim();
+      const diaChi = infoForm.dia_chi.trim();
       const res = await api.put('/partner/account/profile', {
         ten_hien_thi: ten,
         so_dien_thoai: phone,
+        dia_chi: diaChi,
       });
       setProfile(res.data.data);
       setInfoForm({
         ten_hien_thi: res.data.data.ten_hien_thi || ten,
         so_dien_thoai: res.data.data.so_dien_thoai || phone,
+        dia_chi: res.data.data.dia_chi || '',
       });
       showToast('Lưu thành công');
     } catch (err) {
@@ -188,9 +237,56 @@ const ProfilePage = () => {
     }
   };
 
+  const handleSaveBank = async (e) => {
+    e.preventDefault();
+    const err = validateBankAccountForm(bankForm);
+    if (err) {
+      setBankFieldErrors({ [err.field]: err.message });
+      showToast(err.message, 'error');
+      return;
+    }
+    setBankFieldErrors({});
+    setSavingBank(true);
+    try {
+      const res = await api.put('/partner/account/bank-account', {
+        so_tai_khoan: bankForm.so_tai_khoan.trim(),
+        ten_chu_tai_khoan: bankForm.ten_chu_tai_khoan.trim(),
+        ma_ngan_hang: bankForm.ma_ngan_hang,
+      });
+      setProfile(res.data.data);
+      syncBankForm(res.data.data);
+      showToast(res.data.message || 'Cập nhật tài khoản ngân hàng thành công');
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Cập nhật tài khoản ngân hàng thất bại';
+      const mapped = validateBankAccountForm({
+        so_tai_khoan: bankForm.so_tai_khoan,
+        ten_chu_tai_khoan: bankForm.ten_chu_tai_khoan,
+        ma_ngan_hang: bankForm.ma_ngan_hang,
+      });
+      if (mapped) setBankFieldErrors({ [mapped.field]: msg });
+      else if (msg.toLowerCase().includes('ngân hàng')) {
+        setBankFieldErrors({ ma_ngan_hang: msg });
+      }
+      showToast(msg, 'error');
+    } finally {
+      setSavingBank(false);
+    }
+  };
+
   const toggleShowPwd = (field) => {
     setShowPwd((prev) => ({ ...prev, [field]: !prev[field] }));
   };
+
+  const selectedBank = banks.find(
+    (b) => b.code === bankForm.ma_ngan_hang || b.bin === bankForm.ma_ngan_hang,
+  ) || null;
+  const selectedBankName = selectedBank?.short_name
+    || selectedBank?.name
+    || profile?.tai_khoan_ngan_hang?.ten_ngan_hang
+    || '';
+  const selectedBankLogo = selectedBank?.logo
+    || profile?.tai_khoan_ngan_hang?.logo_ngan_hang
+    || '';
 
   if (loading) {
     return (
@@ -244,9 +340,21 @@ const ProfilePage = () => {
             onClick={() => {
               setActiveTab('info');
               setPwdFieldErrors({});
+              setBankFieldErrors({});
             }}
           >
             Hồ sơ cá nhân
+          </button>
+          <button
+            type="button"
+            className={`partner-account-tab${activeTab === 'bank' ? ' is-active' : ''}`}
+            onClick={() => {
+              setActiveTab('bank');
+              setInfoFieldErrors({});
+              setPwdFieldErrors({});
+            }}
+          >
+            Tài khoản ngân hàng
           </button>
           <button
             type="button"
@@ -254,6 +362,7 @@ const ProfilePage = () => {
             onClick={() => {
               setActiveTab('security');
               setInfoFieldErrors({});
+              setBankFieldErrors({});
             }}
           >
             Bảo mật tài khoản
@@ -264,7 +373,7 @@ const ProfilePage = () => {
           {activeTab === 'info' ? (
             <form onSubmit={handleSaveInfo} className="partner-account-form" noValidate>
               <div className="partner-account-field">
-                <label htmlFor="ten_hien_thi">Tên hiển thị</label>
+                <label htmlFor="ten_hien_thi">Tên công ty / đối tác</label>
                 <input
                   id="ten_hien_thi"
                   className={`search-input${infoFieldErrors.ten_hien_thi ? ' input-invalid' : ''}`}
@@ -273,7 +382,7 @@ const ProfilePage = () => {
                     setInfoForm({ ...infoForm, ten_hien_thi: e.target.value });
                     setInfoFieldErrors((prev) => ({ ...prev, ten_hien_thi: undefined }));
                   }}
-                  placeholder="Nhập tên hiển thị"
+                  placeholder="Nhập tên công ty / đối tác"
                 />
                 {infoFieldErrors.ten_hien_thi && (
                   <p className="form-field-error">{infoFieldErrors.ten_hien_thi}</p>
@@ -282,7 +391,7 @@ const ProfilePage = () => {
 
               <div className="partner-account-field-row">
                 <div className="partner-account-field">
-                  <label htmlFor="email_dang_ky">Email liên hệ</label>
+                  <label htmlFor="email_dang_ky">Email đăng nhập</label>
                   <input
                     id="email_dang_ky"
                     type="email"
@@ -291,7 +400,7 @@ const ProfilePage = () => {
                     readOnly
                     disabled
                   />
-                  <span className="partner-account-hint">Không thể thay đổi</span>
+                  <span className="partner-account-hint">Chỉ admin được thay đổi</span>
                 </div>
 
                 <div className="partner-account-field">
@@ -302,9 +411,11 @@ const ProfilePage = () => {
                     className={`search-input${infoFieldErrors.so_dien_thoai ? ' input-invalid' : ''}`}
                     value={infoForm.so_dien_thoai}
                     onChange={(e) => {
-                      setInfoForm({ ...infoForm, so_dien_thoai: e.target.value });
+                      setInfoForm({ ...infoForm, so_dien_thoai: sanitizePhoneInput(e.target.value) });
                       setInfoFieldErrors((prev) => ({ ...prev, so_dien_thoai: undefined }));
                     }}
+                    inputMode="numeric"
+                    maxLength={10}
                     placeholder="09xxxxxxxx"
                   />
                   {infoFieldErrors.so_dien_thoai && (
@@ -313,9 +424,135 @@ const ProfilePage = () => {
                 </div>
               </div>
 
+              <div className="partner-account-field-row">
+                <div className="partner-account-field">
+                  <label htmlFor="ma_so_thue">Mã số thuế</label>
+                  <input
+                    id="ma_so_thue"
+                    className="search-input is-readonly"
+                    value={profile?.ma_so_thue || '—'}
+                    readOnly
+                    disabled
+                  />
+                  <span className="partner-account-hint">Chỉ admin được thay đổi</span>
+                </div>
+
+                <div className="partner-account-field">
+                  <label htmlFor="phan_tram_hoa_hong">Tỉ lệ hoa hồng (%)</label>
+                  <input
+                    id="phan_tram_hoa_hong"
+                    className="search-input is-readonly"
+                    value={profile?.phan_tram_hoa_hong != null ? `${profile.phan_tram_hoa_hong}` : '15'}
+                    readOnly
+                    disabled
+                  />
+                  <span className="partner-account-hint">Do admin thiết lập khi tạo tài khoản</span>
+                </div>
+              </div>
+
+              <div className="partner-account-field">
+                <label htmlFor="dia_chi">Địa chỉ công ty</label>
+                <input
+                  id="dia_chi"
+                  className="search-input"
+                  value={infoForm.dia_chi}
+                  onChange={(e) => setInfoForm({ ...infoForm, dia_chi: e.target.value })}
+                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành..."
+                />
+              </div>
+
               <div className="partner-account-form-actions">
                 <button type="submit" className="btn btn-primary" disabled={savingInfo}>
                   {savingInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          ) : activeTab === 'bank' ? (
+            <form onSubmit={handleSaveBank} className="partner-account-form" noValidate>
+              <p className="partner-account-hint" style={{ marginBottom: 12 }}>
+                Tài khoản nhận tiền thanh toán doanh thu.
+              </p>
+
+              <div className="partner-account-field">
+                <label htmlFor="ten_chu_tai_khoan">Tên chủ tài khoản</label>
+                <input
+                  id="ten_chu_tai_khoan"
+                  className={`search-input${bankFieldErrors.ten_chu_tai_khoan ? ' input-invalid' : ''}`}
+                  value={bankForm.ten_chu_tai_khoan}
+                  onChange={(e) => {
+                    setBankForm({ ...bankForm, ten_chu_tai_khoan: e.target.value });
+                    setBankFieldErrors((prev) => ({ ...prev, ten_chu_tai_khoan: undefined }));
+                  }}
+                  placeholder="VD: Nguyen Van A"
+                />
+                {bankFieldErrors.ten_chu_tai_khoan && (
+                  <p className="form-field-error">{bankFieldErrors.ten_chu_tai_khoan}</p>
+                )}
+              </div>
+
+              <div className="partner-account-field">
+                <label htmlFor="so_tai_khoan">Số tài khoản</label>
+                <input
+                  id="so_tai_khoan"
+                  className={`search-input${bankFieldErrors.so_tai_khoan ? ' input-invalid' : ''}`}
+                  value={bankForm.so_tai_khoan}
+                  onChange={(e) => {
+                    setBankForm({
+                      ...bankForm,
+                      so_tai_khoan: sanitizeAccountNumberInput(e.target.value),
+                    });
+                    setBankFieldErrors((prev) => ({ ...prev, so_tai_khoan: undefined }));
+                  }}
+                  inputMode="numeric"
+                  placeholder="Nhập số tài khoản"
+                />
+                {bankFieldErrors.so_tai_khoan && (
+                  <p className="form-field-error">{bankFieldErrors.so_tai_khoan}</p>
+                )}
+              </div>
+
+              <div className="partner-account-field">
+                <label htmlFor="ma_ngan_hang">Ngân hàng</label>
+                {banksLoading ? (
+                  <p className="partner-account-hint">Đang tải danh sách ngân hàng...</p>
+                ) : (
+                  <select
+                    id="ma_ngan_hang"
+                    className={`search-input${bankFieldErrors.ma_ngan_hang ? ' input-invalid' : ''}`}
+                    value={bankForm.ma_ngan_hang}
+                    onChange={(e) => {
+                      setBankForm({ ...bankForm, ma_ngan_hang: e.target.value });
+                      setBankFieldErrors((prev) => ({ ...prev, ma_ngan_hang: undefined }));
+                    }}
+                  >
+                    <option value="">Chọn ngân hàng</option>
+                    {banks.map((b) => (
+                      <option key={b.code || b.bin} value={b.code || b.bin}>
+                        {b.short_name || b.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {bankFieldErrors.ma_ngan_hang && (
+                  <p className="form-field-error">{bankFieldErrors.ma_ngan_hang}</p>
+                )}
+                {(selectedBank || profile?.tai_khoan_ngan_hang?.logo_ngan_hang) && (
+                  <div className="partner-bank-selected">
+                    {selectedBankLogo ? (
+                      <img
+                        src={selectedBankLogo}
+                        alt=""
+                        className="partner-bank-logo"
+                      />
+                    ) : null}
+                    <span>{selectedBankName}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="partner-account-form-actions">
+                <button type="submit" className="btn btn-primary" disabled={savingBank || banksLoading}>
+                  {savingBank ? 'Đang lưu...' : 'Cập nhật tài khoản'}
                 </button>
               </div>
             </form>

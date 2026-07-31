@@ -4,22 +4,19 @@ import FilterActions from '../../../../components/common/management/FilterAction
 import { formatCurrency } from '../../../../utils/bookingDisplay';
 import {
   ACCOUNT_BADGE,
-  HOTEL_BADGE,
 } from '../../../../constants/statusConfig';
 import { getPresetRange, REPORT_DATE_PRESETS } from '../reportHelpers';
 
-const SUB_TABS = [
-  { id: 'khach_san', label: 'Khách sạn' },
-  { id: 'doi_tac', label: 'Đối tác' },
-  { id: 'khach_hang', label: 'Khách hàng' },
+const ROLE_OPTIONS = [
+  { value: 'doi_tac', label: 'Đối tác' },
+  { value: 'khach_hang', label: 'Khách hàng' },
 ];
 
-const HOTEL_SORT_OPTIONS = [
-  { value: 'don_desc', label: 'Số đơn ↓' },
-  { value: 'revenue_desc', label: 'Doanh thu ↓' },
-  { value: 'hotel_asc', label: 'Khách sạn A–Z' },
-  { value: 'partner_asc', label: 'Đối tác A–Z' },
-];
+const formatCustomerOptionLabel = (customer) => {
+  const name = customer?.ten || `KH #${customer?.ma_khach_hang || ''}`;
+  const detail = customer?.email || customer?.so_dien_thoai;
+  return detail ? `${name} — ${detail}` : name;
+};
 
 const PARTNER_SORT_OPTIONS = [
   { value: 'revenue_desc', label: 'Doanh thu ↓' },
@@ -42,8 +39,10 @@ const emptyDraft = () => {
     preset: 'month',
     tu_ngay: range.tu_ngay,
     den_ngay: range.den_ngay,
+    vai_tro: 'doi_tac',
     ma_doi_tac: '',
     ma_khach_san: '',
+    ma_khach_hang: '',
     thanh_pho: '',
   };
 };
@@ -58,21 +57,6 @@ const formatDate = (value) => {
 const statusBadge = (map, key) => {
   const meta = map[key] || { label: key || '—', cls: 'badge-default' };
   return <span className={`badge ${meta.cls}`}>{meta.label}</span>;
-};
-
-const sortHotelRows = (rows, sort) => {
-  const list = [...rows];
-  switch (sort) {
-    case 'revenue_desc':
-      return list.sort((a, b) => (b.tong_doanh_thu || 0) - (a.tong_doanh_thu || 0));
-    case 'hotel_asc':
-      return list.sort((a, b) => (a.ten_khach_san || '').localeCompare(b.ten_khach_san || '', 'vi'));
-    case 'partner_asc':
-      return list.sort((a, b) => (a.ten_doi_tac || '').localeCompare(b.ten_doi_tac || '', 'vi'));
-    case 'don_desc':
-    default:
-      return list.sort((a, b) => b.so_don - a.so_don);
-  }
 };
 
 const sortPartnerRows = (rows, sort) => {
@@ -112,7 +96,6 @@ const sortCustomerRows = (rows, sort) => {
 };
 
 const ReportSystemPanel = () => {
-  const [subTab, setSubTab] = useState('khach_san');
   const [draft, setDraft] = useState(emptyDraft);
   const [applied, setApplied] = useState(emptyDraft);
   const [search, setSearch] = useState('');
@@ -120,6 +103,11 @@ const ReportSystemPanel = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const vaiTro = applied.vai_tro || 'doi_tac';
+  const showPartnerFilter = vaiTro === 'doi_tac';
+  const showCityFilter = vaiTro === 'doi_tac';
+  const showCustomerFilter = vaiTro === 'khach_hang';
 
   const loadData = useCallback(async (filters) => {
     setLoading(true);
@@ -129,9 +117,12 @@ const ReportSystemPanel = () => {
         tu_ngay: filters.tu_ngay || undefined,
         den_ngay: filters.den_ngay || undefined,
       };
-      if (filters.ma_doi_tac) params.ma_doi_tac = filters.ma_doi_tac;
-      if (filters.ma_khach_san) params.ma_khach_san = filters.ma_khach_san;
-      if (filters.thanh_pho) params.thanh_pho = filters.thanh_pho;
+      if (filters.vai_tro === 'khach_hang') {
+        if (filters.ma_khach_hang) params.ma_khach_hang = filters.ma_khach_hang;
+      } else {
+        if (filters.ma_doi_tac) params.ma_doi_tac = filters.ma_doi_tac;
+        if (filters.thanh_pho) params.thanh_pho = filters.thanh_pho;
+      }
 
       const res = await api.get('/admin/analytics/system', { params });
       setData(res.data?.data || null);
@@ -148,28 +139,34 @@ const ReportSystemPanel = () => {
   }, [applied, loadData]);
 
   useEffect(() => {
-    if (subTab === 'khach_san') setSort('don_desc');
-    else if (subTab === 'doi_tac') setSort('revenue_desc');
+    if (vaiTro === 'doi_tac') setSort('revenue_desc');
     else setSort('spend_desc');
     setSearch('');
-  }, [subTab]);
+  }, [vaiTro]);
 
   const filterOptions = data?.filters || {};
   const partners = filterOptions.doi_tac || [];
-  const hotels = filterOptions.khach_san || [];
+  const customers = filterOptions.khach_hang || [];
   const cities = filterOptions.thanh_pho || [];
-
-  const filteredHotels = useMemo(() => {
-    return hotels.filter((h) => {
-      if (draft.ma_doi_tac && String(h.ma_doi_tac) !== String(draft.ma_doi_tac)) return false;
-      if (draft.thanh_pho && h.thanh_pho !== draft.thanh_pho) return false;
-      return true;
-    });
-  }, [hotels, draft.ma_doi_tac, draft.thanh_pho]);
 
   const updateDraft = (patch) => {
     setDraft((prev) => {
       const next = { ...prev, ...patch };
+      setApplied(next);
+      return next;
+    });
+  };
+
+  const handleRoleChange = (nextRole) => {
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        vai_tro: nextRole,
+        ma_doi_tac: nextRole === 'doi_tac' ? prev.ma_doi_tac : '',
+        ma_khach_san: '',
+        ma_khach_hang: nextRole === 'khach_hang' ? prev.ma_khach_hang : '',
+        thanh_pho: nextRole === 'doi_tac' ? prev.thanh_pho : '',
+      };
       setApplied(next);
       return next;
     });
@@ -195,20 +192,6 @@ const ReportSystemPanel = () => {
     setSearch('');
   };
 
-  const hotelRows = useMemo(() => {
-    const rows = data?.khach_san?.rows || [];
-    const keyword = search.trim().toLowerCase();
-    const filtered = keyword
-      ? rows.filter(
-          (r) =>
-            (r.ten_khach_san || '').toLowerCase().includes(keyword) ||
-            (r.ten_doi_tac || '').toLowerCase().includes(keyword) ||
-            (r.thanh_pho || '').toLowerCase().includes(keyword)
-        )
-      : rows;
-    return sortHotelRows(filtered, sort);
-  }, [data, search, sort]);
-
   const partnerRows = useMemo(() => {
     const rows = data?.doi_tac?.rows || [];
     const keyword = search.trim().toLowerCase();
@@ -222,34 +205,37 @@ const ReportSystemPanel = () => {
     const rows = data?.khach_hang?.rows || [];
     const keyword = search.trim().toLowerCase();
     const filtered = keyword
-      ? rows.filter((r) => (r.ten_khach_hang || '').toLowerCase().includes(keyword))
+      ? rows.filter(
+          (r) =>
+            (r.ten_khach_hang || '').toLowerCase().includes(keyword) ||
+            (r.email || '').toLowerCase().includes(keyword) ||
+            (r.so_dien_thoai || '').toLowerCase().includes(keyword)
+        )
       : rows;
     return sortCustomerRows(filtered, sort);
   }, [data, search, sort]);
 
   const sortOptions =
-    subTab === 'khach_san'
-      ? HOTEL_SORT_OPTIONS
-      : subTab === 'doi_tac'
-        ? PARTNER_SORT_OPTIONS
-        : CUSTOMER_SORT_OPTIONS;
+    vaiTro === 'doi_tac'
+      ? PARTNER_SORT_OPTIONS
+      : CUSTOMER_SORT_OPTIONS;
 
   return (
     <div className="admin-reports-panel admin-reports-system">
-      <nav className="admin-reports-subtabs" aria-label="Nhóm hệ thống">
-        {SUB_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`admin-reports-subtab${subTab === tab.id ? ' is-active' : ''}`}
-            onClick={() => setSubTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
       <div className="admin-reports-finance-filters">
+        <div className="admin-reports-finance-filter-field">
+          <label htmlFor="system-role">Vai trò</label>
+          <select
+            id="system-role"
+            value={draft.vai_tro}
+            onChange={(e) => handleRoleChange(e.target.value)}
+          >
+            {ROLE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="system-preset">Thời gian</label>
           <select
@@ -287,57 +273,65 @@ const ReportSystemPanel = () => {
           </>
         ) : null}
 
-        <div className="admin-reports-finance-filter-field">
-          <label htmlFor="system-city">Thành phố</label>
-          <select
-            id="system-city"
-            value={draft.thanh_pho}
-            onChange={(e) =>
-              updateDraft({
-                thanh_pho: e.target.value,
-                ma_khach_san: '',
-              })
-            }
-          >
-            <option value="">Tất cả thành phố</option>
-            {cities.map((city) => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
-        </div>
+        {showCityFilter ? (
+          <div className="admin-reports-finance-filter-field">
+            <label htmlFor="system-city">Thành phố</label>
+            <select
+              id="system-city"
+              value={draft.thanh_pho}
+              onChange={(e) =>
+                updateDraft({
+                  thanh_pho: e.target.value,
+                  ma_khach_san: '',
+                })
+              }
+            >
+              <option value="">Tất cả thành phố</option>
+              {cities.map((city) => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
-        <div className="admin-reports-finance-filter-field">
-          <label htmlFor="system-partner">Đối tác</label>
-          <select
-            id="system-partner"
-            value={draft.ma_doi_tac}
-            onChange={(e) =>
-              updateDraft({
-                ma_doi_tac: e.target.value,
-                ma_khach_san: '',
-              })
-            }
-          >
-            <option value="">Tất cả đối tác</option>
-            {partners.map((p) => (
-              <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten}</option>
-            ))}
-          </select>
-        </div>
+        {showPartnerFilter ? (
+          <div className="admin-reports-finance-filter-field">
+            <label htmlFor="system-partner">Đối tác</label>
+            <select
+              id="system-partner"
+              value={draft.ma_doi_tac}
+              onChange={(e) =>
+                updateDraft({
+                  ma_doi_tac: e.target.value,
+                  ma_khach_san: '',
+                })
+              }
+            >
+              <option value="">Tất cả đối tác</option>
+              {partners.map((p) => (
+                <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
-        <div className="admin-reports-finance-filter-field">
-          <label htmlFor="system-hotel">Khách sạn</label>
-          <select
-            id="system-hotel"
-            value={draft.ma_khach_san}
-            onChange={(e) => updateDraft({ ma_khach_san: e.target.value })}
-          >
-            <option value="">Tất cả khách sạn</option>
-            {filteredHotels.map((h) => (
-              <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
-            ))}
-          </select>
-        </div>
+        {showCustomerFilter ? (
+          <div className="admin-reports-finance-filter-field">
+            <label htmlFor="system-customer">Khách hàng</label>
+            <select
+              id="system-customer"
+              value={draft.ma_khach_hang}
+              onChange={(e) => updateDraft({ ma_khach_hang: e.target.value })}
+            >
+              <option value="">Tất cả khách hàng</option>
+              {customers.map((c) => (
+                <option key={c.ma_khach_hang} value={c.ma_khach_hang}>
+                  {formatCustomerOptionLabel(c)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="admin-reports-finance-filter-actions">
           <FilterActions onClear={clearFilters} />
@@ -351,9 +345,9 @@ const ReportSystemPanel = () => {
             id="system-search"
             type="search"
             placeholder={
-              subTab === 'khach_hang'
-                ? 'Tìm khách hàng...'
-                : 'Tìm đối tác, khách sạn...'
+              vaiTro === 'khach_hang'
+                ? 'Tìm tên, email, SĐT...'
+                : 'Tìm đối tác...'
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -379,38 +373,7 @@ const ReportSystemPanel = () => {
         <div className="admin-reports-error">{error}</div>
       ) : (
         <div className="admin-reports-table-block">
-          {subTab === 'khach_san' ? (
-            hotelRows.length === 0 ? (
-              <p className="admin-reports-rank-empty">Không có dữ liệu khách sạn</p>
-            ) : (
-              <div className="admin-reports-table-wrap">
-                <table className="data-table admin-reports-table">
-                  <thead>
-                    <tr>
-                      <th className="is-name">Khách sạn</th>
-                      <th className="is-name">Đối tác</th>
-                      <th className="is-name">Thành phố</th>
-                      <th>Trạng thái</th>
-                      <th className="is-money">Tổng doanh thu</th>
-                      <th className="is-money">Số đơn đặt phòng</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hotelRows.map((row) => (
-                      <tr key={row.ma_khach_san}>
-                        <td className="is-name">{row.ten_khach_san || '—'}</td>
-                        <td className="is-name">{row.ten_doi_tac || '—'}</td>
-                        <td className="is-name">{row.thanh_pho || '—'}</td>
-                        <td>{statusBadge(HOTEL_BADGE, row.trang_thai)}</td>
-                        <td className="is-money">{formatCurrency(row.tong_doanh_thu)}</td>
-                        <td className="is-money">{row.so_don}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          ) : subTab === 'doi_tac' ? (
+          {vaiTro === 'doi_tac' ? (
             partnerRows.length === 0 ? (
               <p className="admin-reports-rank-empty">Không có dữ liệu đối tác</p>
             ) : (
@@ -447,6 +410,7 @@ const ReportSystemPanel = () => {
                 <thead>
                   <tr>
                     <th className="is-name">Khách hàng</th>
+                    <th>Email</th>
                     <th>Ngày đăng ký</th>
                     <th>Lần cuối đặt phòng</th>
                     <th className="is-money">Tổng đơn đặt</th>
@@ -457,6 +421,7 @@ const ReportSystemPanel = () => {
                   {customerRows.map((row) => (
                     <tr key={row.ma_khach_hang}>
                       <td className="is-name">{row.ten_khach_hang || '—'}</td>
+                      <td>{row.email || '—'}</td>
                       <td>{formatDate(row.ngay_dang_ky)}</td>
                       <td>{formatDate(row.lan_cuoi_dat)}</td>
                       <td className="is-money">{row.tong_don}</td>

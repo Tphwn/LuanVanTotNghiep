@@ -11,7 +11,7 @@ const MSG = {
   EMAIL_FORMAT: 'Email không đúng định dạng.',
   EMAIL_MAX: 'Email tối đa 50 ký tự.',
   EMAIL_NO_SPACE: 'Email không được chứa khoảng trắng.',
-  EMAIL_EXISTS: 'Email không được trùng với tài khoản khác.',
+  EMAIL_EXISTS: 'Email đã được đăng ký vui lòng chọn email khác.',
 
   PASSWORD_REQUIRED: 'Mật khẩu không được để trống.',
   PASSWORD_MIN: 'Mật khẩu phải có ít nhất 6 ký tự.',

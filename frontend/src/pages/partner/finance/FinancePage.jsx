@@ -3,22 +3,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
-import FilterActions from '../../../components/common/management/FilterActions';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import BookingDetailModal from '../../../components/booking/BookingDetailModal';
 import FinanceOverviewPanel from './FinanceOverviewPanel';
+import PartnerCommissionDetailModal from './components/PartnerCommissionDetailModal';
 import {
   TRANG_THAI,
   getPaymentDisplay,
   formatCurrency,
   formatDate,
 } from '../../../utils/bookingDisplay';
-import {
-  getPresetRange,
-  REPORT_DATE_PRESETS,
-} from '../../admin/reports/reportHelpers';
+import { getPresetRange } from '../../admin/reports/reportHelpers';
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan' },
@@ -27,7 +24,7 @@ const TABS = [
   { id: 'payout', label: 'Thanh toán' },
 ];
 
-const DEFAULT_PRESET = 'month';
+const DEFAULT_PRESET = 'year';
 const defaultRange = getPresetRange(DEFAULT_PRESET);
 
 const COMMISSION_STATUS = {
@@ -40,7 +37,6 @@ const COMMISSION_STATUS = {
 const PAYOUT_STATUS = {
   cho_thanh_toan: { label: 'Chờ thanh toán', cls: 'badge-warning' },
   da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-success' },
-  tam_giu: { label: 'Tạm giữ', cls: 'badge-danger' },
 };
 
 const StatCard = ({ title, value, subtitle, tone }) => (
@@ -60,12 +56,12 @@ const FinancePage = () => {
   const tab = TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
   const [hotels, setHotels] = useState([]);
   const [hotelFilter, setHotelFilter] = useState('all');
-  const [preset, setPreset] = useState(DEFAULT_PRESET);
-  const [tuNgay, setTuNgay] = useState(defaultRange.tu_ngay);
-  const [denNgay, setDenNgay] = useState(defaultRange.den_ngay);
+  const [tuNgay] = useState(defaultRange.tu_ngay);
+  const [denNgay] = useState(defaultRange.den_ngay);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [detailBookingId, setDetailBookingId] = useState(null);
+  const [commissionDetailId, setCommissionDetailId] = useState(null);
 
   const [cards, setCards] = useState({
     tong_doanh_thu: 0,
@@ -74,9 +70,10 @@ const FinancePage = () => {
     cho_thanh_toan: 0,
     da_thanh_toan: 0,
   });
+  const [trendKy, setTrendKy] = useState('thang');
   const [charts, setCharts] = useState({
     revenue_trend: [],
-    commission_split: [],
+    reconciliation_status: { tong_don: 0, items: [] },
     revenue_by_hotel: [],
   });
   const [recentPayments, setRecentPayments] = useState([]);
@@ -97,6 +94,11 @@ const FinancePage = () => {
     return params;
   }, [hotelFilter, tuNgay, denNgay]);
 
+  const overviewParams = useMemo(() => ({
+    ...queryParams,
+    ky: trendKy,
+  }), [queryParams, trendKy]);
+
   useEffect(() => {
     api.get('/partner/finance/hotels')
       .then((res) => setHotels(res.data.data || []))
@@ -110,13 +112,13 @@ const FinancePage = () => {
       setLoading(true);
       setError('');
       try {
-        const overviewRes = await api.get('/partner/finance/overview', { params: queryParams });
+        const overviewRes = await api.get('/partner/finance/overview', { params: overviewParams });
         if (cancelled) return;
         const overviewData = overviewRes.data.data || {};
         setCards(overviewData.cards || {});
         setCharts(overviewData.charts || {
           revenue_trend: [],
-          commission_split: [],
+          reconciliation_status: { tong_don: 0, items: [] },
           revenue_by_hotel: [],
         });
         setRecentPayments(overviewData.recent_payments || []);
@@ -145,18 +147,18 @@ const FinancePage = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [queryParams, tab]);
+  }, [overviewParams, queryParams, tab]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const overviewRes = await api.get('/partner/finance/overview', { params: queryParams });
+      const overviewRes = await api.get('/partner/finance/overview', { params: overviewParams });
       const overviewData = overviewRes.data.data || {};
       setCards(overviewData.cards || {});
       setCharts(overviewData.charts || {
         revenue_trend: [],
-        commission_split: [],
+        reconciliation_status: { tong_don: 0, items: [] },
         revenue_by_hotel: [],
       });
       setRecentPayments(overviewData.recent_payments || []);
@@ -176,7 +178,7 @@ const FinancePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [queryParams, tab]);
+  }, [overviewParams, queryParams, tab]);
   const {
     pagedItems: pagedRevenue,
     currentPage: revenuePage,
@@ -210,22 +212,6 @@ const FinancePage = () => {
     showPagination: showPayoutPaging,
   } = useListPagination(payoutRows, 10, [payoutRows, queryParams]);
 
-  const applyPresetDates = (nextPreset) => {
-    setPreset(nextPreset);
-    if (nextPreset === 'custom') return;
-    const range = getPresetRange(nextPreset);
-    setTuNgay(range.tu_ngay);
-    setDenNgay(range.den_ngay);
-  };
-
-  const clearFilters = () => {
-    const range = getPresetRange(DEFAULT_PRESET);
-    setHotelFilter('all');
-    setPreset(DEFAULT_PRESET);
-    setTuNgay(range.tu_ngay);
-    setDenNgay(range.den_ngay);
-  };
-
   const openPayoutDetail = (row) => {
     navigate(`/partner/finance/payouts/${encodeURIComponent(row.ma_dot)}`);
   };
@@ -244,19 +230,19 @@ const FinancePage = () => {
           <StatCard
             title="Tổng doanh thu"
             value={cards.tong_doanh_thu}
-            subtitle="Đơn hoàn thành hợp lệ"
+            subtitle="Giá trị phòng trước VAT"
             tone="neutral"
           />
           <StatCard
             title="Hoa hồng hệ thống"
             value={cards.hoa_hong}
-            subtitle="Tiền hệ thống giữ lại"
+            subtitle="Sàn cắt theo tỷ lệ"
             tone="info"
           />
           <StatCard
-            title="Đối tác thực nhận"
+            title="Doanh thu thực nhận"
             value={cards.tien_doi_tac_nhan}
-            subtitle="Sau khi trừ hoa hồng"
+            subtitle="Sau hoa hồng + VAT"
             tone="success"
           />
           <StatCard
@@ -274,90 +260,38 @@ const FinancePage = () => {
         </div>
       </div>
 
-      <div className="partner-finance-tabs" role="tablist">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            className={`partner-finance-tab${tab === item.id ? ' is-active' : ''}`}
-            aria-selected={tab === item.id}
-            onClick={() => handleTabChange(item.id)}
+      <div className="partner-finance-toolbar">
+        <div className="partner-finance-toolbar-hotel">
+          <label htmlFor="partner-finance-hotel">Khách sạn</label>
+          <select
+            id="partner-finance-hotel"
+            className="mgmt-select-inline"
+            value={hotelFilter}
+            onChange={(e) => setHotelFilter(e.target.value)}
           >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="partner-finance-filter-card">
-        <div className="partner-finance-filter-row">
-          <div className="partner-finance-filter-field partner-finance-filter-field--hotel">
-            <label htmlFor="partner-finance-hotel">Khách sạn</label>
-            <select
-              id="partner-finance-hotel"
-              className="mgmt-select-inline"
-              value={hotelFilter}
-              onChange={(e) => setHotelFilter(e.target.value)}
-            >
-              <option value="all">Tất cả khách sạn</option>
-              {hotels.map((hotel) => (
-                <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>
-                  {hotel.ten}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="partner-finance-filter-field partner-finance-filter-field--time">
-            <span className="partner-finance-filter-label">Thời gian</span>
-            <div className="admin-reports-presets" role="group" aria-label="Khoảng thời gian">
-              {REPORT_DATE_PRESETS.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={`admin-reports-preset${preset === p.value ? ' is-active' : ''}`}
-                  onClick={() => applyPresetDates(p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="partner-finance-filter-field partner-finance-filter-field--action">
-            <FilterActions showApply={false} onClear={clearFilters} />
-          </div>
+            <option value="all">Tất cả khách sạn</option>
+            {hotels.map((hotel) => (
+              <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>
+                {hotel.ten}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {preset === 'custom' ? (
-          <div className="partner-finance-filter-row partner-finance-filter-row--custom">
-            <div className="partner-finance-filter-field">
-              <label htmlFor="partner-finance-from">Từ ngày</label>
-              <input
-                id="partner-finance-from"
-                type="date"
-                className="mgmt-select-inline partner-finance-date-input"
-                value={tuNgay}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setTuNgay(next);
-                  if (denNgay && next && next > denNgay) setDenNgay(next);
-                }}
-              />
-            </div>
-            <div className="partner-finance-filter-field">
-              <label htmlFor="partner-finance-to">Đến ngày</label>
-              <input
-                id="partner-finance-to"
-                type="date"
-                className="mgmt-select-inline partner-finance-date-input"
-                value={denNgay}
-                min={tuNgay}
-                onChange={(e) => setDenNgay(e.target.value)}
-              />
-            </div>
-          </div>
-        ) : null}
+        <div className="partner-finance-tabs" role="tablist" aria-label="Mục tài chính">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              className={`partner-finance-tab${tab === item.id ? ' is-active' : ''}`}
+              aria-selected={tab === item.id}
+              onClick={() => handleTabChange(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -369,6 +303,9 @@ const FinancePage = () => {
               charts={charts}
               recentPayments={recentPayments}
               onViewBooking={setDetailBookingId}
+              trendKy={trendKy}
+              onTrendKyChange={setTrendKy}
+              hotelFilter={hotelFilter}
             />
           )}
 
@@ -386,8 +323,7 @@ const FinancePage = () => {
                         <tr>
                           <th>Mã đơn</th>
                           <th className="mgmt-col-hotel">Khách sạn</th>
-                          <th className="mgmt-col-room">Loại phòng</th>
-                          <th>Ngày nhận <br /> Trả phòng</th>
+                          <th>Nhận / Trả</th>
                           <th>Hoàn thành</th>
                           <th>Tổng tiền</th>
                           <th>Trạng thái</th>
@@ -408,9 +344,6 @@ const FinancePage = () => {
                               </td>
                               <td className="mgmt-col-hotel">
                                 <div className="partner-finance-cell-text">{row.khach_san}</div>
-                              </td>
-                              <td className="mgmt-col-room">
-                                <div className="partner-finance-cell-text">{row.loai_phong}</div>
                               </td>
                               <td>
                                 <div className="partner-finance-date-range">
@@ -478,11 +411,12 @@ const FinancePage = () => {
                         <tr>
                           <th>Mã đơn</th>
                           <th className="mgmt-col-hotel">Khách sạn</th>
-                          <th>Tổng tiền</th>
+                          <th>Tổng doanh thu</th>
                           <th>Tỷ lệ</th>
-                          <th>Hoa hồng</th>
-                          <th>ĐT nhận</th>
+                          <th>Hoa hồng sàn</th>
+                          <th>Thực nhận</th>
                           <th>Đối soát</th>
+                          <th>Thao tác</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -506,6 +440,15 @@ const FinancePage = () => {
                               <td>
                                 <span className={`badge ${st.cls}`}>{st.label}</span>
                               </td>
+                              <ActionCell>
+                                <ActionButton
+                                  variant="view"
+                                  iconOnly
+                                  icon={Eye}
+                                  title="Xem chi tiết hoa hồng"
+                                  onClick={() => setCommissionDetailId(row.ma_hoa_hong)}
+                                />
+                              </ActionCell>
                             </tr>
                           );
                         })}
@@ -544,8 +487,8 @@ const FinancePage = () => {
                           <th>Mã thanh toán</th>
                           <th>Số đơn</th>
                           <th>Tổng doanh thu</th>
-                          <th>Tổng hoa hồng</th>
-                          <th>Đối tác thực nhận</th>
+                          <th>Hoa hồng sàn</th>
+                          <th>Thực nhận</th>
                           <th>Trạng thái TT</th>
                           <th>Ngày thanh toán</th>
                           <th>Thao tác</th>
@@ -614,6 +557,11 @@ const FinancePage = () => {
         role="partner"
         onClose={() => setDetailBookingId(null)}
         onUpdated={loadData}
+      />
+
+      <PartnerCommissionDetailModal
+        commissionId={commissionDetailId}
+        onClose={() => setCommissionDetailId(null)}
       />
     </div>
   );

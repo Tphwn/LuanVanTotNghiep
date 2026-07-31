@@ -5,7 +5,7 @@ const MSG = {
   LOGOUT_SUCCESS:       'Đăng xuất thành công',
   INVALID_CREDENTIALS:  'Email hoặc mật khẩu không đúng',
   WRONG_PORTAL:         'Tài khoản đăng nhập không hợp lệ.',
-  EMAIL_EXISTS:         'Email không được trùng với tài khoản khác.',
+  EMAIL_EXISTS:         'Email đã được đăng ký vui lòng chọn email khác.',
   PHONE_EXISTS:         'Số điện thoại đã được sử dụng bởi tài khoản khác.',
   ACCOUNT_LOCKED:       'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ bộ phận hỗ trợ để được hỗ trợ.',
   UNAUTHORIZED:         'Vui lòng đăng nhập',

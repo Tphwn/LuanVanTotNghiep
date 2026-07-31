@@ -304,8 +304,16 @@ const bookingService = {
       throw new Error('Phải kèm lý do mới được hủy');
     }
 
+    const { processRefundOnCancel } = require('../../utils/refundHelpers');
     const booking = await prisma.dat_phong.findUnique({
       where: { ma_dat_phong: Number(id) },
+      include: {
+        loai_phong: {
+          select: {
+            khach_san: { select: { ten: true, ma_doi_tac: true } },
+          },
+        },
+      },
     });
     if (!booking) throw new Error('Không tìm thấy đơn đặt phòng');
     if (['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'].includes(booking.trang_thai)) {
@@ -313,13 +321,15 @@ const bookingService = {
     }
 
     const reason = String(ly_do).trim();
+    let refundRow = null;
 
     await prisma.$transaction(async (tx) => {
       await tx.dat_phong.update({
         where: { ma_dat_phong: Number(id) },
         data: { trang_thai: 'da_huy', ghi_chu: `[Admin hủy] ${reason}` },
       });
-      await processRefundOnCancel(tx, id, reason, { fullRefund: true });
+      refundRow = await processRefundOnCancel(tx, id, reason, { fullRefund: true });
+      await ensureCommissionForBooking(id, { tx, forceRecalc: true });
 
       await tx.thong_bao.create({
         data: {
@@ -331,6 +341,37 @@ const bookingService = {
         },
       });
     });
+
+    if (refundRow) {
+      try {
+        const { notifyRefundRequest } = require('../../utils/adminNotify');
+        await notifyRefundRequest({
+          maHoanTien: refundRow.ma_hoan_tien,
+          maDatPhong: booking.ma_dat_phong,
+          maDonHang: booking.ma_don_hang,
+          soTienHoan: refundRow.so_tien_hoan,
+          lyDo: reason,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    try {
+      const { notifyBookingCancelled } = require('../../utils/partnerNotify');
+      const maDoiTac = booking.loai_phong?.khach_san?.ma_doi_tac;
+      if (maDoiTac) {
+        await notifyBookingCancelled(maDoiTac, {
+          maDonHang: booking.ma_don_hang,
+          maDatPhong: booking.ma_dat_phong,
+          tenKhachSan: booking.loai_phong?.khach_san?.ten,
+          lyDo: reason,
+          cancelledBy: 'admin',
+        });
+      }
+    } catch {
+      /* ignore */
+    }
 
     return bookingService.getDetailForAdmin(id);
   },

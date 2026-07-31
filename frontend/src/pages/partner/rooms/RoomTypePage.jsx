@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../../../services/api';
 import BackButton from '../../../components/common/BackButton';
 import useListPagination from '../../../hooks/useListPagination';
@@ -15,6 +15,7 @@ const isHotelActive = (hotel) => hotel.trang_thai === 'hoat_dong';
 const RoomTypePage = () => {
   const { hotelId: urlHotelId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [hotels, setHotels] = useState([]);
   const [hotelStats, setHotelStats] = useState({});
@@ -25,13 +26,23 @@ const RoomTypePage = () => {
   const [toast, setToast] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [roomTypeFilter, setRoomTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const initialRoomStatus = ['all', 'hoat_dong', 'an'].includes(location.state?.roomStatusFilter)
+    ? location.state.roomStatusFilter
+    : 'all';
+  const [statusFilter, setStatusFilter] = useState(initialRoomStatus);
   const [hotelNameFilter, setHotelNameFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [hotelStatusFilter, setHotelStatusFilter] = useState('all');
   const [detailRoom, setDetailRoom] = useState(null);
   const [toggleTarget, setToggleTarget] = useState(null);
   const [toggleLoading, setToggleLoading] = useState(false);
+
+  useEffect(() => {
+    const next = location.state?.roomStatusFilter;
+    if (['hoat_dong', 'an'].includes(next)) {
+      setStatusFilter(next);
+    }
+  }, [location.state]);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });

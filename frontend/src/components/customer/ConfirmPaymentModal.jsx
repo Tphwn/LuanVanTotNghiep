@@ -46,7 +46,9 @@ export default function ConfirmPaymentModal({
 
         <div className="confirm-payment-modal-body">
           <p className="confirm-payment-modal-intro">
-            Vui lòng kiểm tra thông tin trước khi xác nhận thanh toán.
+            {method === 'vnpay'
+              ? 'Bạn sẽ được chuyển đến cổng VNPay để hoàn tất thanh toán.'
+              : 'Vui lòng kiểm tra thông tin trước khi xác nhận thanh toán.'}
           </p>
 
           <ul className="confirm-payment-summary">
@@ -81,7 +83,11 @@ export default function ConfirmPaymentModal({
             onClick={onConfirm}
             disabled={submitting}
           >
-            {submitting ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
+            {submitting
+              ? 'Đang xử lý...'
+              : method === 'vnpay'
+                ? 'Tiếp tục với VNPay'
+                : 'Xác nhận thanh toán'}
           </button>
         </div>
       </div>

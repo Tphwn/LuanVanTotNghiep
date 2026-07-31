@@ -9,12 +9,14 @@ export const resolveBookingQuery = (partial = {}) => {
     so_khach: partial.so_khach,
     tre_em: partial.tre_em,
     so_phong: partial.so_phong,
+    tuoi_tre_em: partial.tuoi_tre_em,
   });
 
   const guests = normalizeSearchGuests({
     so_khach: partial.so_khach || resolved.so_khach,
     tre_em: partial.tre_em ?? resolved.tre_em,
     so_phong: partial.so_phong || resolved.so_phong,
+    tuoi_tre_em: partial.tuoi_tre_em ?? resolved.tuoi_tre_em,
   });
 
   return {
@@ -26,6 +28,7 @@ export const resolveBookingQuery = (partial = {}) => {
     so_khach: String(guests.so_khach),
     tre_em: String(guests.tre_em),
     so_phong: String(guests.so_phong),
+    tuoi_tre_em: guests.tuoi_tre_em.join(','),
   };
 };
 
@@ -42,7 +45,10 @@ export const buildCustomerBookingUrl = (hotelId, roomId, query = {}) => {
   params.set('ngay_nhan', q.ngay_nhan);
   params.set('ngay_tra', q.ngay_tra);
   params.set('so_khach', q.so_khach);
-  if (q.tre_em && q.tre_em !== '0') params.set('tre_em', q.tre_em);
+  if (q.tre_em && q.tre_em !== '0') {
+    params.set('tre_em', q.tre_em);
+    if (q.tuoi_tre_em) params.set('tuoi_tre_em', q.tuoi_tre_em);
+  }
   params.set('so_phong', q.so_phong);
   if (q.ma_dia_diem) params.set('ma_dia_diem', q.ma_dia_diem);
 

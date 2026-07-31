@@ -4,6 +4,7 @@ import {
   User,
   Calendar,
   RotateCcw,
+  Receipt,
   ChevronDown,
   LogOut,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { getGivenName, resolveHoTen } from '../../utils/userDisplay';
 const menuItems = [
   { label: 'Chỉnh sửa hồ sơ', path: ROUTES.CUSTOMER.PROFILE, icon: User },
   { label: 'Đặt chỗ của tôi', path: ROUTES.CUSTOMER.MY_BOOKINGS, icon: Calendar },
+  { label: 'Danh sách giao dịch', path: ROUTES.CUSTOMER.TRANSACTIONS, icon: Receipt },
   { label: 'Hoàn tiền', path: ROUTES.CUSTOMER.REFUNDS, icon: RotateCcw },
 ];
 

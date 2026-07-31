@@ -117,6 +117,11 @@ model doi_tac {
   anh_dai_dien                                 String?             @db.VarChar(255)
   ma_so_thue                                   String?             @db.VarChar(20)
   dia_chi                                      String?             @db.Text
+  so_tai_khoan                                 String?             @db.VarChar(50)
+  ten_chu_tai_khoan                            String?             @db.VarChar(150)
+  ma_ngan_hang                                 String?             @db.VarChar(20)
+  ten_ngan_hang                                String?             @db.VarChar(150)
+  logo_ngan_hang                               String?             @db.VarChar(255)
   trang_thai                                   doi_tac_trang_thai  @default(hoat_dong)
   ngay_cap_tai_khoan                           DateTime            @default(now()) @db.DateTime(0)
   phan_tram_hoa_hong                           Decimal?            @db.Decimal(5, 2)
@@ -143,7 +148,10 @@ model hoa_hong {
   ma_dat_phong     Int                 @unique(map: "ma_dat_phong")
   ma_doi_tac       Int
   ty_le_hoa_hong   Decimal             @db.Decimal(5, 2)
+  /// Hoa hồng lý thuyết (gross) — % trên cơ sở tính theo loại KM / phí phạt hủy
   so_tien_hoa_hong Decimal             @db.Decimal(12, 0)
+  /// Tiền sàn trợ giá (voucher admin); hoa hồng ròng = so_tien_hoa_hong - tien_tro_gia_san
+  tien_tro_gia_san Decimal             @default(0) @db.Decimal(12, 0)
   trang_thai       hoa_hong_trang_thai @default(chua_thu)
   ngay_tinh        DateTime            @default(now()) @db.DateTime(0)
   ngay_doi_soat    DateTime?           @db.DateTime(0)
@@ -234,6 +242,7 @@ model chinh_sach_khach_san {
   phu_thu_thu_cung      Decimal? @db.Decimal(12, 0)
   tuoi_toi_da_mien_phi  Int?     @db.TinyInt
   phu_thu_tre_em        Decimal? @db.Decimal(12, 0)
+  phan_tram_vat         Decimal  @default(10.00) @db.Decimal(5, 2)
   noi_quy_khac          String?  @db.Text
   khach_san             khach_san @relation(fields: [ma_khach_san], references: [ma_khach_san], onDelete: Cascade, onUpdate: Restrict, map: "fk_csks_ks")
 }
@@ -262,6 +271,8 @@ model khuyen_mai {
   don_hang_toi_thieu    Decimal                 @default(0) @db.Decimal(12, 0)
   ngay_bat_dau          DateTime                @db.Date
   ngay_ket_thuc         DateTime                @db.Date
+  /// KM hệ thống áp dụng mặc định cho khách đặt lần đầu (không hết hạn theo ngày)
+  lan_dat_dau           Boolean                 @default(false)
   so_luot_toi_da        Int?
   so_luot_da_dung       Int                     @default(0)
   trang_thai            khuyen_mai_trang_thai   @default(hoat_dong)
@@ -299,6 +310,9 @@ model loai_phong {
   so_luong_mo_ban_truoc_khoa Int?
   ngay_tao             DateTime               @default(now()) @db.DateTime(0)
   so_giuong            Int                    @default(1)
+  so_giuong_don        Int                    @default(0)
+  so_giuong_doi        Int                    @default(0)
+  so_giuong_lon        Int                    @default(0)
   bang_gia_phong       bang_gia_phong[]
   dat_phong            dat_phong[]
   khach_san            khach_san              @relation(fields: [ma_khach_san], references: [ma_khach_san], onUpdate: Restrict, map: "fk_lp_ks")

@@ -763,11 +763,11 @@ const PricingPage = () => {
                             <button
                               type="button"
                               className="btn btn-primary btn-sm partner-room-manage-btn"
-                              title="Giá & Kho"
+                              title="Quản lý giá và kho phòng"
                               disabled={activeCount === 0}
                               onClick={() => openDetail(hotel)}
                             >
-                              Giá & Kho
+                              Quản lý
                             </button>
                           </ActionCell>
                         </tr>

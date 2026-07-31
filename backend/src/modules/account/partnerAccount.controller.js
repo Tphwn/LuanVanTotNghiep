@@ -3,6 +3,7 @@ const {
   validatePhone,
   validateChangePassword,
 } = require('../../utils/authValidation');
+const { validateBankAccount } = require('../../utils/bankAccountHelpers');
 
 exports.getProfile = async (req, res) => {
   try {
@@ -29,6 +30,44 @@ exports.updateProfile = async (req, res) => {
     res.json({ success: true, data, message: 'Cập nhật thông tin thành công' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.listBanks = async (req, res) => {
+  try {
+    const data = await service.listBanks();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Không tải được danh sách ngân hàng',
+    });
+  }
+};
+
+exports.updateBankAccount = async (req, res) => {
+  try {
+    const payload = {
+      so_tai_khoan: req.body.so_tai_khoan,
+      ten_chu_tai_khoan: req.body.ten_chu_tai_khoan,
+      ma_ngan_hang: req.body.ma_ngan_hang,
+    };
+    const validationError = validateBankAccount(payload);
+    if (validationError) {
+      return res.status(400).json({ success: false, message: validationError });
+    }
+
+    const data = await service.updateBankAccount(req.user.id, payload);
+    res.json({
+      success: true,
+      data,
+      message: 'Cập nhật tài khoản ngân hàng thành công',
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Cập nhật tài khoản ngân hàng thất bại',
+    });
   }
 };
 

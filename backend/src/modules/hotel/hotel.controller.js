@@ -4,11 +4,12 @@ const { getUserId } = require('../../utils/user');
 const { parseJsonField } = require('../../utils/parseJson');
 const { parseHotelRulesInput, flattenHotelPolicy, flattenHotelsPolicy, upsertHotelPolicy } = require('../../utils/hotelRules');
 const { isLockedByAdminHotel } = require('../../utils/partnerLockHelpers');
+const { notifyHotelPendingApproval } = require('../../utils/adminNotify');
 
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
-  { so_ngay_truoc: 3, phan_tram_hoan: 50 },
-  { so_ngay_truoc: 1, phan_tram_hoan: 10 },
+  { so_ngay_truoc: 3, phan_tram_hoan: 75 },
+  { so_ngay_truoc: 1, phan_tram_hoan: 50 },
 ];
 
 const getPartnerDefaultCancelPolicies = (hotels) => {
@@ -174,6 +175,17 @@ exports.createHotel = async (req, res) => {
 
       return newHotel.ma_khach_san;
     });
+
+    try {
+      await notifyHotelPendingApproval({
+        maKhachSan: hotelId,
+        tenKhachSan: ten,
+        tenDoiTac: doiTac.ten_cong_ty,
+        isResubmit: false,
+      });
+    } catch {
+      /* ignore notify errors */
+    }
 
     const result = await fetchHotelFull(hotelId);
     res.status(201).json({ success: true, message: 'Tạo khách sạn thành công!', data: result });
@@ -351,6 +363,9 @@ exports.updateHotel = async (req, res) => {
       updateData.ly_do_tu_choi = null;
     }
 
+    const becamePending = updateData.trang_thai === 'cho_duyet'
+      && existing.trang_thai !== 'cho_duyet';
+
     await prisma.$transaction(async (tx) => {
       if (Object.keys(updateData).length > 0) {
         await tx.khach_san.update({
@@ -419,6 +434,20 @@ exports.updateHotel = async (req, res) => {
     });
 
     const updated = await fetchHotelFull(hotelId);
+
+    if (becamePending) {
+      try {
+        await notifyHotelPendingApproval({
+          maKhachSan: hotelId,
+          tenKhachSan: updated?.ten || ten || '—',
+          tenDoiTac: doiTac.ten_cong_ty,
+          isResubmit: true,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Lỗi cập nhật khách sạn:', error);

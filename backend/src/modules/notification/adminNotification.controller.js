@@ -27,3 +27,12 @@ exports.markAllRead = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+
+exports.markAmenityProposalAdded = async (req, res) => {
+  try {
+    const data = await service.markAmenityProposalAdded(req.user.id, req.params.id);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};

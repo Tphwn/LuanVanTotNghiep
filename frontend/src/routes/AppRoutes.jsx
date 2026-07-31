@@ -24,12 +24,15 @@ import CustomerHotelDetailPage from '../pages/customer/CustomerHotelDetailPage';
 import CustomerBookingPage from '../pages/customer/CustomerBookingPage';
 import CustomerPaymentPage from '../pages/customer/CustomerPaymentPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
+import TransactionsPage from '../pages/customer/TransactionsPage';
+import CustomerTransactionDetailPage from '../pages/customer/TransactionDetailPage';
 import PromotionsPage from '../pages/customer/PromotionsPage';
 import ContactPage from '../pages/customer/ContactPage';
 import BookingGuidePage from '../pages/customer/BookingGuidePage';
 import PartnerContactPage from '../pages/customer/PartnerContactPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import RefundsPage from '../pages/customer/RefundsPage';
+import CustomerRefundDetailPage from '../pages/customer/RefundDetailPage';
 import CustomerBookingDetailPage from '../pages/customer/CustomerBookingDetailPage';
 import CustomerBookingReviewPage from '../pages/customer/CustomerBookingReviewPage';
 
@@ -81,14 +84,14 @@ const AppRoutes = () => {
         <Route path={ROUTES.LOGIN} element={
           token && (user?.vai_tro === ROLES.KHACH_HANG || user?.vai_tro === ROLES.DOI_TAC)
             ? <Navigate to={getRedirectRoute(user)} replace />
-            : <MainLayout><LoginPage /></MainLayout>
+            : <MainLayout fullBleed><LoginPage /></MainLayout>
         } />
         <Route path={ROUTES.PARTNER.LOGIN} element={<PartnerLoginPage />} />
         <Route path={ROUTES.ADMIN.LOGIN} element={<AdminLoginPage />} />
         <Route path={ROUTES.REGISTER} element={
           token && user?.vai_tro === ROLES.KHACH_HANG
             ? <Navigate to={getRedirectRoute(user)} replace />
-            : <MainLayout><RegisterPage /></MainLayout>
+            : <MainLayout fullBleed><RegisterPage /></MainLayout>
         } />
         <Route path={ROUTES.FORGOT_PASSWORD} element={
           token && (user?.vai_tro === ROLES.KHACH_HANG || user?.vai_tro === ROLES.DOI_TAC)
@@ -147,10 +150,13 @@ const AppRoutes = () => {
         >
           <Route path={ROUTES.CUSTOMER.PROFILE} element={<ProfilePage />} />
           <Route path={ROUTES.CUSTOMER.MY_BOOKINGS} element={<MyBookingsPage />} />
+          <Route path={ROUTES.CUSTOMER.TRANSACTIONS} element={<TransactionsPage />} />
+          <Route path={ROUTES.CUSTOMER.TRANSACTION_DETAIL} element={<CustomerTransactionDetailPage />} />
           <Route path={ROUTES.CUSTOMER.MY_BOOKING_REVIEW_VIEW} element={<CustomerBookingReviewPage viewMode />} />
           <Route path={ROUTES.CUSTOMER.MY_BOOKING_REVIEW} element={<CustomerBookingReviewPage />} />
           <Route path={ROUTES.CUSTOMER.MY_BOOKING_DETAIL} element={<CustomerBookingDetailPage />} />
           <Route path={ROUTES.CUSTOMER.REFUNDS} element={<RefundsPage />} />
+          <Route path={ROUTES.CUSTOMER.REFUND_DETAIL} element={<CustomerRefundDetailPage />} />
         </Route>
 
         {/* Partner */}

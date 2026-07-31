@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   BedDouble,
-  CalendarDays,
+  Building2,
   CheckCircle2,
+  ChevronDown,
   Clock,
   CreditCard,
   Smartphone,
+  Star,
   UserRound,
+  Users,
   Wallet,
 } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
@@ -16,6 +19,8 @@ import ConfirmPaymentModal from '../../components/customer/ConfirmPaymentModal';
 import Toast from '../../components/common/Toast';
 import customerBookingService from '../../services/customerBookingService';
 import ROUTES from '../../constants/routes';
+import { formatHotelTime } from '../../utils/bookingDisplay';
+import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/home.css';
 
 const PAY_METHODS = [
@@ -28,7 +33,7 @@ const PAY_METHODS = [
   {
     id: 'vnpay',
     label: 'VNPay',
-    desc: 'Thẻ ATM / Visa / Mastercard',
+    desc: 'Chuyển đến cổng VNPay (ATM / thẻ)',
     Icon: Wallet,
   },
   {
@@ -42,6 +47,22 @@ const PAY_METHODS = [
 const PAY_WINDOW_MS = 30 * 60 * 1000;
 
 const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)}₫`;
+const fmtNum = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
+
+const hotelStars = (n) => Math.max(0, Math.min(5, Number(n) || 0));
+
+const scoreOn10 = (avg5) => {
+  const v = Number(avg5) || 0;
+  return (Math.round(v * 2 * 10) / 10).toFixed(1);
+};
+
+const fmtStayLongDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return d;
+  const weekdays = ['CN', 'Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7'];
+  return `${weekdays[dt.getDay()]}, ${dt.getDate()} tháng ${dt.getMonth() + 1} ${dt.getFullYear()}`;
+};
 
 const fmtStayDate = (d) => {
   if (!d) return '—';
@@ -59,6 +80,12 @@ const formatCountdown = (ms) => {
   const m = String(Math.floor(total / 60)).padStart(2, '0');
   const s = String(total % 60).padStart(2, '0');
   return `${m}:${s}`;
+};
+
+const isSystemNote = (note) => {
+  const t = String(note || '').trim();
+  if (!t) return true;
+  return t.startsWith('[Admin hủy]') || t.startsWith('[Hết hạn thanh toán]');
 };
 
 const resolvePaymentBackTo = (bookingId, locationState) => {
@@ -102,6 +129,22 @@ const CustomerPaymentPage = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [toast, setToast] = useState(null);
+  const [priceOpen, setPriceOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const vnpayStatus = params.get('vnpay');
+    if (!vnpayStatus) return;
+    const message = params.get('message') || '';
+    if (vnpayStatus === 'success') {
+      setPaidSuccess(true);
+      setToast({ message: message || 'Thanh toán VNPay thành công', type: 'success' });
+    } else {
+      setPayError(message || 'Thanh toán VNPay không thành công');
+      setToast({ message: message || 'Thanh toán VNPay thất bại', type: 'error' });
+    }
+    navigate(location.pathname, { replace: true });
+  }, [location.search, location.pathname, navigate]);
 
   useEffect(() => {
     if (!bookingId || Number.isNaN(bookingId)) {
@@ -124,7 +167,9 @@ const CustomerPaymentPage = () => {
           return;
         }
         if (data.thanh_toan?.trang_thai === 'da_thanh_toan') {
-          navigate(ROUTES.CUSTOMER.MY_BOOKING_DETAIL.replace(':id', bookingId), { replace: true });
+          setPaidSuccess(true);
+          setBooking(data);
+          setLoading(false);
           return;
         }
         if (!data.can_thanh_toan && data.thanh_toan?.trang_thai === 'cho_thanh_toan') {
@@ -172,6 +217,16 @@ const CustomerPaymentPage = () => {
   const total = Number(booking?.thanh_toan?.tong_tien) || 0;
   const expired = remainingMs <= 0;
   const appliedCode = booking?.thanh_toan?.ma_khuyen_mai || '';
+  const hotel = booking?.khach_san;
+  const stars = hotelStars(hotel?.so_sao);
+  const checkInTime = formatHotelTime(hotel?.gio_nhan_phong, '14:00');
+  const checkOutTime = formatHotelTime(hotel?.gio_tra_phong, '12:00');
+  const specialNote = !isSystemNote(booking?.nguoi_dat?.ghi_chu)
+    ? booking.nguoi_dat.ghi_chu.trim()
+    : null;
+  const guestCount = Number(booking?.luu_tru?.so_nguoi_lon) || 0;
+  const roomCount = Math.max(Number(booking?.luu_tru?.so_phong) || 1, 1);
+  const nights = Number(booking?.luu_tru?.so_dem) || 1;
 
   const stayLabel = useMemo(() => {
     if (!booking?.luu_tru) return '—';
@@ -226,13 +281,22 @@ const CustomerPaymentPage = () => {
     setPaying(true);
     setPayError('');
     try {
+      if (method === 'vnpay') {
+        const res = await customerBookingService.createVnpayPayment(bookingId);
+        const paymentUrl = res.data?.data?.payment_url;
+        if (!paymentUrl) {
+          throw new Error('Không nhận được URL VNPay');
+        }
+        setShowConfirm(false);
+        window.location.href = paymentUrl;
+        return;
+      }
       await customerBookingService.confirmPayment(bookingId, { cong_thanh_toan: method });
       setShowConfirm(false);
       setPaidSuccess(true);
       setToast({ message: 'Thanh toán thành công', type: 'success' });
     } catch (err) {
-      setPayError(err.response?.data?.message || 'Thanh toán không thành công');
-    } finally {
+      setPayError(err.response?.data?.message || err.message || 'Thanh toán không thành công');
       setPaying(false);
     }
   };
@@ -324,9 +388,41 @@ const CustomerPaymentPage = () => {
           label="Quay lại"
         />
         <div className="booking-confirm-header-row">
-          <div>
-            <h1 className="booking-confirm-title">Thanh toán</h1>
-            <p className="booking-payment-step-hint">Bước 2/2 · Chọn phương thức và hoàn tất</p>
+          <div className="booking-confirm-brand-bar">
+            <Link to={ROUTES.HOME} className="booking-confirm-brand" aria-label="Trang chủ">
+              <img
+                src={resolveUploadUrl('/uploads/logo.png')}
+                alt="Hotel Booking"
+                className="booking-confirm-brand-logo"
+              />
+            </Link>
+            <div className="booking-confirm-brand-divider" aria-hidden />
+            <div className="booking-confirm-hotel-meta">
+              <h1 className="booking-confirm-hotel-title">{hotel?.ten || 'Khách sạn'}</h1>
+              <div className="booking-confirm-hotel-rating">
+                {stars > 0 && (
+                  <span className="booking-confirm-hotel-stars" aria-label={`${stars} sao`}>
+                    {Array.from({ length: stars }, (_, i) => (
+                      <Star key={i} size={14} fill="#f5b301" stroke="#f5b301" aria-hidden />
+                    ))}
+                  </span>
+                )}
+                {Number(hotel?.diem_trung_binh) > 0 && (
+                  <strong className="booking-confirm-hotel-score">
+                    {scoreOn10(hotel.diem_trung_binh)}
+                    /10
+                  </strong>
+                )}
+                {Number(hotel?.so_danh_gia) > 0 && (
+                  <span className="booking-confirm-hotel-reviews">
+                    (
+                    {fmtNum(hotel.so_danh_gia)}
+                    {' '}
+                    đánh giá)
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <BookingFlowStepper current={2} />
         </div>
@@ -366,7 +462,7 @@ const CustomerPaymentPage = () => {
                 onClick={handleApplyPromo}
                 disabled={expired || applyingPromo || !promoCode.trim()}
               >
-               {applyingPromo ? 'Đang áp...' : 'Áp dụng'}
+                {applyingPromo ? 'Đang áp...' : 'Áp dụng'}
               </button>
             </div>
             {appliedCode && !promoError && (
@@ -377,8 +473,9 @@ const CustomerPaymentPage = () => {
                 {booking?.thanh_toan?.ten_khuyen_mai
                   ? ` — ${booking.thanh_toan.ten_khuyen_mai}`
                   : ''}
-                {' '}
-                (có thể đổi mã trước khi thanh toán)
+                {booking?.thanh_toan?.lan_dat_dau
+                  ? ' (mặc định lần đặt đầu — có thể đổi mã khác)'
+                  : ' (có thể đổi mã trước khi thanh toán)'}
               </p>
             )}
             {promoSuccess && <p className="booking-payment-promo-ok">{promoSuccess}</p>}
@@ -424,78 +521,168 @@ const CustomerPaymentPage = () => {
             </p>
           )}
 
-          <button
-            type="button"
-            className="booking-payment-submit"
-            onClick={openConfirm}
-            disabled={paying || expired}
-          >
-            {`Thanh toán ${fmtMoney(total)}`}
-          </button>
+          <div className="booking-payment-cta-card">
+            <button
+              type="button"
+              className="booking-payment-cta-total"
+              onClick={() => setPriceOpen((v) => !v)}
+              aria-expanded={priceOpen}
+            >
+              <span className="booking-payment-cta-total-left">
+                <strong>Tổng chi phí thanh toán</strong>
+                <small>Bao gồm thuế bán hàng, phí dịch vụ và các loại thuế khác.</small>
+              </span>
+              <span className="booking-payment-cta-total-right">
+                <strong>{fmtMoney(total)}</strong>
+                <span className={`booking-payment-cta-chevron-wrap${priceOpen ? ' is-open' : ''}`}>
+                  <ChevronDown size={16} strokeWidth={2.5} aria-hidden />
+                </span>
+              </span>
+            </button>
+
+            {priceOpen && (
+              <div className="booking-payment-cta-breakdown">
+                <div className="booking-payment-cta-breakdown-row">
+                  <span>
+                    {[hotel?.ten, booking?.loai_phong?.ten_loai].filter(Boolean).join(', ')
+                      || 'Đặt phòng'}
+                    {' - '}
+                    {guestCount}
+                    {' khách x '}
+                    {roomCount}
+                  </span>
+                  <strong>{fmtMoney(subtotal)}</strong>
+                </div>
+                {discount > 0 && (
+                  <div className="booking-payment-cta-breakdown-row booking-payment-cta-breakdown-row--discount">
+                    <span>Giảm giá{appliedCode ? ` (${appliedCode})` : ''}</span>
+                    <strong>
+                      -
+                      {fmtMoney(discount)}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="booking-payment-cta-now">
+              <span>Thanh toán ngay</span>
+              <strong>{fmtMoney(total)}</strong>
+            </div>
+
+            <button
+              type="button"
+              className="booking-payment-submit"
+              onClick={openConfirm}
+              disabled={paying || expired}
+            >
+              {paying ? 'Đang xử lý...' : `Thanh toán ${fmtMoney(total)}`}
+            </button>
+          </div>
         </section>
 
         <aside className="booking-payment-aside">
           <div className="booking-payment-summary">
-            <h2 className="booking-confirm-section-title">Thông tin đặt phòng</h2>
-            <p className="booking-payment-hotel">{booking?.khach_san?.ten || '—'}</p>
-            <p className="booking-payment-order">
-              Mã đơn:
-              {' '}
-              <strong>{booking?.ma_don || booking?.ma_dat_phong}</strong>
-            </p>
-
-            <ul className="booking-payment-info-list">
-              <li>
-                <BedDouble size={16} strokeWidth={2} aria-hidden />
-                <span>
-                  Loại phòng:
+            <div className="booking-payment-summary-head">
+              <span className="booking-payment-summary-icon" aria-hidden>
+                <Building2 size={18} strokeWidth={2.25} />
+              </span>
+              <div>
+                <h2 className="booking-payment-summary-title">Tóm tắt khách sạn</h2>
+                <p className="booking-payment-summary-code">
+                  Mã đặt chỗ
                   {' '}
-                  {booking?.loai_phong?.ten_loai || '—'}
-                  {' · '}
-                  {booking?.luu_tru?.so_phong || 1}
-                  {' phòng'}
-                </span>
-              </li>
-              <li>
-                <CalendarDays size={16} strokeWidth={2} aria-hidden />
-                <span>
-                  Thời gian lưu trú:
-                  {' '}
-                  {stayLabel}
-                </span>
-              </li>
-              <li>
-                <UserRound size={16} strokeWidth={2} aria-hidden />
-                <span>
-                  Người nhận phòng:
-                  {' '}
-                  {booking?.nguoi_dat?.ho_ten || '—'}
-                  {booking?.nguoi_dat?.so_dien_thoai
-                    ? ` · ${booking.nguoi_dat.so_dien_thoai}`
-                    : ''}
-                </span>
-              </li>
-            </ul>
-
-            <div className="booking-payment-price-rows">
-              <div className="booking-payment-price-row">
-                <span>Tạm tính</span>
-                <strong>{fmtMoney(subtotal)}</strong>
+                  {booking?.ma_don || booking?.ma_dat_phong || '—'}
+                </p>
               </div>
-              {discount > 0 && (
-                <div className="booking-payment-price-row booking-payment-price-row--discount">
-                  <span>Giảm giá{appliedCode ? ` (${appliedCode})` : ''}</span>
-                  <strong>
-                    -
-                    {fmtMoney(discount)}
-                  </strong>
-                </div>
-              )}
             </div>
 
-            <div className="booking-payment-total">
-              <span>Thanh toán</span>
-              <strong>{fmtMoney(total)}</strong>
+            <div className="booking-payment-summary-body">
+              <p className="booking-payment-hotel">{hotel?.ten || '—'}</p>
+
+              <div className="booking-payment-stay">
+                <div className="booking-payment-stay-box">
+                  <span className="booking-payment-stay-label">Nhận phòng</span>
+                  <strong>{fmtStayLongDate(booking?.luu_tru?.ngay_nhan)}</strong>
+                  <span className="booking-payment-stay-time">
+                    Từ
+                    {' '}
+                    {checkInTime}
+                  </span>
+                </div>
+                <div className="booking-payment-stay-mid" aria-hidden>
+                  <span className="booking-payment-stay-nights">
+                    {nights}
+                    {' '}
+                    đêm
+                  </span>
+                  <span className="booking-payment-stay-line" />
+                </div>
+                <div className="booking-payment-stay-box">
+                  <span className="booking-payment-stay-label">Trả phòng</span>
+                  <strong>{fmtStayLongDate(booking?.luu_tru?.ngay_tra)}</strong>
+                  <span className="booking-payment-stay-time">
+                    Trước
+                    {' '}
+                    {checkOutTime}
+                  </span>
+                </div>
+              </div>
+
+              <p className="booking-payment-pay-type">Thanh toán trực tuyến</p>
+
+              <p className="booking-payment-room-line">
+                (
+                {roomCount}
+                x)
+                {' '}
+                {booking?.loai_phong?.ten_loai || '—'}
+              </p>
+
+              <ul className="booking-payment-detail-list">
+                <li>
+                  <Users size={16} strokeWidth={2} aria-hidden />
+                  <span>
+                    {guestCount}
+                    {' '}
+                    khách
+                  </span>
+                </li>
+                {booking?.loai_phong?.loai_giuong && (
+                  <li>
+                    <BedDouble size={16} strokeWidth={2} aria-hidden />
+                    <span>{booking.loai_phong.loai_giuong}</span>
+                  </li>
+                )}
+              </ul>
+
+              <div className="booking-payment-meta-block">
+                <span className="booking-payment-meta-label">Yêu cầu đặc biệt (nếu có)</span>
+                <p className="booking-payment-meta-value">{specialNote || '—'}</p>
+              </div>
+
+              <div className="booking-payment-meta-block">
+                <span className="booking-payment-meta-label">Tên khách</span>
+                <p className="booking-payment-meta-value">{booking?.nguoi_dat?.ho_ten || '—'}</p>
+              </div>
+
+              <div className="booking-payment-contact">
+                <h3 className="booking-payment-contact-title">Chi tiết người liên lạc</h3>
+                <div className="booking-payment-contact-row">
+                  <span className="booking-payment-contact-avatar" aria-hidden>
+                    <UserRound size={18} strokeWidth={2} />
+                  </span>
+                  <div>
+                    <strong>{booking?.nguoi_dat?.ho_ten || '—'}</strong>
+                    {booking?.nguoi_dat?.so_dien_thoai && (
+                      <p>{booking.nguoi_dat.so_dien_thoai}</p>
+                    )}
+                    {booking?.nguoi_dat?.email && (
+                      <p>{booking.nguoi_dat.email}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </aside>

@@ -23,15 +23,15 @@ export const AMENITY_SCOPE = {
 export const AMENITY_CATEGORY_GROUPS = [
   {
     id: 'phong', label: 'Tiện nghi phòng', Icon: BedDouble, loai: 'phong',
-    slugs: ['ac', 'tv', 'balcony', 'bed', 'safe', 'iron', 'laundry', 'desk'],
+    slugs: ['ac', 'tv', 'balcony', 'bed', 'safe', 'iron', 'laundry', 'desk', 'slippers', 'umbrella', 'floor', 'bin', 'smoke', 'phone'],
   },
   {
     id: 'phong_tam', label: 'Đồ dùng phòng tắm', Icon: Droplets, loai: 'phong',
-    slugs: ['bathtub', 'hairdryer', 'shower'],
+    slugs: ['bathtub', 'hairdryer', 'shower', 'towel', 'toiletries'],
   },
   {
     id: 'bep', label: 'Tiện nghi bếp', Icon: ChefHat, loai: 'phong',
-    slugs: ['kitchen', 'fridge', 'minibar', 'coffee'],
+    slugs: ['kitchen', 'fridge', 'minibar', 'coffee', 'kettle'],
   },
   {
     id: 'ket_noi', label: 'Kết nối mạng', Icon: Wifi, loai: 'phong',
@@ -39,19 +39,19 @@ export const AMENITY_CATEGORY_GROUPS = [
   },
   {
     id: 'dich_vu', label: 'Dịch vụ khách sạn', Icon: ConciergeBell, loai: 'khach_san',
-    slugs: ['pool', 'gym', 'spa', 'massage', 'laundry', 'luggage', 'meeting', 'kids', 'pet', 'security', 'accessible', 'garden', 'beach', 'key'],
+    slugs: ['pool', 'gym', 'spa', 'sauna', 'massage', 'karaoke', 'ticket', 'laundry', 'luggage', 'meeting', 'kids', 'pet', 'security', 'accessible', 'garden', 'beach', 'key', 'bar'],
   },
   {
     id: 'cong_cong', label: 'Tiện nghi công cộng', Icon: Building2, loai: 'khach_san',
-    slugs: ['elevator', 'wifi', 'parking', 'early_checkin', 'late_checkout'],
+    slugs: ['elevator', 'wifi', 'parking', 'early_checkin', 'late_checkout', 'security', 'ac'],
   },
   {
     id: 'lan_can', label: 'Các tiện ích lân cận', Icon: MapPin, loai: 'khach_san',
-    slugs: ['atm', 'shop'],
+    slugs: ['atm', 'shop', 'golf', 'beach'],
   },
   {
     id: 'van_chuyen', label: 'Vận chuyển', Icon: Bus, loai: 'khach_san',
-    slugs: ['shuttle', 'car', 'bus'],
+    slugs: ['shuttle', 'car', 'bus', 'parking'],
   },
   {
     id: 'am_thuc', label: 'Ẩm thực', Icon: UtensilsCrossed, loai: 'khach_san',

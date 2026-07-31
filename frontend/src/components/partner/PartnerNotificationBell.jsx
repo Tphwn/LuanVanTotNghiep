@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  Building2,
+  CalendarCheck,
+  Check,
+  DoorOpen,
+  Sparkles,
+  Star,
+  TicketPercent,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-
-const formatTime = (d) => new Date(d).toLocaleString('vi-VN');
-
-const getNotifyTone = (title = '') => {
-  const t = title.toLowerCase();
-  if (t.includes('bị ẩn') || t.includes('bị admin ẩn')) return 'hidden';
-  if (t.includes('hiện lại') || t.includes('được hiện')) return 'visible';
-  return '';
-};
+import { formatNotifyDateTime, formatRelativeTime } from '../../utils/formatRelativeTime';
 
 const LOAI_LABEL = {
   tien_nghi: 'Tiện nghi',
@@ -20,7 +23,110 @@ const LOAI_LABEL = {
   khuyen_mai: 'Khuyến mãi',
 };
 
+/** Icon + đường dẫn theo nội dung thông báo đối tác */
+const getPartnerNotifyMeta = (n) => {
+  const title = String(n.tieu_de || '').toLowerCase();
+  const loai = n.loai;
+  const isWarning = (
+    title.includes('bị ẩn')
+    || title.includes('bị khóa')
+    || title.includes('bị từ chối')
+    || title.includes('tạm ngưng')
+    || title.includes('từ chối')
+    || title.includes('bị hủy')
+    || title.includes('đã bị hủy')
+  );
+  const isSuccess = (
+    title.includes('mở khóa')
+    || title.includes('hiện lại')
+    || title.includes('được hiện')
+    || title.includes('được duyệt')
+    || title.includes('đã được duyệt')
+    || title.includes('khôi phục')
+    || title.includes('mở lại')
+    || title.includes('đã được thêm')
+  );
+
+  if (loai === 'khuyen_mai' || title.includes('khuyến mãi')) {
+    return {
+      kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'promo'),
+      Icon: TicketPercent,
+      badge: 'Khuyến mãi',
+      path: '/partner/promotions',
+    };
+  }
+
+  if (loai === 'danh_gia' || title.includes('đánh giá') || title.includes('phản hồi')) {
+    return {
+      kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'system'),
+      Icon: Star,
+      badge: 'Đánh giá',
+      path: '/partner/reviews',
+    };
+  }
+
+  if (
+    loai === 'dat_phong'
+    || title.includes('đặt phòng')
+    || title.includes('đơn đặt')
+    || title.includes('bị hủy')
+  ) {
+    const isCancel = title.includes('hủy');
+    return {
+      kind: isCancel ? 'warning' : 'success',
+      Icon: isCancel ? AlertTriangle : CalendarCheck,
+      badge: 'Đặt phòng',
+      path: '/partner/bookings',
+      state: { statusFilter: isCancel ? 'da_huy' : 'cho_nhan_phong' },
+    };
+  }
+
+  if (loai === 'tien_nghi' || title.includes('tiện nghi')) {
+    return {
+      kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'amenity'),
+      Icon: Sparkles,
+      badge: 'Tiện nghi',
+      path: '/partner/hotels',
+    };
+  }
+
+  if (title.includes('loại phòng') || title.includes('phòng bị ẩn') || title.includes('phòng đã được mở')) {
+    const roomStatus = title.includes('ẩn') ? 'an' : (title.includes('mở') ? 'hoat_dong' : null);
+    return {
+      kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'system'),
+      Icon: DoorOpen,
+      badge: 'Loại phòng',
+      path: '/partner/rooms',
+      state: roomStatus ? { roomStatusFilter: roomStatus } : undefined,
+    };
+  }
+
+  if (title.includes('khách sạn')) {
+    let tab = 'all';
+    if (title.includes('bị khóa') || title.includes('không hoạt động')) tab = 'khong_hoat_dong';
+    else if (title.includes('mở khóa')) tab = 'da_duyet';
+    else if (title.includes('từ chối')) tab = 'tu_choi';
+    else if (title.includes('duyệt')) tab = 'da_duyet';
+    else if (title.includes('chờ')) tab = 'cho_duyet';
+
+    return {
+      kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'hotel'),
+      Icon: Building2,
+      badge: 'Khách sạn',
+      path: tab === 'all' ? '/partner/hotels' : `/partner/hotels?tab=${tab}`,
+    };
+  }
+
+  return {
+    kind: isWarning ? 'warning' : (isSuccess ? 'success' : 'system'),
+    Icon: isWarning ? AlertTriangle : (isSuccess ? Check : Bell),
+    badge: LOAI_LABEL[loai] || 'Hệ thống',
+    path: '/partner/dashboard',
+  };
+};
+
 const PartnerNotificationBell = () => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -71,6 +177,15 @@ const PartnerNotificationBell = () => {
     }
   };
 
+  const handleClickItem = async (n) => {
+    if (!n.da_doc) await markRead(n.ma_thong_bao);
+    const meta = getPartnerNotifyMeta(n);
+    if (meta.path) {
+      setOpen(false);
+      navigate(meta.path, meta.state ? { state: meta.state } : undefined);
+    }
+  };
+
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
@@ -110,25 +225,38 @@ const PartnerNotificationBell = () => {
             {items.length === 0 ? (
               <div className="partner-notify-empty">Chưa có thông báo</div>
             ) : items.map((n) => {
-              const tone = getNotifyTone(n.tieu_de);
+              const meta = getPartnerNotifyMeta(n);
+              const Icon = meta.Icon;
+              const unread = !n.da_doc;
+
               return (
-              <button
-                key={n.ma_thong_bao}
-                type="button"
-                onClick={() => !n.da_doc && markRead(n.ma_thong_bao)}
-                className={`partner-notify-item${n.da_doc ? '' : ' is-unread'}${tone ? ` partner-notify-item--${tone}` : ''}`}
-              >
-                <div className="partner-notify-item-title">
-                  {!n.da_doc && <span className="partner-notify-unread-dot">●</span>}
-                  {n.tieu_de}
-                  {LOAI_LABEL[n.loai] && (
-                    <span className="partner-notify-type">{LOAI_LABEL[n.loai]}</span>
-                  )}
-                </div>
-                <div className="partner-notify-item-content">{n.noi_dung}</div>
-                <div className="partner-notify-item-time">{formatTime(n.ngay_gui)}</div>
-              </button>
-            );
+                <button
+                  key={n.ma_thong_bao}
+                  type="button"
+                  onClick={() => handleClickItem(n)}
+                  className={`partner-notify-item${unread ? ' is-unread' : ''}`}
+                >
+                  <span className={`partner-notify-icon partner-notify-icon--${meta.kind}`} aria-hidden>
+                    <Icon size={14} strokeWidth={2.4} />
+                  </span>
+
+                  <div className="partner-notify-item-main">
+                    <div className="partner-notify-item-title-row">
+                      <div className="partner-notify-item-title">
+                        {n.tieu_de}
+                        {meta.badge && (
+                          <span className="partner-notify-type">{meta.badge}</span>
+                        )}
+                      </div>
+                      {unread && <span className="partner-notify-unread-dot" aria-label="Chưa đọc" />}
+                    </div>
+                    <div className="partner-notify-item-content">{n.noi_dung}</div>
+                    <div className="partner-notify-item-time" title={formatNotifyDateTime(n.ngay_gui)}>
+                      {formatRelativeTime(n.ngay_gui)}
+                    </div>
+                  </div>
+                </button>
+              );
             })}
           </div>
         </div>

@@ -1,4 +1,12 @@
 const prisma = require('../../config/prisma');
+const {
+  mapBankAccount,
+  parsePayoutProofNote,
+} = require('../../utils/bankAccountHelpers');
+const {
+  calculateCommissionBreakdown,
+  DEFAULT_COMMISSION_RATE,
+} = require('../../utils/commissionHelpers');
 
 const getDoiTacId = async (userId) => {
   const doiTac = await prisma.doi_tac.findUnique({
@@ -57,28 +65,42 @@ const isFullRefund = (booking) => {
   return gross > 0 && refundAmount >= gross * 0.99;
 };
 
-/** Đơn tính doanh thu: đã thanh toán, không hủy, không hoàn toàn bộ; ưu tiên đã hoàn thành / đang lưu trú */
-const isRevenueBooking = (booking) => (
-  !isCancelled(booking)
-  && isPaid(booking)
-  && !isFullRefund(booking)
-  && ['hoan_thanh', 'da_checkin'].includes(booking.trang_thai)
-);
+/** Đơn tính doanh thu đối tác: hoàn thành / check-in, hoặc hủy còn phí phạt */
+const isRevenueBooking = (booking) => {
+  if (!isPaid(booking) || isFullRefund(booking)) return false;
+  if (['hoan_thanh', 'da_checkin'].includes(booking.trang_thai)) return true;
+  if (isCancelled(booking)) {
+    const rate = Number(booking.hoa_hong?.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE;
+    const b = calculateCommissionBreakdown(booking, rate);
+    return b.so_tien_hoa_hong > 0 || b.tien_doi_tac_nhan > 0;
+  }
+  return false;
+};
 
 const calcAmounts = (booking) => {
-  const gross = Number(booking.thanh_toan_cuoi) || 0;
-  const commission = booking.hoa_hong ? Number(booking.hoa_hong.so_tien_hoa_hong) || 0 : 0;
-  const refund = booking.hoan_tien && booking.hoan_tien.trang_thai === 'da_hoan'
+  const rate = Number(booking.hoa_hong?.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE;
+  const breakdown = calculateCommissionBreakdown(booking, rate);
+  const refund = booking.hoan_tien && ['cho_xu_ly', 'dang_xu_ly', 'da_hoan'].includes(booking.hoan_tien.trang_thai)
     ? Number(booking.hoan_tien.so_tien_hoan) || 0
     : 0;
-  const partnerNet = Math.max(0, gross - commission - refund);
-  return { gross, commission, refund, partnerNet };
+  return {
+    gross: breakdown.gmv_doi_tac,
+    paidGross: Number(booking.thanh_toan_cuoi) || 0,
+    commission: breakdown.so_tien_hoa_hong,
+    troGia: breakdown.tien_tro_gia_san,
+    refund,
+    partnerNet: breakdown.tien_doi_tac_nhan,
+    vat: breakdown.vat,
+  };
 };
 
 const bookingInclude = {
   thanh_toan: true,
   hoa_hong: true,
   hoan_tien: true,
+  khuyen_mai: {
+    select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+  },
   loai_phong: {
     select: {
       ma_loai_phong: true,
@@ -110,36 +132,95 @@ const fetchPartnerBookings = async (doiTacId, filters) => {
   });
 };
 
-const monthKeyFromDate = (value) => {
+const TREND_KY = new Set(['ngay', 'thang', 'quy', 'nam']);
+
+const parseTrendKy = (query = {}) => {
+  const raw = String(query.ky || query.nhom || 'thang').toLowerCase();
+  return TREND_KY.has(raw) ? raw : 'thang';
+};
+
+const startOfDay = (value) => {
+  const d = new Date(value);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const periodKeyFromDate = (value, ky) => {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
+  const m = d.getMonth() + 1;
+  if (ky === 'ngay') {
+    return `${y}-${String(m).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  if (ky === 'quy') {
+    return `${y}-Q${Math.floor((m - 1) / 3) + 1}`;
+  }
+  if (ky === 'nam') {
+    return String(y);
+  }
+  return `${y}-${String(m).padStart(2, '0')}`;
 };
 
-const formatMonthShort = (thangNam) => {
-  const [y, m] = String(thangNam).split('-');
-  if (!y || !m) return thangNam;
-  return `T${Number(m)}/${y}`;
+const formatPeriodLabel = (key, ky) => {
+  if (ky === 'ngay') {
+    const [y, m, d] = String(key).split('-');
+    if (!y || !m || !d) return key;
+    return `${d}/${m}`;
+  }
+  if (ky === 'quy') {
+    const [y, q] = String(key).split('-');
+    if (!y || !q) return key;
+    return `${q}/${y}`;
+  }
+  if (ky === 'nam') return String(key);
+  const [y, m] = String(key).split('-');
+  if (!y || !m) return key;
+  return `${m}/${y}`;
 };
 
-const listMonthKeys = (fromDate, toDate) => {
+const listPeriodKeys = (fromDate, toDate, ky) => {
   const keys = [];
+  if (ky === 'ngay') {
+    const cursor = startOfDay(fromDate);
+    const end = startOfDay(toDate);
+    while (cursor <= end) {
+      keys.push(periodKeyFromDate(cursor, 'ngay'));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return keys;
+  }
+  if (ky === 'quy') {
+    const cursor = new Date(fromDate.getFullYear(), Math.floor(fromDate.getMonth() / 3) * 3, 1);
+    const end = new Date(toDate.getFullYear(), Math.floor(toDate.getMonth() / 3) * 3, 1);
+    while (cursor <= end) {
+      keys.push(periodKeyFromDate(cursor, 'quy'));
+      cursor.setMonth(cursor.getMonth() + 3);
+    }
+    return keys;
+  }
+  if (ky === 'nam') {
+    for (let y = fromDate.getFullYear(); y <= toDate.getFullYear(); y += 1) {
+      keys.push(String(y));
+    }
+    return keys;
+  }
   const cursor = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
   const end = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
   while (cursor <= end) {
-    keys.push(monthKeyFromDate(cursor));
+    keys.push(periodKeyFromDate(cursor, 'thang'));
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return keys;
 };
 
+const monthKeyFromDate = (value) => periodKeyFromDate(value, 'thang');
+
 const getOverview = async (doiTacId, query) => {
   const filters = parseFilters(query);
+  const trendKy = parseTrendKy(query);
 
-  
   let trendFilters = filters;
   if (!filters.dateFilter) {
     const now = new Date();
@@ -170,6 +251,9 @@ const getOverview = async (doiTacId, query) => {
           include: {
             hoan_tien: true,
             thanh_toan: true,
+            khuyen_mai: {
+              select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+            },
             loai_phong: {
               select: {
                 ten_loai: true,
@@ -184,9 +268,7 @@ const getOverview = async (doiTacId, query) => {
   ]);
 
   const revenueBookings = bookings.filter(isRevenueBooking);
-  const trendSource = (trendBookings || bookings).filter(
-    (booking) => isRevenueBooking(booking) && booking.trang_thai === 'hoan_thanh',
-  );
+  const trendSource = (trendBookings || bookings).filter(isRevenueBooking);
 
   let tongDoanhThu = 0;
   let doanhThuHoanThanh = 0;
@@ -218,19 +300,27 @@ const getOverview = async (doiTacId, query) => {
 
   let choThanhToan = 0;
   let daThanhToan = 0;
+  let soDaDoiSoat = 0;
+  let soChoDoiSoat = 0;
+  let soCoLech = 0;
 
   commissions.forEach((row) => {
-    const gross = Number(row.dat_phong?.thanh_toan_cuoi) || 0;
-    const commission = Number(row.so_tien_hoa_hong) || 0;
-    const refund = row.dat_phong?.hoan_tien?.trang_thai === 'da_hoan'
-      ? Number(row.dat_phong.hoan_tien.so_tien_hoan) || 0
-      : 0;
-    const partnerAmount = Math.max(0, gross - commission - refund);
+    const breakdown = calculateCommissionBreakdown(
+      row.dat_phong,
+      Number(row.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+    );
+    const partnerAmount = breakdown.tien_doi_tac_nhan;
 
     if (row.trang_thai === 'da_thanh_toan') {
       daThanhToan += partnerAmount;
-    } else if (['chua_thu', 'da_thu', 'tam_giu'].includes(row.trang_thai)) {
+      soDaDoiSoat += 1;
+    } else if (row.trang_thai === 'da_thu') {
       choThanhToan += partnerAmount;
+      soDaDoiSoat += 1;
+    } else if (row.trang_thai === 'chua_thu') {
+      soChoDoiSoat += 1;
+    } else if (row.trang_thai === 'tam_giu') {
+      soCoLech += 1;
     }
   });
 
@@ -241,21 +331,41 @@ const getOverview = async (doiTacId, query) => {
   const trendEnd = filters.dateFilter?.lte
     ? new Date(filters.dateFilter.lte)
     : now;
-  const monthKeys = listMonthKeys(trendStart, trendEnd);
-  const monthTotals = new Map(monthKeys.map((key) => [key, 0]));
+  const periodKeys = listPeriodKeys(trendStart, trendEnd, trendKy);
+  const periodTotals = new Map(periodKeys.map((key) => [key, {
+    doanh_thu: 0,
+    phi_san: 0,
+    tien_nhan: 0,
+    so_don: 0,
+  }]));
 
   trendSource.forEach((booking) => {
-    const key = monthKeyFromDate(booking.ngay_tra_phong || booking.ngay_dat);
-    if (key && monthTotals.has(key)) {
-      monthTotals.set(key, monthTotals.get(key) + calcAmounts(booking).gross);
-    }
+    const key = periodKeyFromDate(booking.ngay_tra_phong || booking.ngay_dat, trendKy);
+    if (!key || !periodTotals.has(key)) return;
+    const amounts = calcAmounts(booking);
+    const bucket = periodTotals.get(key);
+    bucket.doanh_thu += amounts.gross;
+    bucket.phi_san += amounts.commission;
+    bucket.tien_nhan += amounts.partnerNet;
+    bucket.so_don += 1;
   });
 
-  const revenueTrend = monthKeys.map((thang) => ({
-    thang,
-    label: formatMonthShort(thang),
-    doanh_thu: monthTotals.get(thang) || 0,
-  }));
+  const revenueTrend = periodKeys.map((key) => {
+    const bucket = periodTotals.get(key) || {
+      doanh_thu: 0,
+      phi_san: 0,
+      tien_nhan: 0,
+      so_don: 0,
+    };
+    return {
+      key,
+      label: formatPeriodLabel(key, trendKy),
+      doanh_thu: bucket.doanh_thu,
+      phi_san: bucket.phi_san,
+      tien_nhan: bucket.tien_nhan,
+      so_don: bucket.so_don,
+    };
+  });
 
   const revenueByHotel = Array.from(hotelMap.values())
     .sort((a, b) => b.doanh_thu - a.doanh_thu)
@@ -284,6 +394,8 @@ const getOverview = async (doiTacId, query) => {
     .sort((a, b) => new Date(b.ngay_thanh_toan) - new Date(a.ngay_thanh_toan))
     .slice(0, 8);
 
+  const tongDonDoiSoat = soDaDoiSoat + soChoDoiSoat + soCoLech;
+
   return {
     cards: {
       tong_doanh_thu: tongDoanhThu,
@@ -301,11 +413,16 @@ const getOverview = async (doiTacId, query) => {
       da_thanh_toan: daThanhToan,
     },
     charts: {
+      ky: trendKy,
       revenue_trend: revenueTrend,
-      commission_split: [
-        { name: 'Hoa hồng hệ thống', value: hoaHongHeThong },
-        { name: 'Đối tác thực nhận', value: tienDoiTacNhan },
-      ],
+      reconciliation_status: {
+        tong_don: tongDonDoiSoat,
+        items: [
+          { key: 'da_doi_soat', name: 'Đã đối soát', value: soDaDoiSoat, color: '#3C7363' },
+          { key: 'cho_doi_soat', name: 'Chờ đối soát', value: soChoDoiSoat, color: '#f0a202' },
+          { key: 'co_lech', name: 'Có lệch', value: soCoLech, color: '#d64545' },
+        ],
+      },
       revenue_by_hotel: revenueByHotel,
     },
     recent_payments: recentPayments,
@@ -353,6 +470,9 @@ const getCommissions = async (doiTacId, query) => {
       dat_phong: {
         include: {
           hoan_tien: true,
+          khuyen_mai: {
+            select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+          },
           loai_phong: {
             select: {
               ten_loai: true,
@@ -367,25 +487,98 @@ const getCommissions = async (doiTacId, query) => {
 
   return rows.map((row) => {
     const booking = row.dat_phong;
-    const gross = Number(booking?.thanh_toan_cuoi) || 0;
-    const commission = Number(row.so_tien_hoa_hong) || 0;
-    const refund = booking?.hoan_tien?.trang_thai === 'da_hoan'
-      ? Number(booking.hoan_tien.so_tien_hoan) || 0
-      : 0;
+    const breakdown = calculateCommissionBreakdown(
+      booking,
+      Number(row.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+    );
     return {
       ma_hoa_hong: row.ma_hoa_hong,
       ma_dat_phong: booking?.ma_dat_phong || null,
       ma_don_hang: booking?.ma_don_hang || '—',
       khach_san: booking?.loai_phong?.khach_san?.ten || '—',
-      tong_tien: gross,
+      tong_tien: breakdown.gmv_doi_tac,
       ty_le_hoa_hong: Number(row.ty_le_hoa_hong) || 0,
-      tien_hoa_hong: commission,
-      tien_doi_tac_nhan: Math.max(0, gross - commission - refund),
+      tien_hoa_hong: breakdown.so_tien_hoa_hong,
+      tien_tro_gia_san: breakdown.tien_tro_gia_san,
+      tien_doi_tac_nhan: breakdown.tien_doi_tac_nhan,
       trang_thai: row.trang_thai,
       ngay_tinh: row.ngay_tinh,
       ngay_doi_soat: row.ngay_doi_soat,
     };
   });
+};
+
+const getCommissionById = async (doiTacId, id) => {
+  const row = await prisma.hoa_hong.findFirst({
+    where: {
+      ma_hoa_hong: Number(id),
+      ma_doi_tac: doiTacId,
+    },
+    include: {
+      dat_phong: {
+        select: {
+          ma_dat_phong: true,
+          ma_don_hang: true,
+          thanh_toan_cuoi: true,
+          tong_tien_goc: true,
+          tien_giam: true,
+          ngay_nhan_phong: true,
+          ngay_tra_phong: true,
+          trang_thai: true,
+          ten_nguoi_nhan: true,
+          sdt_nguoi_nhan: true,
+          ghi_chu: true,
+          khuyen_mai: {
+            select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+          },
+          hoan_tien: {
+            select: {
+              ma_hoan_tien: true,
+              trang_thai: true,
+              so_tien_hoan: true,
+            },
+          },
+          khach_hang: {
+            select: {
+              ho_ten: true,
+              nguoi_dung: { select: { email: true, so_dien_thoai: true } },
+            },
+          },
+          loai_phong: {
+            select: {
+              ten_loai: true,
+              khach_san: { select: { ma_khach_san: true, ten: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!row) return null;
+
+  const booking = row.dat_phong;
+  const breakdown = calculateCommissionBreakdown(
+    booking,
+    Number(row.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+  );
+
+  return {
+    ma_hoa_hong: row.ma_hoa_hong,
+    ty_le_hoa_hong: Number(row.ty_le_hoa_hong) || 0,
+    so_tien_hoa_hong: breakdown.so_tien_hoa_hong,
+    tien_tro_gia_san: breakdown.tien_tro_gia_san,
+    hoa_hong_rong: breakdown.hoa_hong_rong,
+    doanh_thu_don: breakdown.gmv_doi_tac,
+    tien_khach_tra: Number(booking?.thanh_toan_cuoi) || 0,
+    tien_doi_tac_nhan: breakdown.tien_doi_tac_nhan,
+    trang_thai: row.trang_thai,
+    ngay_tinh: row.ngay_tinh,
+    ngay_doi_soat: row.ngay_doi_soat,
+    ngay_hoan_thanh: row.ngay_tinh || booking?.ngay_tra_phong || null,
+    ghi_chu: row.ghi_chu || null,
+    dat_phong: booking,
+  };
 };
 
 const buildPayoutBucket = () => ({
@@ -397,20 +590,21 @@ const buildPayoutBucket = () => ({
   so_don_da_tt: 0,
   so_don_cho_tt: 0,
   ngay_thanh_toan: null,
+  ngay_doi_soat: null,
   phuong_thuc: null,
   ma_gd_doi_tac: null,
+  ghi_chu: null,
 });
 
 const partnerAmountFromRow = (row) => {
-  const gross = Number(row.dat_phong?.thanh_toan_cuoi) || 0;
-  const commission = Number(row.so_tien_hoa_hong) || 0;
-  const refund = row.dat_phong?.hoan_tien?.trang_thai === 'da_hoan'
-    ? Number(row.dat_phong.hoan_tien.so_tien_hoan) || 0
-    : 0;
+  const breakdown = calculateCommissionBreakdown(
+    row.dat_phong,
+    Number(row.ty_le_hoa_hong) || DEFAULT_COMMISSION_RATE,
+  );
   return {
-    gross,
-    commission,
-    partnerAmount: Math.max(0, gross - commission - refund),
+    gross: breakdown.gmv_doi_tac,
+    commission: breakdown.so_tien_hoa_hong,
+    partnerAmount: breakdown.tien_doi_tac_nhan,
   };
 };
 
@@ -431,7 +625,7 @@ const getPayouts = async (doiTacId, query) => {
   const commissions = await prisma.hoa_hong.findMany({
     where: {
       ma_doi_tac: doiTacId,
-      trang_thai: { in: ['da_thu', 'da_thanh_toan', 'tam_giu'] },
+      trang_thai: { in: ['da_thu', 'da_thanh_toan'] },
       ...(filters.dateFilter ? { ngay_tinh: filters.dateFilter } : {}),
       dat_phong: {
         loai_phong: {
@@ -441,20 +635,21 @@ const getPayouts = async (doiTacId, query) => {
     },
     include: {
       dat_phong: {
-        include: { hoan_tien: true },
+        include: {
+          hoan_tien: true,
+          khuyen_mai: {
+            select: { ma_khuyen_mai: true, loai_nguon: true, ma_code: true },
+          },
+        },
       },
     },
     orderBy: { ngay_tinh: 'desc' },
   });
 
-  const payoutRows = commissions.filter((r) => {
-    if (r.trang_thai === 'tam_giu') return Boolean(r.ngay_doi_soat);
-    return true;
-  });
+  const payoutRows = commissions;
 
   let pending = null;
   const paidByBatch = new Map();
-  let held = null;
 
   for (const row of payoutRows) {
     const { gross, commission, partnerAmount } = partnerAmountFromRow(row);
@@ -466,6 +661,10 @@ const getPayouts = async (doiTacId, query) => {
       pending.tong_doanh_thu += gross;
       pending.tong_hoa_hong += commission;
       pending.tien_doi_tac_nhan += partnerAmount;
+      if (row.ngay_doi_soat) {
+        const ds = new Date(row.ngay_doi_soat);
+        if (!pending.ngay_doi_soat || ds > pending.ngay_doi_soat) pending.ngay_doi_soat = ds;
+      }
     } else if (row.trang_thai === 'da_thanh_toan') {
       const key = paidBatchKey(row, doiTacId);
       if (!paidByBatch.has(key)) {
@@ -482,18 +681,17 @@ const getPayouts = async (doiTacId, query) => {
       b.tong_hoa_hong += commission;
       b.tien_doi_tac_nhan += partnerAmount;
       b.da_nhan += partnerAmount;
+      if (row.ngay_doi_soat) {
+        const ds = new Date(row.ngay_doi_soat);
+        if (!b.ngay_doi_soat || ds > b.ngay_doi_soat) b.ngay_doi_soat = ds;
+      }
       if (row.ngay_thanh_toan_doi_tac) {
         const paidAt = new Date(row.ngay_thanh_toan_doi_tac);
         if (!b.ngay_thanh_toan || paidAt > b.ngay_thanh_toan) b.ngay_thanh_toan = paidAt;
       }
       if (row.phuong_thuc_tt_doi_tac) b.phuong_thuc = row.phuong_thuc_tt_doi_tac;
       if (row.ma_gd_doi_tac) b.ma_gd_doi_tac = row.ma_gd_doi_tac;
-    } else if (row.trang_thai === 'tam_giu') {
-      if (!held) held = buildPayoutBucket();
-      held.so_don += 1;
-      held.tong_doanh_thu += gross;
-      held.tong_hoa_hong += commission;
-      held.tien_doi_tac_nhan += partnerAmount;
+      if (row.ghi_chu) b.ghi_chu = row.ghi_chu;
     }
   }
 
@@ -527,6 +725,7 @@ const getPayouts = async (doiTacId, query) => {
       so_tien_nhan: pending.tien_doi_tac_nhan,
       trang_thai: 'cho_thanh_toan',
       ngay_thanh_toan: null,
+      ngay_doi_soat: pending.ngay_doi_soat,
       phuong_thuc_tt: null,
     });
   }
@@ -553,29 +752,9 @@ const getPayouts = async (doiTacId, query) => {
       so_tien_nhan: b.tien_doi_tac_nhan,
       trang_thai: 'da_thanh_toan',
       ngay_thanh_toan: b.ngay_thanh_toan,
+      ngay_doi_soat: b.ngay_doi_soat,
       phuong_thuc_tt: b.phuong_thuc,
-    });
-  }
-
-  if (held?.so_don) {
-    list.push({
-      ma_dot: 'held',
-      ma_gd_doi_tac: null,
-      ma_ky_thanh_toan: '—',
-      ten_dot: 'Đợt tạm giữ',
-      so_dot: null,
-      thang_nam: null,
-      khoang_thoi_gian: null,
-      so_don: held.so_don,
-      tong_doanh_thu: held.tong_doanh_thu,
-      tong_hoa_hong: held.tong_hoa_hong,
-      tien_doi_tac_nhan: held.tien_doi_tac_nhan,
-      da_nhan: 0,
-      con_cho_nhan: 0,
-      so_tien_nhan: held.tien_doi_tac_nhan,
-      trang_thai: 'tam_giu',
-      ngay_thanh_toan: null,
-      phuong_thuc_tt: null,
+      ghi_chu: b.ghi_chu || null,
     });
   }
 
@@ -597,15 +776,28 @@ const getPayoutDetail = async (doiTacId, maDot) => {
   const summary = list.find((x) => String(x.ma_dot) === String(maDot));
   if (!summary) return null;
 
+  const partner = await prisma.doi_tac.findUnique({
+    where: { ma_doi_tac: doiTacId },
+    select: {
+      ten_cong_ty: true,
+      so_tai_khoan: true,
+      ten_chu_tai_khoan: true,
+      ma_ngan_hang: true,
+      ten_ngan_hang: true,
+      logo_ngan_hang: true,
+    },
+  });
+
   const commissions = await prisma.hoa_hong.findMany({
     where: {
       ma_doi_tac: doiTacId,
-      trang_thai: { in: ['da_thu', 'da_thanh_toan', 'tam_giu'] },
+      trang_thai: { in: ['da_thu', 'da_thanh_toan'] },
     },
     include: {
       dat_phong: {
         include: {
           hoan_tien: true,
+          khach_hang: { select: { ho_ten: true } },
           loai_phong: {
             select: {
               ten_loai: true,
@@ -620,30 +812,57 @@ const getPayoutDetail = async (doiTacId, maDot) => {
 
   const matchRows = commissions.filter((c) => {
     if (maDot === 'pending') return c.trang_thai === 'da_thu';
-    if (maDot === 'held') return c.trang_thai === 'tam_giu' && Boolean(c.ngay_doi_soat);
     if (c.trang_thai !== 'da_thanh_toan') return false;
     return paidBatchKey(c, doiTacId) === String(maDot);
   });
 
+  const hotels = new Set();
   const bookings = matchRows.map((c) => {
     const { gross, commission, partnerAmount } = partnerAmountFromRow(c);
+    const hotelName = c.dat_phong?.loai_phong?.khach_san?.ten;
+    if (hotelName) hotels.add(hotelName);
     return {
       ma_dat_phong: c.dat_phong?.ma_dat_phong || null,
       ma_don_hang: c.dat_phong?.ma_don_hang || '—',
-      khach_san: c.dat_phong?.loai_phong?.khach_san?.ten || '—',
+      khach_hang: c.dat_phong?.khach_hang?.ho_ten || c.dat_phong?.ten_nguoi_nhan || '—',
+      khach_san: hotelName || '—',
       loai_phong: c.dat_phong?.loai_phong?.ten_loai || '—',
+      ngay_nhan_phong: c.dat_phong?.ngay_nhan_phong || null,
+      ngay_tra_phong: c.dat_phong?.ngay_tra_phong || null,
       ngay_hoan_thanh: c.dat_phong?.ngay_tra_phong || null,
       tong_tien: gross,
+      ty_le_hoa_hong: Number(c.ty_le_hoa_hong) || 0,
       tien_hoa_hong: commission,
       tien_doi_tac_nhan: partnerAmount,
       trang_thai: c.trang_thai,
       ma_gd_doi_tac: c.ma_gd_doi_tac || null,
+      ngay_doi_soat: c.ngay_doi_soat || null,
       ngay_thanh_toan_doi_tac: c.ngay_thanh_toan_doi_tac || null,
     };
   });
 
+  const proof = parsePayoutProofNote(summary.ghi_chu || matchRows[0]?.ghi_chu);
+  const isPaid = summary.trang_thai === 'da_thanh_toan';
+
   return {
     ...summary,
+    ten_cong_ty: partner?.ten_cong_ty || null,
+    tai_khoan_ngan_hang: mapBankAccount(partner),
+    danh_sach_khach_san: [...hotels],
+    ma_phieu_thanh_toan: isPaid ? (summary.ma_gd_doi_tac || summary.ma_dot) : null,
+    minh_chung: isPaid
+      ? {
+        phuong_thuc: summary.phuong_thuc_tt || matchRows[0]?.phuong_thuc_tt_doi_tac || null,
+        ma_giao_dich: proof.ma_gd_ngan_hang || null,
+        ghi_chu: proof.noi_dung_chuyen_khoan || summary.ghi_chu || null,
+        ky_thanh_toan: proof.ky_thanh_toan || null,
+      }
+      : {
+        phuong_thuc: null,
+        ma_giao_dich: null,
+        ghi_chu: null,
+        ky_thanh_toan: null,
+      },
     tong_so_don: bookings.length,
     bookings,
   };
@@ -655,6 +874,7 @@ module.exports = {
   getOverview,
   getRevenueBookings,
   getCommissions,
+  getCommissionById,
   getPayouts,
   getPayoutDetail,
 };

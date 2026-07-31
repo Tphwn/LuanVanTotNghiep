@@ -134,18 +134,6 @@ const DateRangePicker = ({
 
       {open && (
         <div className="date-range-dropdown">
-          <div className="date-range-dropdown-title">Ngày ở</div>
-          <div className="date-range-summary">
-            <div>
-              <span className="date-range-summary-label">Nhận phòng</span>
-              <strong>{ngayNhan ? formatVN(ngayNhan) : '—'}</strong>
-            </div>
-            <div>
-              <span className="date-range-summary-label">Trả phòng</span>
-              <strong>{ngayTra ? formatVN(ngayTra) : '—'}</strong>
-            </div>
-          </div>
-
           <div className="calendar-nav">
             <button type="button" className="calendar-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Tháng trước">
               ‹

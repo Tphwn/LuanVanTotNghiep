@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { register, verifyRegisterOtp, clearError } from '../../store/slices/authSlice';
@@ -11,10 +11,31 @@ import {
   validatePhone,
   validatePassword,
   validatePasswordConfirm,
+  sanitizePhoneInput,
 } from '../../utils/authValidation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
+import AuthSplitLayout from '../../components/auth/AuthSplitLayout';
+
+const OTP_FALLBACK_TTL_SEC = 10 * 60;
+
+const formatOtpRemain = (totalSec) => {
+  const sec = Math.max(0, Number(totalSec) || 0);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const resolveOtpExpiresAt = (payload) => {
+  if (payload?.otp_het_han) {
+    const t = new Date(payload.otp_het_han).getTime();
+    if (Number.isFinite(t)) return t;
+  }
+  const ttl = Number(payload?.otp_ttl_seconds);
+  if (Number.isFinite(ttl) && ttl > 0) return Date.now() + ttl * 1000;
+  return Date.now() + OTP_FALLBACK_TTL_SEC * 1000;
+};
 
 const RegisterPage = () => {
   const dispatch = useDispatch();
@@ -29,6 +50,24 @@ const RegisterPage = () => {
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [resendLoading, setResendLoading] = useState(false);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(() => (
+    location.state?.step === 'otp' ? Date.now() + OTP_FALLBACK_TTL_SEC * 1000 : null
+  ));
+  const [otpRemainSec, setOtpRemainSec] = useState(OTP_FALLBACK_TTL_SEC);
+
+  const startOtpCountdown = useCallback((payload) => {
+    setOtpExpiresAt(resolveOtpExpiresAt(payload));
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'otp' || !otpExpiresAt) return undefined;
+    const tick = () => {
+      setOtpRemainSec(Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [step, otpExpiresAt]);
 
   const [formData, setFormData] = useState({
     ho_ten: '', email: '', so_dien_thoai: '', mat_khau: '', xac_nhan_mat_khau: '',
@@ -36,7 +75,8 @@ const RegisterPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'so_dien_thoai' ? sanitizePhoneInput(value) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (error) dispatch(clearError());
     if (formError) setFormError('');
     if (fieldErrors[name]) {
@@ -44,10 +84,20 @@ const RegisterPage = () => {
     }
   };
 
+  const isRegisterFormIncomplete = () => (
+    !formData.ho_ten.trim()
+    || !String(formData.email || '').trim()
+    || !String(formData.so_dien_thoai || '').trim()
+    || !String(formData.mat_khau || '')
+    || !String(formData.xac_nhan_mat_khau || '')
+  );
+
   const validateRegisterFields = () => {
     const errors = {};
-    if (!formData.ho_ten.trim() || formData.ho_ten.trim().length < 2) {
-      errors.ho_ten = 'Họ tên không được để trống (tối thiểu 2 ký tự).';
+    if (!formData.ho_ten.trim()) {
+      errors.ho_ten = 'Họ tên không được để trống.';
+    } else if (formData.ho_ten.trim().length < 2) {
+      errors.ho_ten = 'Họ tên tối thiểu 2 ký tự.';
     }
 
     const emailErr = validateEmail(formData.email);
@@ -70,7 +120,11 @@ const RegisterPage = () => {
     const errors = validateRegisterFields();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setFormError(' Vui lòng điền đúng thông tin.');
+      setFormError(
+        isRegisterFormIncomplete()
+          ? 'Vui lòng điền đủ thông tin.'
+          : 'Vui lòng điền đúng thông tin.',
+      );
       return;
     }
 
@@ -89,6 +143,7 @@ const RegisterPage = () => {
         setInfo(result.message || 'Đã gửi mã OTP tới email của bạn.');
         setStep('otp');
         setOtp('');
+        startOtpCountdown(result);
       }
     } catch (err) {
       const msg = typeof err === 'string' ? err : 'Đăng ký thất bại';
@@ -125,7 +180,10 @@ const RegisterPage = () => {
     setFormError('');
     try {
       const res = await authService.resendOtp({ email: pendingEmail, purpose: 'register' });
-      setInfo(res.data?.data?.message || res.data?.message || 'Đã gửi lại mã OTP.');
+      const data = res.data?.data || res.data || {};
+      setInfo(data.message || 'Đã gửi lại mã OTP.');
+      startOtpCountdown(data);
+      setOtp('');
     } catch (err) {
       setFormError(err.response?.data?.message || 'Không gửi lại được OTP');
     } finally {
@@ -143,16 +201,8 @@ const RegisterPage = () => {
   const displayError = formError || error;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #e6f4ff 0%, #f0f2f5 100%)',
-      padding: 'var(--spacing-lg)',
-    }}
-    >
-      <Card style={{ width: '100%', maxWidth: '460px', textAlign: 'left' }}>
+    <AuthSplitLayout>
+      <Card className="auth-form-card" style={{ width: '100%', textAlign: 'left' }}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
           <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
             {step === 'otp' ? 'Xác thực email' : 'ĐĂNG KÝ TÀI KHOẢN'}
@@ -195,6 +245,32 @@ const RegisterPage = () => {
           </div>
         )}
 
+        {step === 'otp' && (
+          <div style={{
+            marginBottom: 'var(--spacing-md)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: otpRemainSec > 0 ? '#f0f7f5' : '#fff7e6',
+            border: `1px solid ${otpRemainSec > 0 ? '#c5ddd2' : '#ffd591'}`,
+            color: otpRemainSec > 0 ? '#3C7363' : '#ad6800',
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+          >
+            <span>
+              {otpRemainSec > 0 ? 'Thời gian hiệu lực mã OTP' : 'Mã OTP đã hết hạn'}
+            </span>
+            <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>
+              {otpRemainSec > 0
+                ? formatOtpRemain(otpRemainSec)
+                : '0:00 — vui lòng gửi lại mã'}
+            </strong>
+          </div>
+        )}
+
         {step === 'form' ? (
           <form onSubmit={handleSubmit} noValidate>
             <Input
@@ -224,6 +300,8 @@ const RegisterPage = () => {
               value={formData.so_dien_thoai}
               onChange={handleChange}
               placeholder="09xxxxxxxx"
+              inputMode="numeric"
+              maxLength={10}
               error={fieldErrors.so_dien_thoai}
               required
             />
@@ -299,6 +377,8 @@ const RegisterPage = () => {
                 setOtp('');
                 setFormError('');
                 setFieldErrors({});
+                setOtpExpiresAt(null);
+                setOtpRemainSec(0);
                 dispatch(clearError());
               }}
               style={{
@@ -331,7 +411,7 @@ const RegisterPage = () => {
           </Link>
         </p>
       </Card>
-    </div>
+    </AuthSplitLayout>
   );
 };
 

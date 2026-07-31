@@ -76,6 +76,24 @@ exports.getCommissions = async (req, res) => {
   }
 };
 
+exports.getCommissionById = async (req, res) => {
+  try {
+    const doiTacId = await ensurePartner(req, res);
+    if (!doiTacId) return;
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'Mã hoa hồng không hợp lệ' });
+    }
+    const data = await financeService.getCommissionById(doiTacId, id);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hoa hồng' });
+    }
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getPayouts = async (req, res) => {
   try {
     const doiTacId = await ensurePartner(req, res);

@@ -150,6 +150,30 @@ const HotelsPage = () => {
     });
   }, [hotels, activeTab, starFilter, partnerFilter, locationFilter, keyword]);
 
+  const emptyListMessage = useMemo(() => {
+    const hasExtraFilter = Boolean(keyword.trim())
+      || starFilter !== "all"
+      || partnerFilter !== "all"
+      || locationFilter !== "all";
+    if (activeTab === "cho_duyet") {
+      return hasExtraFilter
+        ? "Không tìm thấy khách sạn chờ duyệt phù hợp"
+        : "Danh sách khách sạn chờ duyệt trống";
+    }
+    if (activeTab === "tu_choi") {
+      return hasExtraFilter
+        ? "Không tìm thấy khách sạn bị khóa phù hợp"
+        : "Danh sách khách sạn bị khóa trống";
+    }
+    if (activeTab === "hoat_dong") {
+      return hasExtraFilter
+        ? "Không tìm thấy khách sạn đang hoạt động phù hợp"
+        : "Danh sách khách sạn đang hoạt động trống";
+    }
+    if (hasExtraFilter) return "Không tìm thấy khách sạn phù hợp";
+    return "Chưa có khách sạn nào";
+  }, [activeTab, keyword, starFilter, partnerFilter, locationFilter]);
+
   const totalPages = Math.max(1, Math.ceil(filteredHotels.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
 
@@ -351,7 +375,7 @@ const HotelsPage = () => {
           <div style={{ textAlign: "center", padding: 48, color: "#5a7a72" }}>Đang tải dữ liệu...</div>
         ) : filteredHotels.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Không tìm thấy khách sạn phù hợp</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <>

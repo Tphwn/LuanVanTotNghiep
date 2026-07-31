@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Users, Baby, DoorOpen } from 'lucide-react';
-import { normalizeSearchGuests } from '../../../utils/hotelSearchStorage';
+import {
+  CHILD_AGE_OPTIONS,
+  normalizeSearchGuests,
+} from '../../../utils/hotelSearchStorage';
 
 const MAX_ADULTS = 10;
 const MAX_CHILDREN = 6;
@@ -38,6 +41,7 @@ const GuestBedPicker = ({
   soKhach,
   treEm,
   soPhong,
+  tuoiTreEm = [],
   open,
   onOpenChange,
   onChange,
@@ -65,8 +69,15 @@ const GuestBedPicker = ({
       so_khach: soKhach,
       tre_em: treEm,
       so_phong: soPhong,
+      tuoi_tre_em: tuoiTreEm,
       ...patch,
     }));
+  };
+
+  const setChildAge = (index, age) => {
+    const nextAges = [...tuoiTreEm];
+    nextAges[index] = Number(age);
+    applyChange({ tuoi_tre_em: nextAges });
   };
 
   const maxRooms = Math.min(MAX_ROOMS, soKhach);
@@ -109,6 +120,36 @@ const GuestBedPicker = ({
             onDecrease={() => applyChange({ so_phong: soPhong - 1 })}
             onIncrease={() => applyChange({ so_phong: soPhong + 1 })}
           />
+
+          {treEm > 0 && (
+            <div className="guest-child-ages">
+              <div className="guest-child-ages-title">Điền tuổi của trẻ</div>
+              <p className="guest-child-ages-hint">
+                Biết tuổi của trẻ em đi cùng sẽ giúp chúng tôi tìm được phòng phù hợp
+              </p>
+              <div className="guest-child-ages-grid">
+                {Array.from({ length: treEm }, (_, index) => (
+                  <label key={`child-age-${index}`} className="guest-child-age-field">
+                    <span className="guest-child-age-label">
+                      Trẻ em
+                      {' '}
+                      {index + 1}
+                    </span>
+                    <select
+                      className="guest-child-age-select"
+                      value={tuoiTreEm[index] ?? 1}
+                      onChange={(e) => setChildAge(index, e.target.value)}
+                    >
+                      {CHILD_AGE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="guest-bed-dropdown-footer">
             <button type="button" className="guest-bed-done-btn" onClick={() => onOpenChange(false)}>
               Xong

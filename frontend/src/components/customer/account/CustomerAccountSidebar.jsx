@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Calendar, RotateCcw } from 'lucide-react';
+import { User, Calendar, RotateCcw, Receipt } from 'lucide-react';
 import ROUTES from '../../../constants/routes';
 import customerAccountService from '../../../services/customerAccountService';
 import { resolveUploadUrl } from '../../../utils/media';
@@ -13,6 +13,7 @@ const formatDate = (date) => (date ? new Date(date).toLocaleString('vi-VN') : '�
 const items = [
   { to: ROUTES.CUSTOMER.PROFILE, label: 'Chỉnh sửa hồ sơ', icon: User },
   { to: ROUTES.CUSTOMER.MY_BOOKINGS, label: 'Đặt chỗ của tôi', icon: Calendar },
+  { to: ROUTES.CUSTOMER.TRANSACTIONS, label: 'Danh sách giao dịch', icon: Receipt },
   { to: ROUTES.CUSTOMER.REFUNDS, label: 'Hoàn tiền', icon: RotateCcw },
 ];
 

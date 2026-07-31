@@ -37,8 +37,11 @@ const CONFIRM_CONFIG = {
     variant: 'danger',
     confirmText: 'Tạm ngưng',
     icon: <Lock size={20} />,
-    reason: { required: true, label: 'Lý do tạm ngưng', id: 'promo-lock-reason' },
-    endpoint: (id) => ({ url: `/admin/promotions/${id}/lock`, withReason: true }),
+    // Lý do: bắt buộc với KM đối tác; KM hệ thống không cần (resolve ở confirmCfg)
+    endpoint: (id, withReason) => ({
+      url: `/admin/promotions/${id}/lock`,
+      withReason,
+    }),
   },
   reject: {
     title: 'Từ chối khuyến mãi',
@@ -177,6 +180,7 @@ const emptyForm = {
   ngay_bat_dau: '',
   ngay_ket_thuc: '',
   so_luot_toi_da: '',
+  lan_dat_dau: false,
 };
 
 const InfoRow = ({ label, value }) => (
@@ -216,8 +220,14 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             {!isSystem && <InfoRow label="Khách sạn" value={item.khach_san?.ten} />}
             <InfoRow label="Nguồn tạo" value={`${source.role} · ${source.detail}`} />
             <InfoRow
+              label="Loại đặc biệt"
+              value={item.lan_dat_dau ? 'Khuyến mãi lần đặt đầu tiên' : '—'}
+            />
+            <InfoRow
               label="Thời gian áp dụng"
-              value={`${formatDate(item.ngay_bat_dau)} – ${formatDate(item.ngay_ket_thuc)}`}
+              value={item.lan_dat_dau
+                ? `${formatDate(item.ngay_bat_dau)} – Không thời hạn`
+                : `${formatDate(item.ngay_bat_dau)} – ${formatDate(item.ngay_ket_thuc)}`}
             />
             <InfoRow
               label="Số lượt sử dụng"
@@ -373,7 +383,17 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
             />
             <FieldError msg={errors.don_hang_toi_thieu} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label className="admin-promo-checkbox-label">
+              <input
+                type="checkbox"
+                checked={Boolean(form.lan_dat_dau)}
+                onChange={(e) => updateField('lan_dat_dau', e.target.checked)}
+              />
+              Khuyến mãi lần đặt đầu tiên (tự áp trên trang thanh toán, không hết hạn)
+            </label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: form.lan_dat_dau ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label>Từ ngày</label>
               <input
@@ -385,17 +405,19 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
               />
               <FieldError msg={errors.ngay_bat_dau} />
             </div>
-            <div className="form-group">
-              <label>Đến ngày</label>
-              <input
-                className={inputCls(errors.ngay_ket_thuc)}
-                type="date"
-                value={form.ngay_ket_thuc}
-                min={minEnd}
-                onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
-              />
-              <FieldError msg={errors.ngay_ket_thuc} />
-            </div>
+            {!form.lan_dat_dau && (
+              <div className="form-group">
+                <label>Đến ngày</label>
+                <input
+                  className={inputCls(errors.ngay_ket_thuc)}
+                  type="date"
+                  value={form.ngay_ket_thuc}
+                  min={minEnd}
+                  onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
+                />
+                <FieldError msg={errors.ngay_ket_thuc} />
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label>Số lượt tối đa (để trống = không giới hạn)</label>
@@ -428,6 +450,7 @@ const AdminPromotionsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const { toast, showToast } = useToast();
 
+  const [keyword, setKeyword] = useState('');
   const [loaiGiamFilter, setLoaiGiamFilter] = useState('all');
   const [phamViFilter, setPhamViFilter] = useState('all');
   const [partnerFilter, setPartnerFilter] = useState('');
@@ -451,6 +474,7 @@ const AdminPromotionsPage = () => {
     setLoading(true);
     try {
       const params = { ...getDateRange(timePreset, tuNgay, denNgay) };
+      if (keyword.trim()) params.keyword = keyword.trim();
       if (loaiGiamFilter !== 'all') params.loai_giam = loaiGiamFilter;
       if (phamViFilter !== 'all') params.loai_nguon = phamViFilter;
       if (partnerFilter) params.ma_doi_tac = partnerFilter;
@@ -471,7 +495,7 @@ const AdminPromotionsPage = () => {
       setLoading(false);
     }
   }, [
-    loaiGiamFilter, phamViFilter, partnerFilter,
+    keyword, loaiGiamFilter, phamViFilter, partnerFilter,
     timePreset, tuNgay, denNgay, showToast,
   ]);
 
@@ -491,6 +515,7 @@ const AdminPromotionsPage = () => {
   };
 
   const clearFilters = () => {
+    setKeyword('');
     setLoaiGiamFilter('all');
     setPhamViFilter('all');
     setPartnerFilter('');
@@ -498,6 +523,16 @@ const AdminPromotionsPage = () => {
     setTuNgay('');
     setDenNgay('');
   };
+
+  const hasActiveFilters = Boolean(keyword.trim())
+    || loaiGiamFilter !== 'all'
+    || phamViFilter !== 'all'
+    || Boolean(partnerFilter)
+    || timePreset !== 'all';
+
+  const emptyListMessage = hasActiveFilters
+    ? 'Không tìm thấy mã khuyến mãi phù hợp'
+    : 'Chưa có mã khuyến mãi nào được tạo';
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -538,15 +573,17 @@ const AdminPromotionsPage = () => {
     }
 
     if (!f.ngay_bat_dau) e.ngay_bat_dau = 'Vui lòng chọn ngày bắt đầu.';
-    if (!f.ngay_ket_thuc) e.ngay_ket_thuc = 'Vui lòng chọn ngày kết thúc.';
-    if (f.ngay_bat_dau && f.ngay_ket_thuc && f.ngay_ket_thuc < f.ngay_bat_dau) {
-      e.ngay_ket_thuc = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+    if (!f.lan_dat_dau) {
+      if (!f.ngay_ket_thuc) e.ngay_ket_thuc = 'Vui lòng chọn ngày kết thúc.';
+      if (f.ngay_bat_dau && f.ngay_ket_thuc && f.ngay_ket_thuc < f.ngay_bat_dau) {
+        e.ngay_ket_thuc = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.';
+      }
+      if (f.ngay_ket_thuc && f.ngay_ket_thuc < today) {
+        e.ngay_ket_thuc = 'Ngày kết thúc không được nằm trong quá khứ.';
+      }
     }
     if (f.ngay_bat_dau && f.ngay_bat_dau < today && f.ngay_bat_dau !== originalStart) {
       e.ngay_bat_dau = 'Ngày bắt đầu không được nằm trong quá khứ.';
-    }
-    if (f.ngay_ket_thuc && f.ngay_ket_thuc < today) {
-      e.ngay_ket_thuc = 'Ngày kết thúc không được nằm trong quá khứ.';
     }
 
     if (f.so_luot_toi_da !== '') {
@@ -578,6 +615,7 @@ const AdminPromotionsPage = () => {
       ngay_bat_dau: item.ngay_bat_dau?.slice?.(0, 10) || '',
       ngay_ket_thuc: item.ngay_ket_thuc?.slice?.(0, 10) || '',
       so_luot_toi_da: item.so_luot_toi_da != null ? String(item.so_luot_toi_da) : '',
+      lan_dat_dau: Boolean(item.lan_dat_dau),
     });
     setFormOpen(true);
   };
@@ -601,8 +639,9 @@ const AdminPromotionsPage = () => {
         giam_toi_da: form.giam_toi_da ? Number(form.giam_toi_da) : null,
         don_hang_toi_thieu: Number(form.don_hang_toi_thieu || 0),
         ngay_bat_dau: form.ngay_bat_dau,
-        ngay_ket_thuc: form.ngay_ket_thuc,
+        ngay_ket_thuc: form.lan_dat_dau ? '2099-12-31' : form.ngay_ket_thuc,
         so_luot_toi_da: form.so_luot_toi_da ? Number(form.so_luot_toi_da) : null,
+        lan_dat_dau: Boolean(form.lan_dat_dau),
       };
       if (editing) {
         await api.put(`/admin/promotions/${editing.ma_khuyen_mai}`, payload);
@@ -628,7 +667,12 @@ const AdminPromotionsPage = () => {
     if (!confirmTarget) return;
     const { item, action } = confirmTarget;
     const cfg = CONFIRM_CONFIG[action];
-    const { url, withReason } = cfg.endpoint(item.ma_khuyen_mai);
+    const needReason = action === 'lock'
+      ? item.loai_nguon === 'doi_tac'
+      : Boolean(cfg.endpoint(item.ma_khuyen_mai).withReason);
+    const { url, withReason } = action === 'lock'
+      ? cfg.endpoint(item.ma_khuyen_mai, needReason)
+      : cfg.endpoint(item.ma_khuyen_mai);
 
     setActionLoading(true);
     try {
@@ -656,10 +700,25 @@ const AdminPromotionsPage = () => {
   const {
     pagedItems, currentPage, totalPages, setPage, pageNumbers, rangeFrom, rangeTo, showPagination,
   } = useListPagination(items, PAGE_SIZE, [
-    loaiGiamFilter, phamViFilter, partnerFilter, timePreset, tuNgay, denNgay,
+    keyword, loaiGiamFilter, phamViFilter, partnerFilter, timePreset, tuNgay, denNgay,
   ]);
 
-  const confirmCfg = confirmTarget ? CONFIRM_CONFIG[confirmTarget.action] : null;
+  const confirmCfg = useMemo(() => {
+    if (!confirmTarget) return null;
+    const base = CONFIRM_CONFIG[confirmTarget.action];
+    if (!base) return null;
+    if (confirmTarget.action !== 'lock') return base;
+    const isPartner = confirmTarget.item?.loai_nguon === 'doi_tac';
+    return {
+      ...base,
+      reason: isPartner
+        ? { required: true, label: 'Lý do tạm ngưng', id: 'promo-lock-reason' }
+        : undefined,
+      intro: isPartner
+        ? 'Khuyến mãi đối tác sẽ ngừng áp dụng. Vui lòng nhập lý do để đối tác biết.'
+        : 'Khuyến mãi hệ thống sẽ ngừng áp dụng cho tới khi được khôi phục.',
+    };
+  }, [confirmTarget]);
 
   return (
     <div className="mgmt-page admin-promotions-page">
@@ -675,88 +734,102 @@ const AdminPromotionsPage = () => {
       <SummaryStats items={statItems} />
 
       <div className="mgmt-toolbar mgmt-toolbar--filters admin-promotions-filters">
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="promo-loaigiam">Loại khuyến mãi</label>
-          <select
-            id="promo-loaigiam"
-            className="mgmt-select-inline"
-            value={loaiGiamFilter}
-            onChange={(e) => setLoaiGiamFilter(e.target.value)}
-          >
-            <option value="all">Tất cả loại</option>
-            <option value="phan_tram">Phần trăm (%)</option>
-            <option value="so_tien">Số tiền (VNĐ)</option>
-          </select>
-        </div>
+        <div className="admin-promotions-filters-fields">
+          <div className="mgmt-filter-field mgmt-filter-field--grow">
+            <label className="mgmt-filter-label" htmlFor="promo-keyword">Tìm kiếm</label>
+            <input
+              id="promo-keyword"
+              type="search"
+              className="mgmt-select-inline"
+              placeholder="Mã khuyến mãi, tên khuyến mãi..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="promo-role">Vai trò</label>
-          <select
-            id="promo-role"
-            className="mgmt-select-inline"
-            value={phamViFilter}
-            onChange={(e) => setPhamViFilter(e.target.value)}
-          >
-            <option value="all">Tất cả vai trò</option>
-            <option value="he_thong">Admin</option>
-            <option value="doi_tac">Đối tác</option>
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="promo-loaigiam">Loại khuyến mãi</label>
+            <select
+              id="promo-loaigiam"
+              className="mgmt-select-inline"
+              value={loaiGiamFilter}
+              onChange={(e) => setLoaiGiamFilter(e.target.value)}
+            >
+              <option value="all">Tất cả loại</option>
+              <option value="phan_tram">Phần trăm (%)</option>
+              <option value="so_tien">Số tiền (VNĐ)</option>
+            </select>
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="promo-partner">Đối tác tạo</label>
-          <select
-            id="promo-partner"
-            className="mgmt-select-inline"
-            value={partnerFilter}
-            onChange={(e) => handlePartnerChange(e.target.value)}
-          >
-            <option value="">Tất cả đối tác</option>
-            {partners.map((p) => (
-              <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
-            ))}
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="promo-role">Vai trò</label>
+            <select
+              id="promo-role"
+              className="mgmt-select-inline"
+              value={phamViFilter}
+              onChange={(e) => setPhamViFilter(e.target.value)}
+            >
+              <option value="all">Tất cả vai trò</option>
+              <option value="he_thong">Admin</option>
+              <option value="doi_tac">Đối tác</option>
+            </select>
+          </div>
 
-        <div className="mgmt-filter-field">
-          <label className="mgmt-filter-label" htmlFor="promo-time">Thời gian</label>
-          <select
-            id="promo-time"
-            className="mgmt-select-inline"
-            value={timePreset}
-            onChange={(e) => setTimePreset(e.target.value)}
-          >
-            {TIME_PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="promo-partner">Đối tác tạo</label>
+            <select
+              id="promo-partner"
+              className="mgmt-select-inline"
+              value={partnerFilter}
+              onChange={(e) => handlePartnerChange(e.target.value)}
+            >
+              <option value="">Tất cả đối tác</option>
+              {partners.map((p) => (
+                <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
+              ))}
+            </select>
+          </div>
 
-        {timePreset === 'custom' && (
-          <>
-            <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="promo-from">Từ ngày</label>
-              <input
-                id="promo-from"
-                type="date"
-                className="mgmt-select-inline"
-                value={tuNgay}
-                onChange={(e) => setTuNgay(e.target.value)}
-              />
-            </div>
-            <div className="mgmt-filter-field">
-              <label className="mgmt-filter-label" htmlFor="promo-to">Đến ngày</label>
-              <input
-                id="promo-to"
-                type="date"
-                className="mgmt-select-inline"
-                value={denNgay}
-                min={tuNgay}
-                onChange={(e) => setDenNgay(e.target.value)}
-              />
-            </div>
-          </>
-        )}
+          <div className="mgmt-filter-field">
+            <label className="mgmt-filter-label" htmlFor="promo-time">Thời gian</label>
+            <select
+              id="promo-time"
+              className="mgmt-select-inline"
+              value={timePreset}
+              onChange={(e) => setTimePreset(e.target.value)}
+            >
+              {TIME_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {timePreset === 'custom' && (
+            <>
+              <div className="mgmt-filter-field">
+                <label className="mgmt-filter-label" htmlFor="promo-from">Từ ngày</label>
+                <input
+                  id="promo-from"
+                  type="date"
+                  className="mgmt-select-inline"
+                  value={tuNgay}
+                  onChange={(e) => setTuNgay(e.target.value)}
+                />
+              </div>
+              <div className="mgmt-filter-field">
+                <label className="mgmt-filter-label" htmlFor="promo-to">Đến ngày</label>
+                <input
+                  id="promo-to"
+                  type="date"
+                  className="mgmt-select-inline"
+                  value={denNgay}
+                  min={tuNgay}
+                  onChange={(e) => setDenNgay(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="mgmt-filter-field mgmt-filter-field--action">
           <FilterActions showApply={false} onClear={clearFilters} />
@@ -771,7 +844,7 @@ const AdminPromotionsPage = () => {
         {loading ? (
           <div className="empty-state"><p className="empty-state-text">Đang tải...</p></div>
         ) : items.length === 0 ? (
-          <div className="empty-state"><p className="empty-state-text">Không có khuyến mãi phù hợp bộ lọc</p></div>
+          <div className="empty-state"><p className="empty-state-text">{emptyListMessage}</p></div>
         ) : (
           <>
             <div className="mgmt-table-scroll">
@@ -808,7 +881,7 @@ const AdminPromotionsPage = () => {
                           <div className="admin-promo-dates">
                             <span>{formatDate(item.ngay_bat_dau)}</span>
                             <span className="admin-promo-dates-sep">→</span>
-                            <span>{formatDate(item.ngay_ket_thuc)}</span>
+                            <span>{item.lan_dat_dau ? 'Không hạn' : formatDate(item.ngay_ket_thuc)}</span>
                           </div>
                         </td>
                         <td className="admin-promo-col-usage"><UsageCell item={item} /></td>

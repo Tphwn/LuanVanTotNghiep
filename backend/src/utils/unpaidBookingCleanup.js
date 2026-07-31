@@ -1,19 +1,15 @@
 const prisma = require('../config/prisma');
+const { decrementPromotionUsage } = require('./promotionRules');
 
 const CANCELLABLE_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
 const PAY_HOLD_MS = 30 * 60 * 1000;
 
-/**
- * Xóa hẳn đơn chưa thanh toán — không còn giao dịch trong quản lý tài chính.
- */
+
 const purgeUnpaidBooking = async (tx, booking) => {
   const id = Number(booking.ma_dat_phong);
   if (booking.ma_khuyen_mai) {
     try {
-      await tx.khuyen_mai.update({
-        where: { ma_khuyen_mai: booking.ma_khuyen_mai },
-        data: { so_luot_da_dung: { decrement: 1 } },
-      });
+      await decrementPromotionUsage(tx, booking.ma_khuyen_mai);
     } catch {
       /* ignore nếu không giảm được */
     }
@@ -44,7 +40,7 @@ const expireUnpaidOnlineHolds = async (arg1, arg2) => {
     phuong_thuc_tt: 'truc_tuyen',
     trang_thai: { in: CANCELLABLE_STATUS },
     ngay_dat: { lt: cutoff },
-    thanh_toan: { is: { trang_thai: 'cho' } },
+    thanh_toan: { is: { trang_thai: { in: ['cho', 'that_bai'] } } },
   };
   if (ma_khach_hang) where.ma_khach_hang = Number(ma_khach_hang);
   if (ma_dat_phong) where.ma_dat_phong = Number(ma_dat_phong);
@@ -65,7 +61,6 @@ const expireUnpaidOnlineHolds = async (arg1, arg2) => {
   return expired.length;
 };
 
-/** Dọn đơn đã hủy/từ chối mà chưa thanh toán (dữ liệu cũ). */
 const purgeCancelledUnpaidBookings = async (prismaClient = prisma, limit = 200) => {
   const rows = await prismaClient.dat_phong.findMany({
     where: {

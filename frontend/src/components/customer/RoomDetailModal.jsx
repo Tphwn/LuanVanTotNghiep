@@ -2,13 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, BedDouble, Users } from 'lucide-react';
 import CustomerPriceOffer from './CustomerPriceOffer';
 import { resolveUploadUrl } from '../../utils/media';
-
-const getBedLabel = (soGiuong) => {
-  const n = Number(soGiuong) || 1;
-  if (n === 1) return '1 giường đôi';
-  if (n === 2) return '2 giường đơn';
-  return `${n} giường`;
-};
+import { formatBedLabel } from '../../utils/bedDisplay';
 
 const getAmenityName = (item) => (typeof item === 'string' ? item : item?.ten || '');
 
@@ -138,7 +132,7 @@ const RoomDetailModal = ({
                   {room.so_giuong != null && (
                     <li>
                       <BedDouble size={18} strokeWidth={1.75} aria-hidden />
-                      <span>{getBedLabel(room.so_giuong)}</span>
+                      <span>{room.loai_giuong || formatBedLabel(room)}</span>
                     </li>
                   )}
                   {room.suc_chua != null && (

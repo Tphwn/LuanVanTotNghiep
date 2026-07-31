@@ -97,6 +97,17 @@ const PartnerRequestsPage = () => {
     showPagination,
   } = useListPagination(items, PAGE_SIZE, [statusFilter, keyword]);
 
+  const emptyListMessage = useMemo(() => {
+    if (keyword.trim()) return 'Không tìm thấy yêu cầu hợp tác phù hợp';
+    if (statusFilter === 'cho_xu_ly') {
+      return 'Hiện tại không có yêu cầu hợp tác nào chờ duyệt';
+    }
+    if (statusFilter === 'da_lien_he') return 'Danh sách yêu cầu đã liên hệ trống';
+    if (statusFilter === 'da_hop_tac') return 'Danh sách yêu cầu đã hợp tác trống';
+    if (statusFilter === 'tu_choi') return 'Danh sách yêu cầu từ chối trống';
+    return 'Chưa có yêu cầu hợp tác nào';
+  }, [statusFilter, keyword]);
+
   return (
     <div className="mgmt-page">
       <ManagementHeader
@@ -139,7 +150,7 @@ const PartnerRequestsPage = () => {
           </div>
         ) : items.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-text">Chưa có yêu cầu hợp tác nào</p>
+            <p className="empty-state-text">{emptyListMessage}</p>
           </div>
         ) : (
           <>

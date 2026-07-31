@@ -19,9 +19,10 @@ import {
 import PartnerBookingCheckConfirmModal from '../../pages/partner/bookings/components/PartnerBookingCheckConfirmModal';
 import ReasonField from '../common/ReasonField';
 import {
-  TRANG_THAI,
-  PHUONG_THUC,
+  getBookingStatusDisplay,
   getPaymentDisplay,
+  getPaymentGatewayLabel,
+  getBookingVatAmount,
   getRefundBadgeMeta,
   formatCurrency,
   formatHotelTime,
@@ -115,10 +116,7 @@ const BookingDetailModal = ({
     return () => clearTimeout(timer);
   }, [successMsg, error, dispatch, isAdmin]);
 
-  const bookingStatus = useMemo(() => {
-    if (!detail) return { label: '—', cls: 'badge-default' };
-    return TRANG_THAI[detail.trang_thai] || { label: detail.trang_thai, cls: 'badge-default' };
-  }, [detail]);
+  const bookingStatus = useMemo(() => getBookingStatusDisplay(detail), [detail]);
 
   const paymentInfo = useMemo(() => getPaymentDisplay(detail), [detail]);
 
@@ -192,9 +190,11 @@ const BookingDetailModal = ({
   const showCheckOutAction = !isAdmin && canPartnerCheckOut(detail);
   const hasPartnerAction = showCheckInAction || showCheckOutAction;
 
-  const paymentMethod = detail
-    ? (PHUONG_THUC[detail.phuong_thuc_tt] || detail.thanh_toan?.phuong_thuc || detail.phuong_thuc_tt || '—')
-    : '—';
+  const paymentMethod = detail ? getPaymentGatewayLabel(detail) : '—';
+  const vatAmount = detail ? getBookingVatAmount(detail) : 0;
+  const discountAmount = Number(detail?.tien_giam) || 0;
+  const promoCode = detail?.khuyen_mai?.ma_code || detail?.ma_code_km || null;
+  const showPromo = discountAmount > 0 && Boolean(promoCode);
 
   const hotel = detail?.loai_phong?.khach_san;
   const nights = detail ? diffDays(detail.ngay_nhan_phong, detail.ngay_tra_phong) : 0;
@@ -334,15 +334,20 @@ const BookingDetailModal = ({
 
                 <section className="booking-drawer-section">
                   <h5 className="booking-drawer-section-title">Thanh toán</h5>
-                  <div className="booking-drawer-payment-row">
-                    <span className="booking-drawer-payment-date">
-                      {formatShortViDate(detail.ngay_dat || detail.thanh_toan?.ngay_thanh_toan)}
-                    </span>
-                    <strong className="booking-drawer-payment-amount">
-                      {formatCurrency(detail.thanh_toan_cuoi)}
-                    </strong>
-                  </div>
+                  <DrawerField label="Tiền ban đầu" value={formatCurrency(detail.tong_tien_goc)} />
+                  <DrawerField label="Tiền phí (VAT)" value={formatCurrency(vatAmount)} />
+                  {showPromo && (
+                    <DrawerField
+                      label="Mã giảm"
+                      value={`${promoCode} (−${formatCurrency(discountAmount)})`}
+                    />
+                  )}
+                  <DrawerField label="Tiền thanh toán" value={formatCurrency(detail.thanh_toan_cuoi)} />
                   <DrawerField label="Phương thức" value={paymentMethod} />
+                  <DrawerField
+                    label="Ngày đặt"
+                    value={formatShortViDate(detail.ngay_dat || detail.thanh_toan?.ngay_thanh_toan)}
+                  />
                 </section>
               </>
             )}
