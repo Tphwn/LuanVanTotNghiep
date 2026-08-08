@@ -2,7 +2,6 @@ import formatCurrency from '../../utils/formatCurrency';
 
 const CustomerPrice = ({
   amount,
-  unit = 'VNĐ',
   className = '',
   size,
 }) => {
@@ -15,7 +14,6 @@ const CustomerPrice = ({
   return (
     <span className={classes}>
       {formatCurrency(amount)}
-      {unit ? ` ${unit}` : ''}
     </span>
   );
 };

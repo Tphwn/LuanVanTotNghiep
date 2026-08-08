@@ -8,7 +8,7 @@ import MainLayout from '../layouts/MainLayout';
 import PartnerLayout from '../layouts/PartnerLayout';
 import AdminLayout from '../layouts/AdminLayout';
 
-import RoleRoute from './RoleRoute';
+import ProtectedRoute from './ProtectedRoute';
 
 import LoginPage from '../pages/auth/LoginPage';
 import PartnerLoginPage from '../pages/auth/PartnerLoginPage';
@@ -35,6 +35,7 @@ import RefundsPage from '../pages/customer/RefundsPage';
 import CustomerRefundDetailPage from '../pages/customer/RefundDetailPage';
 import CustomerBookingDetailPage from '../pages/customer/CustomerBookingDetailPage';
 import CustomerBookingReviewPage from '../pages/customer/CustomerBookingReviewPage';
+import GuestBookingsPage from '../pages/customer/GuestBookingsPage';
 
 import PartnerDashboardPage from '../pages/partner/DashboardPage';
 import PartnerHotelsPage from '../pages/partner/hotels/HotelsPage';
@@ -46,7 +47,6 @@ import PartnerRoomFormPage from '../pages/partner/rooms/RoomFormPage';
 import PartnerReviewsPage from '../pages/partner/reviews/ReviewsPage';
 import PartnerFinancePage from '../pages/partner/finance/FinancePage';
 import PartnerPayoutDetailPage from '../pages/partner/finance/PayoutDetailPage';
-import PartnerImagesPage from '../pages/partner/images/HotelImagesPage';
 import PartnerAccountPage from '../pages/partner/account/ProfilePage';
 import PartnerBookingsPage from '../pages/partner/bookings/BookingManagePage';
 import PricingPage from '../pages/partner/pricing/PricingPage';
@@ -74,7 +74,7 @@ import AdminUsersPage from "../pages/admin/users/UsersPage";
 import CreatePartnerPage from "../pages/admin/users/CreatePartnerPage";
 import HotelDetailPage from '../pages/admin/hotels/HotelDetailPage';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
-import ProtectedRoute from './ProtectedRoute';
+
 const AppRoutes = () => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -82,7 +82,8 @@ const AppRoutes = () => {
     <BrowserRouter>
       <Routes>
         <Route path={ROUTES.LOGIN} element={
-          token && (user?.vai_tro === ROLES.KHACH_HANG || user?.vai_tro === ROLES.DOI_TAC)
+          /* Chỉ khách đã login mới bỏ qua form; đối tác vào /login để đăng nhập lại TK khác */
+          token && user?.vai_tro === ROLES.KHACH_HANG
             ? <Navigate to={getRedirectRoute(user)} replace />
             : <MainLayout fullBleed><LoginPage /></MainLayout>
         } />
@@ -94,7 +95,7 @@ const AppRoutes = () => {
             : <MainLayout fullBleed><RegisterPage /></MainLayout>
         } />
         <Route path={ROUTES.FORGOT_PASSWORD} element={
-          token && (user?.vai_tro === ROLES.KHACH_HANG || user?.vai_tro === ROLES.DOI_TAC)
+          token && user?.vai_tro === ROLES.KHACH_HANG
             ? <Navigate to={getRedirectRoute(user)} replace />
             : <MainLayout><ForgotPasswordPage /></MainLayout>
         } />
@@ -121,9 +122,10 @@ const AppRoutes = () => {
           <MainLayout><CustomerBookingPage /></MainLayout>
         } />
         <Route path={ROUTES.CUSTOMER.PAYMENT} element={
-          <ProtectedRoute allowedRoles={[ROLES.KHACH_HANG]}>
-            <MainLayout><CustomerPaymentPage /></MainLayout>
-          </ProtectedRoute>
+          <MainLayout><CustomerPaymentPage /></MainLayout>
+        } />
+        <Route path={ROUTES.CUSTOMER.GUEST_BOOKINGS} element={
+          <MainLayout><GuestBookingsPage /></MainLayout>
         } />
         <Route path="/hotels/:id" element={
           <MainLayout><CustomerHotelDetailPage /></MainLayout>
@@ -161,9 +163,9 @@ const AppRoutes = () => {
 
         {/* Partner */}
         <Route path="/partner" element={
-          <RoleRoute allowedRoles={[ROLES.DOI_TAC, ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLES.DOI_TAC, ROLES.ADMIN]}>
             <PartnerLayout />
-          </RoleRoute>
+          </ProtectedRoute>
         }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<PartnerDashboardPage />} />
@@ -182,7 +184,6 @@ const AppRoutes = () => {
           <Route path="reviews" element={<PartnerReviewsPage />} />
           <Route path="finance" element={<PartnerFinancePage />} />
           <Route path="finance/payouts/:maDot" element={<PartnerPayoutDetailPage />} />
-          <Route path="images" element={<PartnerImagesPage />} />
           <Route path="account" element={<PartnerAccountPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PartnerPromotionsPage />} />
@@ -192,9 +193,9 @@ const AppRoutes = () => {
 
         {/* Admin */}
         <Route path="/admin" element={
-          <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
             <AdminLayout />
-          </RoleRoute>
+          </ProtectedRoute>
         }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />

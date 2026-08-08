@@ -67,7 +67,6 @@ const HomePage = () => {
       .then((res) => setFeatured(res.data?.data || []))
       .catch(() => setFeatured([]));
 
-    // Trang chủ mặc định: Tất cả địa điểm (khách tự chọn điểm đến khi cần)
     const saved = loadSearchForm();
     if (saved?.ma_dia_diem) {
       saveSearchForm({ ...saved, ma_dia_diem: '' });
@@ -200,7 +199,7 @@ const HomePage = () => {
                       {hotel.gia_tu != null && (
                         <p className="home-featured-price">
                           Giá mỗi đêm từ{' '}
-                          <strong>{formatCurrency(hotel.gia_tu)} đ</strong>
+                          <strong>{formatCurrency(hotel.gia_tu)}</strong>
                         </p>
                       )}
                     </div>

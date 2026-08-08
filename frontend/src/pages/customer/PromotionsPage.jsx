@@ -6,14 +6,14 @@ const PROMOS = [
   {
     code: 'WELCOME10',
     title: 'Giảm 10% cho lần đặt đầu tiên',
-    desc: 'Áp dụng cho mọi khách sạn đối tác trên hệ thống. Tối đa giảm 200.000 ₫/đơn.',
+    desc: 'Áp dụng cho mọi khách sạn đối tác trên hệ thống. Tối đa giảm 200.000 VNĐ/đơn.',
     badge: 'Mới',
     expiry: '31/12/2026',
   },
   {
     code: 'SUMMER26',
     title: 'Ưu đãi mùa hè — Giảm 15%',
-    desc: 'Đặt phòng tại Vũng Tàu, Quy Nhơn, Đà Lạt từ tháng 6–8. Đơn tối thiểu 800.000 ₫.',
+    desc: 'Đặt phòng tại Vũng Tàu, Quy Nhơn, Đà Lạt từ tháng 6–8. Đơn tối thiểu 800.000 VNĐ.',
     badge: 'Hot',
     expiry: '31/08/2026',
   },
@@ -26,7 +26,7 @@ const PROMOS = [
   },
   {
     code: 'WEEKEND',
-    title: 'Cuối tuần thả ga — Giảm 100.000 ₫',
+    title: 'Cuối tuần thả ga — Giảm 100.000 VNĐ',
     desc: 'Nhận phòng thứ 6, trả phòng Chủ nhật. Giảm trực tiếp vào tổng thanh toán.',
     badge: 'Cuối tuần',
     expiry: '31/12/2026',

@@ -20,6 +20,7 @@ import {
 } from '../../../store/slices/adminFinanceSlice';
 import { Eye, Check, Pause, Play } from 'lucide-react';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import { REFUND_TRANG_THAI } from '../../../utils/bookingDisplay';
@@ -30,10 +31,12 @@ import PartnerPayoutConfirmModal from './components/PartnerPayoutConfirmModal';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import AdminFinanceOverviewPanel from './AdminFinanceOverviewPanel';
+import formatCurrency from '../../../utils/formatCurrency';
+import { formatDateVN } from '../../../utils/formatDate';
 
 // ===== HELPERS =====
-const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND'}).format(v || 0);
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+const fmt = formatCurrency;
+const fmtDate = formatDateVN;
 
 const toInputDate = (d) => {
   const y = d.getFullYear();
@@ -72,7 +75,7 @@ const fmtPaymentDateTime = (d) => {
     second: '2-digit',
     hour12: false,
   });
-  return `${date.toLocaleDateString('vi-VN')} ${time}`;
+  return `${formatDateVN(date)} ${time}`;
 };
 
 const formatTxCustomer = (tx) => {
@@ -515,9 +518,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="tx-from">Từ ngày</label>
-              <input
+              <DateInput
                 id="tx-from"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={txFilter.tu_ngay}
@@ -526,9 +528,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="tx-to">Đến ngày</label>
-              <input
+              <DateInput
                 id="tx-to"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={txFilter.den_ngay}
@@ -651,14 +652,12 @@ const AdminFinancePage = () => {
                 <option value="cho_xu_ly">Chờ xử lý</option>
                 <option value="dang_xu_ly">Đang xử lý</option>
                 <option value="da_hoan">Đã hoàn</option>
-                <option value="tu_choi">Từ chối</option>
               </select>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="rf-from">Từ ngày</label>
-              <input
+              <DateInput
                 id="rf-from"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={rfFilter.tu_ngay}
@@ -667,9 +666,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="rf-to">Đến ngày</label>
-              <input
+              <DateInput
                 id="rf-to"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={rfFilter.den_ngay}
@@ -885,9 +883,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-from">Từ ngày trả</label>
-              <input
+              <DateInput
                 id="comm-from"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={commFilter.tu_ngay}
@@ -900,9 +897,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-to">Đến ngày trả</label>
-              <input
+              <DateInput
                 id="comm-to"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={commFilter.den_ngay}
@@ -1178,9 +1174,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-from">Từ ngày trả</label>
-              <input
+              <DateInput
                 id="payout-from"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={payoutFilter.tu_ngay}
@@ -1193,9 +1188,8 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-to">Đến ngày trả</label>
-              <input
+              <DateInput
                 id="payout-to"
-                type="date"
                 className="mgmt-select-inline"
                 style={inputSt}
                 value={payoutFilter.den_ngay}

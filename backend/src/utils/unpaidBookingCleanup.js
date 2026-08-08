@@ -24,7 +24,6 @@ const purgeUnpaidBooking = async (tx, booking) => {
   await tx.dat_phong.delete({ where: { ma_dat_phong: id } });
 };
 
-/** Hết 30 phút chưa thanh toán → xóa đơn + giao dịch. */
 const expireUnpaidOnlineHolds = async (arg1, arg2) => {
   let prismaClient = prisma;
   let scope = {};

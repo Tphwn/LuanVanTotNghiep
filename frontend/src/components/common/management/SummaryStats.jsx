@@ -1,3 +1,4 @@
+//thống kê tổng quan các trang admin, partner, user
 const SummaryStats = ({ items }) => (
   <div className="mgmt-stats-grid">
     {items.map((item) => (

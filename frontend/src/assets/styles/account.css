@@ -1,4 +1,3 @@
-/* Layout trang tài khoản khách hàng (sidebar + nội dung) */
 .account-layout {
   display: grid;
   grid-template-columns: 280px 1fr;

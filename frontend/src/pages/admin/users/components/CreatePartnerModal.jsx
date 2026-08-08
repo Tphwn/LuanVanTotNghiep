@@ -41,7 +41,9 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
     if (phoneErr) errors.so_dien_thoai = phoneErr;
     if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
     else if (formData.mat_khau.length < 6) errors.mat_khau = 'Mật khẩu tối thiểu 6 ký tự';
-    if (formData.phan_tram_hoa_hong !== '') {
+    if (formData.phan_tram_hoa_hong === '') {
+      errors.phan_tram_hoa_hong = 'Tỉ lệ hoa hồng là bắt buộc';
+    } else {
       const pct = Number(formData.phan_tram_hoa_hong);
       if (Number.isNaN(pct) || pct < 0 || pct > 100) errors.phan_tram_hoa_hong = 'Hoa hồng phải từ 0 đến 100';
     }
@@ -63,7 +65,7 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
         ten_cong_ty: formData.ten_cong_ty.trim(),
         ma_so_thue: formData.ma_so_thue.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
-        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? 15 : Number(formData.phan_tram_hoa_hong),
+        phan_tram_hoa_hong: Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
         so_dien_thoai: formData.so_dien_thoai.trim(),
         mat_khau: formData.mat_khau,
@@ -117,8 +119,19 @@ const CreatePartnerModal = ({ isOpen, onClose, onSuccess }) => {
               <input type="text" placeholder="VD: 0312345678" {...inputProps('ma_so_thue')} />
             </div>
             <div>
-              <label style={labelStyle}>Tỉ lệ hoa hồng (%)</label>
-              <input type="number" min="0" max="100" step="0.01" placeholder="Mặc định 15%" {...inputProps('phan_tram_hoa_hong')} />
+              <label style={labelStyle}>
+                Tỉ lệ hoa hồng (%)
+                {' '}
+                <span style={{ color: '#e05c5c' }}>*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="VD: 15"
+                {...inputProps('phan_tram_hoa_hong')}
+              />
               {fieldErrors.phan_tram_hoa_hong && <p style={errStyle}>{fieldErrors.phan_tram_hoa_hong}</p>}
             </div>
             <div style={{ gridColumn: '1 / -1' }}>

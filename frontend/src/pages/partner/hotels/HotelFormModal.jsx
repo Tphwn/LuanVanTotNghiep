@@ -58,7 +58,7 @@ const HotelFormContent = ({
 }) => {
   const isEdit = !!hotel;
   const needsApproval = !isEdit
-    || ['cho_duyet', 'tu_choi', 'yeu_cau_sua'].includes(hotel?.trang_thai);
+    || ['cho_duyet', 'tu_choi'].includes(hotel?.trang_thai);
   const submitLabel = needsApproval ? 'Gửi duyệt' : 'Lưu thay đổi';
   const [activeTab, setActiveTab] = useState('info');
   const [removedImageIds, setRemovedImageIds] = useState([]);
@@ -80,7 +80,7 @@ const HotelFormContent = ({
       phu_thu_thu_cung: toMoneyString(hotel.phu_thu_thu_cung),
       tuoi_toi_da_mien_phi: hotel.tuoi_toi_da_mien_phi ?? 6,
       phu_thu_tre_em: toMoneyString(hotel.phu_thu_tre_em),
-      phan_tram_vat: hotel.phan_tram_vat ?? 10,
+      phan_tram_vat: hotel.phan_tram_vat != null ? Number(hotel.phan_tram_vat) : 10,
       noi_quy_khac: parseNoiQuyKhac(hotel.noi_quy_khac),
     } : { ...INIT_FORM }
   );
@@ -134,6 +134,10 @@ const HotelFormContent = ({
     if (hotelImages.length > MAX_HOTEL_IMAGES) {
       errors.images = `Tối đa ${MAX_HOTEL_IMAGES} ảnh mỗi khách sạn`;
     }
+    const vat = Number(form.phan_tram_vat);
+    if (form.phan_tram_vat === '' || !Number.isFinite(vat) || vat < 0 || vat > 100) {
+      errors.phan_tram_vat = 'VAT phải từ 0 đến 100';
+    }
     return errors;
   };
 
@@ -142,6 +146,7 @@ const HotelFormContent = ({
     const firstKey = Object.keys(errors)[0];
     if (['ten', 'dia_chi', 'ma_dia_diem'].includes(firstKey)) setActiveTab('info');
     else if (firstKey === 'images') setActiveTab('images');
+    else if (firstKey === 'phan_tram_vat') setActiveTab('policies');
     setFormAlert(
       needsApproval
         ? 'Gửi duyệt không thành công. Vui lòng điền đầy đủ thông tin bắt buộc.'
@@ -619,12 +624,15 @@ const HotelFormContent = ({
                       max="100"
                       step="0.01"
                       className="search-input"
-                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      style={inputStyle('phan_tram_vat')}
                       value={form.phan_tram_vat}
-                      onChange={(e) => setForm({ ...form, phan_tram_vat: e.target.value })}
+                      onChange={(e) => updateField('phan_tram_vat', e.target.value)}
                       onWheel={blurOnWheel}
                       placeholder="VD: 10"
                     />
+                    {fieldErrors.phan_tram_vat && (
+                      <p style={errSt} role="alert">{fieldErrors.phan_tram_vat}</p>
+                    )}
                   </div>
                 </div>
 

@@ -321,14 +321,11 @@ const adminPaymentService = {
   },
 
   getTransactions: async (filters = {}) => {
-    // Dọn đơn hết hạn / hủy chưa thanh toán trước khi liệt kê
     await expireUnpaidOnlineHolds(prisma);
     await purgeCancelledUnpaidBookings(prisma);
 
     const { trang_thai, phuong_thuc, tu_ngay, den_ngay, keyword } = filters;
     const and = [
-      // Chờ: chỉ đơn còn hiệu lực trong thời gian thanh toán
-      // Thành công / thất bại: giao dịch đã xử lý
       {
         OR: [
           { trang_thai: { in: ['thanh_cong', 'that_bai'] } },
@@ -442,7 +439,6 @@ const adminPaymentService = {
     await syncMissingCancelRefunds(prisma, 50);
 
     const { trang_thai, tu_ngay, den_ngay, keyword } = filters;
-    // Chỉ hiển thị đơn thực sự phải hoàn tiền (bỏ đơn hủy hoàn 0đ)
     const where = { so_tien_hoan: { gt: 0 } };
     if (trang_thai && trang_thai !== 'all') where.trang_thai = trang_thai;
     if (tu_ngay) where.ngay_yeu_cau = { gte: new Date(tu_ngay) };
@@ -499,25 +495,6 @@ const adminPaymentService = {
       include: REFUND_INCLUDE,
     });
     return mapRefund(row);
-  },
-
-  rejectRefund: async (id, adminId, ly_do) => {
-    const refund = await prisma.hoan_tien.findUnique({
-      where: { ma_hoan_tien: Number(id) },
-    });
-    if (!refund) throw new Error('Không tìm thấy yêu cầu hoàn tiền');
-    if (!['cho_xu_ly', 'dang_xu_ly'].includes(refund.trang_thai)) {
-      throw new Error('Yêu cầu này không thể từ chối');
-    }
-    return prisma.hoan_tien.update({
-      where: { ma_hoan_tien: Number(id) },
-      data: {
-        trang_thai: 'tu_choi',
-        ly_do,
-        xu_ly_boi_id: Number(adminId),
-        ngay_xu_ly: new Date(),
-      },
-    });
   },
 
   getCommissions: async (filters = {}) => {
@@ -707,7 +684,6 @@ const adminPaymentService = {
       });
 
       for (const maHh of eligibleIds) {
-        // eslint-disable-next-line no-await-in-loop
         await tx.$executeRaw`
           UPDATE hoa_hong
           SET ngay_doi_soat = NOW(),
@@ -724,7 +700,6 @@ const adminPaymentService = {
     });
     const mapped = [];
     for (const row of updated) {
-      // eslint-disable-next-line no-await-in-loop
       mapped.push(mapCommissionRow(await enrichCommissionAudit(row)));
     }
 
@@ -748,7 +723,6 @@ const adminPaymentService = {
     if (found.trang_thai === COMMISSION_STATUS.TAM_GIU) {
       throw new Error('Đơn đã đang tạm giữ');
     }
-    // Cho phép tạm giữ từ chờ đối soát hoặc đã đối soát (chờ thanh toán đối tác)
     if (![COMMISSION_STATUS.CHO_DOI_SOAT, COMMISSION_STATUS.DA_DOI_SOAT].includes(found.trang_thai)) {
       throw new Error('Trạng thái hiện tại không thể tạm giữ');
     }
@@ -780,7 +754,6 @@ const adminPaymentService = {
     if (found.trang_thai !== COMMISSION_STATUS.TAM_GIU) {
       throw new Error('Chỉ bỏ tạm giữ đối với đơn đang tạm giữ');
     }
-    // Đã đối soát trước đó → trả về chờ thanh toán đối tác; chưa → chờ đối soát
     const nextStatus = found.ngay_doi_soat
       ? COMMISSION_STATUS.DA_DOI_SOAT
       : COMMISSION_STATUS.CHO_DOI_SOAT;
@@ -841,15 +814,12 @@ const adminPaymentService = {
     });
 
     const enriched = await Promise.all(rows.map((r) => enrichCommissionAudit(r)));
-    // Tab thanh toán đối tác chỉ lấy đơn đã đối soát (da_thu) và đã thanh toán
     const payoutRows = enriched.filter((r) => (
       r.trang_thai === COMMISSION_STATUS.DA_DOI_SOAT
       || r.trang_thai === 'da_thu'
       || r.trang_thai === 'da_thanh_toan'
       || r.trang_thai === COMMISSION_STATUS.DA_THANH_TOAN
     ));
-
-    // partnerMeta + buckets theo đợt
     const partnerMeta = new Map();
     const pendingByPartner = new Map();
     const paidByBatch = new Map();
@@ -940,8 +910,6 @@ const adminPaymentService = {
         if (r.ghi_chu) b.ghi_chu = r.ghi_chu;
       }
     }
-
-    // Đánh số đợt đã TT theo từng đối tác (cũ → mới = đợt 1, 2, ...)
     const paidOrderByPartner = new Map();
     for (const b of paidByBatch.values()) {
       if (!paidOrderByPartner.has(b.ma_doi_tac)) paidOrderByPartner.set(b.ma_doi_tac, []);

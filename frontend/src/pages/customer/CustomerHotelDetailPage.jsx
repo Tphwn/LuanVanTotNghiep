@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   AlertTriangle,
@@ -110,7 +110,7 @@ const buildPolicyRows = (h) => {
     childLines.push(`Trẻ em từ ${h.tuoi_toi_da_mien_phi} tuổi trở xuống được miễn phí khi dùng chung giường với người lớn.`);
   }
   if (h.phu_thu_tre_em != null && Number(h.phu_thu_tre_em) > 0) {
-    childLines.push(`Phụ thu ${money(h.phu_thu_tre_em)}đ đối với trẻ em sử dụng giường hiện có.`);
+    childLines.push(`Phụ thu ${money(h.phu_thu_tre_em)} VNĐ đối với trẻ em sử dụng giường hiện có.`);
   }
   if (childLines.length) {
     rows.push({ key: 'children', label: 'Chính sách trẻ em', Icon: Baby, lines: childLines });
@@ -122,7 +122,7 @@ const buildPolicyRows = (h) => {
     Icon: PawPrint,
     lines: [h.cho_phep_thu_cung
       ? (h.phu_thu_thu_cung != null && Number(h.phu_thu_thu_cung) > 0
-        ? { text: `Cho phép mang theo thú cưng (phụ thu ${money(h.phu_thu_thu_cung)}đ).` }
+        ? { text: `Cho phép mang theo thú cưng (phụ thu ${money(h.phu_thu_thu_cung)} VNĐ).` }
         : { text: 'Cho phép mang theo thú cưng.', emphasisWords: ['Cho phép'] })
       : { text: 'Không được phép mang theo thú cưng.', emphasisWords: ['Không được phép'] }],
   });
@@ -263,6 +263,7 @@ const ExpandableIntro = ({ text }) => {
 const CustomerHotelDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { token } = useSelector((state) => state.auth);
   const [searchParams, setSearchParams] = useSearchParams();
   const [hotel, setHotel] = useState(null);
@@ -398,11 +399,10 @@ const CustomerHotelDetailPage = () => {
     if (!room || (room.phong_con_lai ?? 0) < Number(query.so_phong || 1)) return;
 
     const bookingUrl = buildBookingUrl(id, roomId, query);
-    if (!token) {
-      navigate(ROUTES.LOGIN, { state: { from: bookingUrl } });
-      return;
-    }
-    navigate(bookingUrl);
+    // Cho phép đặt không đăng nhập; chỉ chặn admin/đối tác ở trang xác nhận
+    navigate(bookingUrl, {
+      state: { from: `${location.pathname}${location.search}` },
+    });
   };
 
   if (loading) {
@@ -538,16 +538,15 @@ const CustomerHotelDetailPage = () => {
               amount={hotel.gia_tu}
               originalAmount={hotel.gia_goc}
               align="left"
-              showTaxNote={false}
+              showTaxNote
+              suffix={`/ phòng / ${nights} đêm`}
               className="hotel-detail-booking-price-row"
             />
           )}
-          {query.ngay_nhan && query.ngay_tra ? (
+          {query.ngay_nhan && query.ngay_tra && (
             <p className="hotel-detail-booking-sub">
               {fmtDate(query.ngay_nhan)} – {fmtDate(query.ngay_tra)} · {nights} đêm
             </p>
-          ) : (
-            <p className="hotel-detail-booking-sub">(Chưa bao gồm thuế và phí)</p>
           )}
           <div className="hotel-detail-check-times">
             <div>
@@ -590,6 +589,7 @@ const CustomerHotelDetailPage = () => {
                 key={room.ma_loai_phong}
                 room={room}
                 soPhong={Number(query.so_phong) || 1}
+                nights={nights}
                 onBook={handleBookRoom}
               />
             ))}

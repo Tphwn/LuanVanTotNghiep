@@ -36,16 +36,6 @@ const rejectHotel = async (req, res, next) => {
   }
 };
 
-const requestInfoHotel = async (req, res, next) => {
-  try {
-    const { ghiChu } = req.body;
-    const hotel = await hotelService.requestInfoHotel(req.params.id, req.user?.id, ghiChu);
-    res.json({ success: true, data: hotel, message: 'Yêu cầu bổ sung thông tin đã được gửi' });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const lockHotel = async (req, res, next) => {
   try {
     const { ly_do_khoa: lyDoKhoa } = req.body;
@@ -70,7 +60,6 @@ module.exports = {
   getById,
   approveHotel,
   rejectHotel,
-  requestInfoHotel,
   lockHotel,
   unlockHotel,
 };

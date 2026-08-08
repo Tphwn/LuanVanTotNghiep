@@ -1,3 +1,5 @@
+import formatCurrency from '../../../utils/formatCurrency';
+
 const TX_STATUS_CLS = {
   cho: 'mgmt-status-text--pending',
   thanh_cong: 'mgmt-status-text--active',
@@ -14,12 +16,12 @@ const TX_STATUS_LABEL = {
   hoan_thanh: 'Hoàn thành',
 };
 
-const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v || 0);
+const fmt = formatCurrency;
 
 const fmtDateTime = (d) => {
   if (!d) return '—';
   const date = new Date(d);
-  return `${date.toLocaleDateString('vi-VN')} ${date.toLocaleTimeString('vi-VN', {
+  return `${date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${date.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

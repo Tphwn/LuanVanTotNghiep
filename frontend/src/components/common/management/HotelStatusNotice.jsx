@@ -1,9 +1,5 @@
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
 
-/**
- * Build notice for rejected / request-edit / locked hotels.
- * Returns null when nothing relevant to show in the hero.
- */
 export const getHotelStatusNotice = (hotel) => {
   if (!hotel) return null;
   const status = hotel.trang_thai;
@@ -26,16 +22,6 @@ export const getHotelStatusNotice = (hotel) => {
       lockedBy: null,
       statusLabel: null,
       reasonLabel: 'Lý do từ chối',
-      reason: hotel.ly_do_tu_choi?.trim() || '',
-    };
-  }
-
-  if (status === 'yeu_cau_sua') {
-    return {
-      tone: 'warning',
-      lockedBy: null,
-      statusLabel: null,
-      reasonLabel: 'Yêu cầu chỉnh sửa',
       reason: hotel.ly_do_tu_choi?.trim() || '',
     };
   }

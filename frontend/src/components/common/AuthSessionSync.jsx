@@ -3,10 +3,6 @@ import { useDispatch } from 'react-redux';
 import { hydrateSession, getMe } from '../../store/slices/authSlice';
 import { getToken } from '../../utils/storage';
 
-/**
- * Đồng bộ phiên đăng nhập khi localStorage đổi (đăng nhập/xuất ở tab khác
- * hoặc cổng khác ghi đè token).
- */
 const AuthSessionSync = () => {
   const dispatch = useDispatch();
 

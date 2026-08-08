@@ -2,7 +2,6 @@ const prisma = require('../config/prisma');
 const { isAdminCancelledBooking } = require('./refundHelpers');
 
 const DEFAULT_COMMISSION_RATE = 15;
-
 const COMMISSION_STATUS = {
   CHO_DOI_SOAT: 'chua_thu',
   DA_DOI_SOAT: 'da_thu',
@@ -13,14 +12,12 @@ const COMMISSION_STATUS = {
 const CANCEL_STATUSES = new Set(['da_huy', 'tu_choi']);
 const COMPLETE_STATUSES = new Set(['hoan_thanh', 'da_checkin']);
 
-const resolveCommissionRate = (_hotel, partner) => {
+const resolveCommissionRate = (_hotel, partner, systemDefault = DEFAULT_COMMISSION_RATE) => {
   if (partner?.phan_tram_hoa_hong != null && partner.phan_tram_hoa_hong !== '') {
     return Number(partner.phan_tram_hoa_hong);
   }
-  return DEFAULT_COMMISSION_RATE;
+  return Number(systemDefault) || DEFAULT_COMMISSION_RATE;
 };
-
-/** VAT khách đã đóng = thanh_toan_cuoi − (tong_tien_goc − tien_giam) */
 const getVatAmount = (booking) => {
   const goc = Number(booking?.tong_tien_goc) || 0;
   const giam = Number(booking?.tien_giam) || 0;
@@ -30,12 +27,6 @@ const getVatAmount = (booking) => {
 };
 
 const getPromoSource = (booking) => booking?.khuyen_mai?.loai_nguon || null;
-
-/**
- * % hoàn tiền của đơn hủy (0–100).
- * Admin hủy → 100%. Có bản ghi hoàn → suy từ so_tien_hoan / thanh_toan_cuoi.
- * Hủy đã TT nhưng không có hoàn (no-show / hoàn 0%) → 0.
- */
 const resolveCancelRefundPercent = (booking) => {
   if (!CANCEL_STATUSES.has(booking?.trang_thai)) return null;
   if (isAdminCancelledBooking(booking)) return 100;
@@ -47,13 +38,8 @@ const resolveCancelRefundPercent = (booking) => {
     if (paid <= 0) return soHoan > 0 ? 100 : 0;
     return Math.min(100, Math.max(0, Math.round((soHoan / paid) * 100)));
   }
-  // Đã hủy, đã thanh toán, không có yêu cầu hoàn → giữ 100% (phạt / no-show)
   return 0;
 };
-
-/**
- * Phân rã hoa hồng + tiền trả đối tác theo quy tắc KM đối tác / admin / hủy.
- */
 const calculateCommissionBreakdown = (booking, rate = DEFAULT_COMMISSION_RATE) => {
   const tongGoc = Number(booking?.tong_tien_goc) || 0;
   const tienGiam = Math.max(0, Number(booking?.tien_giam) || 0);
@@ -96,8 +82,6 @@ const calculateCommissionBreakdown = (booking, rate = DEFAULT_COMMISSION_RATE) =
       phan_tram_giu: phanTramGiu,
     };
   }
-
-  // Mã ADMIN: hoa hồng trên giá gốc, trợ giá = tien_giam; ĐT nhận đủ theo gốc + VAT
   if (loaiNguon === 'he_thong' && tienGiam > 0) {
     const hh = Math.round((tongGoc * safeRate) / 100);
     const troGia = Math.round(tienGiam);
@@ -114,8 +98,6 @@ const calculateCommissionBreakdown = (booking, rate = DEFAULT_COMMISSION_RATE) =
       loai_nguon_km: loaiNguon,
     };
   }
-
-  // Mã ĐỐI TÁC hoặc không mã: hoa hồng trên (gốc − giảm đối tác) + VAT trả ĐT
   const tienGiamDoiTac = loaiNguon === 'doi_tac' ? tienGiam : 0;
   const base = Math.max(0, tongGoc - tienGiamDoiTac);
   const hh = Math.round((base * safeRate) / 100);
@@ -206,7 +188,7 @@ const loadBookingForCommission = async (maDatPhong, tx = prisma) => {
 };
 
 /**
- * Tạo / cập nhật bản ghi hoa hồng theo công thức mới.
+ 
  * @param {number} maDatPhong
  * @param {{ tx?: object, forceRecalc?: boolean }} options
  */
@@ -220,7 +202,7 @@ const ensureCommissionForBooking = async (maDatPhong, options = {}) => {
   const maDoiTac = hotel?.ma_doi_tac || partner?.ma_doi_tac;
   if (!maDoiTac) return null;
 
-  const tyLe = resolveCommissionRate(hotel, partner);
+  const tyLe = resolveCommissionRate(hotel, partner, DEFAULT_COMMISSION_RATE);
   const breakdown = calculateCommissionBreakdown(booking, tyLe);
   const existing = booking.hoa_hong;
 

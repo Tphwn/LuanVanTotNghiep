@@ -25,7 +25,6 @@ const notifyAdmins = async ({ tieu_de, noi_dung, loai = 'he_thong', ma_dat_phong
   );
 };
 
-/** Khách hàng / cơ sở gửi form yêu cầu hợp tác */
 const notifyPartnerContactRequest = async ({
   maYeuCau,
   hoTen,
@@ -43,7 +42,6 @@ const notifyPartnerContactRequest = async ({
   loai: 'he_thong',
 });
 
-/** Đối tác tạo / gửi lại khách sạn chờ duyệt lên sàn */
 const notifyHotelPendingApproval = async ({
   maKhachSan,
   tenKhachSan,
@@ -59,7 +57,6 @@ const notifyHotelPendingApproval = async ({
   loai: 'he_thong',
 });
 
-/** Đối tác đề xuất tiện nghi chưa có trong danh mục */
 const notifyAmenityProposal = async ({
   tenDeXuat,
   loaiDeXuat,
@@ -82,8 +79,6 @@ const notifyAmenityProposal = async ({
     loai: 'tien_nghi',
   });
 };
-
-/** Đối tác tạo / gửi lại mã khuyến mãi chờ duyệt */
 const notifyPromotionPendingApproval = async ({
   maKhuyenMai,
   maCode,
@@ -102,7 +97,6 @@ const notifyPromotionPendingApproval = async ({
   loai: 'khuyen_mai',
 });
 
-/** Đơn hủy hợp lệ phát sinh yêu cầu hoàn tiền */
 const notifyRefundRequest = async ({
   maHoanTien,
   maDatPhong,

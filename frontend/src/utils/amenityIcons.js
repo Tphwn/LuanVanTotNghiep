@@ -1,4 +1,3 @@
-/** Slug tiện nghi — lưu DB, map sang Lucide icon trên UI */
 
 import {
   Wifi, Tv, ConciergeBell, Waves, ParkingCircle, UtensilsCrossed, ChefHat,
@@ -29,8 +28,6 @@ export const suggestIconSlugFromName = (name) => {
   if (!name) return DEFAULT_AMENITY_ICON_SLUG;
   const text = stripDiacritics(name);
   const raw = String(name).toLowerCase();
-
-  // Ưu tiên cụ thể trước (tránh "nước"/"xe"/"tắm" khớp nhầm)
   const keywords = [
     { keys: ['xe điện', 'sạc điện', 'charging', 'ev'], slug: 'ev' },
     { keys: ['lò vi sóng', 'microwave', 'vi sóng'], slug: 'microwave' },
@@ -136,9 +133,6 @@ export const AMENITY_ICON_PRESETS = [
   { key: 'curtain', label: 'Rèm' },
 ];
 
-/**
- * Map từ slug → tên icon Lucide (dùng ở frontend để import động).
- */
 export const SLUG_TO_LUCIDE = {
   wifi: 'Wifi',
   pool: 'Waves',
@@ -276,11 +270,6 @@ const SLUG_ICON_MAP = {
 };
 
 const isIconSlug = (value) => /^[a-z0-9_]+$/i.test(String(value || '').trim());
-
-/**
- * Ưu tiên suy icon từ tên (tránh slug cũ sai như wifi mặc định).
- * Tham số: (bieuTuong, ten) hoặc (ten) khi chỉ có tên.
- */
 export const getAmenityLucideIcon = (bieuTuong, ten = '') => {
   const raw = String(bieuTuong || '').trim();
   const slug = isIconSlug(raw) ? raw.toLowerCase() : '';
@@ -292,8 +281,7 @@ export const getAmenityLucideIcon = (bieuTuong, ten = '') => {
   }
 
   if (slug && SLUG_ICON_MAP[slug]) {
-    // Nhiều bản ghi cũ lưu nhầm wifi — không dùng nếu tên không liên quan wifi
-    if (slug === 'wifi' && name && suggestIconSlugFromName(name) !== 'wifi') {
+     if (slug === 'wifi' && name && suggestIconSlugFromName(name) !== 'wifi') {
       return CircleDot;
     }
     return SLUG_ICON_MAP[slug];

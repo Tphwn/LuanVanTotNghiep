@@ -5,11 +5,13 @@ import ActionButton, { ActionCell } from '../../../components/common/ActionButto
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import AdminReviewConfirmModal from './components/AdminReviewConfirmModal';
 import AdminReviewDetailModal from './components/AdminReviewDetailModal';
 import { REVIEW_BADGE } from '../../../constants/statusConfig';
+import { formatDateVN as formatDate } from '../../../utils/formatDate';
 
 const PAGE_SIZE = 10;
 
@@ -45,8 +47,6 @@ const getDateRange = (preset, customFrom, customTo) => {
   from.setDate(from.getDate() - days);
   return { tu_ngay: from.toISOString().slice(0, 10) };
 };
-
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
 const truncate = (text, len = 60) => {
   if (!text) return '—';
@@ -364,9 +364,8 @@ const ReviewsPage = () => {
           <>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="review-from-date">Từ ngày</label>
-              <input
+              <DateInput
                 id="review-from-date"
-                type="date"
                 className="mgmt-select-inline"
                 value={tuNgay}
                 onChange={(e) => setTuNgay(e.target.value)}
@@ -374,9 +373,8 @@ const ReviewsPage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="review-to-date">Đến ngày</label>
-              <input
+              <DateInput
                 id="review-to-date"
-                type="date"
                 className="mgmt-select-inline"
                 value={denNgay}
                 min={tuNgay}

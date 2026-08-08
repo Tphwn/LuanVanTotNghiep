@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
@@ -7,8 +8,7 @@ import { resolveUploadUrl } from '../utils/media';
 import CustomerUserMenu from '../components/customer/CustomerUserMenu';
 import FlashToastHost from '../components/common/FlashToastHost';
 import SiteFooter from '../components/layout/SiteFooter';
-
-const AUTH_FOOTER_HIDDEN = new Set([
+const AUTH_PATHS = new Set([
   ROUTES.LOGIN,
   ROUTES.REGISTER,
   ROUTES.FORGOT_PASSWORD,
@@ -20,9 +20,15 @@ const MainLayout = ({ children, fullBleed = false }) => {
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
 
-  // Website khách chỉ hiện session khách hàng; admin/đối tác xem như khách chưa đăng nhập
   const isCustomerSession = user?.vai_tro === ROLES.KHACH_HANG;
-  const showFooter = !AUTH_FOOTER_HIDDEN.has(location.pathname);
+  const showFooter = !AUTH_PATHS.has(location.pathname);
+
+  useEffect(() => {
+    if (AUTH_PATHS.has(location.pathname)) return;
+    if (user?.vai_tro === ROLES.DOI_TAC) {
+      dispatch(logout());
+    }
+  }, [user?.vai_tro, location.pathname, dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -63,6 +69,7 @@ const MainLayout = ({ children, fullBleed = false }) => {
           >
              Khách sạn
           </Link>
+          
           <Link
             to={ROUTES.CUSTOMER.CONTACT}
             className={`header-nav-link${isActive(ROUTES.CUSTOMER.CONTACT) ? ' active' : ''}`}
@@ -76,6 +83,14 @@ const MainLayout = ({ children, fullBleed = false }) => {
             <span className="header-nav-text-full">Hợp tác với chúng tôi</span>
             <span className="header-nav-text-short">Hợp tác</span>
           </Link>
+          {!isCustomerSession && (
+            <Link
+              to={ROUTES.CUSTOMER.GUEST_BOOKINGS}
+              className={`header-nav-link${isActive(ROUTES.CUSTOMER.GUEST_BOOKINGS) ? ' active' : ''}`}
+            >
+              Đặt chỗ của tôi
+            </Link>
+          )}
         </nav>
 
         <div className="header-actions">

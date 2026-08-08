@@ -323,18 +323,6 @@ const hotelService = {
     return hotel;
   },
 
-  requestInfoHotel: async (id, adminId, ghiChu) => {
-    return prisma.khach_san.update({
-      where: { ma_khach_san: Number(id) },
-      data: {
-        trang_thai: 'yeu_cau_sua',
-        ly_do_tu_choi: ghiChu,
-        duyet_boi_admin_id: Number(adminId),
-        ngay_duyet: new Date(),
-      },
-    });
-  },
-
   lockHotel: async (id, lyDoKhoa) => {
     const reason = lyDoKhoa?.trim();
     if (!reason) {

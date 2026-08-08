@@ -13,8 +13,10 @@ const MAX_ROOM_AMENITIES = 5;
 const RoomOfferCard = ({
   room,
   soPhong = 1,
+  nights = 1,
   onBook,
 }) => {
+  const stayNights = Math.max(Number(room.so_dem) || Number(nights) || 1, 1);
   const images = room.hinh_anh?.length ? room.hinh_anh : [];
   const [imgIdx, setImgIdx] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -85,12 +87,11 @@ const RoomOfferCard = ({
             amount={room.gia_hien_thi}
             originalAmount={room.gia_goc}
             label=""
-            suffix="/ phòng / đêm"
+            suffix={`/ phòng / ${stayNights} đêm`}
+            showTaxNote={false}
             className="hotel-room-offer-price-wrap"
           />
-          {!room.gia_goc && (
-            <p className="hotel-room-offer-tax-note">(Chưa bao gồm thuế và phí)</p>
-          )}
+          <p className="hotel-room-offer-tax-note">(Đã bao gồm thuế và phí)</p>
           {roomsLeft != null && (
             <p className={`hotel-room-offer-stock${isSoldOut ? ' hotel-room-offer-stock--sold-out' : ''}`}>
               {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng`}
@@ -109,6 +110,7 @@ const RoomOfferCard = ({
       <RoomDetailModal
         room={room}
         soPhong={soPhong}
+        nights={stayNights}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       />

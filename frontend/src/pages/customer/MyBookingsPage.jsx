@@ -266,7 +266,6 @@ const MyBookingsPage = () => {
                     <span className="my-booking-price-label">Tổng thanh toán</span>
                     <CustomerPrice
                       amount={b.thanh_toan_cuoi}
-                      unit="VNĐ"
                       className="my-booking-price-value"
                     />
                   </div>

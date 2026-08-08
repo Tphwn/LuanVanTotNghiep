@@ -3,7 +3,7 @@ import DetailTable from '../../../../components/booking/DetailTable';
 import ActionButton from '../../../../components/common/ActionButton';
 import ReviewModerationNotice from '../../../../components/review/ReviewModerationNotice';
 
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
 
 const formatDateTime = (d) => {
   if (!d) return '—';
@@ -13,7 +13,7 @@ const formatDateTime = (d) => {
     minute: '2-digit',
     hour12: false,
   });
-  return `${date.toLocaleDateString('vi-VN')} - ${time}`;
+  return `${date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${time}`;
 };
 
 const ScoreRow = ({ label, value, highlight = false }) => (

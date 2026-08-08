@@ -1,5 +1,4 @@
 const MSG = {
-  // Auth
   LOGIN_SUCCESS:        'Đăng nhập thành công',
   REGISTER_SUCCESS:     'Đăng ký thành công',
   LOGOUT_SUCCESS:       'Đăng xuất thành công',
@@ -11,7 +10,6 @@ const MSG = {
   UNAUTHORIZED:         'Vui lòng đăng nhập',
   FORBIDDEN:            'Bạn không có quyền thực hiện',
   TOKEN_INVALID:        'Token không hợp lệ hoặc đã hết hạn',
-
   // Common
   NOT_FOUND:            'Không tìm thấy',
   SERVER_ERROR:         'Lỗi server',

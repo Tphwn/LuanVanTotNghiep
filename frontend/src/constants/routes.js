@@ -11,6 +11,7 @@ const ROUTES = {
     BOOKING: '/booking',
     PAYMENT: '/payment/:id',
     MY_BOOKINGS: '/my-bookings',
+    GUEST_BOOKINGS: '/guest-bookings',
     TRANSACTIONS: '/transactions',
     TRANSACTION_DETAIL: '/transactions/:id',
     PROMOTIONS: '/promotions',

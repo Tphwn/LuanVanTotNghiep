@@ -1,10 +1,23 @@
+import formatCurrency from '../../utils/formatCurrency';
+
 const METHOD_LABEL = {
   momo: 'Ví MoMo',
   vnpay: 'VNPay',
   the_tin_dung: 'Thẻ tín dụng',
 };
 
-const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)}₫`;
+const fmtMoney = formatCurrency;
+
+const fmtStayDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('vi-VN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
 
 export default function ConfirmPaymentModal({
   booking,
@@ -18,6 +31,12 @@ export default function ConfirmPaymentModal({
   if (!booking) return null;
 
   const methodLabel = METHOD_LABEL[method] || method;
+  const luuTru = booking.luu_tru || {};
+  const guestCount = Number(luuTru.so_nguoi_lon) || 0;
+  const roomCount = Math.max(Number(luuTru.so_phong) || 1, 1);
+  const stayLabel = luuTru.ngay_nhan
+    ? `${fmtStayDate(luuTru.ngay_nhan)} → ${fmtStayDate(luuTru.ngay_tra)} · ${luuTru.so_dem || 1} đêm`
+    : '—';
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
@@ -61,11 +80,24 @@ export default function ConfirmPaymentModal({
               <strong>{booking.loai_phong?.ten_loai || '—'}</strong>
             </li>
             <li>
+              <span>Ngày lưu trú</span>
+              <strong>{stayLabel}</strong>
+            </li>
+            <li>
+              <span>Số người ở</span>
+              <strong>
+                {guestCount}
+                {' khách · '}
+                {roomCount}
+                {' phòng'}
+              </strong>
+            </li>
+            <li>
               <span>Phương thức</span>
               <strong>{methodLabel}</strong>
             </li>
             <li className="confirm-payment-summary--total">
-              <span>Số tiền thanh toán</span>
+              <span>Tổng tiền</span>
               <strong>{fmtMoney(amount)}</strong>
             </li>
           </ul>

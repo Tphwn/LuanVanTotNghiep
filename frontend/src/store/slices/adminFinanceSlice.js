@@ -80,14 +80,6 @@ export const approveRefund = createAsyncThunk('adminFinance/approveRefund', asyn
   }
 });
 
-export const rejectRefund = createAsyncThunk('adminFinance/rejectRefund', async ({ id, ly_do }, { rejectWithValue }) => {
-  try {
-    return (await api.patch(`${PAYMENTS_API}/refunds/${id}/reject`, { ly_do })).data.data;
-  } catch (e) {
-    return rejectWithValue(e.response?.data?.message || 'Lỗi từ chối');
-  }
-});
-
 export const confirmCommission = createAsyncThunk('adminFinance/confirmComm', async (id, { rejectWithValue }) => {
   try {
     return (await api.patch(`${PAYMENTS_API}/commissions/${id}/confirm`)).data.data;
@@ -261,13 +253,6 @@ const adminFinanceSlice = createSlice({
         }
       })
       .addCase(approveRefund.rejected, (st, a) => { st.error = a.payload; })
-
-      .addCase(rejectRefund.fulfilled, (st, a) => {
-        st.successMsg = 'Đã từ chối hoàn tiền!';
-        const i = st.refunds.findIndex((x) => x.ma_hoan_tien === a.payload.ma_hoan_tien);
-        if (i !== -1) st.refunds[i] = { ...st.refunds[i], trang_thai: 'tu_choi' };
-      })
-      .addCase(rejectRefund.rejected, (st, a) => { st.error = a.payload; })
 
       .addCase(confirmCommission.fulfilled, (st, a) => {
         st.successMsg = 'Đã xác nhận đối soát hoa hồng';

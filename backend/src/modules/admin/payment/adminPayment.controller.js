@@ -29,19 +29,6 @@ exports.approveRefund = wrap(async (req) => {
   return svc.approveRefund(req.params.id, req.user.id);
 });
 
-exports.rejectRefund = async (req, res) => {
-  try {
-    const { ly_do } = req.body;
-    if (!ly_do?.trim()) {
-      return res.status(400).json({ success: false, message: 'Nhập lý do từ chối' });
-    }
-    const data = await svc.rejectRefund(req.params.id, req.user.id, ly_do);
-    res.json({ success: true, data, message: 'Đã từ chối hoàn tiền' });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-};
-
 exports.confirmCommission = wrap(async (req) => svc.confirmCommission(req.params.id, req.user?.id));
 exports.confirmCommissionsBatch = wrap(async (req) => (
   svc.confirmCommissionsBatch(req.body?.ids || req.body?.ma_hoa_hong_ids, req.user?.id)

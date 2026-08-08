@@ -9,8 +9,6 @@ const adminHotelService = {
 
   reject: (id, lyDo) => api.patch(`/admin/hotels/${id}/reject`, { lyDo }),
 
-  requestInfo: (id, ghiChu) => api.patch(`/admin/hotels/${id}/request-info`, { ghiChu }),
-
   lock: (id, lyDoKhoa) => api.patch(`/admin/hotels/${id}/lock`, { ly_do_khoa: lyDoKhoa }),
 
   unlock: (id) => api.patch(`/admin/hotels/${id}/unlock`),

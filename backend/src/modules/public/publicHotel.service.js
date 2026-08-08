@@ -10,7 +10,7 @@ const {
   countActiveBookedRooms,
   countActiveBookedRoomsMap,
 } = require('../../utils/bookingHelpers');
-const { buildStayInvoice, parseChildAges } = require('../../utils/stayPricing');
+const { buildStayInvoice, parseChildAges, priceWithVat } = require('../../utils/stayPricing');
 
 const resolveAdults = (soKhach) => Math.max(Number(soKhach) || 1, 1);
 
@@ -42,7 +42,7 @@ const buildSearchContext = (soKhach, treEm, soPhong = 1, tuoiTreEm = []) => {
   };
 };
 
-const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx) => {
+const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx, vatRate = 10) => {
   const roomCount = searchCtx.roomCount || 1;
   const tienPhong = Number(pricing.tong_luong_tru) * roomCount;
   const invoice = buildStayInvoice({
@@ -52,15 +52,19 @@ const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx) => {
     tuoi_tre_em: searchCtx.tuoi_tre_em,
     tuoi_toi_da_mien_phi: hotelPolicy?.tuoi_toi_da_mien_phi,
     phu_thu_tre_em: hotelPolicy?.phu_thu_tre_em,
-    phan_tram_vat: hotelPolicy?.phan_tram_vat ?? 10,
+    phan_tram_vat: vatRate,
   });
   const nights = Math.max(Number(pricing.so_dem) || 1, 1);
   const preVatTotal = invoice.tien_phong + invoice.phu_thu_tre_em;
+  const roomStayPreVat = Number(pricing.tong_luong_tru) || 0;
+  const roomStayBasePreVat = Number(pricing.tong_goc) || roomStayPreVat;
+  const roomPerNight = Math.round(roomStayPreVat / nights);
   return {
     ...room,
     gia_co_ban: Number(room.gia_co_ban),
-    gia_hien_thi: Math.round(preVatTotal / nights / roomCount),
-    gia_goc: pricing.co_giam_gia ? pricing.gia_goc_dem : null,
+    gia_hien_thi: priceWithVat(roomStayPreVat, vatRate),
+    gia_goc: pricing.co_giam_gia ? priceWithVat(roomStayBasePreVat, vatRate) : null,
+    gia_moi_dem: priceWithVat(roomPerNight, vatRate),
     tong_gia: preVatTotal,
     tong_thanh_toan: invoice.thanh_toan_cuoi,
     so_dem: pricing.so_dem,
@@ -243,6 +247,7 @@ const publicHotelService = {
       },
       include: {
         dia_diem: true,
+        chinh_sach_khach_san: { select: { phan_tram_vat: true } },
         loai_phong: {
           where: { trang_thai: 'hoat_dong' },
           select: { gia_co_ban: true },
@@ -258,6 +263,8 @@ const publicHotelService = {
 
     let mapped = hotels.map((hotel) => {
       const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
+      const vatRate = Number(hotel.chinh_sach_khach_san?.phan_tram_vat) || 10;
+      const minBase = prices.length ? Math.min(...prices) : null;
       return {
         ma_khach_san: hotel.ma_khach_san,
         ten: hotel.ten,
@@ -265,7 +272,7 @@ const publicHotelService = {
         so_sao: hotel.so_sao,
         ma_dia_diem: hotel.ma_dia_diem,
         dia_diem: hotel.dia_diem,
-        gia_tu: prices.length ? Math.min(...prices) : null,
+        gia_tu: minBase != null ? priceWithVat(minBase, vatRate) : null,
         so_dat: bookingMap[hotel.ma_khach_san] || 0,
         so_danh_gia: reviewMap[hotel.ma_khach_san]?.so_danh_gia || 0,
         diem_trung_binh: reviewMap[hotel.ma_khach_san]?.diem_trung_binh || 0,
@@ -330,6 +337,7 @@ const publicHotelService = {
       where,
       include: {
         dia_diem: true,
+        chinh_sach_khach_san: { select: { phan_tram_vat: true } },
         khach_san_tien_nghi: {
           include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
         },
@@ -350,6 +358,8 @@ const publicHotelService = {
 
     const mapped = hotels.map((hotel) => {
       const prices = hotel.loai_phong.map((r) => Number(r.gia_co_ban));
+      const vatRate = Number(hotel.chinh_sach_khach_san?.phan_tram_vat) || 10;
+      const minBase = prices.length ? Math.min(...prices) : null;
       const soPhongTrong = hotel.loai_phong.reduce((sum, r) => {
         const booked = bookedMap.get(r.ma_loai_phong) || 0;
         return sum + Math.max(0, (Number(r.so_luong_mo_ban) || 0) - booked);
@@ -363,7 +373,7 @@ const publicHotelService = {
         dia_diem: hotel.dia_diem,
         so_loai_phong: hotel._count.loai_phong,
         so_phong_trong: soPhongTrong,
-        gia_tu: prices.length ? Math.min(...prices) : null,
+        gia_tu: minBase != null ? priceWithVat(minBase, vatRate) : null,
         tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
       };
     });
@@ -401,6 +411,7 @@ const publicHotelService = {
       where,
       include: {
         dia_diem: true,
+        chinh_sach_khach_san: { select: { phan_tram_vat: true } },
         khach_san_tien_nghi: {
           include: { tien_nghi: { select: { ma_tien_nghi: true, ten: true, bieu_tuong: true } } },
         },
@@ -438,13 +449,15 @@ const publicHotelService = {
       );
       if (!availableRooms.length) continue;
 
+      const vatRate = Number(hotel.chinh_sach_khach_san?.phan_tram_vat) || 10;
       let giaTu = Infinity;
       let bestPricing = null;
 
       for (const room of availableRooms) {
         const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-        if (pricing.gia_tu_dem < giaTu) {
-          giaTu = pricing.gia_tu_dem;
+        const priceVat = priceWithVat(pricing.tong_luong_tru, vatRate);
+        if (priceVat < giaTu) {
+          giaTu = priceVat;
           bestPricing = pricing;
         }
       }
@@ -459,7 +472,10 @@ const publicHotelService = {
         so_loai_phong: hotel._count.loai_phong,
         so_phong_trong: availableRooms.reduce((sum, r) => sum + (r.phong_con_lai || 0), 0),
         gia_tu: giaTu === Infinity ? null : giaTu,
-        gia_goc: bestPricing?.co_giam_gia ? bestPricing.gia_goc_dem : null,
+        gia_goc: bestPricing?.co_giam_gia
+          ? priceWithVat(bestPricing.tong_goc, vatRate)
+          : null,
+        so_dem: bestPricing?.so_dem || null,
         tien_nghi: hotel.khach_san_tien_nghi.map((t) => t.tien_nghi).filter(Boolean),
       });
     }
@@ -529,6 +545,7 @@ const publicHotelService = {
     if (!hotel) return null;
 
     const flatHotel = flattenHotelPolicy(hotel);
+    const hotelVatRate = Number(flatHotel.phan_tram_vat) || 10;
     const roomsWithAvailability = await getRoomsWithAvailability(
       hotel.loai_phong,
       checkIn,
@@ -539,7 +556,7 @@ const publicHotelService = {
     if (!target) return null;
 
     const pricing = await calcStayPrice(target.ma_loai_phong, target.gia_co_ban, checkIn, checkOut);
-    const roomMapped = mapRoomWithInvoice(target, pricing, flatHotel, searchCtx);
+    const roomMapped = mapRoomWithInvoice(target, pricing, flatHotel, searchCtx, hotelVatRate);
     const [roomWithImages] = await attachRoomImages([{
       ...roomMapped,
       tien_nghi: (target.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
@@ -550,7 +567,7 @@ const publicHotelService = {
         .filter((r) => r.ma_loai_phong !== Number(roomId) && r.phong_con_lai >= searchCtx.roomCount)
         .map(async (room) => {
           const p = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-          return mapRoomWithInvoice(room, p, flatHotel, searchCtx);
+          return mapRoomWithInvoice(room, p, flatHotel, searchCtx, hotelVatRate);
         })
     );
     const otherWithImages = await attachRoomImages(otherRooms);
@@ -572,7 +589,7 @@ const publicHotelService = {
       phu_thu_thu_cung: flatHotel.phu_thu_thu_cung != null ? Number(flatHotel.phu_thu_thu_cung) : null,
       tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
       phu_thu_tre_em: flatHotel.phu_thu_tre_em != null ? Number(flatHotel.phu_thu_tre_em) : null,
-      phan_tram_vat: flatHotel.phan_tram_vat != null ? Number(flatHotel.phan_tram_vat) : 10,
+      phan_tram_vat: hotelVatRate,
       chinh_sach_huy: flatHotel.chinh_sach_huy.map((p) => ({
         ma_chinh_sach: p.ma_chinh_sach,
         so_ngay_truoc: p.so_ngay_truoc,
@@ -644,6 +661,7 @@ const publicHotelService = {
     if (!hotel) return null;
 
     const flatHotel = flattenHotelPolicy(hotel);
+    const hotelVatRate = Number(flatHotel.phan_tram_vat) || 10;
     const roomsWithAvailability = await getRoomsWithAvailability(
       hotel.loai_phong,
       checkIn,
@@ -654,7 +672,7 @@ const publicHotelService = {
       roomsWithAvailability.map(async (room) => {
         const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
         return {
-          ...mapRoomWithInvoice(room, pricing, flatHotel, searchCtx),
+          ...mapRoomWithInvoice(room, pricing, flatHotel, searchCtx, hotelVatRate),
           tien_nghi: (room.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),
         };
       })
@@ -691,7 +709,7 @@ const publicHotelService = {
       noi_quy_khac: parseNoiQuyKhac(flatHotel.noi_quy_khac),
       tuoi_toi_da_mien_phi: flatHotel.tuoi_toi_da_mien_phi,
       phu_thu_tre_em: flatHotel.phu_thu_tre_em,
-      phan_tram_vat: flatHotel.phan_tram_vat != null ? Number(flatHotel.phan_tram_vat) : 10,
+      phan_tram_vat: hotelVatRate,
       chinh_sach_huy: (flatHotel.chinh_sach_huy || []).map((p) => ({
         so_ngay_truoc: p.so_ngay_truoc,
         phan_tram_hoan: p.phan_tram_hoan,

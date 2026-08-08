@@ -68,7 +68,7 @@ export default function HotelFormPage() {
     if (res.error) {
       throw new Error(res.payload || 'Không thể cập nhật khách sạn');
     }
-    const needsResubmit = ['cho_duyet', 'tu_choi', 'yeu_cau_sua'].includes(hotel.trang_thai);
+    const needsResubmit = ['cho_duyet', 'tu_choi'].includes(hotel.trang_thai);
     setLocalSuccess(
       needsResubmit
         ? 'Đã gửi duyệt lại cho admin!'

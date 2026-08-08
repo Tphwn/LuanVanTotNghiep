@@ -4,7 +4,6 @@ const authMiddleware = require('../../middlewares/auth.middleware');
 const prisma = require('../../config/prisma');
 const { notifyAmenityProposal } = require('../../utils/adminNotify');
 
-// Partner đề xuất tiện nghi → thông báo cho admin (không lưu bảng yêu cầu riêng)
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const ten_de_xuat = (req.body.ten_de_xuat || req.body.ten_tien_nghi || '').trim();

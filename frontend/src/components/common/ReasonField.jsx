@@ -1,7 +1,4 @@
-/**
- * Ô nhập lý do dùng chung — thống nhất giao diện + validation cho mọi form
- * khóa/ẩn/từ chối/hủy trong hệ thống.
- */
+
 const ReasonField = ({
   id,
   label = 'Lý do',

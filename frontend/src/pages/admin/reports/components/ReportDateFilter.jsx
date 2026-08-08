@@ -1,3 +1,4 @@
+import DateInput from '../../../../components/common/DateInput';
 import { REPORT_DATE_PRESETS } from '../reportHelpers';
 
 const ReportDateFilter = ({
@@ -23,15 +24,13 @@ const ReportDateFilter = ({
     </div>
     {preset === 'custom' ? (
       <div className="admin-reports-custom-range">
-        <input
-          type="date"
+        <DateInput
           value={tuNgay}
           onChange={(e) => onFromChange(e.target.value)}
           aria-label="Từ ngày"
         />
         <span className="admin-reports-range-sep">→</span>
-        <input
-          type="date"
+        <DateInput
           value={denNgay}
           onChange={(e) => onToChange(e.target.value)}
           aria-label="Đến ngày"

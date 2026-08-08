@@ -36,7 +36,6 @@ const getDefaultLoaiGia = (dateStr) => {
 
 const pricingService = {
 
-  // Lấy danh sách KS của đối tác
   getMyHotels: async (doiTacId) => {
     return await prisma.khach_san.findMany({
       where: {
@@ -67,8 +66,6 @@ const pricingService = {
       orderBy: { ten: 'asc' },
     });
   },
-
-  // Lịch quản lý giá + kho + đặt phòng theo ngày
   getManagementCalendar: async (maLoaiPhong, tuNgay, denNgay) => {
     const roomId = Number(maLoaiPhong);
     const room = await prisma.loai_phong.findUnique({

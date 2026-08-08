@@ -6,6 +6,7 @@ import customerBookingService from '../../services/customerBookingService';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { formatBookingDate } from '../../utils/bookingDisplay';
+import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
 const fmtDateTime = (d) => {
@@ -21,7 +22,8 @@ const fmtDateTime = (d) => {
   });
   return `${date} ${time}`;
 };
-const fmtVnd = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VNĐ`;
+
+const fmtVnd = formatCurrency;
 
 const InfoRow = ({ label, value }) => (
   <div className="refund-detail-row">

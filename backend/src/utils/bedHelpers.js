@@ -20,11 +20,6 @@ const getBedSleepCapacity = (beds = {}) => {
   const { so_giuong_don: don, so_giuong_doi: doi, so_giuong_lon: lon } = parseBedCounts(beds);
   return don * 1 + doi * 2 + lon * 2;
 };
-
-/**
- * Ràng buộc: số người lớn (suc_chua) ≤ tổng chỗ ngủ từ giường.
- * Cho phép giường thừa chỗ.
- */
 const validateBedsByCapacity = (soNguoiLon, beds) => {
   const adults = Number(soNguoiLon);
   if (!adults || adults < 1) return 'Số người lớn phải từ 1 trở lên';

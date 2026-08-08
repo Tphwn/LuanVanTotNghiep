@@ -9,6 +9,7 @@ const ADMIN_PAGE_TITLES = [
   { prefix: '/admin/finance', title: 'Tài chính' },
   { prefix: '/admin/reports', title: 'Báo cáo' },
   { prefix: '/admin/partners', title: 'Đối tác' },
+  { prefix: '/admin/partner-requests', title: 'Hợp tác' },
 ];
 
 export const getAdminPageTitle = (pathname) => {

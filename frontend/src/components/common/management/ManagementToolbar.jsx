@@ -1,6 +1,6 @@
 import SearchBar from './SearchBar';
 import FilterTabs from './FilterTabs';
-
+// toolbar quản lý các trang admin, partner, user
 const ManagementToolbar = ({
   searchValue,
   onSearchChange,

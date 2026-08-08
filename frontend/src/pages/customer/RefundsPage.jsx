@@ -5,6 +5,7 @@ import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
+import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
 const fmtDateTime = (d) => {
@@ -21,7 +22,8 @@ const fmtDateTime = (d) => {
   });
   return `${day}/${month}/${year} - ${time}`;
 };
-const fmtVnd = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VNĐ`;
+
+const fmtVnd = formatCurrency;
 
 const RefundsPage = () => {
   const { user, token } = useSelector((state) => state.auth);

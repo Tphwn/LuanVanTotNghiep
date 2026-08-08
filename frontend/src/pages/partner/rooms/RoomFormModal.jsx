@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { X, Star, Megaphone, Plus, Trash2 } from 'lucide-react';
 import api from '../../../services/api';
 import { resolveUploadUrl } from '../../../utils/media';
-import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatNumber } from '../../../utils/formatCurrency';
 import {
   BED_TYPE_OPTIONS,
   getBedSleepCapacity,
@@ -21,7 +21,7 @@ const parsePriceInput = (value) => Number(String(value || '').replace(/\./g, '')
 const formatPriceInput = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
   if (!digits) return '';
-  return formatCurrency(digits);
+  return formatNumber(digits);
 };
 
 const isMainImage = (img) => img.la_anh_chinh === 1 || img.la_anh_chinh === true;
@@ -302,7 +302,7 @@ const RoomFormContent = ({ room, hotelId, amenities, onClose, onSuccess }) => {
       errors.gia_co_ban = 'Giá cơ bản là bắt buộc';
     } else {
       const gia = parsePriceInput(form.gia_co_ban);
-      if (!gia || gia < 100000) errors.gia_co_ban = 'Giá cơ bản phải từ 100.000đ trở lên';
+      if (!gia || gia < 100000) errors.gia_co_ban = 'Giá cơ bản phải từ 100.000 VNĐ trở lên';
     }
     if (images.length === 0) errors.images = 'Vui lòng chọn ít nhất 1 ảnh phòng';
     if (images.length > MAX_ROOM_IMAGES) errors.images = `Tối đa ${MAX_ROOM_IMAGES} ảnh mỗi loại phòng`;

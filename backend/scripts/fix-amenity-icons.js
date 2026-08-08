@@ -1,14 +1,7 @@
-/**
- * Cập nhật bieu_tuong theo tên tiện nghi (sửa slug wifi mặc định sai).
- * Chạy: node scripts/fix-amenity-icons.js
- */
 const { PrismaClient } = require('@prisma/client');
-
 const DEFAULT_SLUG = 'default';
-
 const stripDiacritics = (value) =>
   String(value).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-
 const keywordMatches = (text, raw, key) => {
   const nk = stripDiacritics(key);
   if (nk.length <= 2) {

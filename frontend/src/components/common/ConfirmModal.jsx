@@ -2,22 +2,6 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import ReasonField from './ReasonField';
 
-/**
- * Modal xác nhận dùng chung — thống nhất bố cục header/thông tin/hành động
- * cho mọi thao tác xác nhận/hủy trong hệ thống.
- *
- * Props:
- * - open: hiển thị hay không
- * - title, intro: tiêu đề & mô tả
- * - icon: React element (lucide icon) hiển thị trong badge
- * - variant: 'danger' | 'primary' — quyết định màu icon + nút xác nhận
- * - infoRows: [{ label, value }] — bảng thông tin
- * - warning: chuỗi cảnh báo (hiển thị khung vàng)
- * - reason: { required, label, placeholder, hint, id } — nếu có thì hiện ô nhập lý do
- * - confirmText, cancelText, loading
- * - onClose(): đóng modal
- * - onConfirm(reason?): xác nhận; nếu có reason thì truyền chuỗi lý do
- */
 const ConfirmModal = ({
   open,
   title,

@@ -11,7 +11,6 @@ import { formatBedLabel } from '../../utils/bedDisplay';
 import { resolveSearchForm } from '../../utils/hotelSearchStorage';
 import { ROOM_CATEGORY_GROUPS } from '../admin/amenities/constants';
 import { groupAmenitiesByCategory } from '../admin/amenities/utils';
-import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
@@ -218,12 +217,10 @@ const CustomerRoomDetailPage = () => {
               originalAmount={room.gia_goc}
               label="Giá tham khảo:"
               align="left"
-              showTaxNote={Boolean(room.gia_goc)}
+              showTaxNote
+              suffix={`/ phòng / ${Math.max(Number(room.so_dem) || nights || 1, 1)} đêm`}
               className="room-detail-price-row"
             />
-            {nights > 1 && room.tong_gia && (
-              <p className="room-detail-total">Tổng {nights} đêm: {formatCurrency(room.tong_gia)} VNĐ</p>
-            )}
           </div>
         </aside>
       </div>

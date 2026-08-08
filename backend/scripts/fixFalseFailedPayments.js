@@ -1,7 +1,3 @@
-/**
- * Đưa các thanh toán bị đánh "that_bai" nhầm (chưa từng thanh toán thành công)
- * về "cho" — vì that_bai chỉ dành cho giao dịch đã thử thanh toán nhưng thất bại.
- */
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();

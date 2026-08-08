@@ -1,4 +1,4 @@
-/** Ngày lịch (YYYY-MM-DD) theo giờ địa phương — tránh lệch múi giờ khi so với cột DATE. */
+
 const toLocalDateString = (d = new Date()) => {
   const dt = d instanceof Date ? d : new Date(d);
   const y = dt.getFullYear();
@@ -7,7 +7,6 @@ const toLocalDateString = (d = new Date()) => {
   return `${y}-${m}-${day}`;
 };
 
-/** Ngày lịch từ cột @db.Date (Prisma trả về UTC midnight của ngày đó). */
 const toDbDateString = (d) => {
   if (!d) return '';
   if (typeof d === 'string') return d.slice(0, 10);
@@ -24,18 +23,12 @@ const startOfDay = (d) => {
   return dt;
 };
 
-/** Trạng thái sẽ tự chuyển hết hạn khi qua ngày kết thúc (ngày kết thúc vẫn còn hiệu lực). */
 const EXPIRABLE_STATUSES = ['hoat_dong', 'cho_duyet', 'an'];
 
 const isPastPromotionEndDate = (ngayKetThuc, at = new Date()) => (
   toDbDateString(ngayKetThuc) < toLocalDateString(at)
 );
 
-/**
- * Cập nhật khuyến mãi quá hạn sang het_han.
- * VD: 1/7–10/7 → từ 11/7 trở đi là hết hạn.
- */
-/** Ngày kết thúc kỹ thuật cho KM lần đặt đầu (không hết hạn thực tế). */
 const FIRST_BOOKING_PROMO_END = '2099-12-31';
 
 const syncExpiredPromotions = async (prismaClient, scopeWhere = {}) => {
@@ -146,7 +139,6 @@ const assertPromotionFormValues = ({
 
   if (ngay_bat_dau) {
     const start = String(ngay_bat_dau).slice(0, 10);
-    // Tạo mới: không cho quá khứ. Sửa: chỉ cho giữ ngày bắt đầu cũ nếu đã qua.
     if (start < today && start !== existingStart) {
       throwValidation('Ngày bắt đầu không được nằm trong quá khứ');
     }

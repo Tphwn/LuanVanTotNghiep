@@ -5,7 +5,6 @@ export default function useListPagination(items, pageSize = 10, resetDeps = []) 
 
   useEffect(() => {
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, resetDeps);
 
   const totalPages = Math.max(1, Math.ceil((items?.length || 0) / pageSize));

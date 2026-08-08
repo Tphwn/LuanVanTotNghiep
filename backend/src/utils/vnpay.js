@@ -13,7 +13,6 @@ const getConfig = () => {
   return { tmnCode, hashSecret, vnpUrl, returnUrl };
 };
 
-/** Format yyyyMMddHHmmss theo giờ VN (UTC+7) */
 const formatVnpDate = (date = new Date()) => {
   const vn = new Date(date.getTime() + 7 * 60 * 60 * 1000);
   const pad = (n) => String(n).padStart(2, '0');
@@ -27,9 +26,6 @@ const formatVnpDate = (date = new Date()) => {
   );
 };
 
-/**
- * Sort + encode theo chuẩn VNPay (sample Node.js chính thức).
- */
 const sortObject = (obj) => {
   const sorted = {};
   const keys = Object.keys(obj).filter((k) => obj[k] !== undefined && obj[k] !== null && obj[k] !== '');
@@ -49,8 +45,8 @@ const signParams = (params, hashSecret) => {
 };
 
 /**
- * @param {{ amountVnd: number, orderInfo: string, ipAddr: string, txnRef: string, expireMinutes?: number }} opts
- * @returns {string} full payment URL
+ * @param {{ amountVnd: number, orderInfo: string, ipAddr: string, txnRef: string, expireMinutes?: number }} 
+ * @returns {string} 
  */
 const buildPaymentUrl = (opts) => {
   const { tmnCode, hashSecret, vnpUrl, returnUrl } = getConfig();
@@ -83,7 +79,6 @@ const buildPaymentUrl = (opts) => {
 
   const secureHash = signParams(vnpParams, hashSecret);
   const sorted = sortObject(vnpParams);
-  // qs.stringify already encodes; sorted values are already encoded — join manually
   const query = Object.keys(sorted)
     .map((key) => `${key}=${sorted[key]}`)
     .join('&');
@@ -108,7 +103,7 @@ const RESPONSE_MESSAGES = {
 };
 
 /**
- * @param {Record<string, string>} query — req.query từ return URL
+ * @param {Record<string, string>} 
  */
 const verifyReturn = (query = {}) => {
   const { hashSecret } = getConfig();

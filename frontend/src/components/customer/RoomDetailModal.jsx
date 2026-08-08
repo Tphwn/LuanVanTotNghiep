@@ -9,9 +9,11 @@ const getAmenityName = (item) => (typeof item === 'string' ? item : item?.ten ||
 const RoomDetailModal = ({
   room,
   soPhong = 1,
+  nights = 1,
   open,
   onClose,
 }) => {
+  const stayNights = Math.max(Number(room?.so_dem) || Number(nights) || 1, 1);
   const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
@@ -190,14 +192,12 @@ const RoomDetailModal = ({
                     amount={room.gia_hien_thi}
                     originalAmount={room.gia_goc}
                     label=""
-                    suffix="/ Phòng / đêm"
+                    suffix={`/ phòng / ${stayNights} đêm`}
                     align="left"
-                    showTaxNote={!room.gia_goc}
+                    showTaxNote={false}
                     className="room-detail-modal-price-row"
                   />
-                  {!room.gia_goc && (
-                    <p className="room-detail-modal-tax-note">(Chưa bao gồm thuế và phí)</p>
-                  )}
+                  <p className="room-detail-modal-tax-note">(Đã bao gồm thuế và phí)</p>
                 </div>
               )}
               <button type="button" className="room-detail-modal-close-btn" onClick={onClose}>

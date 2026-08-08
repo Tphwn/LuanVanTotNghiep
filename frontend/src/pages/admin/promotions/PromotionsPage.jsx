@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Eye, Pencil, Lock, Unlock, Check, X,
+  Eye, Pencil, Lock, Unlock,
 } from 'lucide-react';
 import api from '../../../services/api';
 import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
 import { getPromotionStatusMeta } from '../../../constants/statusConfig';
+import { formatDateVN as formatDate } from '../../../utils/formatDate';
 
 const PAGE_SIZE = 10;
 
@@ -42,23 +44,6 @@ const CONFIRM_CONFIG = {
       url: `/admin/promotions/${id}/lock`,
       withReason,
     }),
-  },
-  reject: {
-    title: 'Từ chối khuyến mãi',
-    intro: 'Khuyến mãi của đối tác sẽ bị từ chối và không được áp dụng.',
-    variant: 'danger',
-    confirmText: 'Từ chối',
-    icon: <X size={20} />,
-    reason: { required: true, label: 'Lý do từ chối', id: 'promo-reject-reason' },
-    endpoint: (id) => ({ url: `/admin/promotions/${id}/reject`, withReason: true }),
-  },
-  approve: {
-    title: 'Duyệt khuyến mãi',
-    intro: 'Khuyến mãi của đối tác sẽ được duyệt và bắt đầu áp dụng.',
-    variant: 'primary',
-    confirmText: 'Duyệt',
-    icon: <Check size={20} />,
-    endpoint: (id) => ({ url: `/admin/promotions/${id}/approve`, withReason: false }),
   },
   restore: {
     title: 'Khôi phục khuyến mãi',
@@ -92,7 +77,6 @@ const getDateRange = (preset, customFrom, customTo) => {
 };
 
 const formatCurrency = (v) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const todayLocal = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -101,7 +85,7 @@ const maxDate = (a, b) => (!a ? b : !b ? a : a >= b ? a : b);
 
 const formatGiaTri = (item) => (item.loai_giam === 'phan_tram'
   ? `${item.gia_tri}%`
-  : `${formatCurrency(item.gia_tri)} ₫`);
+  : `${formatCurrency(item.gia_tri)} VNĐ`);
 
 const formatGiaTriShortMax = (v) => {
   const n = Number(v) || 0;
@@ -155,7 +139,7 @@ const GiaTriCell = ({ item }) => {
   }
   return (
     <div className="admin-promo-value">
-      <strong>{formatCurrency(item.gia_tri)} ₫</strong>
+      <strong>{formatCurrency(item.gia_tri)} VNĐ</strong>
     </div>
   );
 };
@@ -213,9 +197,9 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             <InfoRow label="Tên chương trình" value={item.ten} />
             <InfoRow label="Giá trị giảm" value={formatGiaTri(item)} />
             {item.loai_giam === 'phan_tram' && item.giam_toi_da != null && (
-              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} ₫`} />
+              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} VNĐ`} />
             )}
-            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} ₫`} />
+            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} VNĐ`} />
             <InfoRow label="Phạm vi áp dụng" value={PHAM_VI[item.loai_nguon] || item.loai_nguon} />
             {!isSystem && <InfoRow label="Khách sạn" value={item.khach_san?.ten} />}
             <InfoRow label="Nguồn tạo" value={`${source.role} · ${source.detail}`} />
@@ -255,16 +239,6 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             <ActionButton variant="edit" icon={Pencil} disabled={actionLoading} onClick={() => onEdit(item)}>
               Sửa
             </ActionButton>
-          )}
-          {!isSystem && item.trang_thai === 'cho_duyet' && (
-            <>
-              <ActionButton variant="reject" icon={X} disabled={actionLoading} onClick={() => onAction(item, 'reject')}>
-                Từ chối
-              </ActionButton>
-              <ActionButton variant="approve" icon={Check} disabled={actionLoading} onClick={() => onAction(item, 'approve')}>
-                Duyệt
-              </ActionButton>
-            </>
           )}
           {item.trang_thai === 'hoat_dong' && (
             <ActionButton variant="lock" icon={Lock} disabled={actionLoading} onClick={() => onAction(item, 'lock')}>
@@ -396,9 +370,8 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
           <div style={{ display: 'grid', gridTemplateColumns: form.lan_dat_dau ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label>Từ ngày</label>
-              <input
+              <DateInput
                 className={inputCls(errors.ngay_bat_dau)}
-                type="date"
                 value={form.ngay_bat_dau}
                 min={minStart}
                 onChange={(e) => updateField('ngay_bat_dau', e.target.value)}
@@ -408,9 +381,8 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
             {!form.lan_dat_dau && (
               <div className="form-group">
                 <label>Đến ngày</label>
-                <input
+                <DateInput
                   className={inputCls(errors.ngay_ket_thuc)}
-                  type="date"
                   value={form.ngay_ket_thuc}
                   min={minEnd}
                   onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
@@ -808,9 +780,8 @@ const AdminPromotionsPage = () => {
             <>
               <div className="mgmt-filter-field">
                 <label className="mgmt-filter-label" htmlFor="promo-from">Từ ngày</label>
-                <input
+                <DateInput
                   id="promo-from"
-                  type="date"
                   className="mgmt-select-inline"
                   value={tuNgay}
                   onChange={(e) => setTuNgay(e.target.value)}
@@ -818,9 +789,8 @@ const AdminPromotionsPage = () => {
               </div>
               <div className="mgmt-filter-field">
                 <label className="mgmt-filter-label" htmlFor="promo-to">Đến ngày</label>
-                <input
+                <DateInput
                   id="promo-to"
-                  type="date"
                   className="mgmt-select-inline"
                   value={denNgay}
                   min={tuNgay}
@@ -902,12 +872,6 @@ const AdminPromotionsPage = () => {
                             </>
                           ) : (
                             <>
-                              {item.trang_thai === 'cho_duyet' && (
-                                <>
-                                  <ActionButton variant="approve" iconOnly icon={Check} title="Duyệt" onClick={() => setConfirmTarget({ item, action: 'approve' })} />
-                                  <ActionButton variant="reject" iconOnly icon={X} title="Từ chối" onClick={() => setConfirmTarget({ item, action: 'reject' })} />
-                                </>
-                              )}
                               {item.trang_thai === 'hoat_dong' && (
                                 <ActionButton variant="lock" iconOnly icon={Lock} title="Tạm ngưng" onClick={() => setConfirmTarget({ item, action: 'lock' })} />
                               )}

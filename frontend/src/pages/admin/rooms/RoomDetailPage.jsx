@@ -9,10 +9,11 @@ import MetricCard from "../../../components/common/management/MetricCard";
 import Toast from "../../../components/common/Toast";
 import useToast from "../../../hooks/useToast";
 import { getAdminRoomTypeStatus } from "../../../constants/statuses";
+import formatCurrency from "../../../utils/formatCurrency";
 
 const fmt = (v) => new Intl.NumberFormat("vi-VN").format(Number(v) || 0);
 const fmtDate = (d) => new Date(d).toLocaleDateString("vi-VN");
-const fmtPrice = (v) => (v != null && v !== "" ? `${fmt(v)} ₫` : "—");
+const fmtPrice = (v) => (v != null && v !== "" ? formatCurrency(v) : "—");
 
 const StarRating = ({ value }) => (
   <span style={{ fontSize: 13, fontWeight: 600, color: '#b36b00' }}>

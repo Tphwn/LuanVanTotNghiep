@@ -40,7 +40,6 @@ const broadcastToPartners = async ({ notifyScope = 'none', maDoiTac = null, payl
     });
     const results = [];
     for (const p of partners) {
-      // eslint-disable-next-line no-await-in-loop
       const row = await notifyPartner(p.ma_doi_tac, payload);
       if (row) results.push(row);
     }
@@ -209,7 +208,6 @@ const notifyPromotionUnlocked = async (maDoiTac, { tenKhuyenMai, maCode }) => {
   });
 };
 
-/** Khách đặt phòng thành công (đã thanh toán / trả tại KS) */
 const notifyNewBooking = async (maDoiTac, {
   maDonHang,
   maDatPhong,
@@ -244,7 +242,6 @@ const notifyNewBooking = async (maDoiTac, {
   });
 };
 
-/** Khách hoặc admin hủy đơn */
 const notifyBookingCancelled = async (maDoiTac, {
   maDonHang,
   maDatPhong,
@@ -265,7 +262,6 @@ const notifyBookingCancelled = async (maDoiTac, {
   });
 };
 
-/** Khách gửi đánh giá / phản hồi sau lưu trú */
 const notifyNewReview = async (maDoiTac, {
   maDonHang,
   maDatPhong,

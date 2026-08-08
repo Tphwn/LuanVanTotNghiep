@@ -4,12 +4,14 @@ import api from '../../../services/api';
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import ManagementToolbar from '../../../components/common/management/ManagementToolbar';
 import { ActionCell } from '../../../components/common/ActionButton';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import useListPagination from '../../../hooks/useListPagination';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
+import { formatNumber as formatCurrency, formatCurrency as formatMoney } from '../../../utils/formatCurrency';
 import '../../../assets/styles/pricing-calendar.css';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -24,9 +26,6 @@ const formatPriceShort = (v) => {
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
   return String(n);
 };
-
-const formatCurrency = (v) =>
-  new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
 
 const parseCurrency = (s) =>
   Number(String(s).replace(/\./g, '').replace(/,/g, ''));
@@ -518,7 +517,7 @@ const PricingPage = () => {
     } else {
       const priceValue = parseCurrency(priceRaw);
       if (!Number.isFinite(priceValue) || priceValue <= 0 || priceValue < MIN_UNIT_PRICE) {
-        errors.donGia = `Đơn giá phải lớn hơn ${formatCurrency(MIN_UNIT_PRICE)}đ`;
+        errors.donGia = `Đơn giá phải lớn hơn ${formatMoney(MIN_UNIT_PRICE)}`;
       }
     }
 
@@ -684,7 +683,7 @@ const PricingPage = () => {
     { label: 'Loại phòng', value: selectedRoomName },
     { label: 'Từ ngày', value: formatDisplayDate(selectedFrom) },
     { label: 'Đến ngày', value: formatDisplayDate(selectedTo) },
-    { label: 'Đơn giá', value: `${formatCurrency(parseCurrency(donGia))}đ` },
+    { label: 'Đơn giá', value: formatMoney(parseCurrency(donGia)) },
     { label: 'Số phòng mở bán', value: String(moBan || '—') },
   ];
 
@@ -693,7 +692,7 @@ const PricingPage = () => {
     { label: 'Loại phòng', value: selectedRoomName },
     { label: 'Từ ngày', value: formatDisplayDate(selectedFrom) },
     { label: 'Đến ngày', value: formatDisplayDate(selectedTo) },
-    { label: 'Giá khôi phục', value: giaCoBan > 0 ? `${formatCurrency(giaCoBan)}đ` : '—' },
+    { label: 'Giá khôi phục', value: giaCoBan > 0 ? formatMoney(giaCoBan) : '—' },
   ];
 
   if (!detailHotelId) {
@@ -859,7 +858,7 @@ const PricingPage = () => {
               <div className="price-inv-stat">
                 <span className="price-inv-stat-label">Giá cơ bản</span>
                 <strong className="price-inv-stat-value">
-                  {giaCoBan > 0 ? `${formatCurrency(giaCoBan)}đ` : '—'}
+                  {giaCoBan > 0 ? formatMoney(giaCoBan) : '—'}
                 </strong>
               </div>
               <div className="price-inv-stat">
@@ -922,8 +921,7 @@ const PricingPage = () => {
             <div className="price-inv-panel-section">
               <div className="price-inv-date-row">
                 <span>Từ <span style={{ color: '#e05c5c' }}>*</span></span>
-                <input
-                  type="date"
+                <DateInput
                   className={fieldErrors.selectedFrom ? 'input-invalid' : ''}
                   value={selectedFrom}
                   min={today}
@@ -935,8 +933,7 @@ const PricingPage = () => {
               )}
               <div className="price-inv-date-row">
                 <span>Đến <span style={{ color: '#e05c5c' }}>*</span></span>
-                <input
-                  type="date"
+                <DateInput
                   className={fieldErrors.selectedTo ? 'input-invalid' : ''}
                   value={selectedTo}
                   min={selectedFrom || today}
@@ -973,7 +970,7 @@ const PricingPage = () => {
                 ) : (
                   calendarData.room && (
                     <p className="price-inv-hint">
-                      Giá cơ bản: {formatCurrency(giaCoBan)}đ
+                      Giá cơ bản: {formatMoney(giaCoBan)}
                     </p>
                   )
                 )}

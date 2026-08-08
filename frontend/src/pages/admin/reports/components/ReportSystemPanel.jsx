@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../../../services/api';
+import DateInput from '../../../../components/common/DateInput';
 import FilterActions from '../../../../components/common/management/FilterActions';
+import ListPagination from '../../../../components/common/management/ListPagination';
+import useListPagination from '../../../../hooks/useListPagination';
 import { formatCurrency } from '../../../../utils/bookingDisplay';
 import {
   ACCOUNT_BADGE,
 } from '../../../../constants/statusConfig';
+import { formatDateVN } from '../../../../utils/formatDate';
 import { getPresetRange, REPORT_DATE_PRESETS } from '../reportHelpers';
+
+const PAGE_SIZE = 10;
 
 const ROLE_OPTIONS = [
   { value: 'doi_tac', label: 'Đối tác' },
@@ -47,12 +53,7 @@ const emptyDraft = () => {
   };
 };
 
-const formatDate = (value) => {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('vi-VN');
-};
+const formatDate = formatDateVN;
 
 const statusBadge = (map, key) => {
   const meta = map[key] || { label: key || '—', cls: 'badge-default' };
@@ -215,6 +216,18 @@ const ReportSystemPanel = () => {
     return sortCustomerRows(filtered, sort);
   }, [data, search, sort]);
 
+  const activeRows = vaiTro === 'doi_tac' ? partnerRows : customerRows;
+  const {
+    pagedItems,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(activeRows, PAGE_SIZE, [vaiTro, search, sort, applied]);
+
   const sortOptions =
     vaiTro === 'doi_tac'
       ? PARTNER_SORT_OPTIONS
@@ -253,18 +266,16 @@ const ReportSystemPanel = () => {
           <>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="system-from">Từ ngày</label>
-              <input
+              <DateInput
                 id="system-from"
-                type="date"
                 value={draft.tu_ngay}
                 onChange={(e) => updateDraft({ tu_ngay: e.target.value, preset: 'custom' })}
               />
             </div>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="system-to">Đến ngày</label>
-              <input
+              <DateInput
                 id="system-to"
-                type="date"
                 value={draft.den_ngay}
                 min={draft.tu_ngay}
                 onChange={(e) => updateDraft({ den_ngay: e.target.value, preset: 'custom' })}
@@ -389,7 +400,7 @@ const ReportSystemPanel = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {partnerRows.map((row) => (
+                    {pagedItems.map((row) => (
                       <tr key={row.ma_doi_tac}>
                         <td className="is-name">{row.ten_doi_tac || '—'}</td>
                         <td className="is-money">{row.so_khach_san}</td>
@@ -400,6 +411,17 @@ const ReportSystemPanel = () => {
                     ))}
                   </tbody>
                 </table>
+                {showPagination && (
+                  <ListPagination
+                    total={partnerRows.length}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    rangeFrom={rangeFrom}
+                    rangeTo={rangeTo}
+                    pageNumbers={pageNumbers}
+                    onPageChange={setPage}
+                  />
+                )}
               </div>
             )
           ) : customerRows.length === 0 ? (
@@ -418,7 +440,7 @@ const ReportSystemPanel = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {customerRows.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.ma_khach_hang}>
                       <td className="is-name">{row.ten_khach_hang || '—'}</td>
                       <td>{row.email || '—'}</td>
@@ -430,6 +452,17 @@ const ReportSystemPanel = () => {
                   ))}
                 </tbody>
               </table>
+              {showPagination && (
+                <ListPagination
+                  total={customerRows.length}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  rangeFrom={rangeFrom}
+                  rangeTo={rangeTo}
+                  pageNumbers={pageNumbers}
+                  onPageChange={setPage}
+                />
+              )}
             </div>
           )}
         </div>

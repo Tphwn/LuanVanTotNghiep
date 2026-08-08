@@ -1,3 +1,4 @@
+// switch để bật tắt các trang admin, partner, user
 const ToggleSwitch = ({
   checked,
   onChange,

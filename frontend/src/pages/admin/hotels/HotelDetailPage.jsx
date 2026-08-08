@@ -45,7 +45,7 @@ const formatUpdateTime = (date) => {
   if (!date) return '—';
   const d = new Date(date);
   const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${time} ${d.toLocaleDateString('vi-VN')}`;
+  return `${time} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 };
 
 const formatTime = (date) => {
@@ -135,7 +135,7 @@ const HotelDetailPage = () => {
       { label: 'Đơn đặt', value: stats.tong_don_dat ?? 0 },
       {
         label: 'Doanh thu',
-        value: stats.tong_doanh_thu ? formatCurrency(stats.tong_doanh_thu) : '0 ₫',
+        value: stats.tong_doanh_thu ? formatCurrency(stats.tong_doanh_thu) : formatCurrency(0),
       },
       {
         label: 'Đánh giá TB',
@@ -361,7 +361,7 @@ const HotelDetailPage = () => {
                   label: 'Hoa hồng',
                   value: partner?.phan_tram_hoa_hong != null
                     ? `${partner.phan_tram_hoa_hong}%`
-                    : 'Mặc định hệ thống (15%)',
+                    : '—',
                 },
               ]}
             />

@@ -74,6 +74,44 @@ const applyPromo = async (req, res, next) => {
   }
 };
 
+const removePromo = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.removePromo(userId, req.params.id);
+    return success(res, data, 'Đã bỏ mã khuyến mãi');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const listEligiblePromotions = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const data = await customerBookingService.listEligiblePromotions(userId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const claimGuestBooking = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.ma_nguoi_dung;
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'Mã đơn không hợp lệ' });
+    }
+    const guestToken = req.headers['x-guest-token']
+      || req.body?.guest_token
+      || req.body?.guest_access_token
+      || '';
+    const data = await customerBookingService.claimGuestBooking(userId, id, guestToken);
+    return success(res, data, 'Đã gắn đơn vào tài khoản. Bạn có thể áp mã khuyến mãi.');
+  } catch (err) {
+    next(err);
+  }
+};
+
 const createReview = async (req, res, next) => {
   try {
     const userId = req.user?.id || req.user?.ma_nguoi_dung;
@@ -133,6 +171,9 @@ module.exports = {
   createBooking,
   confirmPayment,
   applyPromo,
+  removePromo,
+  listEligiblePromotions,
+  claimGuestBooking,
   createReview,
   cancelBooking,
   getCancelPreview,

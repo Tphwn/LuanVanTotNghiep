@@ -26,10 +26,6 @@ const getRoomLockState = async (tx, roomId) => {
   });
 };
 
-/**
- * Admin khóa KS: chỉ ẩn khỏi trang khách (trang_thai = bi_khoa).
- * Không cascade ẩn/đóng bán loại phòng — đối tác vẫn quản lý giá & kho bình thường.
- */
 const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
   const id = Number(hotelId);
   const hotel = await getHotelLockState(tx, id);
@@ -60,10 +56,6 @@ const lockAdminHotelResources = async (tx, hotelId, lyDoKhoa) => {
   });
 };
 
-/**
- * Khôi phục loại phòng từng bị cascade khi admin khóa KS (logic cũ).
- * Giữ nguyên loại phòng đối tác tự khóa (khoa_do_doi_tac = true).
- */
 const restoreRoomsCascadeLockedByAdminHotel = async (tx, hotelId) => {
   const id = Number(hotelId);
   await tx.$executeRaw`
@@ -93,8 +85,6 @@ const unlockAdminHotelResources = async (tx, hotelId) => {
       message: 'Khách sạn đang bị đối tác khóa.',
     };
   }
-
-  // Dọn dữ liệu cũ (nếu còn) — lock mới không còn cascade xuống loại phòng
   await restoreRoomsCascadeLockedByAdminHotel(tx, id);
 
   return tx.khach_san.update({
@@ -112,7 +102,6 @@ const unlockAdminHotelResources = async (tx, hotelId) => {
   });
 };
 
-/** Sửa dữ liệu KS đang bị admin khóa nhưng loại phòng vẫn bị cascade ẩn (logic cũ) */
 const repairRoomsUnderAdminLockedHotels = async (prismaClient) => {
   const result = await prismaClient.$executeRaw`
     UPDATE loai_phong lp

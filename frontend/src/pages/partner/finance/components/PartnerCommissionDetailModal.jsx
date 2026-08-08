@@ -9,7 +9,7 @@ const COMM_STATUS = {
   da_thanh_toan: { label: 'Đã thanh toán', cls: 'badge-info' },
 };
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
 
 const getCustomerLabel = (dp) => {
   const name = dp?.khach_hang?.ho_ten || dp?.ten_nguoi_nhan;

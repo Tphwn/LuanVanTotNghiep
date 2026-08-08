@@ -339,9 +339,7 @@ const updatePartner = async (userId, data) => {
     ten_cong_ty: String(data.ten_cong_ty || '').trim(),
     ma_so_thue: data.ma_so_thue ? String(data.ma_so_thue).trim() : null,
     dia_chi: data.dia_chi ? String(data.dia_chi).trim() : null,
-    phan_tram_hoa_hong: data.phan_tram_hoa_hong == null || data.phan_tram_hoa_hong === ''
-      ? 15
-      : Number(data.phan_tram_hoa_hong),
+    phan_tram_hoa_hong: Number(data.phan_tram_hoa_hong),
     trang_thai: nextStatus,
   };
 

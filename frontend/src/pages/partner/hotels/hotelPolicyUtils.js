@@ -39,7 +39,7 @@ export const toMoneyString = (value) => {
 export const formatMoneyVnd = (value) => {
   const str = toMoneyString(value);
   if (!str) return '—';
-  return `${Number(str).toLocaleString('vi-VN')} đ`;
+  return `${Number(str).toLocaleString('vi-VN')} VNĐ`;
 };
 
 export const formatYesNo = (value) => (value ? 'Có' : 'Không');

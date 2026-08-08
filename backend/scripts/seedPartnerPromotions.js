@@ -7,7 +7,6 @@ const END = new Date('2026-09-01');
 
 /** @type {Array<{ ma_khach_san: number, tao_boi_id: number, loai_giam: 'phan_tram'|'so_tien', items: Array<{ code: string, ten: string, gia_tri: number }> }>} */
 const HOTEL_PROMOS = [
-  // Thu Phương — số tiền
   {
     ma_khach_san: 2,
     tao_boi_id: 2,
@@ -97,7 +96,6 @@ const HOTEL_PROMOS = [
     ],
   },
 
-  // Nguyễn Ngọc Vĩnh — %
   {
     ma_khach_san: 10,
     tao_boi_id: 8,
@@ -132,7 +130,6 @@ const HOTEL_PROMOS = [
     ],
   },
 
-  // Trần Thị Thùy Trang — số tiền
   {
     ma_khach_san: 13,
     tao_boi_id: 7,
@@ -178,7 +175,6 @@ const HOTEL_PROMOS = [
     ],
   },
 
-  // Huyền Travel — %
   {
     ma_khach_san: 17,
     tao_boi_id: 6,

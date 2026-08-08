@@ -179,7 +179,7 @@ const bookingService = {
     return bookingService.getDetailById(id);
   },
 
-  // ── Admin ────────────────────────────────────────────────
+  //admin
   getAllForAdmin: async (filters = {}) => {
     const { trang_thai, keyword, ks_id, ma_doi_tac, tu_ngay, den_ngay } = filters;
     const where = {
@@ -437,7 +437,7 @@ const bookingService = {
   },
 };
 
-// Helper: kiểm tra đơn có thuộc KS của đối tác không
+// kiểm tra đơn có thuộc KS của đối tác không
 const verifyOwner = async (bookingId, doiTacId) => {
   const booking = await prisma.dat_phong.findUnique({
     where: { ma_dat_phong: Number(bookingId) },

@@ -89,8 +89,37 @@ const buildStayInvoice = ({
   };
 };
 
+const clampPercent = (value, fallback = 10) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(100, Math.max(0, n));
+};
+
+const priceWithVat = (amount, phanTramVat = 10) => {
+  const base = Math.max(Number(amount) || 0, 0);
+  const rate = clampPercent(phanTramVat, 10);
+  return Math.round(base * (1 + rate / 100));
+};
+
+const calcFinalWithVat = (tongTienGoc, tienGiam, phanTramVat) => {
+  const goc = Math.max(Number(tongTienGoc) || 0, 0);
+  const giam = Math.max(Number(tienGiam) || 0, 0);
+  const rate = clampPercent(phanTramVat, 10);
+  const afterDiscount = Math.max(goc - giam, 0);
+  const thue_vat = Math.round((afterDiscount * rate) / 100);
+  return {
+    after_discount: afterDiscount,
+    thue_vat,
+    phan_tram_vat: rate,
+    thanh_toan_cuoi: afterDiscount + thue_vat,
+  };
+};
+
 module.exports = {
   parseChildAges,
   calcChildSurcharge,
   buildStayInvoice,
+  calcFinalWithVat,
+  clampPercent,
+  priceWithVat,
 };

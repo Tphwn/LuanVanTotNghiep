@@ -17,7 +17,6 @@ const formatDateKey = (d) => {
   const day = String(dt.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
-
 const parseDate = (value) => {
   if (!value) return null;
   const part = String(value).slice(0, 10);
@@ -27,7 +26,7 @@ const parseDate = (value) => {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 };
-
+// Lấy danh sách các ngày trong khoảng thời gian
 const getDatesInRange = (checkIn, checkOut) => {
   const startKey = formatDateKey(checkIn);
   const endKey = formatDateKey(checkOut);
@@ -46,7 +45,6 @@ const getDatesInRange = (checkIn, checkOut) => {
   return dates;
 };
 
-/** Tổng số phòng đang bị giữ bởi các đơn chồng ngày (theo so_phong của mỗi đơn). */
 const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
   const result = await prisma.dat_phong.aggregate({
     where: {
@@ -60,7 +58,6 @@ const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
   return Number(result._sum.so_phong) || 0;
 };
 
-/** Tổng số phòng đang giữ (chưa hủy / chưa hoàn thành, chưa trả phòng). */
 const countActiveBookedRooms = async (maLoaiPhong) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -75,10 +72,6 @@ const countActiveBookedRooms = async (maLoaiPhong) => {
   return Number(result._sum.so_phong) || 0;
 };
 
-/**
- * Tổng số phòng đang giữ cho nhiều loại phòng cùng lúc (tránh N+1).
- * Trả về Map<ma_loai_phong, tổng so_phong đang giữ>.
- */
 const countActiveBookedRoomsMap = async (maLoaiPhongList = []) => {
   const ids = [...new Set((maLoaiPhongList || []).map((id) => Number(id)).filter(Boolean))];
   const result = new Map();
@@ -165,7 +158,6 @@ const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
     so_dem: dates.length,
   };
 };
-
 const isAutoCompletedBooking = (booking) =>
   Boolean(booking?.ghi_chu?.includes(AUTO_COMPLETE_MARKER));
 

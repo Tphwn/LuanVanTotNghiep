@@ -9,6 +9,7 @@ import {
   formatBookingDate,
 } from '../../utils/bookingDisplay';
 import { setFlashToast } from '../../utils/flashToast';
+import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
 const PAYMENT_METHOD_LABEL = {
@@ -16,7 +17,7 @@ const PAYMENT_METHOD_LABEL = {
   tai_khach_san: 'Tại khách sạn',
 };
 
-const fmtVnd = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VNĐ`;
+const fmtVnd = formatCurrency;
 
 const getStatusTone = (status) => {
   if (status === 'da_huy' || status === 'tu_choi') return 'cancel';

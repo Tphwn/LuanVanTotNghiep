@@ -3,5 +3,4 @@ const ROLES = {
   DOI_TAC: 'doi_tac',
   ADMIN: 'admin',
 };
-
 module.exports = ROLES;

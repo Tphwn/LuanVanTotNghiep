@@ -82,7 +82,7 @@ const HotelsPage = () => {
     total: list.length,
     daDuyet: list.filter((h) => ['hoat_dong', 'da_duyet'].includes(h.trang_thai)).length,
     choDuyet: list.filter((h) => h.trang_thai === 'cho_duyet').length,
-    tuChoi: list.filter((h) => ['tu_choi', 'yeu_cau_sua'].includes(h.trang_thai)).length,
+    tuChoi: list.filter((h) => h.trang_thai === 'tu_choi').length,
     khongHoatDong: list.filter((h) => h.trang_thai === 'bi_khoa').length,
   }), [list]);
 

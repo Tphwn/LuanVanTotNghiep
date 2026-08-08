@@ -136,13 +136,19 @@ const listRequests = async ({ trang_thai, keyword, page = 1, limit = 20 }) => {
 
   const kw = (keyword || '').trim();
   if (kw) {
-    where.OR = [
+    const or = [
       { ho_ten: { contains: kw } },
       { so_dien_thoai: { contains: kw } },
       { email: { contains: kw } },
       { ten_co_so: { contains: kw } },
       { tinh_thanh: { contains: kw } },
     ];
+    const idRaw = kw.replace(/^#/, '').trim();
+    const idNum = Number(idRaw);
+    if (Number.isInteger(idNum) && idNum > 0 && String(idNum) === idRaw) {
+      or.push({ ma_yeu_cau: idNum });
+    }
+    where.OR = or;
   }
 
   const skip = (Math.max(Number(page), 1) - 1) * Math.min(Number(limit), 100);

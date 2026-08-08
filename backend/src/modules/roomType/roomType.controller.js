@@ -53,8 +53,7 @@ const applyMainImage = async (tx, roomId, { mainImageId, mainNewIndex, files = [
     }
   }
 };
-
-// ===== API LẤY DANH SÁCH =====
+//api admin lấy danh sách phòng
 exports.getMyRooms = async (req, res) => {
   try {
     const hotelId = parseInt(req.query.hotelId);
@@ -92,7 +91,7 @@ exports.getMyRooms = async (req, res) => {
   }
 };
 
-// ===== API THÊM MỚI =====
+// api thêm mới
 const MAX_ROOM_IMAGES = 30;
 
 const pickRoomImageFiles = (req) => {
@@ -188,7 +187,7 @@ exports.createRoomType = async (req, res) => {
   }
 };
 
-// ===== API CẬP NHẬT PHÒNG =====
+// api cập nhật phòng
 exports.updateRoomType = async (req, res) => {
   try {
     const roomId = parseInt(req.params.id);
@@ -268,7 +267,7 @@ exports.updateRoomType = async (req, res) => {
   }
 };
 
-// ===== BẬT / TẮT HIỂN THỊ LOẠI PHÒNG =====
+// api bật / tắt hiển thị loại phòng
 exports.toggleRoomStatus = async (req, res) => {
   try {
     const roomId = parseInt(req.params.id, 10);
@@ -320,7 +319,7 @@ exports.toggleRoomStatus = async (req, res) => {
   }
 };
 
-// ===== API LẤY TIỆN NGHI =====
+// api lấy tiện nghi
 exports.getAmenitiesForRoom = async (req, res) => {
   try {
     const amenities = await prisma.tien_nghi.findMany({

@@ -7,9 +7,6 @@ const STATUS = {
 
 const dash = (v) => (v == null || v === '' ? '—' : v);
 
-/**
- * Shared 4-block payout period detail (admin + partner).
- */
 const PayoutPeriodDetailView = ({ detail }) => {
   if (!detail) return null;
 
@@ -41,8 +38,6 @@ const PayoutPeriodDetailView = ({ detail }) => {
           <span className="payout-period-status-dot">{detail.ten_dot}</span>
         ) : null}
       </div>
-
-      {/* Khối 1 */}
       <section className="content-card payout-period-block">
         <h3 className="payout-period-block-title">Thông tin tổng quan kỳ thanh toán</h3>
         <div className="payout-period-grid">
@@ -96,8 +91,6 @@ const PayoutPeriodDetailView = ({ detail }) => {
           </div>
         </div>
       </section>
-
-      {/* Khối 2 */}
       <section className="content-card payout-period-block">
         <h3 className="payout-period-block-title">Tóm tắt số liệu tài chính</h3>
         <div className="payout-overview-finance">
@@ -117,8 +110,6 @@ const PayoutPeriodDetailView = ({ detail }) => {
           </div>
         </div>
       </section>
-
-      {/* Khối 3 */}
       <section className="content-card payout-period-block">
         <h3 className="payout-period-block-title">
           Bảng kê chi tiết đơn hàng ({bookings.length})
@@ -164,8 +155,6 @@ const PayoutPeriodDetailView = ({ detail }) => {
           </div>
         )}
       </section>
-
-      {/* Khối 4 */}
       <section className="content-card payout-period-block">
         <h3 className="payout-period-block-title">Minh chứng giao dịch</h3>
         <div className="payout-period-grid">

@@ -1,6 +1,5 @@
 const errorHandler = (err, req, res, next) => {
   console.error(err);
-
   if (err.name === 'MulterError' || err.code?.startsWith?.('LIMIT_')) {
     const message = err.code === 'LIMIT_UNEXPECTED_FILE' && err.field === 'images'
       ? 'Chỉ được tải tối đa 30 ảnh'

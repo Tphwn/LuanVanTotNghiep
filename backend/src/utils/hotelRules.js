@@ -60,13 +60,11 @@ const parseHotelRulesInput = (body) => {
   if (body.phu_thu_tre_em !== undefined) {
     rules.phu_thu_tre_em = parseMoneyInt(body.phu_thu_tre_em);
   }
+
   if (body.phan_tram_vat !== undefined) {
-    const raw = String(body.phan_tram_vat).trim().replace(',', '.');
-    if (raw === '') {
-      rules.phan_tram_vat = 10;
-    } else {
-      const n = Number(raw);
-      rules.phan_tram_vat = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 10;
+    const n = Number(body.phan_tram_vat);
+    if (Number.isFinite(n)) {
+      rules.phan_tram_vat = Math.min(100, Math.max(0, n));
     }
   }
 
@@ -81,7 +79,6 @@ const parseHotelRulesInput = (body) => {
   return rules;
 };
 
-/** Gộp chinh_sach_khach_san ra flat fields để frontend không đổi */
 const flattenHotelPolicy = (hotel) => {
   if (!hotel) return hotel;
   const { chinh_sach_khach_san: policy, ...rest } = hotel;

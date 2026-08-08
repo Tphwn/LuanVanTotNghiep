@@ -115,8 +115,6 @@ const getRoomTypes = async (filters = {}) => {
     },
     orderBy: { ma_loai_phong: 'desc' },
   });
-
-  // Trừ số phòng đang có đơn giữ để hiển thị "còn lại" chính xác
   const bookedMap = await countActiveBookedRoomsMap(rooms.map((r) => r.ma_loai_phong));
   const withAvailability = rooms.map((room) => {
     const daDat = bookedMap.get(room.ma_loai_phong) || 0;

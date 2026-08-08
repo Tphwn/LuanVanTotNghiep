@@ -26,6 +26,9 @@ import {
   getRefundBadgeMeta,
   formatCurrency,
   formatHotelTime,
+  formatDate,
+  formatDateTime,
+  addDays,
   diffDays,
   getBookingCancelReason,
   getBookingSpecialRequest,
@@ -35,7 +38,13 @@ import {
 
 const CANCEL_BLOCKED_STATUS = ['hoan_thanh', 'da_huy', 'tu_choi', 'da_checkin'];
 
-/** Ngày kiểu "17 thg 7, 2026" */
+const PRICE_TYPE_LABEL = {
+  co_ban: 'Cơ bản',
+  cuoi_tuan: 'Cuối tuần',
+  le_tet: 'Lễ tết',
+  cao_diem: 'Cao điểm',
+};
+
 const formatShortViDate = (date) => {
   if (!date) return '—';
   const d = new Date(date);
@@ -276,8 +285,7 @@ const BookingDetailModal = ({
                 {isAdmin && cancelMode && (
                   <div className="booking-reject-box">
                     <p className="booking-reject-warning">
-                      Hủy đơn sẽ cập nhật trạng thái đơn và thông báo cho khách hàng.
-                      Vui lòng nhập lý do rõ ràng.
+                       Vui lòng nhập lý do rõ ràng.
                     </p>
                     <ReasonField
                       id="modal-booking-cancel-reason"
@@ -324,12 +332,60 @@ const BookingDetailModal = ({
                 </section>
 
                 <section className="booking-drawer-section">
+                  <h5 className="booking-drawer-section-title">Thông tin đơn</h5>
+                  <DrawerField label="Mã đơn" value={detail.ma_don_hang || '—'} />
+                  <DrawerField
+                    label="Ngày đặt"
+                    value={formatDateTime(detail.ngay_dat) || formatShortViDate(detail.ngay_dat)}
+                  />
+                  <DrawerField
+                    label="Cập nhật lần cuối"
+                    value={detail.ngay_cap_nhat ? formatDateTime(detail.ngay_cap_nhat) : '—'}
+                  />
+                  {isCancelled && getBookingCancelReason(detail) && (
+                    <DrawerField label="Lý do hủy" value={getBookingCancelReason(detail)} />
+                  )}
+                </section>
+
+                <section className="booking-drawer-section">
                   <h5 className="booking-drawer-section-title">Lưu trú</h5>
                   <DrawerField label="Loại phòng" value={roomLabel} />
                   <DrawerField label="Nhận / Trả" value={stayRange} />
                   <DrawerField label="Số đêm" value={`${nights} đêm`} />
                   <DrawerField label="Giờ nhận dự kiến" value={checkInTime} />
                   <DrawerField label="Số khách" value={`${detail.so_khach || 0} khách`} />
+                </section>
+
+                <section className="booking-drawer-section">
+                  <h5 className="booking-drawer-section-title">Giá từng đêm</h5>
+                  {(detail.chi_tiet_dat_phong || []).length === 0 ? (
+                    <p className="booking-drawer-muted">Không có chi tiết giá theo đêm.</p>
+                  ) : (
+                    <div className="booking-drawer-nightly-wrap">
+                      <table className="booking-drawer-nightly-table">
+                        <thead>
+                          <tr>
+                            <th>Ngày</th>
+                            <th>Đêm tới</th>
+                            <th>Đơn giá</th>
+                            <th>Loại giá</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...(detail.chi_tiet_dat_phong || [])]
+                            .sort((a, b) => String(a.ngay).localeCompare(String(b.ngay)))
+                            .map((item) => (
+                              <tr key={item.ma_chi_tiet || item.ngay}>
+                                <td>{formatDate(item.ngay)}</td>
+                                <td>{formatDate(addDays(item.ngay, 1))}</td>
+                                <td>{formatCurrency(item.don_gia)}</td>
+                                <td>{PRICE_TYPE_LABEL[item.loai_gia] || item.loai_gia || '—'}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </section>
 
                 <section className="booking-drawer-section">
@@ -344,10 +400,6 @@ const BookingDetailModal = ({
                   )}
                   <DrawerField label="Tiền thanh toán" value={formatCurrency(detail.thanh_toan_cuoi)} />
                   <DrawerField label="Phương thức" value={paymentMethod} />
-                  <DrawerField
-                    label="Ngày đặt"
-                    value={formatShortViDate(detail.ngay_dat || detail.thanh_toan?.ngay_thanh_toan)}
-                  />
                 </section>
               </>
             )}

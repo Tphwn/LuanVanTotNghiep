@@ -12,6 +12,8 @@ export default function CancelBookingModal({
   variant = 'booking',
   onClose,
   onConfirmed,
+  fetchPreview,
+  submitCancel,
 }) {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,11 @@ export default function CancelBookingModal({
 
     setLoading(true);
     setError('');
-    customerBookingService.getCancelPreview(booking.ma_dat_phong)
+    const load = fetchPreview
+      ? fetchPreview()
+      : customerBookingService.getCancelPreview(booking.ma_dat_phong);
+
+    load
       .then((res) => setPreview(res.data?.data))
       .catch((err) => {
         setError(err.response?.data?.message || 'Không tải được thông tin hủy');
@@ -33,13 +39,15 @@ export default function CancelBookingModal({
       .finally(() => setLoading(false));
 
     return undefined;
-  }, [booking]);
+  }, [booking, fetchPreview]);
 
   const handleConfirm = async () => {
     setSubmitting(true);
     setError('');
     try {
-      const res = await customerBookingService.cancelBooking(booking.ma_dat_phong);
+      const res = submitCancel
+        ? await submitCancel()
+        : await customerBookingService.cancelBooking(booking.ma_dat_phong);
       onConfirmed(res.data?.data, {
         successMessage: isPaymentCancel
           ? 'Hủy thanh toán thành công'
@@ -143,7 +151,7 @@ export default function CancelBookingModal({
             <div className="cancel-booking-summary">
               <div className="cancel-booking-summary-row">
                 <span>{isPaymentCancel ? 'Số tiền cần thanh toán' : 'Tổng thanh toán'}</span>
-                <CustomerPrice amount={preview.thanh_toan_cuoi} unit="VNĐ" />
+                <CustomerPrice amount={preview.thanh_toan_cuoi} />
               </div>
               {!isPaymentCancel && preview.da_thanh_toan_online && (
                 <>

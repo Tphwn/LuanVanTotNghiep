@@ -28,15 +28,6 @@ export const rejectHotel = createAsyncThunk('adminHotels/reject', async ({ id, l
   }
 });
 
-export const requestInfoHotel = createAsyncThunk('adminHotels/requestInfo', async ({ id, ghiChu }, thunkAPI) => {
-  try {
-    await adminHotelService.requestInfo(id, ghiChu);
-    return { id, trang_thai:'yeu_cau_sua'};
-  } catch (error) {
-    return thunkAPI.rejectWithValue(error.response?.data?.message);
-  }
-});
-
 export const lockHotel = createAsyncThunk('adminHotels/lock', async ({ id, lyDoKhoa }, thunkAPI) => {
   try {
     await adminHotelService.lock(id, lyDoKhoa);
@@ -81,10 +72,6 @@ const adminHotelSlice = createSlice({
         if (hotel) hotel.trang_thai = 'hoat_dong';
       })
       .addCase(rejectHotel.fulfilled, (state, action) => {
-        const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
-        if (hotel) hotel.trang_thai = action.payload.trang_thai;
-      })
-      .addCase(requestInfoHotel.fulfilled, (state, action) => {
         const hotel = state.hotels.find((h) => matchHotelId(h.ma_khach_san, action.payload.id));
         if (hotel) hotel.trang_thai = action.payload.trang_thai;
       })

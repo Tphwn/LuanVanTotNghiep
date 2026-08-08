@@ -5,12 +5,14 @@ import ActionButton, { ActionCell } from '../../../components/common/ActionButto
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
 import { PROMOTION_BADGE } from '../../../constants/statusConfig';
+import { formatDateVN as formatDate } from '../../../utils/formatDate';
 
 const PAGE_SIZE = 10;
 
@@ -73,10 +75,9 @@ const getDateRange = (preset, customFrom, customTo) => {
 };
 
 const formatCurrency = (v) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(v) || 0));
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const formatGiaTri = (item) => (item.loai_giam === 'phan_tram'
   ? `${item.gia_tri}%`
-  : `${formatCurrency(item.gia_tri)} đ`);
+  : `${formatCurrency(item.gia_tri)} VNĐ`);
 const todayLocal = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -89,7 +90,8 @@ const canPartnerRestore = (item) => (
 
 const canPartnerLock = (item) => item.trang_thai === 'hoat_dong' && !item.khoa_boi_admin;
 
-const canPartnerEdit = (item) => !item.khoa_boi_admin;
+/** Cho phép sửa kể cả khi admin khóa — chỉ hoạt động lại sau khi admin mở. */
+const canPartnerEdit = () => true;
 
 const emptyForm = {
   ma_khach_san: '',
@@ -141,9 +143,9 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             <InfoRow label="Loại giảm" value={LOAI_GIAM[item.loai_giam] || item.loai_giam} />
             <InfoRow label="Giá trị giảm" value={formatGiaTri(item)} />
             {item.giam_toi_da != null && (
-              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} đ`} />
+              <InfoRow label="Giảm tối đa" value={`${formatCurrency(item.giam_toi_da)} VNĐ`} />
             )}
-            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} đ`} />
+            <InfoRow label="Đơn tối thiểu" value={`${formatCurrency(item.don_hang_toi_thieu)} VNĐ`} />
             <InfoRow
               label="Thời gian áp dụng"
               value={`${formatDate(item.ngay_bat_dau)} – ${formatDate(item.ngay_ket_thuc)}`}
@@ -154,13 +156,13 @@ const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
             />
             {item.ly_do && <InfoRow label="Lý do" value={item.ly_do} />}
             {item.khoa_boi_admin && (
-              <InfoRow label="Khóa bởi admin" value="Bạn không thể tự mở khóa" />
+              <InfoRow
+                label="Khóa bởi admin"
+                value="Có thể sửa nội dung; chỉ hoạt động lại khi admin mở khóa"
+              />
             )}
             {item.khoa_boi_doi_tac && !item.khoa_boi_admin && (
               <InfoRow label="Tạm ngưng" value="Do bạn tạm ngưng" />
-            )}
-            {item.trang_thai === 'cho_duyet' && (
-              <InfoRow label="Trạng thái duyệt" value="Đang chờ admin duyệt" />
             )}
           </div>
         </div>
@@ -200,8 +202,8 @@ const FormModal = ({
         <h2 className="modal-title">{editing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi'}</h2>
         <p style={{ fontSize: 13, color: '#5a7a72', marginBottom: 16 }}>
           {editing
-            ? 'Thay đổi sẽ được gửi lại cho admin duyệt trước khi hiển thị với khách hàng.'
-            : 'Mã khuyến mãi sẽ được gửi cho admin duyệt trước khi hiển thị với khách hàng.'}
+            ? 'Lưu thay đổi sẽ áp dụng ngay nếu khuyến mãi không bị khóa. Nếu đang bị admin khóa, chỉ hoạt động lại khi admin mở khóa.'
+            : 'Khuyến mãi sẽ áp dụng ngay sau khi tạo (trong thời hạn hiệu lực). Admin có thể khóa nếu không hợp lý.'}
         </p>
         <form onSubmit={onSubmit} noValidate>
           <div className="form-group">
@@ -302,9 +304,8 @@ const FormModal = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label>Từ ngày</label>
-              <input
+              <DateInput
                 className={inputCls(errors.ngay_bat_dau)}
-                type="date"
                 value={form.ngay_bat_dau}
                 min={minStart}
                 onChange={(e) => updateField('ngay_bat_dau', e.target.value)}
@@ -313,9 +314,8 @@ const FormModal = ({
             </div>
             <div className="form-group">
               <label>Đến ngày</label>
-              <input
+              <DateInput
                 className={inputCls(errors.ngay_ket_thuc)}
-                type="date"
                 value={form.ngay_ket_thuc}
                 min={minEnd}
                 onChange={(e) => updateField('ngay_ket_thuc', e.target.value)}
@@ -336,7 +336,7 @@ const FormModal = ({
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>Hủy</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Đang lưu...' : editing ? 'Gửi duyệt lại' : 'Gửi duyệt'}
+              {saving ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo khuyến mãi'}
             </button>
           </div>
         </form>
@@ -568,8 +568,8 @@ const PartnerPromotionsPage = () => {
 
   const statItems = useMemo(() => [
     { label: 'Tổng khuyến mãi', value: stats.total ?? 0, tone: 'neutral' },
-    { label: 'Chờ duyệt', value: stats.cho_duyet ?? 0, tone: 'warning' },
     { label: 'Đang hoạt động', value: stats.hoat_dong ?? 0, tone: 'success' },
+    { label: 'Hết hạn', value: stats.het_han ?? 0, tone: 'muted' },
     { label: 'Bị khóa', value: stats.an ?? 0, tone: 'muted' },
   ], [stats]);
 
@@ -585,7 +585,7 @@ const PartnerPromotionsPage = () => {
     <div className="mgmt-page partner-promotions-page">
       <ManagementHeader
         title="Khuyến mãi"
-        subtitle="Tạo và quản lý mã giảm giá — cần admin duyệt trước khi hiển thị với khách hàng"
+        subtitle="Tạo và quản lý mã giảm giá — áp dụng ngay; admin có thể khóa nếu không hợp lý"
         actionLabel="Tạo khuyến mãi"
         onAction={openCreate}
       />
@@ -646,10 +646,8 @@ const PartnerPromotionsPage = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="all">Tất cả trạng thái</option>
-              <option value="cho_duyet">Chờ duyệt</option>
               <option value="hoat_dong">Đang hoạt động</option>
               <option value="an">Bị khóa</option>
-              <option value="tu_choi">Từ chối</option>
               <option value="het_han">Hết hạn</option>
             </select>
           </div>
@@ -672,9 +670,8 @@ const PartnerPromotionsPage = () => {
             <>
               <div className="mgmt-filter-field">
                 <label className="mgmt-filter-label" htmlFor="partner-promo-from">Từ ngày</label>
-                <input
+                <DateInput
                   id="partner-promo-from"
-                  type="date"
                   className="mgmt-select-inline"
                   value={tuNgay}
                   onChange={(e) => setTuNgay(e.target.value)}
@@ -682,9 +679,8 @@ const PartnerPromotionsPage = () => {
               </div>
               <div className="mgmt-filter-field">
                 <label className="mgmt-filter-label" htmlFor="partner-promo-to">Đến ngày</label>
-                <input
+                <DateInput
                   id="partner-promo-to"
-                  type="date"
                   className="mgmt-select-inline"
                   value={denNgay}
                   min={tuNgay}

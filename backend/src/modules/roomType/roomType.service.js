@@ -178,7 +178,7 @@ const roomService = {
     });
   },
 
-  // Lấy tiện nghi loại phòng (loai = phong hoặc ca_hai)
+  // Lấy tiện nghi loại phòng
   getAmenitiesForRoom: async () => {
     return await prisma.tien_nghi.findMany({
       where: {
@@ -189,7 +189,7 @@ const roomService = {
     });
   },
 
-  // Lấy KS của đối tác (để filter)
+  // Lấy KS của đối tác 
   getMyHotels: async (doiTacId) => {
     return await prisma.khach_san.findMany({
       where: { ma_doi_tac: doiTacId },

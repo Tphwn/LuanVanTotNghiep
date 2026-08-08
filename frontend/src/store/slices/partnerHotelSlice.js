@@ -36,7 +36,7 @@ const buildHotelFormData = (data) => {
       formData.append(key, data[key] ? 'true' : 'false');
     }
   });
-  ['phu_thu_thu_cung', 'tuoi_toi_da_mien_phi', 'phu_thu_tre_em', 'phan_tram_vat'].forEach((key) => {
+  ['phu_thu_thu_cung', 'tuoi_toi_da_mien_phi', 'phu_thu_tre_em'].forEach((key) => {
     if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
       formData.append(key, data[key]);
     }

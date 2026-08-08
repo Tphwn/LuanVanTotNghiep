@@ -1,8 +1,4 @@
-/**
- * Seed tiện nghi còn thiếu từ danh sách Booking-style.
- * Map vào danh mục sẵn có; bỏ qua tên đã có (so khớp nới lỏng).
- * Chạy: node scripts/seedMissingAmenities.js
- */
+
 const { PrismaClient } = require('@prisma/client');
 
 const p = new PrismaClient();
@@ -16,9 +12,8 @@ const normalize = (s) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
-/** Danh sách cần bổ sung: ten, danh_muc, loai, bieu_tuong */
 const TO_ADD = [
-  // Thư giãn & vui chơi → dich_vu
+  
   { ten: 'Câu lạc bộ đêm', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'bar' },
   { ten: 'Chuyến du lịch', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'shuttle' },
   { ten: 'Dịch vụ vé', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'ticket' },
@@ -28,7 +23,6 @@ const TO_ADD = [
   { ten: 'Xông khô', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'sauna' },
   { ten: 'Vườn', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'garden' },
 
-  // Dễ dàng tiếp cận → cong_cong / dich_vu
   { ten: 'Bình chữa cháy', danh_muc: 'cong_cong', loai: 'khach_san', bieu_tuong: 'security' },
   { ten: 'CCTV bên ngoài chỗ nghỉ', danh_muc: 'cong_cong', loai: 'khach_san', bieu_tuong: 'security' },
   { ten: 'CCTV trong khu vực chung', danh_muc: 'cong_cong', loai: 'khach_san', bieu_tuong: 'security' },
@@ -42,7 +36,6 @@ const TO_ADD = [
   { ten: 'Phòng không hút thuốc', danh_muc: 'phong', loai: 'phong', bieu_tuong: 'smoke' },
   { ten: 'Thiết bị báo cháy', danh_muc: 'cong_cong', loai: 'khach_san', bieu_tuong: 'security' },
 
-  // Dịch vụ và tiện nghi → dich_vu / van_phong / chung
   { ten: 'Cơ sở vật chất cho họp mặt/tiệc lớn', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'meeting' },
   { ten: 'Cửa hàng quà tặng/quà lưu niệm', danh_muc: 'lan_can', loai: 'khach_san', bieu_tuong: 'shop' },
   { ten: 'Dịch vụ ủi đồ', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'iron' },
@@ -67,7 +60,6 @@ const TO_ADD = [
   { ten: 'Vật dụng cho buổi họp', danh_muc: 'van_phong', loai: 'ca_hai', bieu_tuong: 'meeting' },
   { ten: 'Wi-Fi cho sự kiện đặc biệt', danh_muc: 'van_phong', loai: 'ca_hai', bieu_tuong: 'wifi' },
 
-  // Có trong tất cả phòng → phong / phong_tam / ket_noi / bep
   { ten: 'Các loại khăn', danh_muc: 'phong_tam', loai: 'phong', bieu_tuong: 'towel' },
   { ten: 'Dép đi trong nhà', danh_muc: 'phong', loai: 'phong', bieu_tuong: 'slippers' },
   { ten: 'Dịch vụ báo thức', danh_muc: 'phong', loai: 'phong', bieu_tuong: 'phone' },
@@ -84,7 +76,6 @@ const TO_ADD = [
   { ten: 'Thùng rác', danh_muc: 'phong', loai: 'phong', bieu_tuong: 'bin' },
   { ten: 'Trà miễn phí', danh_muc: 'bep', loai: 'phong', bieu_tuong: 'coffee' },
 
-  // Đi lại → van_chuyen
   { ten: 'Bãi đỗ xe gần bên', danh_muc: 'van_chuyen', loai: 'khach_san', bieu_tuong: 'parking' },
   { ten: 'Bãi đỗ xe miễn phí', danh_muc: 'van_chuyen', loai: 'khach_san', bieu_tuong: 'parking' },
   { ten: 'Bãi đỗ xe tại chỗ', danh_muc: 'van_chuyen', loai: 'khach_san', bieu_tuong: 'parking' },
@@ -92,18 +83,15 @@ const TO_ADD = [
   { ten: 'Dịch vụ đưa đón', danh_muc: 'van_chuyen', loai: 'khach_san', bieu_tuong: 'shuttle' },
   { ten: 'Dịch vụ taxi', danh_muc: 'van_chuyen', loai: 'khach_san', bieu_tuong: 'car' },
 
-  // Trẻ em → dich_vu
   { ten: 'CLB trẻ em', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'kids' },
   { ten: 'Cơ sở vật chất cho trẻ em', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'kids' },
   { ten: 'Dịch vụ trông trẻ', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'kids' },
   { ten: 'Phòng gia đình', danh_muc: 'phong', loai: 'phong', bieu_tuong: 'kids' },
   { ten: 'Thích hợp cho gia đình/trẻ em', danh_muc: 'dich_vu', loai: 'khach_san', bieu_tuong: 'kids' },
 
-  // Thể thao lân cận
   { ten: 'Sân gôn (trong vòng 3 km)', danh_muc: 'lan_can', loai: 'khach_san', bieu_tuong: 'golf' },
 ];
 
-/** Nếu existing khớp các từ khóa này thì coi như đã có */
 const ALREADY_COVERED = [
   { match: ['ao choang tam'], covers: ['ao choang tam'] },
   { match: ['am nau nuoc', 'am nuoc'], covers: ['am nuoc dien'] },
@@ -111,7 +99,7 @@ const ALREADY_COVERED = [
   { match: ['bon tam'], covers: ['bon tam'] },
   { match: ['may say toc'], covers: ['may say toc'] },
   { match: ['ket an toan trong phong', 'ket sat trong phong'], covers: ['ket sat trong phong'] },
-  { match: ['khong hut thuoc'], covers: [] }, // will add room-level separately; hotel smoking area exists
+  { match: ['khong hut thuoc'], covers: [] }, 
   { match: ['khu vuc hut thuoc'], covers: ['khu vuc hut thuoc'] },
   { match: ['phong gym', 'phong tap'], covers: ['phong tap', 'phong gym'] },
   { match: ['dua don san bay'], covers: ['dua don san bay'] },
@@ -121,7 +109,7 @@ const ALREADY_COVERED = [
   { match: ['giu hanh ly', 'luu tru', 'bao quan hanh ly'], covers: ['giu hanh ly'] },
   { match: ['giat ui', 'giat la'], covers: ['dich vu giat la', 'dich vu giat ui'] },
   { match: ['san choi', 'vui choi tre em'], covers: ['san choi'] },
-  { match: ['bai do xe'], covers: [] }, // generic exists; still add specific variants
+  { match: ['bai do xe'], covers: [] }, 
   { match: ['wifi', 'wi fi'], covers: ['truy cap internet khong day'] },
   { match: ['truyen hinh cap'], covers: ['truyen hinh cap ve tinh'] },
   { match: ['tu lanh'], covers: ['tu lanh nho trong phong'] },
@@ -138,29 +126,23 @@ const ALREADY_COVERED = [
 const isAlreadyPresent = (candidateTen, existingNorms) => {
   const cand = normalize(candidateTen);
 
-  // Exact / contains either way
   for (const ex of existingNorms) {
     if (ex === cand || ex.includes(cand) || cand.includes(ex)) {
-      // Avoid "nuoc" matching everything with nuoc - require length
       if (Math.min(ex.length, cand.length) < 4 && ex !== cand) continue;
       return true;
     }
   }
 
-  // Special: Nhận phòng 24h covered by Lễ tân 24h? Not really - keep separate
-  // Special: wifi sự kiện không bị coi trùng wifi thường
   if (cand.includes('su kien') && cand.includes('wi')) {
     return existingNorms.some((e) => e.includes('su kien') && e.includes('wi'));
   }
 
-  // Covered by ALREADY_COVERED rules when existing matches
   for (const rule of ALREADY_COVERED) {
     const hasExisting = rule.match.some((m) => existingNorms.some((e) => e.includes(m)));
     if (!hasExisting) continue;
     if (rule.covers.some((c) => cand.includes(c) || c.includes(cand))) return true;
   }
 
-  // Phòng tập / GYM
   if ((cand.includes('phong tap') || cand === 'phong gym')
     && existingNorms.some((e) => e.includes('gym') || e.includes('phong tap'))) {
     return true;
@@ -183,7 +165,6 @@ const isAlreadyPresent = (candidateTen, existingNorms) => {
       skipped.push(item.ten);
       continue;
     }
-    // Also skip if exact name already queued
     if (toInsert.some((x) => normalize(x.ten) === normalize(item.ten))) {
       skipped.push(`${item.ten} (trùng trong list)`);
       continue;

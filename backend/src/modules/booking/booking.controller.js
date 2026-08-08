@@ -2,7 +2,6 @@ const bookingService = require('./booking.service');
 const prisma = require('../../config/prisma');
 const { mapPartnerBooking, mapPartnerBookings } = require('../../utils/partnerBookingMapper');
 
-// Helper lấy doiTacId
 const getUserId = (user) => Number(user?.id || user?.ma_nguoi_dung);
 
 const getDoiTacId = async (user) => {

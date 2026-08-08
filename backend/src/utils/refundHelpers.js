@@ -41,7 +41,6 @@ const extractCancelReason = (ghiChu) => {
 const isAdminCancelledBooking = (booking) =>
   Boolean(booking?.ghi_chu?.trim().startsWith('[Admin hủy]'));
 
-/** Chỉ coi là đã thanh toán khi giao dịch thực sự thành công — không lấy theo phương thức TT. */
 const wasBookingPaid = (booking) =>
   booking?.thanh_toan?.trang_thai === 'thanh_cong';
 
@@ -51,7 +50,6 @@ const getRefundStatusLabel = (refundStatus) => {
   if (refundStatus === 'tu_choi') return 'Từ chối';
   return null;
 };
-
 const buildRefundStatusMessage = (refundStatus) => {
   if (refundStatus === 'da_hoan') return 'Admin đã hoàn tiền cho khách.';
   if (refundStatus === 'cho_xu_ly' || refundStatus === 'dang_xu_ly') {
@@ -85,7 +83,6 @@ const buildPartnerRefundInfo = (booking) => {
       : calc.so_tien_hoan);
   const phanTram = adminCancelled && paid ? 100 : calc.phan_tram_hoan;
   const lyDoHuy = hoanTien?.ly_do || extractCancelReason(booking.ghi_chu);
-  // Chỉ gắn trạng thái hoàn khi thực sự có số tiền cần hoàn
   const trangThaiHoan = (() => {
     if (!hoanTien?.trang_thai) return null;
     if (soTienHoan <= 0) return null;
@@ -145,7 +142,6 @@ const processRefundOnCancel = async (tx, bookingId, lyDo, options = {}) => {
   if (!wasBookingPaid(booking)) return null;
 
   let payment = booking.thanh_toan;
-  // Đơn online/đã thanh toán nhưng thiếu bản ghi thanh_toan → tạo để gắn yêu cầu hoàn
   if (!payment) {
     payment = await tx.thanh_toan.create({
       data: {
@@ -169,7 +165,6 @@ const processRefundOnCancel = async (tx, bookingId, lyDo, options = {}) => {
       total,
     ).so_tien_hoan;
 
-  // Không tạo yêu cầu hoàn khi số tiền = 0 (tránh lệch với trang Hoàn tiền)
   if (soTienHoan <= 0) return null;
 
   return tx.hoan_tien.create({
@@ -183,7 +178,6 @@ const processRefundOnCancel = async (tx, bookingId, lyDo, options = {}) => {
   });
 };
 
-/** Bổ sung bản ghi hoàn tiền cho đơn đã hủy nhưng trước đó chưa tạo được yêu cầu */
 const syncMissingCancelRefunds = async (prismaClient, limit = 50) => {
   const candidates = await prismaClient.dat_phong.findMany({
     where: {

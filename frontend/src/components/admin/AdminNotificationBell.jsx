@@ -19,11 +19,7 @@ const LOAI_LABEL = {
   danh_gia: 'Đánh giá',
   khuyen_mai: 'Khuyến mãi',
 };
-
-/**
- * Icon + tone theo nhóm nghiệp vụ admin (không dùng màu nền để phân loại sự kiện).
- * Nền item chỉ phản ánh đã đọc / chưa đọc.
- */
+// Lấy thông tin thông báo từ admin
 const getAdminNotifyMeta = (n) => {
   const title = String(n.tieu_de || '').toLowerCase();
   const loai = n.loai;

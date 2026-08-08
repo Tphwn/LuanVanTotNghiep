@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import adminUserService from '../../../../services/adminUserService';
+import formatCurrency from '../../../../utils/formatCurrency';
 
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount) || 0);
-
-const formatDate = (date) => (date ? new Date(date).toLocaleDateString('vi-VN') : '—');
+const formatDate = (date) => (date ? new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
 
 const getNameInitial = (name) => {
   if (!name || name === 'Chưa cập nhật') return '?';
@@ -150,7 +148,7 @@ export default function UserDetailModal({ userId, onClose }) {
                   <InfoBlock label="Mã số thuế" value={partner.ma_so_thue} />
                   <InfoBlock
                     label="Tỉ lệ hoa hồng"
-                    value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` : 'Mặc định hệ thống (15%)'}
+                    value={partner.phan_tram_hoa_hong != null ? `${partner.phan_tram_hoa_hong}%` : '—'}
                   />
                   <InfoBlock
                     label="Trạng thái hợp tác"

@@ -49,8 +49,8 @@ const PriceRangeSlider = ({ min, max, valueMin, valueMax, onChange }) => {
         />
       </div>
       <div className="price-range-values">
-        <span>{localMin.toLocaleString('vi-VN')} ₫</span>
-        <span>{localMax.toLocaleString('vi-VN')} ₫</span>
+        <span>{localMin.toLocaleString('vi-VN')} VNĐ</span>
+        <span>{localMax.toLocaleString('vi-VN')} VNĐ</span>
       </div>
     </div>
   );

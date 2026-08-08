@@ -13,9 +13,6 @@ const mapBank = (b) => ({
   logo: b.logo || null,
 });
 
-/**
- * Danh sách ngân hàng từ VietQR (có cache).
- */
 const getVietQrBanks = async () => {
   const now = Date.now();
   if (cachedBanks && (now - cachedAt) < CACHE_MS) {

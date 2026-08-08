@@ -25,7 +25,7 @@ const formatPaymentDateTime = (date) => {
     second: '2-digit',
     hour12: false,
   });
-  return `${d.toLocaleDateString('vi-VN')} - ${time}`;
+  return `${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${time}`;
 };
 
 const getCustomerName = (tx) =>

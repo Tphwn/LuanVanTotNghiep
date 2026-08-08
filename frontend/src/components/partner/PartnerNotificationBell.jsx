@@ -22,8 +22,6 @@ const LOAI_LABEL = {
   danh_gia: 'Đánh giá',
   khuyen_mai: 'Khuyến mãi',
 };
-
-/** Icon + đường dẫn theo nội dung thông báo đối tác */
 const getPartnerNotifyMeta = (n) => {
   const title = String(n.tieu_de || '').toLowerCase();
   const loai = n.loai;

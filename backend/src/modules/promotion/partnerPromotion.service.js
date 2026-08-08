@@ -6,15 +6,10 @@ const {
   syncExpiredPromotions,
   isPastPromotionEndDate,
 } = require('../../utils/promotionRules');
-const { notifyPromotionPendingApproval } = require('../../utils/adminNotify');
 
-const getPartnerName = async (doiTacId) => {
-  const partner = await prisma.doi_tac.findUnique({
-    where: { ma_doi_tac: Number(doiTacId) },
-    select: { ten_cong_ty: true },
-  });
-  return partner?.ten_cong_ty || '—';
-};
+const resolvePublishStatus = (ngayKetThuc) => (
+  isPastPromotionEndDate(ngayKetThuc) ? 'het_han' : 'hoat_dong'
+);
 
 const assertHotelOwnership = async (maKhachSan, doiTacId) => {
   const hotel = await prisma.khach_san.findFirst({
@@ -203,6 +198,7 @@ const partnerPromotionService = {
       throw new Error(err.message);
     }
 
+    const endDate = new Date(ngay_ket_thuc);
     const created = await prisma.khuyen_mai.create({
       data: {
         tao_boi_id: Number(userId),
@@ -215,25 +211,12 @@ const partnerPromotionService = {
         giam_toi_da: giam_toi_da != null && giam_toi_da !== '' ? Number(giam_toi_da) : null,
         don_hang_toi_thieu: Number(don_hang_toi_thieu || 0),
         ngay_bat_dau: new Date(ngay_bat_dau),
-        ngay_ket_thuc: new Date(ngay_ket_thuc),
+        ngay_ket_thuc: endDate,
         so_luot_toi_da: so_luot_toi_da != null && so_luot_toi_da !== '' ? Number(so_luot_toi_da) : null,
-        trang_thai: 'cho_duyet',
+        trang_thai: resolvePublishStatus(endDate),
       },
       include: { khach_san: { select: { ten: true } } },
     });
-
-    try {
-      await notifyPromotionPendingApproval({
-        maKhuyenMai: created.ma_khuyen_mai,
-        maCode: created.ma_code,
-        ten: created.ten,
-        tenKhachSan: created.khach_san?.ten,
-        tenDoiTac: await getPartnerName(doiTacId),
-        isResubmit: false,
-      });
-    } catch {
-      /* ignore */
-    }
 
     return enrichPartnerAuditFields(created);
   },
@@ -242,10 +225,6 @@ const partnerPromotionService = {
     const id = Number(maKhuyenMai);
     const promo = await assertPartnerPromo(doiTacId, id);
     const audit = await getAuditFlags(id);
-
-    if (audit?.khoa_boi_admin) {
-      throw new Error('Khuyến mãi đã bị admin khóa, không thể chỉnh sửa');
-    }
 
     try {
       assertPromotionFormValues({
@@ -265,10 +244,13 @@ const partnerPromotionService = {
       throw new Error(err.message);
     }
 
-    const data = {
-      trang_thai: 'cho_duyet',
-      ly_do: null,
-    };
+    const nextEnd = payload.ngay_ket_thuc ? new Date(payload.ngay_ket_thuc) : promo.ngay_ket_thuc;
+    const stillLocked = Boolean(
+      audit?.khoa_boi_admin
+      || (audit?.khoa_boi_doi_tac && promo.trang_thai === 'an'),
+    );
+
+    const data = {};
     if (payload.ten != null) data.ten = String(payload.ten).trim();
     if (payload.loai_giam) data.loai_giam = payload.loai_giam;
     if (payload.gia_tri != null) data.gia_tri = Number(payload.gia_tri);
@@ -279,9 +261,15 @@ const partnerPromotionService = {
       data.don_hang_toi_thieu = Number(payload.don_hang_toi_thieu);
     }
     if (payload.ngay_bat_dau) data.ngay_bat_dau = new Date(payload.ngay_bat_dau);
-    if (payload.ngay_ket_thuc) data.ngay_ket_thuc = new Date(payload.ngay_ket_thuc);
+    if (payload.ngay_ket_thuc) data.ngay_ket_thuc = nextEnd;
     if (payload.so_luot_toi_da !== undefined) {
       data.so_luot_toi_da = payload.so_luot_toi_da != null && payload.so_luot_toi_da !== '' ? Number(payload.so_luot_toi_da) : null;
+    }
+
+    // Đang bị khóa (admin hoặc tự tạm ngưng): cho sửa nội dung, giữ trạng thái khóa
+    if (!stillLocked) {
+      data.trang_thai = resolvePublishStatus(nextEnd);
+      if (data.trang_thai === 'hoat_dong') data.ly_do = null;
     }
 
     const updated = await prisma.khuyen_mai.update({
@@ -289,27 +277,6 @@ const partnerPromotionService = {
       data,
       include: { khach_san: { select: { ten: true } } },
     });
-
-    await prisma.$executeRaw`
-      UPDATE khuyen_mai
-      SET khoa_boi_doi_tac = FALSE, khoa_boi_admin = FALSE
-      WHERE ma_khuyen_mai = ${id}
-    `;
-
-    if (promo.trang_thai !== 'cho_duyet') {
-      try {
-        await notifyPromotionPendingApproval({
-          maKhuyenMai: updated.ma_khuyen_mai,
-          maCode: updated.ma_code,
-          ten: updated.ten,
-          tenKhachSan: updated.khach_san?.ten,
-          tenDoiTac: await getPartnerName(doiTacId),
-          isResubmit: true,
-        });
-      } catch {
-        /* ignore */
-      }
-    }
 
     return enrichPartnerAuditFields(updated);
   },

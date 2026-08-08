@@ -141,8 +141,6 @@
 .price-inv-nav button:hover {
   background: #ebebeb;
 }
-
-/* Bảng lịch kiểu Excel */
 .price-inv-table {
   width: 100%;
   border-collapse: collapse;
@@ -340,7 +338,8 @@
 }
 
 .price-inv-date-row input[type="text"],
-.price-inv-date-row input[type="date"] {
+.price-inv-date-row input[type="date"],
+.price-inv-date-row .date-input {
   flex: 1;
   padding: 8px 10px;
   border: 1px solid #bdbdbd;
@@ -349,8 +348,18 @@
   font-family: inherit;
 }
 
+.price-inv-date-row .date-input {
+  padding: 0;
+}
+
+.price-inv-date-row .date-input .date-input__text {
+  padding: 8px 34px 8px 10px;
+  font-size: 13px;
+}
+
 .price-inv-date-row input.input-invalid,
 .price-inv-date-row input[type="date"].input-invalid,
+.price-inv-date-row .date-input.input-invalid,
 .price-inv-panel .form-row input.input-invalid {
   border-color: #e05c5c;
   background: #fff5f5;

@@ -8,7 +8,9 @@ import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import '../../assets/styles/home.css';
 
-const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VND`;
+import formatCurrency from '../../utils/formatCurrency';
+
+const fmtMoney = formatCurrency;
 
 const formatCountdown = (ms) => {
   const total = Math.max(0, Math.floor(ms / 1000));

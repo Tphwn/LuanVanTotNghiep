@@ -52,8 +52,6 @@ const markAmenityProposalAdded = async (userId, id) => {
     },
   });
   if (!item) throw new Error('Không tìm thấy đề xuất tiện nghi');
-
-  // Đánh dấu mọi bản sao thông báo cùng tiêu đề (mỗi admin 1 bản)
   const siblings = await prisma.thong_bao.findMany({
     where: {
       loai: 'tien_nghi',

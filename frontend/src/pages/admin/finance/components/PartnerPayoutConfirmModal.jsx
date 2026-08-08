@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import formatCurrency from '../../../../utils/formatCurrency';
 
 const inputSt = {
   padding: '9px 12px',
@@ -11,7 +12,7 @@ const inputSt = {
   width: '100%',
 };
 
-const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v || 0);
+const fmt = formatCurrency;
 
 const PartnerPayoutConfirmModal = ({
   open,
@@ -125,9 +126,6 @@ const PartnerPayoutConfirmModal = ({
             readOnly
             disabled={loading}
           />
-          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#7a9a92' }}>
-            Mã được hệ thống tự sinh cho đợt thanh toán này.
-          </p>
         </div>
 
         <div style={{ marginBottom: 14 }}>

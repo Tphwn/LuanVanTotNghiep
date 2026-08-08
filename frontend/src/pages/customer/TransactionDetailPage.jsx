@@ -17,6 +17,7 @@ import customerBookingService from '../../services/customerBookingService';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
 import { formatHotelTime } from '../../utils/bookingDisplay';
+import formatCurrency from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
 const STEPS = [
@@ -26,7 +27,7 @@ const STEPS = [
   { id: 4, title: 'Thanh toán thành công' },
 ];
 
-const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)} VND`;
+const fmtMoney = formatCurrency;
 
 const fmtDateSlash = (d) => {
   if (!d) return '—';
@@ -282,7 +283,7 @@ const TransactionDetailPage = () => {
             )}
             <div>
               <span>Thanh toán ngay</span>
-              <strong>{booking.can_thanh_toan ? fmtMoney(total) : (booking.thanh_toan?.trang_thai === 'da_thanh_toan' ? fmtMoney(total) : '0 VND')}</strong>
+              <strong>{booking.can_thanh_toan ? fmtMoney(total) : (booking.thanh_toan?.trang_thai === 'da_thanh_toan' ? fmtMoney(total) : formatCurrency(0))}</strong>
             </div>
           </div>
         )}

@@ -94,7 +94,6 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    /** Đồng bộ Redux khi localStorage đổi (đăng nhập/xuất ở tab khác). */
     hydrateSession: (state) => {
       state.token = getToken();
       state.user = getUser();
@@ -133,7 +132,6 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        // Đăng ký chỉ gửi OTP — chưa đăng nhập
         if (action.payload?.token && action.payload?.user) {
           applyAuthSession(state, action.payload);
         }

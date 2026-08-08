@@ -55,7 +55,9 @@ const CreatePartnerPage = () => {
     if (phoneErr) errors.so_dien_thoai = phoneErr;
     if (!formData.mat_khau) errors.mat_khau = 'Mật khẩu khởi tạo là bắt buộc';
     else if (formData.mat_khau.length < 6) errors.mat_khau = 'Mật khẩu tối thiểu 6 ký tự';
-    if (formData.phan_tram_hoa_hong !== '') {
+    if (formData.phan_tram_hoa_hong === '') {
+      errors.phan_tram_hoa_hong = 'Tỉ lệ hoa hồng là bắt buộc';
+    } else {
       const pct = Number(formData.phan_tram_hoa_hong);
       if (Number.isNaN(pct) || pct < 0 || pct > 100) {
         errors.phan_tram_hoa_hong = 'Hoa hồng phải từ 0 đến 100';
@@ -81,7 +83,7 @@ const CreatePartnerPage = () => {
         ten_cong_ty: formData.ten_cong_ty.trim(),
         ma_so_thue: formData.ma_so_thue.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
-        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === '' ? 15 : Number(formData.phan_tram_hoa_hong),
+        phan_tram_hoa_hong: Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
         so_dien_thoai: formData.so_dien_thoai.trim(),
         mat_khau: formData.mat_khau,
@@ -145,7 +147,11 @@ const CreatePartnerPage = () => {
               />
             </Field>
 
-            <Field label="Tỉ lệ hoa hồng (%)" error={fieldErrors.phan_tram_hoa_hong} hint="Để trống sẽ dùng mức mặc định hệ thống 15%.">
+            <Field
+              label="Tỉ lệ hoa hồng (%)"
+              required
+              error={fieldErrors.phan_tram_hoa_hong}
+            >
               <input
                 type="number"
                 name="phan_tram_hoa_hong"
@@ -155,7 +161,7 @@ const CreatePartnerPage = () => {
                 className="search-input create-partner-input"
                 value={formData.phan_tram_hoa_hong}
                 onChange={handleChange}
-                placeholder="Mặc định 15%"
+                placeholder="VD: 15"
               />
             </Field>
 

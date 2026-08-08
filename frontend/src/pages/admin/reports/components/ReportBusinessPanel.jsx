@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../../../services/api';
+import DateInput from '../../../../components/common/DateInput';
 import FilterActions from '../../../../components/common/management/FilterActions';
+import ListPagination from '../../../../components/common/management/ListPagination';
+import useListPagination from '../../../../hooks/useListPagination';
 import { getPresetRange, REPORT_DATE_PRESETS, riskRateTone } from '../reportHelpers';
 import { KpiCard, KpiGrid } from './ReportUI';
+
+const PAGE_SIZE = 10;
 
 const SUB_TABS = [
   { id: 'dat_phong', label: 'Đặt phòng' },
@@ -198,6 +203,18 @@ const ReportBusinessPanel = () => {
     return sortReviewRows(filtered, sort);
   }, [data, search, sort]);
 
+  const activeRows = subTab === 'dat_phong' ? bookingRows : reviewRows;
+  const {
+    pagedItems,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(activeRows, PAGE_SIZE, [subTab, search, sort, applied]);
+
   return (
     <div className="admin-reports-panel admin-reports-business">
       <nav className="admin-reports-subtabs" aria-label="Nhóm kinh doanh">
@@ -266,18 +283,16 @@ const ReportBusinessPanel = () => {
           <>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="business-from">Từ ngày</label>
-              <input
+              <DateInput
                 id="business-from"
-                type="date"
                 value={draft.tu_ngay}
                 onChange={(e) => updateDraft({ tu_ngay: e.target.value, preset: 'custom' })}
               />
             </div>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="business-to">Đến ngày</label>
-              <input
+              <DateInput
                 id="business-to"
-                type="date"
                 value={draft.den_ngay}
                 min={draft.tu_ngay}
                 onChange={(e) => updateDraft({ den_ngay: e.target.value, preset: 'custom' })}
@@ -406,7 +421,7 @@ const ReportBusinessPanel = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookingRows.map((row) => (
+                    {pagedItems.map((row) => (
                       <tr key={row.ma_khach_san}>
                         <td className="is-name">{row.ten_doi_tac || '—'}</td>
                         <td className="is-name">{row.ten_khach_san || '—'}</td>
@@ -424,6 +439,17 @@ const ReportBusinessPanel = () => {
                     ))}
                   </tbody>
                 </table>
+                {showPagination && (
+                  <ListPagination
+                    total={bookingRows.length}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    rangeFrom={rangeFrom}
+                    rangeTo={rangeTo}
+                    pageNumbers={pageNumbers}
+                    onPageChange={setPage}
+                  />
+                )}
               </div>
             )
           ) : reviewRows.length === 0 ? (
@@ -445,7 +471,7 @@ const ReportBusinessPanel = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {reviewRows.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.ma_khach_san}>
                       <td className="is-name">{row.ten_doi_tac || '—'}</td>
                       <td className="is-name">{row.ten_khach_san || '—'}</td>
@@ -460,6 +486,17 @@ const ReportBusinessPanel = () => {
                   ))}
                 </tbody>
               </table>
+              {showPagination && (
+                <ListPagination
+                  total={reviewRows.length}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  rangeFrom={rangeFrom}
+                  rangeTo={rangeTo}
+                  pageNumbers={pageNumbers}
+                  onPageChange={setPage}
+                />
+              )}
             </div>
           )}
         </div>

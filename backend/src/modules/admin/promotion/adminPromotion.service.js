@@ -307,7 +307,6 @@ const lockPromotion = async (id, adminUserId, lyDo) => {
 
   const isPartnerPromo = promo.loai_nguon === 'doi_tac';
   const reason = (lyDo || '').trim();
-  // Khóa KM đối tác bắt buộc có lý do; KM hệ thống (admin tạo) không cần
   if (isPartnerPromo && !reason) {
     throw { statusCode: 400, message: 'Phải kèm lý do tạm ngưng khuyến mãi đối tác' };
   }

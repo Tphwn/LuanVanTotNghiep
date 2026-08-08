@@ -63,8 +63,6 @@ const mapBankAccount = (partner) => {
     da_cap_nhat: hasCompleteBankAccount(partner),
   };
 };
-
-/** Parse minh chứng từ ghi_chu đợt thanh toán */
 const parsePayoutProofNote = (ghiChu) => {
   const raw = String(ghiChu || '').trim();
   if (!raw) {

@@ -9,7 +9,6 @@ const PARTNER_PAGE_TITLES = [
   { prefix: '/partner/finance', title: 'Tài chính' },
   { prefix: '/partner/reviews', title: 'Đánh giá' },
   { prefix: '/partner/account', title: 'Tài khoản' },
-  { prefix: '/partner/images', title: 'Hình ảnh' },
 ];
 
 export const getPartnerPageTitle = (pathname) => {

@@ -12,7 +12,7 @@ const ManagementHeader = ({
   actionIcon: ActionIcon = Plus,
 }) => {
   const hasBack = Boolean(backTo || onBack);
-
+// header quản lý các trang admin, partner, user
   return (
     <div className="mgmt-header">
       {hasBack && (

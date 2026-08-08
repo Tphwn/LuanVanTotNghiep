@@ -29,7 +29,6 @@ const mapPublicPromotion = (promo) => ({
 });
 
 const getActiveWhere = (loaiNguon, maKhachSan = null) => {
-  // So sánh theo ngày lịch (YYYY-MM-DD), không dùng Date local midnight để tránh lệch UTC+7
   const today = toLocalDateString();
   const where = {
     loai_nguon: loaiNguon,

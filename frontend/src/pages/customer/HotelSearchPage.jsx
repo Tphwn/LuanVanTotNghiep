@@ -13,9 +13,10 @@ import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import { groupHotelAmenities } from '../../utils/hotelAmenityFilters';
 import { searchFormToParams, normalizeSearchGuests } from '../../utils/hotelSearchStorage';
+import { formatCurrency, formatNumber } from '../../utils/formatCurrency';
 import '../../assets/styles/home.css';
 
-const fmt = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
+const fmt = formatNumber;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 const stars = (n) => '★'.repeat(Math.max(0, Number(n) || 0));
 
@@ -85,10 +86,10 @@ const FilterSidebar = ({
       </div>
 
       <div className="search-filter-section">
-        <label className="search-filter-label">Khoảng giá / đêm</label>
+        <label className="search-filter-label">Khoảng giá / phòng / kỳ lưu trú</label>
         {priceRange.max > priceRange.min && (
           <p className="search-filter-hint">
-            {fmt(priceRange.min)} – {fmt(priceRange.max)} ₫
+            {formatCurrency(priceRange.min)} – {formatCurrency(priceRange.max)}
           </p>
         )}
         {showSlider && priceRange.max > priceRange.min ? (
@@ -190,7 +191,7 @@ const HotelSearchPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [sortBy, setSortBy] = useState('price_asc');
+  const [sortBy, setSortBy] = useState('popularity_desc');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [selectedStars, setSelectedStars] = useState([]);
@@ -390,7 +391,7 @@ const HotelSearchPage = () => {
   };
 
   const resetFilters = () => {
-    setSortBy('price_asc');
+    setSortBy('popularity_desc');
     setSelectedStars([]);
     setSelectedAmenities([]);
     if (priceRange.max > priceRange.min) {
@@ -404,7 +405,7 @@ const HotelSearchPage = () => {
 
   const hasActiveFilters = selectedStars.length > 0
     || selectedAmenities.length > 0
-    || sortBy !== 'price_asc'
+    || sortBy !== 'popularity_desc'
     || (priceRange.max > priceRange.min && (
       Number(priceMin) !== priceRange.min || Number(priceMax) !== priceRange.max
     ));
@@ -605,8 +606,7 @@ const HotelSearchPage = () => {
                             <CustomerPriceOffer
                               amount={hotel.gia_tu}
                               originalAmount={hotel.gia_goc}
-                              valueUnit="₫"
-                              suffix="/ phòng / đêm"
+                              suffix={`/ phòng / ${nights} đêm`}
                               className="hotel-result-price-block"
                             />
                           )}

@@ -5,7 +5,6 @@ const { parseJsonField } = require('../../utils/parseJson');
 const { parseHotelRulesInput, flattenHotelPolicy, flattenHotelsPolicy, upsertHotelPolicy } = require('../../utils/hotelRules');
 const { isLockedByAdminHotel } = require('../../utils/partnerLockHelpers');
 const { notifyHotelPendingApproval } = require('../../utils/adminNotify');
-
 const SYSTEM_DEFAULT_CANCEL_POLICIES = [
   { so_ngay_truoc: 7, phan_tram_hoan: 100 },
   { so_ngay_truoc: 3, phan_tram_hoan: 75 },
@@ -341,7 +340,7 @@ exports.updateHotel = async (req, res) => {
     }
 
    
-    const NEEDS_RESUBMIT = ['cho_duyet', 'tu_choi', 'yeu_cau_sua'];
+    const NEEDS_RESUBMIT = ['cho_duyet', 'tu_choi'];
     const contentFieldKeys = Object.keys(updateData).filter(
       (key) => key !== 'trang_thai' && key !== 'khoa_do_doi_tac'
     );

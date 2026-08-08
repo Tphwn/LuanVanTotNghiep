@@ -12,14 +12,21 @@ import {
   UserRound,
   Users,
   Wallet,
+  Ticket,
 } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
 import ConfirmPaymentModal from '../../components/customer/ConfirmPaymentModal';
+import PromoCodeModal from '../../components/customer/PromoCodeModal';
+import LoginForPromoModal from '../../components/customer/LoginForPromoModal';
 import Toast from '../../components/common/Toast';
+import { useSelector } from 'react-redux';
 import customerBookingService from '../../services/customerBookingService';
+import guestBookingService, { guestPayTokenKey } from '../../services/guestBookingService';
 import ROUTES from '../../constants/routes';
+import ROLES from '../../constants/roles';
 import { formatHotelTime } from '../../utils/bookingDisplay';
+import formatCurrency from '../../utils/formatCurrency';
 import { resolveUploadUrl } from '../../utils/media';
 import '../../assets/styles/home.css';
 
@@ -46,7 +53,7 @@ const PAY_METHODS = [
 
 const PAY_WINDOW_MS = 30 * 60 * 1000;
 
-const fmtMoney = (v) => `${new Intl.NumberFormat('vi-VN').format(Number(v) || 0)}₫`;
+const fmtMoney = formatCurrency;
 const fmtNum = (v) => new Intl.NumberFormat('vi-VN').format(Number(v) || 0);
 
 const hotelStars = (n) => Math.max(0, Math.min(5, Number(n) || 0));
@@ -88,7 +95,7 @@ const isSystemNote = (note) => {
   return t.startsWith('[Admin hủy]') || t.startsWith('[Hết hạn thanh toán]');
 };
 
-const resolvePaymentBackTo = (bookingId, locationState) => {
+const resolvePaymentBackTo = (bookingId, locationState, isGuest) => {
   if (locationState?.backTo) return locationState.backTo;
   try {
     const stored = sessionStorage.getItem(`paymentBack:${bookingId}`);
@@ -96,15 +103,27 @@ const resolvePaymentBackTo = (bookingId, locationState) => {
   } catch {
     /* ignore */
   }
-  return ROUTES.CUSTOMER.MY_BOOKINGS;
+  return isGuest ? ROUTES.CUSTOMER.GUEST_BOOKINGS : ROUTES.CUSTOMER.MY_BOOKINGS;
+};
+
+const readGuestPayToken = (bookingId) => {
+  try {
+    return sessionStorage.getItem(guestPayTokenKey(bookingId)) || '';
+  } catch {
+    return '';
+  }
 };
 
 const CustomerPaymentPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { token, user } = useSelector((s) => s.auth);
   const bookingId = Number(id);
-  const backTo = resolvePaymentBackTo(bookingId, location.state);
+  const guestToken = readGuestPayToken(bookingId);
+  const isGuest = Boolean(guestToken) || Boolean(location.state?.isGuest);
+  const isCustomer = Boolean(token && user?.vai_tro === ROLES.KHACH_HANG);
+  const backTo = resolvePaymentBackTo(bookingId, location.state, isGuest);
 
   useEffect(() => {
     if (!bookingId || Number.isNaN(bookingId) || !location.state?.backTo) return;
@@ -123,10 +142,15 @@ const CustomerPaymentPage = () => {
   const [payError, setPayError] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
-  const [promoCode, setPromoCode] = useState('');
   const [method, setMethod] = useState('momo');
   const [remainingMs, setRemainingMs] = useState(PAY_WINDOW_MS);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [showLoginForPromo, setShowLoginForPromo] = useState(false);
+  const [pendingPromoCode, setPendingPromoCode] = useState('');
+  const [claimingGuest, setClaimingGuest] = useState(false);
+  const [eligiblePromos, setEligiblePromos] = useState([]);
+  const [loadingEligible, setLoadingEligible] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [toast, setToast] = useState(null);
   const [priceOpen, setPriceOpen] = useState(false);
@@ -152,13 +176,32 @@ const CustomerPaymentPage = () => {
       setError('Mã đơn không hợp lệ');
       return;
     }
+    if (!isCustomer && !guestToken) {
+      setLoading(false);
+      setError('Phiên thanh toán không hợp lệ. Vui lòng đặt lại phòng hoặc đăng nhập.');
+      return;
+    }
 
     let mounted = true;
     const load = async () => {
       setLoading(true);
       setError('');
       try {
-        const res = await customerBookingService.getBookingById(bookingId);
+        let res;
+        if (isCustomer) {
+          try {
+            res = await customerBookingService.getBookingById(bookingId);
+          } catch (err) {
+            // Vừa login, đơn guest chưa claim — tạm dùng guest token
+            if (guestToken && [403, 404].includes(err.response?.status)) {
+              res = await guestBookingService.getBookingForPay(bookingId, guestToken);
+            } else {
+              throw err;
+            }
+          }
+        } else {
+          res = await guestBookingService.getBookingForPay(bookingId, guestToken);
+        }
         const data = res.data?.data;
         if (!mounted) return;
         if (!data) {
@@ -172,15 +215,23 @@ const CustomerPaymentPage = () => {
           setLoading(false);
           return;
         }
+        // Thanh toán tại khách sạn — coi như đặt thành công
+        if (
+          !data.can_thanh_toan
+          && data.thanh_toan?.phuong_thuc !== 'online'
+          && ['da_xac_nhan', 'cho_xac_nhan'].includes(data.trang_thai)
+        ) {
+          setPaidSuccess(true);
+          setBooking(data);
+          setLoading(false);
+          return;
+        }
         if (!data.can_thanh_toan && data.thanh_toan?.trang_thai === 'cho_thanh_toan') {
           setError('Đơn đã hết hạn thanh toán (30 phút) và không còn trong danh sách đặt phòng của bạn.');
           setBooking(null);
           return;
         }
         setBooking(data);
-        if (data.thanh_toan?.ma_khuyen_mai) {
-          setPromoCode(data.thanh_toan.ma_khuyen_mai);
-        }
         const deadline = data.han_thanh_toan
           ? new Date(data.han_thanh_toan).getTime()
           : (data.ngay_dat ? new Date(data.ngay_dat).getTime() + PAY_WINDOW_MS : Date.now() + PAY_WINDOW_MS);
@@ -196,7 +247,7 @@ const CustomerPaymentPage = () => {
     };
     load();
     return () => { mounted = false; };
-  }, [bookingId, navigate]);
+  }, [bookingId, navigate, isCustomer, guestToken]);
 
   useEffect(() => {
     if (!booking || paidSuccess) return undefined;
@@ -234,37 +285,136 @@ const CustomerPaymentPage = () => {
     return `${fmtStayDate(ngay_nhan)} → ${fmtStayDate(ngay_tra)} · ${so_dem || 1} đêm`;
   }, [booking]);
 
-  const handleApplyPromo = async () => {
+  const loadEligiblePromos = async ({ asCustomer = false } = {}) => {
+    if (!bookingId) return;
+    setLoadingEligible(true);
+    try {
+      const useGuestList = !asCustomer && !isCustomer && guestToken;
+      const res = useGuestList
+        ? await guestBookingService.getEligiblePromotions(bookingId, guestToken)
+        : await customerBookingService.getEligiblePromotions(bookingId);
+      setEligiblePromos(res.data?.data || []);
+    } catch {
+      setEligiblePromos([]);
+    } finally {
+      setLoadingEligible(false);
+    }
+  };
+
+  const openPromoModal = () => {
+    if (!booking || expired) return;
+    setPromoError('');
+    setPromoSuccess('');
+    setShowPromoModal(true);
+    loadEligiblePromos();
+  };
+
+  const applyPromoAsCustomer = async (normalized) => {
+    setApplyingPromo(true);
+    setPromoError('');
+    setPromoSuccess('');
+    try {
+      const res = await customerBookingService.applyPromo(bookingId, { ma_code: normalized });
+      const data = res.data?.data;
+      if (data) {
+        setBooking(data);
+        const nextCode = data.thanh_toan?.ma_khuyen_mai || normalized;
+        setPromoSuccess(
+          appliedCode && appliedCode !== nextCode
+            ? `Đã đổi sang mã ${nextCode}`
+            : `Đã áp mã ${nextCode}`,
+        );
+        setToast({ message: `Đã áp mã ${nextCode}`, type: 'success' });
+        loadEligiblePromos();
+      }
+    } catch (err) {
+      setPromoError(err.response?.data?.message || 'Không thể áp mã khuyến mãi');
+      setPromoSuccess('');
+      setShowPromoModal(true);
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
+
+  const handleLoggedInForPromo = async () => {
+    const codeToApply = String(pendingPromoCode || '').trim().toUpperCase();
+    setClaimingGuest(true);
+    try {
+      if (bookingId && guestToken) {
+        const res = await customerBookingService.claimGuestBooking(bookingId, guestToken);
+        const data = res.data?.data;
+        if (data) setBooking(data);
+        try {
+          sessionStorage.removeItem(guestPayTokenKey(bookingId));
+        } catch {
+          /* ignore */
+        }
+      }
+      setShowLoginForPromo(false);
+      setPendingPromoCode('');
+      setToast({ message: 'Đăng nhập thành công.', type: 'success' });
+      setShowPromoModal(true);
+      await loadEligiblePromos({ asCustomer: true });
+      if (codeToApply) {
+        await applyPromoAsCustomer(codeToApply);
+      }
+    } catch (err) {
+      setToast({
+        message: err.response?.data?.message || 'Không gắn được đơn vào tài khoản. Vui lòng thử lại.',
+        type: 'error',
+      });
+    } finally {
+      setClaimingGuest(false);
+    }
+  };
+
+  const handleApplyPromo = async (code) => {
     if (!booking || applyingPromo || expired) return;
-    const code = promoCode.trim();
-    if (!code) {
+    const normalized = String(code || '').trim().toUpperCase();
+    if (!normalized) {
       setPromoError('Vui lòng nhập mã khuyến mãi');
       setPromoSuccess('');
       return;
     }
-    if (appliedCode && appliedCode === code.toUpperCase()) {
+    if (appliedCode && appliedCode === normalized) {
       setPromoError(`Mã ${appliedCode} đã được áp dụng cho đơn này`);
       setPromoSuccess('');
+      return;
+    }
+    // Khách vãng lai: chọn mã bình thường; chỉ khi áp dụng mới yêu cầu đăng nhập
+    if (!isCustomer) {
+      setPendingPromoCode(normalized);
+      setShowPromoModal(false);
+      setShowLoginForPromo(true);
+      return;
+    }
+    await applyPromoAsCustomer(normalized);
+  };
+
+  const handleRemovePromo = async () => {
+    if (!booking || applyingPromo || expired || !appliedCode) return;
+    if (!isCustomer) {
+      setPendingPromoCode('');
+      setShowPromoModal(false);
+      setShowLoginForPromo(true);
       return;
     }
     setApplyingPromo(true);
     setPromoError('');
     setPromoSuccess('');
-    setError('');
     try {
-      const res = await customerBookingService.applyPromo(bookingId, { ma_code: code });
+      const res = await customerBookingService.removePromo(bookingId);
       const data = res.data?.data;
       if (data) {
         setBooking(data);
-        setPromoCode(data.thanh_toan?.ma_khuyen_mai || code.toUpperCase());
-        setPromoSuccess(
-          appliedCode && appliedCode !== code.toUpperCase()
-            ? `Đã đổi sang mã ${data.thanh_toan?.ma_khuyen_mai || code.toUpperCase()}`
-            : `Đã áp mã ${data.thanh_toan?.ma_khuyen_mai || code.toUpperCase()}`
-        );
+        setPromoSuccess('Đã bỏ mã khuyến mãi');
+        setToast({ message: 'Đã bỏ mã khuyến mãi', type: 'success' });
+        loadEligiblePromos();
       }
     } catch (err) {
-      setPromoError(err.response?.data?.message || 'Không thể áp mã khuyến mãi');
+      const msg = err.response?.data?.message || 'Không thể bỏ mã khuyến mãi';
+      setPromoError(msg);
+      setToast({ message: msg, type: 'error' });
     } finally {
       setApplyingPromo(false);
     }
@@ -281,8 +431,12 @@ const CustomerPaymentPage = () => {
     setPaying(true);
     setPayError('');
     try {
+      // Sau claim đã xóa guest token → thanh toán qua API khách
+      const useGuestApi = Boolean(guestToken && !isCustomer);
       if (method === 'vnpay') {
-        const res = await customerBookingService.createVnpayPayment(bookingId);
+        const res = useGuestApi
+          ? await guestBookingService.createVnpayPayment(bookingId, guestToken)
+          : await customerBookingService.createVnpayPayment(bookingId);
         const paymentUrl = res.data?.data?.payment_url;
         if (!paymentUrl) {
           throw new Error('Không nhận được URL VNPay');
@@ -291,7 +445,11 @@ const CustomerPaymentPage = () => {
         window.location.href = paymentUrl;
         return;
       }
-      await customerBookingService.confirmPayment(bookingId, { cong_thanh_toan: method });
+      if (useGuestApi) {
+        await guestBookingService.confirmPayment(bookingId, { cong_thanh_toan: method }, guestToken);
+      } else {
+        await customerBookingService.confirmPayment(bookingId, { cong_thanh_toan: method });
+      }
       setShowConfirm(false);
       setPaidSuccess(true);
       setToast({ message: 'Thanh toán thành công', type: 'success' });
@@ -321,6 +479,10 @@ const CustomerPaymentPage = () => {
   }
 
   if (paidSuccess && booking) {
+    const orderCode = booking.ma_don || booking.ma_don_hang || `#${booking.ma_dat_phong}`;
+    const detailPath = isCustomer
+      ? ROUTES.CUSTOMER.MY_BOOKING_DETAIL.replace(':id', bookingId)
+      : ROUTES.CUSTOMER.GUEST_BOOKINGS;
     return (
       <div className="booking-payment-page">
         <Toast toast={toast} />
@@ -328,49 +490,85 @@ const CustomerPaymentPage = () => {
           <div className="booking-payment-thankyou-icon" aria-hidden>
             <CheckCircle2 size={48} strokeWidth={1.75} />
           </div>
-          <h1 className="booking-payment-thankyou-title">Cảm ơn bạn đã thanh toán!</h1>
+          <h1 className="booking-payment-thankyou-title">
+            {booking.thanh_toan?.trang_thai === 'da_thanh_toan'
+              ? 'Cảm ơn bạn đã thanh toán!'
+              : 'Đặt phòng thành công!'}
+          </h1>
           <p className="booking-payment-thankyou-desc">
-            Thanh toán cho đơn
-            {' '}
-            <strong>{booking.ma_don || booking.ma_dat_phong}</strong>
-            {' '}
-            tại
-            {' '}
-            <strong>{booking.khach_san?.ten || 'khách sạn'}</strong>
-            {' '}
-            đã hoàn tất.
-            Chúng tôi đã ghi nhận đặt phòng của bạn.
+            {booking.thanh_toan?.trang_thai === 'da_thanh_toan' ? (
+              <>
+                Thanh toán cho đơn
+                {' '}
+                <strong>{orderCode}</strong>
+                {' '}
+                tại
+                {' '}
+                <strong>{booking.khach_san?.ten || 'khách sạn'}</strong>
+                {' '}
+                đã hoàn tất. Chúng tôi đã ghi nhận đặt phòng của bạn.
+              </>
+            ) : (
+              <>
+                Đơn
+                {' '}
+                <strong>{orderCode}</strong>
+                {' '}
+                tại
+                {' '}
+                <strong>{booking.khach_san?.ten || 'khách sạn'}</strong>
+                {' '}
+                đã được ghi nhận.
+              </>
+            )}
           </p>
 
           <div className="booking-payment-thankyou-summary">
             <div>
-              <span>Số tiền đã thanh toán</span>
-              <strong>{fmtMoney(total)}</strong>
+              <span>Mã đặt phòng</span>
+              <strong>{orderCode}</strong>
+            </div>
+            <div>
+              <span>Khách sạn</span>
+              <strong>{booking.khach_san?.ten || '—'}</strong>
+            </div>
+            <div>
+              <span>Loại phòng</span>
+              <strong>{booking.loai_phong?.ten_loai || '—'}</strong>
+            </div>
+            <div>
+              <span>Ngày lưu trú</span>
+              <strong>{stayLabel}</strong>
+            </div>
+            <div>
+              <span>Số người ở</span>
+              <strong>
+                {guestCount}
+                {' khách · '}
+                {roomCount}
+                {' phòng'}
+              </strong>
             </div>
             <div>
               <span>Phương thức</span>
               <strong>
-                {PAY_METHODS.find((m) => m.id === method)?.label || method}
+                {PAY_METHODS.find((m) => m.id === method)?.label
+                  || (booking.thanh_toan?.phuong_thuc === 'online' ? 'Trực tuyến' : 'Tại khách sạn')
+                  || method}
               </strong>
             </div>
             <div>
-              <span>Thời gian lưu trú</span>
-              <strong>{stayLabel}</strong>
+              <span>Tổng tiền</span>
+              <strong>{fmtMoney(total)}</strong>
             </div>
           </div>
 
           <div className="booking-payment-thankyou-actions">
-            <Link
-              to={ROUTES.CUSTOMER.MY_BOOKING_DETAIL.replace(':id', bookingId)}
-              className="booking-payment-thankyou-primary"
-            >
-              Xem chi tiết đơn
+            <Link to={detailPath} className="booking-payment-thankyou-primary">
+              {isCustomer ? 'Xem chi tiết đơn' : 'Tra cứu đặt chỗ của tôi'}
             </Link>
-            <Link
-              to={ROUTES.CUSTOMER.MY_BOOKINGS}
-              className="booking-payment-thankyou-secondary"
-            >
-              Về đặt chỗ của tôi
+            <Link to={ROUTES.HOME} className="booking-payment-thankyou-secondary">
+              Về trang chủ
             </Link>
           </div>
         </div>
@@ -438,48 +636,41 @@ const CustomerPaymentPage = () => {
             </span>
           </div>
 
-          <div className="booking-payment-promo">
-            <label className="booking-payment-promo-label" htmlFor="promo_code">
-              Mã khuyến mãi
-            </label>
-            <div className="booking-payment-promo-row">
-              <input
-                id="promo_code"
-                className="booking-payment-promo-input"
-                value={promoCode}
-                onChange={(e) => {
-                  setPromoCode(e.target.value.toUpperCase());
-                  setPromoError('');
-                  setPromoSuccess('');
-                }}
-                placeholder="Nhập mã khuyến mãi"
-                disabled={expired || applyingPromo}
-                maxLength={40}
-              />
-              <button
-                type="button"
-                className="booking-payment-promo-btn"
-                onClick={handleApplyPromo}
-                disabled={expired || applyingPromo || !promoCode.trim()}
-              >
-                {applyingPromo ? 'Đang áp...' : 'Áp dụng'}
-              </button>
+          <div className="booking-payment-promo-bar">
+            <div className="booking-payment-promo-bar__left">
+              <span className="booking-payment-promo-bar__icon" aria-hidden>
+                <Ticket size={20} strokeWidth={2} />
+              </span>
+              <div>
+                {appliedCode ? (
+                  <>
+                    <strong>
+                      Đã áp dụng
+                      {' '}
+                      {appliedCode}
+                    </strong>
+                    <small>
+                      {discount > 0
+                        ? `Giảm ${fmtMoney(discount)}`
+                        : (booking?.thanh_toan?.ten_khuyen_mai || 'Mã đã được áp dụng')}
+                    </small>
+                  </>
+                ) : (
+                  <>
+                    <strong>Thêm mã giảm</strong>
+                    <small>Nhập mã hoặc chọn mã khả dụng</small>
+                  </>
+                )}
+              </div>
             </div>
-            {appliedCode && !promoError && (
-              <p className="booking-payment-promo-applied">
-                Đang áp dụng:
-                {' '}
-                <strong>{appliedCode}</strong>
-                {booking?.thanh_toan?.ten_khuyen_mai
-                  ? ` — ${booking.thanh_toan.ten_khuyen_mai}`
-                  : ''}
-                {booking?.thanh_toan?.lan_dat_dau
-                  ? ' (mặc định lần đặt đầu — có thể đổi mã khác)'
-                  : ' (có thể đổi mã trước khi thanh toán)'}
-              </p>
-            )}
-            {promoSuccess && <p className="booking-payment-promo-ok">{promoSuccess}</p>}
-            {promoError && <p className="booking-confirm-error">{promoError}</p>}
+            <button
+              type="button"
+              className="booking-payment-promo-bar__action"
+              onClick={openPromoModal}
+              disabled={expired || applyingPromo}
+            >
+              {appliedCode ? 'Đổi mã' : 'Thêm mã'}
+            </button>
           </div>
 
           <h2 className="booking-payment-question">Bạn muốn thanh toán thế nào?</h2>
@@ -704,6 +895,38 @@ const CustomerPaymentPage = () => {
           onConfirm={handleConfirmPay}
         />
       )}
+
+      <PromoCodeModal
+        open={showPromoModal}
+        totalPay={total}
+        eligible={eligiblePromos}
+        loadingList={loadingEligible}
+        applying={applyingPromo}
+        appliedCode={appliedCode}
+        error={promoError}
+        success={promoSuccess}
+        onClose={() => {
+          if (!applyingPromo) {
+            setShowPromoModal(false);
+            setPromoError('');
+            setPromoSuccess('');
+          }
+        }}
+        onApply={handleApplyPromo}
+        onRemove={handleRemovePromo}
+      />
+
+      <LoginForPromoModal
+        open={showLoginForPromo}
+        returnPath={location.pathname}
+        onClose={() => {
+          if (!claimingGuest) {
+            setShowLoginForPromo(false);
+            setPendingPromoCode('');
+          }
+        }}
+        onLoggedIn={handleLoggedInForPromo}
+      />
     </div>
   );
 };

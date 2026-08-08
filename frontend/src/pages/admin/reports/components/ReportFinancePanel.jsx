@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../../../services/api';
+import DateInput from '../../../../components/common/DateInput';
 import FilterActions from '../../../../components/common/management/FilterActions';
+import ListPagination from '../../../../components/common/management/ListPagination';
+import useListPagination from '../../../../hooks/useListPagination';
 import { formatCurrency } from '../../../../utils/bookingDisplay';
 import { getPresetRange, REPORT_DATE_PRESETS, riskRateTone } from '../reportHelpers';
 import { KpiCard, KpiGrid } from './ReportUI';
+
+const PAGE_SIZE = 10;
 
 const SUB_TABS = [
   { id: 'doanh_thu', label: 'Doanh thu' },
@@ -192,6 +197,18 @@ const ReportFinancePanel = () => {
     return sortRefundRows(filtered, sort);
   }, [data, search, sort]);
 
+  const activeRows = subTab === 'doanh_thu' ? revenueRows : refundRows;
+  const {
+    pagedItems,
+    currentPage,
+    totalPages,
+    setPage,
+    pageNumbers,
+    rangeFrom,
+    rangeTo,
+    showPagination,
+  } = useListPagination(activeRows, PAGE_SIZE, [subTab, search, sort, applied]);
+
   return (
     <div className="admin-reports-panel admin-reports-finance">
       <nav className="admin-reports-subtabs" aria-label="Nhóm tài chính">
@@ -265,18 +282,16 @@ const ReportFinancePanel = () => {
           <>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="finance-from">Từ ngày</label>
-              <input
+              <DateInput
                 id="finance-from"
-                type="date"
                 value={draft.tu_ngay}
                 onChange={(e) => updateDraft({ tu_ngay: e.target.value, preset: 'custom' })}
               />
             </div>
             <div className="admin-reports-finance-filter-field">
               <label htmlFor="finance-to">Đến ngày</label>
-              <input
+              <DateInput
                 id="finance-to"
-                type="date"
                 value={draft.den_ngay}
                 min={draft.tu_ngay}
                 onChange={(e) => updateDraft({ den_ngay: e.target.value, preset: 'custom' })}
@@ -389,7 +404,7 @@ const ReportFinancePanel = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {revenueRows.map((row) => (
+                    {pagedItems.map((row) => (
                       <tr key={row.ma_khach_san}>
                         <td className="is-name">{row.ten_doi_tac || '—'}</td>
                         <td className="is-name">{row.ten_khach_san || '—'}</td>
@@ -402,6 +417,17 @@ const ReportFinancePanel = () => {
                     ))}
                   </tbody>
                 </table>
+                {showPagination && (
+                  <ListPagination
+                    total={revenueRows.length}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    rangeFrom={rangeFrom}
+                    rangeTo={rangeTo}
+                    pageNumbers={pageNumbers}
+                    onPageChange={setPage}
+                  />
+                )}
               </div>
             )
           ) : refundRows.length === 0 ? (
@@ -419,7 +445,7 @@ const ReportFinancePanel = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {refundRows.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.ma_khach_san}>
                       <td className="is-name">{row.ten_doi_tac || '—'}</td>
                       <td className="is-name">{row.ten_khach_san || '—'}</td>
@@ -436,6 +462,17 @@ const ReportFinancePanel = () => {
                   ))}
                 </tbody>
               </table>
+              {showPagination && (
+                <ListPagination
+                  total={refundRows.length}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  rangeFrom={rangeFrom}
+                  rangeTo={rangeTo}
+                  pageNumbers={pageNumbers}
+                  onPageChange={setPage}
+                />
+              )}
             </div>
           )}
         </div>

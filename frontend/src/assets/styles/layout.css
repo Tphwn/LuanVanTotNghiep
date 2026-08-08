@@ -38,7 +38,6 @@ body {
   flex: 1 0 auto;
 }
 
-/* ── Site footer (customer) — emerald-900, chữ trắng ── */
 .site-footer {
   margin-top: auto;
   background: #042d22;
@@ -259,8 +258,14 @@ body {
 .sidebar-nav-admin {
   flex: 1;
   padding: 4px 10px;
-  overflow-y: hidden;
+  overflow-y: auto;
   min-height: 0;
+  scrollbar-width: none; 
+  -ms-overflow-style: none;
+}
+
+.sidebar-nav-admin::-webkit-scrollbar {
+  display: none; 
 }
 
 .sidebar-panel-admin .sidebar-menu-item {
@@ -801,12 +806,11 @@ body {
 
 .header-nav-link:hover,
 .header-nav-link.active {
-  color: #3C7363;                         /* xanh brand khi hover/active */
+  color: #3C7363;                       
   background: #f3f7f5;
   text-decoration: none;
 }
 
-/* Ghi đè index.css: không cho brand/actions chiếm full width */
 .layout-header > .header-brand,
 .layout-header > .header-nav,
 .layout-header > .header-actions {
@@ -822,8 +826,7 @@ body {
     width: auto;
   }
 }
-
-/* ===== CUSTOMER USER MENU (dropdown) ===== */
+/* khach hang */
 .customer-user-menu {
   position: relative;
   z-index: 200;
@@ -1097,7 +1100,6 @@ body {
   color: #fff;
 }
 
-/* ===== HAMBURGER (mobile) ===== */
 .hamburger {
   display: none;
   flex-direction: column;
@@ -1189,7 +1191,6 @@ body {
   flex-shrink: 0;
 }
 
-/* ===== MAIN PANEL ===== */
 .main-panel {
   flex: 1;
   padding: 24px 28px;
@@ -1200,7 +1201,6 @@ body {
   box-shadow: none;
 }
 
-/* ===== PAGE HEADER ===== */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -1225,7 +1225,6 @@ body {
   margin: 0;
 }
 
-/* ===== STATS GRID ===== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1261,7 +1260,6 @@ body {
   margin-top: 4px;
 }
 
-/* ===== CONTENT CARD ===== */
 .content-card {
   background: #fff;
   border-radius: 14px;
@@ -1269,7 +1267,7 @@ body {
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   margin-bottom: 20px;
-  overflow-x: auto; /* table scroll ngang */
+  overflow-x: auto; 
 }
 
 .content-card.finance-filter-card {
@@ -2958,8 +2956,6 @@ body {
   min-width: 1000px;
   table-layout: auto;
 }
-
-/* Mã đơn | KS | Doanh thu | Tỷ lệ | HH sàn | Thực nhận | Đối soát | Thao tác */
 .partner-finance-page .partner-finance-commission-table th:nth-child(1),
 .partner-finance-page .partner-finance-commission-table td:nth-child(1) {
   width: 14%;
@@ -2998,7 +2994,6 @@ body {
   word-break: normal;
 }
 
-/* Mã đơn | KS | Nhận/Trả | Hoàn thành | Tổng tiền | TT | Thanh toán | Thao tác */
 .partner-finance-page .partner-finance-revenue-table th:nth-child(1),
 .partner-finance-page .partner-finance-revenue-table td:nth-child(1) {
   width: 14%;
@@ -3195,7 +3190,6 @@ body {
   margin: 0;
 }
 
-/* ===== FORM GRID ===== */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3210,12 +3204,11 @@ body {
 
 .form-full { grid-column: 1 / -1; }
 
-/* ===== TABLE ===== */
 .data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  min-width: 600px; /* bắt scroll ngang khi hẹp */
+  min-width: 600px; 
 }
 
 .data-table th {
@@ -3238,7 +3231,6 @@ body {
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: #f9fafb; }
 
-/* ===== BADGE ===== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -3257,7 +3249,6 @@ body {
 .badge-info    { background: #e8f3ff; color: #175cd3; }
 .badge-default { background: #f2f4f7; color: #475467; }
 
-/* ===== ACTION BUTTONS ===== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -3288,8 +3279,6 @@ body {
 
 .btn-sm { padding: 5px 12px; font-size: 13px; }
 .btn-lg { padding: 12px 28px; font-size: 16px; }
-
-/* ===== TABLE ACTION BUTTONS (icon, không viền) ===== */
 .table-actions {
   display: flex;
   gap: 10px;
@@ -3301,7 +3290,6 @@ body {
   flex-wrap: nowrap;
 }
 
-/* Cột thao tác gom — một cột, nhiều nút icon gọn */
 .data-table .table-action-cell {
   width: 118px;
   min-width: 118px;
@@ -3377,7 +3365,6 @@ body {
 .btn-action-reply { color: #0958d9; }
 .btn-action-reply:hover:not(:disabled) { color: #0745a8; background: rgba(9, 88, 217, 0.08); }
 
-/* ===== SEARCH BAR ===== */
 .search-bar {
   display: flex;
   gap: 10px;
@@ -3398,7 +3385,6 @@ body {
 
 .search-input:focus { border-color: #3C7363; }
 
-/* ===== MODAL ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -4046,7 +4032,6 @@ a.comm-receipt-order:hover {
   border-top: 1px solid #eef2f1;
 }
 
-/* ===== ADMIN FORM MODAL ===== */
 .admin-form-modal-overlay {
   backdrop-filter: blur(4px);
   z-index: 1000;
@@ -4309,7 +4294,6 @@ a.comm-receipt-order:hover {
   }
 }
 
-/* ===== EMPTY STATE ===== */
 .empty-state {
   text-align: center;
   padding: 48px 24px;
@@ -4319,9 +4303,6 @@ a.comm-receipt-order:hover {
 .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state-text { font-size: 15px; margin: 0; }
 
-/* ============================================================
-   RESPONSIVE — TABLET (max 1024px)
-   ============================================================ */
 @media (max-width: 1024px) {
   .layout-header {
     padding: 0 16px;
@@ -4346,14 +4327,10 @@ a.comm-receipt-order:hover {
     grid-template-columns: 1fr 1fr;
   }
 
-  .header-user-text { display: none; } /* ẩn tên user khi hẹp */
+  .header-user-text { display: none; }
 }
 
-/* ============================================================
-   RESPONSIVE — MOBILE (max 768px)
-   ============================================================ */
 @media (max-width: 768px) {
-  /* Header */
   .layout-header {
     grid-template-columns: 1fr auto;
     padding: 0 12px;
@@ -4393,9 +4370,7 @@ a.comm-receipt-order:hover {
   }
 
   .brand-subtitle { display: none; }
-  .hamburger { display: flex; } /* hiện nút hamburger */
-
-  /* Sidebar — ẩn mặc định, hiện khi open */
+  .hamburger { display: flex; }
   .sidebar-panel {
     position: fixed;
     top: 64px;
@@ -4411,7 +4386,6 @@ a.comm-receipt-order:hover {
     transform: translateX(0);
   }
 
-  /* Overlay tối khi sidebar mở */
   .sidebar-overlay {
     display: block;
     position: fixed;
@@ -4421,23 +4395,17 @@ a.comm-receipt-order:hover {
     z-index: 140;
   }
 
-  /* Main */
   .main-panel { padding: 16px; }
 
-  /* Stats — 1 cột */
   .stats-grid { grid-template-columns: 1fr 1fr; }
 
-  /* Form */
   .form-grid,
   .form-grid-3 { grid-template-columns: 1fr; }
 
-  /* Page header */
   .page-header { flex-direction: column; align-items: flex-start; }
 
-  /* Modal */
   .modal-box { padding: 20px; }
 
-  /* Search */
   .search-bar { flex-direction: column; }
   .search-input { min-width: unset; width: 100%; }
 }
@@ -4447,7 +4415,6 @@ a.comm-receipt-order:hover {
   .brand-title { font-size: 14px; }
 }
 
-/* ===== MANAGEMENT PAGE (admin / partner lists) ===== */
 .mgmt-page { display: flex; flex-direction: column; gap: 20px; max-width: 100%; min-width: 0; }
 
 .mgmt-header {
@@ -4506,7 +4473,6 @@ a.comm-receipt-order:hover {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
-/* ── Ô tổng thống nhất (admin + đối tác) ── */
 .mgmt-stat-card {
   background: #fff;
   border-radius: 12px;
@@ -4527,13 +4493,11 @@ a.comm-receipt-order:hover {
   border-color: #3C7363;
 }
 
-/* Ô đang chọn: viền xanh đậm hơn */
 .mgmt-stat-card--filter.is-active {
   border-color: #2f5c4f;
   box-shadow: 0 0 0 1px rgba(47, 92, 79, 0.25);
 }
 
-/* Nền trắng + viền xanh nhạt; màu số liệu theo trạng thái */
 .mgmt-stat-card--tone-success,
 .mgmt-stat-card--tone-warning,
 .mgmt-stat-card--tone-danger,
@@ -4579,7 +4543,6 @@ a.comm-receipt-order:hover {
   flex-shrink: 0;
 }
 
-/* Admin list pages — compact toolbar (search + filters on one row) */
 .admin-hotels-page .mgmt-toolbar-block,
 .admin-users-page .mgmt-toolbar-block,
 .admin-bookings-page .mgmt-toolbar-block,
@@ -4602,7 +4565,6 @@ a.comm-receipt-order:hover {
   flex-wrap: wrap;
 }
 
-/* Người dùng / khách sạn admin: 1 hàng, khung theo nội dung */
 .admin-users-page .mgmt-toolbar--filters.mgmt-toolbar-row,
 .admin-hotels-page .mgmt-toolbar--filters.mgmt-toolbar-row {
   display: inline-flex;
@@ -4611,8 +4573,6 @@ a.comm-receipt-order:hover {
   max-width: 100%;
   gap: 12px;
 }
-
-/* Hồ sơ khách sạn đối tác: bo đủ chữ lọc, cho xuống dòng khi hẹp */
 .partner-hotels-page .mgmt-toolbar--filters.mgmt-toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -4698,10 +4658,10 @@ a.comm-receipt-order:hover {
 }
 
 .admin-bookings-page .admin-bookings-filters {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   gap: 16px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   padding: 16px 20px;
   background: #fff;
@@ -4715,14 +4675,15 @@ a.comm-receipt-order:hover {
   flex-wrap: nowrap;
   gap: 16px;
   align-items: end;
-  width: auto;
+  width: 100%;
 }
 
 .admin-bookings-page .admin-bookings-filters-row--primary {
   display: grid;
-  grid-template-columns: 280px 170px 170px;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 170px) minmax(160px, 170px);
   gap: 16px;
   align-items: end;
+  width: 100%;
 }
 
 .admin-bookings-page .admin-bookings-filters-row--primary .admin-bookings-search {
@@ -4739,14 +4700,17 @@ a.comm-receipt-order:hover {
 
 .admin-bookings-page .admin-bookings-filters-row--secondary {
   display: grid;
-  grid-template-columns: repeat(4, 170px) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(200px, 1.25fr) minmax(180px, 1.1fr) auto;
   gap: 16px;
   align-items: end;
+  width: 100%;
 }
 
 .admin-bookings-page .admin-bookings-filters-row .mgmt-select-inline {
   width: 100%;
   min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .admin-bookings-page .admin-bookings-date-field {
@@ -4985,10 +4949,10 @@ a.comm-receipt-order:hover {
 }
 
 .partner-bookings-page .partner-bookings-filters {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   gap: 16px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   padding: 16px 20px;
   background: #fff;
@@ -5002,14 +4966,15 @@ a.comm-receipt-order:hover {
   flex-wrap: nowrap;
   gap: 16px;
   align-items: end;
-  width: auto;
+  width: 100%;
 }
 
 .partner-bookings-page .partner-bookings-filters-row--primary {
   display: grid;
-  grid-template-columns: 280px 170px 170px;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 170px) minmax(160px, 170px);
   gap: 16px;
   align-items: end;
+  width: 100%;
 }
 
 .partner-bookings-page .partner-bookings-filters-row--primary .partner-bookings-search {
@@ -5026,14 +4991,17 @@ a.comm-receipt-order:hover {
 
 .partner-bookings-page .partner-bookings-filters-row--secondary {
   display: grid;
-  grid-template-columns: repeat(4, 170px) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(200px, 1.25fr) minmax(180px, 1.1fr) auto;
   gap: 16px;
   align-items: end;
+  width: 100%;
 }
 
 .partner-bookings-page .partner-bookings-filters-row .mgmt-select-inline {
   width: 100%;
   min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .partner-bookings-page .partner-bookings-date-field {
@@ -5338,8 +5306,6 @@ a.comm-receipt-order:hover {
 .mgmt-list-page .mgmt-list-table tbody tr:hover td {
   background: #f8fafc;
 }
-
-/* Admin management tables — full grid (reviews, users, hotels, bookings, ...) */
 .mgmt-list-page .admin-mgmt-table th,
 .mgmt-list-page .admin-mgmt-table td,
 .admin-mgmt-table th,
@@ -5361,7 +5327,6 @@ a.comm-receipt-order:hover {
   text-align: center;
 }
 
-/* Tiêu đề cột bảng quản lý (admin + đối tác): luôn căn giữa */
 .mgmt-page .data-table thead th,
 .mgmt-list-page .data-table thead th,
 .admin-finance-page .data-table thead th,
@@ -5458,7 +5423,6 @@ a.comm-receipt-order:hover {
   text-align: left;
 }
 
-/* Tên dài: không cắt ellipsis, cho xuống dòng */
 .admin-mgmt-table td.mgmt-col-name,
 .admin-mgmt-table td.mgmt-col-hotel,
 .admin-mgmt-table td.mgmt-col-customer,
@@ -5792,8 +5756,6 @@ a.comm-receipt-order:hover {
   box-sizing: border-box;
   overflow-x: auto;
 }
-
-/* Đánh giá / khuyến mãi: giãn ô lọc */
 .admin-reviews-filters,
 .admin-promotions-filters,
 .partner-reviews-filters,
@@ -6218,7 +6180,6 @@ a.comm-receipt-order:hover {
   object-fit: cover;
 }
 
-/* Toggle switch */
 .mgmt-toggle {
   display: inline-flex;
   align-items: center;
@@ -6367,7 +6328,6 @@ a.comm-receipt-order:hover {
   padding: 6px 4px !important;
 }
 
-/* Toàn bộ cột theo % — không cộng thêm px để tránh tràn */
 .partner-bookings-page .partner-col-customer { width: 16%; }
 .partner-bookings-page .partner-col-hotel { width: 16%; }
 .partner-bookings-page .partner-col-date { width: 9%; }
@@ -6425,7 +6385,6 @@ a.comm-receipt-order:hover {
   text-overflow: ellipsis;
 }
 
-/* Admin bookings table — cùng tỷ lệ cột với partner (không có loại phòng) */
 .admin-bookings-page .mgmt-table-scroll .data-table {
   table-layout: fixed;
   width: 100%;
@@ -6574,7 +6533,6 @@ a.comm-receipt-order:hover {
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 0.7fr);
 }
 
-/* Căn giữa toàn bộ bảng quản lý đối tác */
 .partner-bookings-page .data-table th,
 .partner-bookings-page .data-table td,
 .partner-hotels-page .data-table th,
@@ -6644,7 +6602,6 @@ a.comm-receipt-order:hover {
   width: 100%;
 }
 
-/* Loại phòng — danh sách KS: cân cột, kẻ lưới, tách ảnh–tên */
 .partner-room-mgmt .partner-room-hotels-table .partner-col-thumb {
   width: 96px;
 }
@@ -6688,7 +6645,6 @@ a.comm-receipt-order:hover {
   margin-inline: auto;
 }
 
-/* Giá & kho — hàng cao đều */
 .partner-pricing-page .mgmt-table-scroll .data-table tbody tr {
   height: 72px;
 }
@@ -6798,16 +6754,109 @@ a.comm-receipt-order:hover {
 
 .mgmt-select-inline:focus { border-color: #3C7363; }
 
+/* DateInput: hiển thị dd/mm/yyyy (thay input type=date theo locale OS) */
+.date-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 140px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #1a2e28;
+  font-size: 14px;
+}
+
+.date-input:focus-within {
+  border-color: #3C7363;
+}
+
+.date-input[data-disabled='true'] {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.date-input__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  padding: 10px 36px 10px 14px;
+  box-sizing: border-box;
+}
+
+.date-input__text::placeholder {
+  color: #94a3b8;
+}
+
+.date-input__calendar-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5a7a72;
+  cursor: pointer;
+}
+
+.date-input__calendar-btn:hover {
+  background: #f1f5f4;
+  color: #3C7363;
+}
+
+.date-input__native {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  border: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.date-input.mgmt-select-inline {
+  padding: 0;
+  min-width: 140px;
+}
+
+.date-input.input-invalid {
+  border-color: #e05c5c;
+  background: #fff5f5;
+}
+
 .mgmt-toast {
   position: fixed;
   top: 80px;
   right: 24px;
-  z-index: 999;
+  z-index: 1400; 
   padding: 12px 20px;
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  pointer-events: none;
 }
 
 .mgmt-toast.success {
@@ -6940,7 +6989,6 @@ a.comm-receipt-order:hover {
   line-height: 1.5;
 }
 
-/* Toolbar */
 .amenity-toolbar {
   display: flex;
   align-items: center;
@@ -7515,7 +7563,6 @@ a.comm-receipt-order:hover {
 
 .amenity-group-add-btn:hover { background: #f9fafb; color: #3C7363; }
 
-/* ── Request Section ── */
 .request-section-header {
   display: flex;
   align-items: flex-start;
@@ -7686,7 +7733,6 @@ a.comm-receipt-order:hover {
 .btn-request-approve:hover:not(:disabled) { background: #3C7363; }
 .btn-request-approve:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Amenity form modal ── */
 .amenity-form-name-row {
   display: flex;
   align-items: center;
@@ -7785,7 +7831,6 @@ a.comm-receipt-order:hover {
 
 .amenity-scope-btn.active .amenity-scope-label { color: #3C7363; }
 
-/* Approve modal preview */
 .amenity-approve-preview {
   display: flex;
   align-items: center;
@@ -7810,15 +7855,11 @@ a.comm-receipt-order:hover {
   flex-shrink: 0;
 }
 
-/* Icon in amenity group items */
 .amenity-group-item-icon {
   color: #5a7a72;
   flex-shrink: 0;
 }
 
-/* ===== ROOM TYPE CARDS (Partner – Quản lý Loại phòng) ===== */
-
-/* Hotel banner */
 .rt-hotel-banner {
   display: flex;
   align-items: center;
@@ -7854,14 +7895,12 @@ a.comm-receipt-order:hover {
 
 .rt-hotel-banner-info { flex: 1; min-width: 180px; }
 
-/* Card list */
 .rt-card-list {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* Room type card */
 .rt-card {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -7874,7 +7913,6 @@ a.comm-receipt-order:hover {
 .rt-card:hover { box-shadow: 0 4px 16px rgba(60,115,99,0.12); }
 .rt-card-inactive { opacity: 0.7; }
 
-/* Card header bar */
 .rt-card-header {
   display: flex;
   align-items: center;
@@ -7956,14 +7994,12 @@ a.comm-receipt-order:hover {
 }
 .rt-action-unlock:hover { background: rgba(82,196,26,0.25); }
 
-/* Card body: 2-col layout */
 .rt-card-body {
   display: flex;
   gap: 0;
   min-height: 200px;
 }
 
-/* Left – images */
 .rt-card-images {
   width: 340px;
   flex-shrink: 0;
@@ -8021,7 +8057,6 @@ a.comm-receipt-order:hover {
 }
 .rt-change-img-btn:hover { background: rgba(26,46,40,0.92); }
 
-/* Thumbnail strip */
 .rt-thumb-strip {
   display: flex;
   gap: 4px;
@@ -8062,7 +8097,6 @@ a.comm-receipt-order:hover {
 }
 .rt-thumb-add:hover { background: #e8f5f1; border-color: #3C7363; }
 
-/* Right – details */
 .rt-card-details {
   flex: 1;
   padding: 18px 22px;
@@ -8100,7 +8134,6 @@ a.comm-receipt-order:hover {
   font-size: 13px;
 }
 
-/* Amenities section */
 .rt-amenities-section {
   padding: 14px 20px;
   border-top: 1px solid #f1f5f9;
@@ -8140,7 +8173,6 @@ a.comm-receipt-order:hover {
 
 .rt-amenity-chip svg { color: #3C7363; }
 
-/* Card footer */
 .rt-card-footer {
   padding: 12px 20px;
   border-top: 1px solid #f1f5f9;
@@ -8165,7 +8197,6 @@ a.comm-receipt-order:hover {
 }
 .rt-footer-btn:hover { background: #e8f5f1; border-style: solid; }
 
-/* Hotel picker card */
 .hotel-picker-card {
   text-align: left;
   border: 1.5px solid #e5e7eb;
@@ -8237,7 +8268,6 @@ a.comm-receipt-order:hover {
   .amenity-tab-btn { border-radius: 8px; }
 }
 
-/* ===== PARTNER ROOM MANAGEMENT (TABLE LAYOUT) ===== */
 .partner-room-mgmt {
   display: flex;
   flex-direction: column;
@@ -8663,8 +8693,6 @@ a.comm-receipt-order:hover {
     grid-template-columns: 1fr;
   }
 }
-
-/* ===== ADMIN HOTEL DETAIL PAGE ===== */
 .admin-hotel-detail-page {
   max-width: 1200px;
 }
@@ -8992,8 +9020,6 @@ a.comm-receipt-order:hover {
     grid-template-columns: 1fr;
   }
 }
-
-/* ===== ADMIN USER DETAIL PAGE ===== */
 .admin-user-detail-page {
   display: flex;
   flex-direction: column;
@@ -9230,7 +9256,6 @@ a.comm-receipt-order:hover {
   text-align: center;
 }
 
-/* ===== ADMIN USER DETAIL MODAL ===== */
 .admin-user-detail-modal {
   max-width: 720px;
   width: calc(100% - 32px);
@@ -9418,15 +9443,12 @@ a.comm-receipt-order:hover {
     margin-left: auto;
   }
 }
-
-/* ===== BOOKING DETAIL MODAL (Partner/Admin) ===== */
 .booking-detail-modal {
   max-width: 920px;
   max-height: 90vh;
   overflow-y: auto;
 }
 
-/* ===== Admin booking detail — panel bên phải ===== */
 .booking-drawer-overlay {
   position: fixed;
   inset: 0;
@@ -9538,6 +9560,42 @@ a.comm-receipt-order:hover {
   font-size: 14px;
   font-weight: 700;
   color: #1a2e28;
+}
+
+.booking-drawer-muted {
+  margin: 0;
+  font-size: 13px;
+  color: #8a9e97;
+}
+
+.booking-drawer-nightly-wrap {
+  overflow-x: auto;
+  border: 1px solid #e8eee9;
+  border-radius: 10px;
+}
+
+.booking-drawer-nightly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.booking-drawer-nightly-table th,
+.booking-drawer-nightly-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #eef3f1;
+  white-space: nowrap;
+}
+
+.booking-drawer-nightly-table th {
+  background: #f6faf8;
+  color: #5a7a72;
+  font-weight: 600;
+}
+
+.booking-drawer-nightly-table tr:last-child td {
+  border-bottom: none;
 }
 
 .booking-drawer-field {
@@ -9809,7 +9867,6 @@ a.comm-receipt-order:hover {
   margin-top: 0;
 }
 
-/* ===== PARTNER HOTEL DETAIL (legacy) ===== */
 .partner-hotel-detail-card {
   padding: 20px;
 }
@@ -10118,7 +10175,6 @@ a.comm-receipt-order:hover {
   }
 }
 
-/* Partner reviews */
 .review-star-score {
   font-weight: 600;
   color: #b36b00;
@@ -10175,7 +10231,6 @@ a.comm-receipt-order:hover {
   color: #888;
 }
 
-/* Partner review management */
 .partner-reviews-stats {
   margin-bottom: 16px;
 }
@@ -10304,8 +10359,6 @@ a.comm-receipt-order:hover {
   gap: 12px;
   margin-bottom: 12px;
 }
-
-/* Customer review form */
 .customer-review-modal {
   max-width: 560px;
   width: 100%;
@@ -10399,7 +10452,6 @@ a.comm-receipt-order:hover {
   }
 }
 
-/* ===== ADMIN REVIEWS PAGE ===== */
 .admin-reviews-page {
   gap: 16px;
 }
@@ -10586,7 +10638,6 @@ a.comm-receipt-order:hover {
   }
 }
 
-/* ===== REVIEW MODERATION NOTICE (ẩn/hiện đánh giá) ===== */
 .review-moderation-notice {
   margin: 0 0 14px;
   padding: 16px;
@@ -10682,7 +10733,6 @@ a.comm-receipt-order:hover {
   color: #14532d;
 }
 
-/* ── Ô nhập lý do dùng chung (ReasonField) ── */
 .reason-field {
   margin-top: 16px;
 }
@@ -10748,7 +10798,6 @@ a.comm-receipt-order:hover {
   color: #64748b;
 }
 
-/* ===== PARTNER ACCOUNT MANAGEMENT ===== */
 .partner-account-page {
   gap: 14px;
 }
@@ -11037,8 +11086,6 @@ a.comm-receipt-order:hover {
   border: 1px solid #8FD9C4;
   color: #3C7363;
 }
-
-/* ===== ADMIN REPORTS ANALYTICS ===== */
 .admin-reports-page {
   max-width: 1280px;
 }
@@ -11163,13 +11210,24 @@ a.comm-receipt-order:hover {
   gap: 8px;
 }
 
-.admin-reports-custom-range input {
+.admin-reports-custom-range input,
+.admin-reports-custom-range .date-input {
   padding: 7px 10px;
   border: 1px solid #d4ede6;
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
   background: #fff;
+}
+
+.admin-reports-custom-range .date-input {
+  padding: 0;
+  min-width: 150px;
+}
+
+.admin-reports-custom-range .date-input .date-input__text {
+  padding: 7px 34px 7px 10px;
+  font-size: 13px;
 }
 
 .admin-reports-range-sep {
@@ -11271,7 +11329,8 @@ a.comm-receipt-order:hover {
 }
 
 .admin-reports-finance-filter-field select,
-.admin-reports-finance-filter-field input {
+.admin-reports-finance-filter-field input,
+.admin-reports-finance-filter-field .date-input {
   height: 34px;
   border: 1px solid #d4ede6;
   border-radius: 8px;
@@ -11280,6 +11339,17 @@ a.comm-receipt-order:hover {
   color: #1a2e28;
   background: #fff;
   min-width: 160px;
+  box-sizing: border-box;
+}
+
+.admin-reports-finance-filter-field .date-input {
+  padding: 0;
+}
+
+.admin-reports-finance-filter-field .date-input .date-input__text {
+  height: 100%;
+  padding: 0 34px 0 10px;
+  font-size: 13px;
 }
 
 .admin-reports-finance-search {
@@ -11681,8 +11751,7 @@ a.comm-receipt-order:hover {
     align-items: stretch;
   }
 }
-
-/* ── Admin Dashboard (trang chủ) ─────────────────────────── */
+/* admin */
 .admin-dashboard-page {
   gap: 16px;
 }
@@ -11879,8 +11948,7 @@ a.comm-receipt-order:hover {
     grid-template-columns: 1fr;
   }
 }
-
-/* ── Partner Dashboard ───────────────────────────────────── */
+/* doi tac */
 .partner-dashboard-page {
   gap: 16px;
 }
@@ -12121,7 +12189,6 @@ button.partner-dashboard-task-card,
   }
 }
 
-/* ── Admin promotions table ── */
 .admin-promo-checkbox-label {
   display: flex;
   align-items: flex-start;
@@ -12276,7 +12343,6 @@ button.partner-dashboard-task-card,
   justify-content: center;
 }
 
-/* ===== AUTH SPLIT (login / register) ===== */
 .app-shell > .main-panel-full:has(.auth-split) {
   display: flex;
   flex-direction: column;
@@ -12393,4 +12459,128 @@ button.partner-dashboard-task-card,
   .auth-split {
     grid-template-rows: minmax(120px, 26vh) minmax(0, 1fr);
   }
+}
+
+.system-settings-card {
+  padding: 28px 28px 24px;
+  max-width: 640px;
+}
+
+.system-settings-loading {
+  margin: 0;
+  color: #5a7a72;
+}
+
+.system-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.system-settings-card-title {
+  margin: 0 0 24px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a2e28;
+  letter-spacing: 0.01em;
+}
+
+.system-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.system-settings-input-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 280px;
+  border: 1.5px solid #cfe6dd;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.system-settings-input-group:focus-within {
+  border-color: #3C7363;
+  box-shadow: 0 0 0 3px rgba(60, 115, 99, 0.12);
+}
+
+.system-settings-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  color: #1a2e28;
+}
+
+.system-settings-input::-webkit-outer-spin-button,
+.system-settings-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.system-settings-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.system-settings-input-addon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 14px;
+  background: #eef6f2;
+  border-left: 1.5px solid #cfe6dd;
+  color: #3C7363;
+  font-size: 14px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.system-settings-hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5a7a72;
+}
+
+.system-settings-divider {
+  height: 0;
+  margin: 22px 0;
+  border: none;
+  border-top: 1.5px dashed #cfe6dd;
+}
+
+.system-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+
+.system-settings-save-btn {
+  background: #3C7363;
+  border-color: #3C7363;
+  color: #fff;
+  min-width: 140px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.system-settings-save-btn:hover:not(:disabled) {
+  background: #2f5c50;
+  border-color: #2f5c50;
+}
+
+.system-settings-save-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }

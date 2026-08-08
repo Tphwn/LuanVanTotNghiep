@@ -1,3 +1,4 @@
+// thông báo đánh giá của admin 
 const ReviewModerationNotice = ({
   variant = 'hidden',
   title,

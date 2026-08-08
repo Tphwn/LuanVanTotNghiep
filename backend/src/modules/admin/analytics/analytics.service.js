@@ -301,7 +301,6 @@ const analyticsService = {
       nhom,
       charts: {
         dien_bien_tai_chinh: dienBien,
-        // Giữ key cũ để tương thích chỗ khác (nếu có)
         doanh_thu_theo_thoi_gian: dienBien.map((r) => ({
           key: r.key,
           label: r.label,

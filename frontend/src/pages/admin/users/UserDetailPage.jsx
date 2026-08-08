@@ -29,7 +29,7 @@ const formatUpdateTime = (date) => {
   if (!date) return '—';
   const d = new Date(date);
   const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${time} ${d.toLocaleDateString('vi-VN')}`;
+  return `${time} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 };
 
 const getNameInitial = (name) => {
@@ -150,7 +150,7 @@ export default function UserDetailPage() {
     const doanhThu = user?.thong_ke_doi_tac?.tong_doanh_thu ?? 0;
     return [
       { label: 'Đơn', value: user?.thong_ke_doi_tac?.tong_don_dat ?? 0 },
-      { label: 'Doanh thu', value: doanhThu ? formatCurrency(doanhThu) : '0 ₫' },
+      { label: 'Doanh thu', value: doanhThu ? formatCurrency(doanhThu) : formatCurrency(0) },
       { label: 'Khách sạn', value: hotels.length },
       { label: 'Khách sạn chờ duyệt', value: choDuyet, tone: 'warning' },
     ];
@@ -257,7 +257,7 @@ export default function UserDetailPage() {
                     {' '}
                     {partner?.phan_tram_hoa_hong != null && partner.phan_tram_hoa_hong !== ''
                       ? `${Number(partner.phan_tram_hoa_hong)}%`
-                      : '15% (mặc định)'}
+                      : '—'}
                   </span>
                 </li>
               )}

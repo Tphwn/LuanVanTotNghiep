@@ -13,9 +13,9 @@ const toText = (value) => {
 };
 
 const toCommissionText = (value) => {
-  if (value == null || value === '') return '15';
+  if (value == null || value === '') return '';
   const num = Number(value);
-  return Number.isFinite(num) ? String(num) : '15';
+  return Number.isFinite(num) ? String(num) : '';
 };
 
 const buildForm = (user) => {
@@ -35,7 +35,7 @@ const EMPTY_FORM = {
   ten_cong_ty: '',
   ma_so_thue: '',
   dia_chi: '',
-  phan_tram_hoa_hong: '15',
+  phan_tram_hoa_hong: '',
   email: '',
   so_dien_thoai: '',
   trang_thai: 'hoat_dong',
@@ -91,7 +91,9 @@ const EditPartnerModal = ({ isOpen, user, onClose, onSuccess }) => {
     else if (!emailRegex.test(formData.email.trim())) errors.email = 'Email đăng nhập không hợp lệ';
     const phoneErr = validatePhone(formData.so_dien_thoai);
     if (phoneErr) errors.so_dien_thoai = phoneErr;
-    if (formData.phan_tram_hoa_hong !== '') {
+    if (formData.phan_tram_hoa_hong === '') {
+      errors.phan_tram_hoa_hong = 'Tỉ lệ hoa hồng là bắt buộc';
+    } else {
       const pct = Number(formData.phan_tram_hoa_hong);
       if (Number.isNaN(pct) || pct < 0 || pct > 100) {
         errors.phan_tram_hoa_hong = 'Hoa hồng phải từ 0 đến 100';
@@ -115,9 +117,7 @@ const EditPartnerModal = ({ isOpen, user, onClose, onSuccess }) => {
         ten_cong_ty: formData.ten_cong_ty.trim(),
         ma_so_thue: formData.ma_so_thue.trim() || null,
         dia_chi: formData.dia_chi.trim() || null,
-        phan_tram_hoa_hong: formData.phan_tram_hoa_hong === ''
-          ? 15
-          : Number(formData.phan_tram_hoa_hong),
+        phan_tram_hoa_hong: Number(formData.phan_tram_hoa_hong),
         email: formData.email.trim(),
         so_dien_thoai: formData.so_dien_thoai.trim(),
         trang_thai: formData.trang_thai,
@@ -181,12 +181,17 @@ const EditPartnerModal = ({ isOpen, user, onClose, onSuccess }) => {
               <input type="text" placeholder="VD: 0312345678" {...inputProps('ma_so_thue')} />
             </div>
             <div>
-              <label style={labelStyle}>Tỉ lệ hoa hồng (%)</label>
+              <label style={labelStyle}>
+                Tỉ lệ hoa hồng (%)
+                {' '}
+                <span style={{ color: '#e05c5c' }}>*</span>
+              </label>
               <input
                 type="number"
                 min="0"
                 max="100"
                 step="0.01"
+                placeholder="VD: 15"
                 {...inputProps('phan_tram_hoa_hong')}
               />
               {fieldErrors.phan_tram_hoa_hong && (

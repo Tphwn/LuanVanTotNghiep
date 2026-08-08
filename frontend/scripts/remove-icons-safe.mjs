@@ -21,7 +21,6 @@ function walk(dir, files = []) {
 function clean(content) {
   let c = content;
 
-  // Star ratings → text
   c = c.replace(/`\$\{"⭐"\.repeat\(([^)]+)\)\}`/g, '`${$1} sao`');
   c = c.replace(/`\$\{"⭐"\.repeat\(([^)]+)\)\} \(\$\{([^}]+)\}\)`/g, '`${$1} sao ($2)`');
 

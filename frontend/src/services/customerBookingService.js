@@ -10,6 +10,13 @@ const customerBookingService = {
   confirmPayment: (id, data) => api.patch(`/customer/bookings/${id}/pay`, data),
   createVnpayPayment: (id) => api.post(`/customer/bookings/${id}/pay/vnpay`),
   applyPromo: (id, data) => api.patch(`/customer/bookings/${id}/apply-promo`, data),
+  removePromo: (id) => api.patch(`/customer/bookings/${id}/remove-promo`),
+  claimGuestBooking: (id, guestToken) => api.post(
+    `/customer/bookings/${id}/claim-guest`,
+    { guest_token: guestToken },
+    { headers: guestToken ? { 'X-Guest-Token': guestToken } : {} },
+  ),
+  getEligiblePromotions: (id) => api.get(`/customer/bookings/${id}/eligible-promotions`),
   getCancelPreview: (id) => api.get(`/customer/bookings/${id}/cancel-preview`),
   cancelBooking: (id, lyDo) => api.patch(`/customer/bookings/${id}/cancel`, { ly_do: lyDo }),
   createReview: (bookingId, data) => api.post(`/customer/bookings/${bookingId}/review`, data),

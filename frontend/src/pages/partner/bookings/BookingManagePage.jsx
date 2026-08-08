@@ -8,6 +8,7 @@ import {
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import SearchBar from '../../../components/common/management/SearchBar';
 import FilterActions from '../../../components/common/management/FilterActions';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import BookingTable from '../../../components/booking/BookingTable';
@@ -414,8 +415,7 @@ const BookingManagePage = () => {
 
             <label className="partner-bookings-date-field">
               <span>Check-in</span>
-              <input
-                type="date"
+              <DateInput
                 className="mgmt-select-inline"
                 value={checkInDate}
                 onChange={(e) => handleCheckInDateChange(e.target.value)}
@@ -425,8 +425,7 @@ const BookingManagePage = () => {
 
             <label className="partner-bookings-date-field">
               <span>Check-out</span>
-              <input
-                type="date"
+              <DateInput
                 className="mgmt-select-inline"
                 value={checkOutDate}
                 onChange={(e) => handleCheckOutDateChange(e.target.value)}

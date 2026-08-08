@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../../services/api";
 import { Eye } from "lucide-react";
 import ActionButton, { ActionCell } from "../../../components/common/ActionButton";
+import DateInput from "../../../components/common/DateInput";
 import FilterActions from "../../../components/common/management/FilterActions";
 import ListPagination from "../../../components/common/management/ListPagination";
 import useListPagination from "../../../hooks/useListPagination";
@@ -430,11 +431,11 @@ const ReportsPage = () => {
                 <>
                 <div className="mgmt-filter-field">
                   <label className="mgmt-filter-label" htmlFor="report-from-date">Từ ngày</label>
-                  <input id="report-from-date" type="date" className="mgmt-select-inline" value={tuNgay} onChange={(e) => setTuNgay(e.target.value)} />
+                  <DateInput id="report-from-date" className="mgmt-select-inline" value={tuNgay} onChange={(e) => setTuNgay(e.target.value)} />
                   </div>
                 <div className="mgmt-filter-field">
                   <label className="mgmt-filter-label" htmlFor="report-to-date">Đến ngày</label>
-                  <input id="report-to-date" type="date" className="mgmt-select-inline" value={denNgay} min={tuNgay} onChange={(e) => setDenNgay(e.target.value)} />
+                  <DateInput id="report-to-date" className="mgmt-select-inline" value={denNgay} min={tuNgay} onChange={(e) => setDenNgay(e.target.value)} />
                   </div>
                 </>
               )}

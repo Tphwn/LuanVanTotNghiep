@@ -11,7 +11,7 @@ const TONE = {
 
 const make = (label, tone) => ({ label, ...TONE[tone] });
 
-// ── Đặt phòng ───────────────────────────────────────────────
+// đặt phòng
 export const BOOKING_STATUS = {
   cho_xac_nhan: make('Chờ check-in', 'info'),
   da_xac_nhan: make('Chờ check-in', 'info'),
@@ -20,44 +20,37 @@ export const BOOKING_STATUS = {
   da_huy: make('Đã hủy', 'danger'),
   tu_choi: make('Đã hủy', 'danger'),
 };
-
-// ── Khách sạn ───────────────────────────────────────────────
+// khách sạn
 export const HOTEL_STATUS = {
   cho_duyet: make('Chờ duyệt', 'warning'),
   da_duyet: make('Đã duyệt', 'success'),
   hoat_dong: make('Đang hoạt động', 'success'),
   tu_choi: make('Từ chối', 'danger'),
-  yeu_cau_sua: make('Yêu cầu sửa', 'warning'),
   bi_khoa: make('Tạm ngừng', 'locked'),
 };
-
-// ── Loại phòng ──────────────────────────────────────────────
+// loại phòng
 export const ROOM_TYPE_STATUS = {
   hoat_dong: make('Đang hoạt động', 'success'),
   an: make('Đã ẩn', 'muted'),
 };
-
-// ── Đánh giá ────────────────────────────────────────────────
+// đánh giá
 export const REVIEW_STATUS = {
   hien_thi: make('Hiển thị', 'success'),
   an: make('Đã ẩn', 'muted'),
 };
-
-// ── Hoàn tiền ───────────────────────────────────────────────
+// hoàn tiền
 export const REFUND_STATUS = {
   cho_xu_ly: make('Chờ xử lý', 'warning'),
   dang_xu_ly: make('Đang xử lý', 'info'),
   da_hoan: make('Đã hoàn', 'success'),
   tu_choi: make('Từ chối', 'danger'),
 };
-
-// ── Tài khoản người dùng ────────────────────────────────────
+// tài khoản người dùng
 export const ACCOUNT_STATUS = {
   hoat_dong: make('Đang hoạt động', 'success'),
   bi_khoa: make('Đã khóa', 'locked'),
 };
-
-// ── Khuyến mãi ──────────────────────────────────────────────
+// khuyến mãi
 export const PROMOTION_STATUS = {
   cho_duyet: make('Chờ duyệt', 'warning'),
   hoat_dong: make('Đang hoạt động', 'success'),
@@ -69,19 +62,15 @@ export const PROMOTION_STATUS = {
 
 const fallback = (key) => ({ label: key || '—', badge: 'badge-default', text: 'mgmt-status-text--muted' });
 
-/** Lấy meta dạng badge (pill nền màu): { label, cls } */
 export const badgeMeta = (map, key) => {
   const meta = map[key] || fallback(key);
   return { label: meta.label, cls: meta.badge };
 };
 
-/** Lấy meta dạng text màu (list quản lý): { label, cls } */
 export const textMeta = (map, key) => {
   const meta = map[key] || fallback(key);
   return { label: meta.label, cls: meta.text };
 };
-
-/** Dựng map { key: { label, cls } } sẵn cho từng biến thể để dùng trực tiếp tại call site */
 const buildMap = (source, variant) => Object.fromEntries(
   Object.keys(source).map((key) => [
     key,
@@ -100,7 +89,6 @@ export const ACCOUNT_TEXT = buildMap(ACCOUNT_STATUS, 'text');
 export const PROMOTION_BADGE = buildMap(PROMOTION_STATUS, 'badge');
 export const PROMOTION_TEXT = buildMap(PROMOTION_STATUS, 'text');
 
-/** Trạng thái hiển thị khuyến mãi (admin): khóa / hết hạn / hết lượt / đang chạy */
 export const getPromotionStatusMeta = (item, { variant = 'badge' } = {}) => {
   const status = item?.trang_thai;
   const asBadge = variant !== 'text';

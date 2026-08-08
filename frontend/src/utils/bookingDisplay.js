@@ -54,7 +54,11 @@ export const CUSTOMER_PAYMENT_METHOD = {
 };
 export const formatBookingDate = (d) => {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('vi-VN');
+  return new Date(d).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 };
 export const buildCancelNoticeContent = (refundInfo) => {
   if (!refundInfo) return null;
@@ -71,7 +75,7 @@ export const buildCancelNoticeContent = (refundInfo) => {
 
   let policyLine = '';
   if (needsRefund) {
-    policyLine = `Theo chính sách: khách được hoàn lại ${phanTram}% số tiền (tương đương ${refundAmount.toLocaleString('vi-VN')}đ).`;
+    policyLine = `Theo chính sách: khách được hoàn lại ${phanTram}% số tiền (tương đương ${refundAmount.toLocaleString('vi-VN')} VNĐ).`;
   } else if (paid) {
     policyLine = 'Theo chính sách hủy, khách không được hoàn tiền cho đơn này.';
   } else {
@@ -273,11 +277,16 @@ export const getPaymentDisplay = (booking) => {
 export const getPaymentFilterKey = (booking) =>
   getPaymentDisplay(booking).filterKey || 'khac';
 
-export const formatCurrency = (amount) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+export { formatCurrency } from './formatCurrency';
 
 export const formatDate = (date) =>
-  date ? new Date(date).toLocaleDateString('vi-VN') : '—';
+  date
+    ? new Date(date).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    : '—';
 
 /** Đã qua ngày trả phòng — không còn check-in/check-out */
 export const isBookingStayEnded = (checkoutDate) => {
@@ -332,11 +341,25 @@ export const formatOrderTime = (date) => {
     second: '2-digit',
     hour12: false,
   });
-  return `${time} ${d.toLocaleDateString('vi-VN')}`;
+  return `${time} ${d.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })}`;
 };
 
 export const formatDateTime = (date) =>
-  date ? new Date(date).toLocaleString('vi-VN') : '—';
+  date
+    ? new Date(date).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+    : '—';
 
 export const diffDays = (from, to) => {
   const d = new Date(to) - new Date(from);

@@ -127,8 +127,6 @@ const getDashboard = async (doiTacId) => {
     const moBan = Number(room.so_luong_mo_ban) || 0;
     tongMoBan += moBan;
     phongTrongHomNay += conLai;
-    // Chỉ cảnh báo khi gần hết thật: còn ≤2 phòng VÀ (đã có đơn giữ chỗ hoặc vốn mở bán >2)
-    // Tránh đếm nhầm loại phòng nhỏ chỉ mở bán 1–2 phòng mà chưa ai đặt.
     if (moBan > 0 && conLai <= 2 && (daDat > 0 || moBan > 2)) {
       phongSapHet += 1;
     }

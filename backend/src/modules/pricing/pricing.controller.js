@@ -26,7 +26,6 @@ const verifyRoomOwnership = async (doiTacId, roomIds) => {
   }
 };
 
-// Lấy ds KS + loại phòng của đối tác
 exports.getMyHotels = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);
@@ -38,7 +37,6 @@ exports.getMyHotels = async (req, res) => {
   }
 };
 
-// Lịch quản lý giá + kho phòng theo ngày
 exports.getManagementCalendar = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);
@@ -148,8 +146,6 @@ exports.restoreBasePrices = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
-
-// Xóa giá đặc biệt (1 ngày)
 exports.deletePrice = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);
@@ -169,8 +165,6 @@ exports.deletePrice = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-// Xóa giá đặc biệt hàng loạt
 exports.deletePricesBulk = async (req, res) => {
   try {
     const doiTacId = await getDoiTacId(req.user.id);

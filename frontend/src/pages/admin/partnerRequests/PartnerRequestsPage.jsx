@@ -29,7 +29,6 @@ const PartnerRequestsPage = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [keyword, setKeyword] = useState('');
-  const [draftKeyword, setDraftKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -76,12 +75,7 @@ const PartnerRequestsPage = () => {
     { id: 'tu_choi', label: 'Từ chối', count: stats?.tu_choi ?? 0, tone: 'danger' },
   ], [stats, items.length]);
 
-  const applyFilters = () => {
-    setKeyword(draftKeyword);
-  };
-
   const clearFilters = () => {
-    setDraftKeyword('');
     setKeyword('');
     setStatusFilter('all');
   };
@@ -133,14 +127,26 @@ const PartnerRequestsPage = () => {
       />
 
       <ManagementToolbar
-        searchValue={draftKeyword}
-        onSearchChange={(e) => setDraftKeyword(e.target.value)}
+        searchValue={keyword}
+        onSearchChange={(e) => setKeyword(e.target.value)}
         searchPlaceholder="Tìm mã, tên, SĐT, khách sạn, email..."
         tabs={filterTabs}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
       >
-        <FilterActions onApply={applyFilters} onClear={clearFilters} />
+        <select
+          className="mgmt-select-inline"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Lọc theo trạng thái"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="cho_xu_ly">Chờ xử lý</option>
+          <option value="da_lien_he">Đã liên hệ</option>
+          <option value="da_hop_tac">Đã hợp tác</option>
+          <option value="tu_choi">Từ chối</option>
+        </select>
+        <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 
       <div className="mgmt-table-card mgmt-table-card--grid">

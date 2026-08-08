@@ -5,12 +5,12 @@ import ActionButton, { ActionCell } from '../../../components/common/ActionButto
 import ManagementHeader from '../../../components/common/management/ManagementHeader';
 import FilterActions from '../../../components/common/management/FilterActions';
 import SummaryStats from '../../../components/common/management/SummaryStats';
+import DateInput from '../../../components/common/DateInput';
 import ListPagination from '../../../components/common/management/ListPagination';
 import useListPagination from '../../../hooks/useListPagination';
 import ReviewDetailModal from './components/ReviewDetailModal';
 import RespondModal from './components/RespondModal';
-
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
+import { formatDateVN as formatDate } from '../../../utils/formatDate';
 
 const StarScore = ({ value }) => (
   <span className="review-star-score">{value ?? '—'}/5</span>
@@ -234,9 +234,8 @@ const ReviewsPage = () => {
         </div>
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-from">Từ ngày</label>
-          <input
+          <DateInput
             id="partner-review-from"
-            type="date"
             className="mgmt-select-inline"
             value={tuNgay}
             onChange={(e) => setTuNgay(e.target.value)}
@@ -244,9 +243,8 @@ const ReviewsPage = () => {
         </div>
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-to">Đến ngày</label>
-          <input
+          <DateInput
             id="partner-review-to"
-            type="date"
             className="mgmt-select-inline"
             value={denNgay}
             min={tuNgay}
