@@ -15,6 +15,8 @@ const RoomOfferCard = ({
   soPhong = 1,
   nights = 1,
   onBook,
+  booking = false,
+  bookingDisabled = false,
 }) => {
   const stayNights = Math.max(Number(room.so_dem) || Number(nights) || 1, 1);
   const images = room.hinh_anh?.length ? room.hinh_anh : [];
@@ -99,8 +101,9 @@ const RoomOfferCard = ({
           )}
           <CustomerButton
             className="hotel-room-offer-cta"
-            disabled={isSoldOut}
-            onClick={() => !isSoldOut && onBook(room.ma_loai_phong)}
+            disabled={isSoldOut || bookingDisabled}
+            loading={booking}
+            onClick={() => !isSoldOut && !bookingDisabled && onBook(room.ma_loai_phong)}
           >
             {isSoldOut ? 'Hết phòng' : 'Đặt phòng ngay'}
           </CustomerButton>

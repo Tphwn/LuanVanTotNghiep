@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
 const CustomerButton = ({
   children,
@@ -7,23 +8,33 @@ const CustomerButton = ({
   type = 'button',
   className = '',
   disabled = false,
+  loading = false,
   fullWidth = false,
   size,
   ...rest
 }) => {
+  const busy = disabled || loading;
   const classes = [
     'btn',
     'btn-primary',
     'customer-cta',
     size === 'sm' && 'btn-sm',
     fullWidth && 'customer-btn--full',
+    loading && 'is-loading',
     className,
   ].filter(Boolean).join(' ');
 
-  if (to && disabled) {
+  const content = loading ? (
+    <>
+      <Loader2 className="customer-cta-spinner" size={16} strokeWidth={2.25} aria-hidden />
+      <span>{typeof children === 'string' ? 'Đang xử lý...' : children}</span>
+    </>
+  ) : children;
+
+  if (to && busy) {
     return (
       <span className={`${classes} customer-cta--disabled`} aria-disabled="true" {...rest}>
-        {children}
+        {content}
       </span>
     );
   }
@@ -41,10 +52,11 @@ const CustomerButton = ({
       type={type}
       className={classes}
       onClick={onClick}
-      disabled={disabled}
+      disabled={busy}
+      aria-busy={loading ? 'true' : undefined}
       {...rest}
     >
-      {children}
+      {content}
     </button>
   );
 };

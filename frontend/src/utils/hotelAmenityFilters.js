@@ -1,4 +1,3 @@
-/** Phân loại tiện nghi khách sạn cho bộ lọc tìm kiếm (không phụ thuộc React icons) */
 
 export const HOTEL_AMENITY_CATEGORIES = [
   {

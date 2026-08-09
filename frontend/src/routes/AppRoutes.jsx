@@ -82,7 +82,6 @@ const AppRoutes = () => {
     <BrowserRouter>
       <Routes>
         <Route path={ROUTES.LOGIN} element={
-          /* Chỉ khách đã login mới bỏ qua form; đối tác vào /login để đăng nhập lại TK khác */
           token && user?.vai_tro === ROLES.KHACH_HANG
             ? <Navigate to={getRedirectRoute(user)} replace />
             : <MainLayout fullBleed><LoginPage /></MainLayout>

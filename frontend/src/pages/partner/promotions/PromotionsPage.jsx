@@ -90,7 +90,6 @@ const canPartnerRestore = (item) => (
 
 const canPartnerLock = (item) => item.trang_thai === 'hoat_dong' && !item.khoa_boi_admin;
 
-/** Cho phép sửa kể cả khi admin khóa — chỉ hoạt động lại sau khi admin mở. */
 const canPartnerEdit = () => true;
 
 const emptyForm = {

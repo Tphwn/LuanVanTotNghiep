@@ -19,6 +19,7 @@ import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
 import RoomOfferCard from '../../components/customer/RoomOfferCard';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import HotelSearchBar from '../../components/customer/search/HotelSearchBar';
 import CustomerPromotionStrip from '../../components/customer/CustomerPromotionStrip';
 import publicHotelService from '../../services/publicHotelService';
@@ -276,6 +277,7 @@ const CustomerHotelDetailPage = () => {
   const roomListRef = useRef(null);
   const stickyBarRef = useRef(null);
   const [stickyBarHeight, setStickyBarHeight] = useState(110);
+  const [bookingRoomId, setBookingRoomId] = useState(null);
 
   useEffect(() => {
     publicHotelService.getLocations()
@@ -397,7 +399,9 @@ const CustomerHotelDetailPage = () => {
   const handleBookRoom = (roomId) => {
     const room = hotel?.loai_phong?.find((r) => r.ma_loai_phong === roomId);
     if (!room || (room.phong_con_lai ?? 0) < Number(query.so_phong || 1)) return;
+    if (bookingRoomId) return;
 
+    setBookingRoomId(roomId);
     const bookingUrl = buildBookingUrl(id, roomId, query);
     // Cho phép đặt không đăng nhập; chỉ chặn admin/đối tác ở trang xác nhận
     navigate(bookingUrl, {
@@ -408,8 +412,8 @@ const CustomerHotelDetailPage = () => {
   if (loading) {
     return (
       <div className="hotel-detail-page">
-        <div className="content-card" style={{ textAlign: 'center', padding: 64, color: '#5a7a72' }}>
-          Đang tải chi tiết khách sạn...
+        <div className="content-card">
+          <CustomerLoadingState message="Đang tải chi tiết khách sạn..." />
         </div>
       </div>
     );
@@ -591,6 +595,8 @@ const CustomerHotelDetailPage = () => {
                 soPhong={Number(query.so_phong) || 1}
                 nights={nights}
                 onBook={handleBookRoom}
+                booking={bookingRoomId === room.ma_loai_phong}
+                bookingDisabled={Boolean(bookingRoomId)}
               />
             ))}
           </div>

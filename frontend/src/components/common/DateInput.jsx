@@ -1,11 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { displayDateToIso, isoToDisplayDate } from '../../utils/formatDate';
-
-/**
- * Ô chọn ngày hiển thị dd/mm/yyyy, value nội bộ vẫn là yyyy-MM-dd (giống input type="date").
- * onChange nhận synthetic event: { target: { value: 'yyyy-MM-dd' } }
- */
+//component chọn ngày tháng năm
 export default function DateInput({
   value = '',
   onChange,

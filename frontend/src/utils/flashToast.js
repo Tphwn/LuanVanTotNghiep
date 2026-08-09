@@ -1,6 +1,4 @@
 const FLASH_TOAST_KEY = 'hb_flash_toast';
-
-/** Giữ flash trong memory để SPA navigate ổn định. */
 let memoryFlash = null;
 
 export const setFlashToast = (message, type = 'success', duration = 2000) => {

@@ -24,10 +24,6 @@ const ScoreRow = ({ label, value, highlight = false }) => (
   </div>
 );
 
-/**
- * Chi tiết đánh giá admin — layout giống đối tác;
- * admin ẩn/mở đánh giá và ẩn/mở phản hồi đối tác.
- */
 const AdminReviewDetailModal = ({
   review,
   onClose,

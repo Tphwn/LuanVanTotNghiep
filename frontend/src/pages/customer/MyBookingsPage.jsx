@@ -6,6 +6,7 @@ import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerPrice from '../../components/customer/CustomerPrice';
 import CancelBookingModal from '../../components/customer/CancelBookingModal';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import Toast from '../../components/common/Toast';
 import ROUTES from '../../constants/routes';
 import ROLES from '../../constants/roles';
@@ -185,8 +186,8 @@ const MyBookingsPage = () => {
       )}
 
       {loading && (
-        <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>
-          Đang tải đặt chỗ...
+        <div className="content-card">
+          <CustomerLoadingState message="Đang tải đặt chỗ..." />
         </div>
       )}
 

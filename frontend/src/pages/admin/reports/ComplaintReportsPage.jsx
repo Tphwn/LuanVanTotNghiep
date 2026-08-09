@@ -303,7 +303,6 @@ const ReportsPage = () => {
 
       <Toast toast={toast} inline />
 
-      {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[
           { id: "dashboard", label: "Tổng quan" },
@@ -327,8 +326,6 @@ const ReportsPage = () => {
           </button>
         ))}
       </div>
-
-      {/* Dashboard */}
       {activeTab === "dashboard"&& (
         <>
           <div style={{ display:"grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -398,8 +395,6 @@ const ReportsPage = () => {
           </div>
         </>
       )}
-
-      {/* Manage */}
       {activeTab ==="manage"&& (
         <>
           <div className="mgmt-toolbar mgmt-toolbar--filters" style={{ marginBottom: 16 }}>

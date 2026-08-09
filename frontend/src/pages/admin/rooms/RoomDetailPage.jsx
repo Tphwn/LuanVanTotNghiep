@@ -195,8 +195,6 @@ const RoomDetailPage = () => {
         </div>
       </div>
 
-
-      {/* Tabs */}
       <div style={{ display:"flex", gap: 8, marginBottom: 14, flexWrap: "wrap"}}>
         {TABS.map((tab) => (
           <button

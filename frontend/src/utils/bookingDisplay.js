@@ -5,7 +5,6 @@ import {
   textMeta,
 } from '../constants/statusConfig';
 
-// Nhãn + màu đặt phòng lấy từ nguồn tập trung (statusConfig)
 const buildMap = (source, variant) => Object.fromEntries(
   Object.keys(source).map((key) => [
     key,

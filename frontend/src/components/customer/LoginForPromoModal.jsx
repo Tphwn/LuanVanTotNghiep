@@ -10,10 +10,7 @@ import Input from '../common/Input';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/**
- * Modal đăng nhập trên trang thanh toán — chỉ để áp voucher.
- * Đóng (X) = không đăng nhập, không áp mã.
- */
+
 const LoginForPromoModal = ({
   open,
   returnPath = '',

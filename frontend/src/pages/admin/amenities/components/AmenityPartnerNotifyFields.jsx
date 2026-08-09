@@ -5,10 +5,7 @@ const NOTIFY_OPTIONS = [
   { key: 'all', label: 'Tất cả đối tác', desc: 'Thông báo toàn bộ đối tác đang hoạt động' },
   { key: 'one', label: 'Một đối tác', desc: 'Chọn đối tác cụ thể' },
 ];
-
-/**
- * Form chọn phạm vi thông báo đối tác (thêm / khóa / mở tiện nghi).
- */
+//chọn phạm vi thông báo đối tác
 const AmenityPartnerNotifyFields = ({
   label = 'Gửi thông báo cho đối tác',
   notifyScope,

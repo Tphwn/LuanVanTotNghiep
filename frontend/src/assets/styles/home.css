@@ -329,6 +329,67 @@ button.customer-amenity-tag {
   background: var(--customer-brand-hover);
 }
 
+.home-search-btn:disabled,
+.home-search-btn.is-loading {
+  opacity: 0.85;
+  cursor: wait;
+  background: var(--customer-brand-hover);
+}
+
+.home-search-btn__spinner,
+.customer-cta-spinner {
+  flex-shrink: 0;
+  animation: customer-loading-spin 0.8s linear infinite;
+}
+
+.customer-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 48px 24px;
+  color: #5a7a72;
+}
+
+.customer-loading-state--compact {
+  padding: 28px 16px;
+  gap: 10px;
+}
+
+.customer-loading-state__spinner {
+  color: #3C7363;
+  animation: customer-loading-spin 0.8s linear infinite;
+}
+
+.customer-loading-state__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #5a7a72;
+}
+
+@keyframes customer-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.booking-confirm-submit,
+.booking-payment-submit,
+.cancel-booking-modal-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.booking-confirm-submit.is-loading,
+.booking-payment-submit.is-loading {
+  cursor: wait;
+}
+
 .home-guest-control {
   display: flex;
   align-items: center;
@@ -4870,6 +4931,17 @@ a.hotel-result-cta:visited {
   color: #e05c5c;
 }
 
+.confirm-payment-modal-loading-hint {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3faf7;
+  border: 1px solid #d4ede6;
+  color: #3C7363;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .confirm-payment-modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -4878,6 +4950,11 @@ a.hotel-result-cta:visited {
 }
 
 .confirm-payment-modal-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 168px;
   padding: 10px 18px;
   border: none;
   border-radius: 8px;
@@ -4893,8 +4970,23 @@ a.hotel-result-cta:visited {
 }
 
 .confirm-payment-modal-confirm:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.confirm-payment-modal-confirm.is-loading {
+  background: #2f5c4f;
+}
+
+.confirm-payment-modal-spinner {
+  flex-shrink: 0;
+  animation: confirm-payment-spin 0.8s linear infinite;
+}
+
+@keyframes confirm-payment-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .booking-payment-thankyou {
@@ -4955,6 +5047,28 @@ a.hotel-result-cta:visited {
 .booking-payment-thankyou-summary strong {
   color: #1a2e28;
   text-align: right;
+}
+
+.booking-payment-thankyou-mail-note {
+  margin: 0 0 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f3faf7;
+  border: 1px solid #d4ede6;
+  color: #4a6b63;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.booking-payment-thankyou-mail-note a {
+  color: #3C7363;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.booking-payment-thankyou-mail-note a:hover {
+  text-decoration: underline;
 }
 
 .booking-payment-thankyou-actions {

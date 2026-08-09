@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Star } from 'lucide-react';
+import { Loader2, MapPin, Star } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
 import customerBookingService from '../../services/customerBookingService';
 import RoomSpecs from '../../components/customer/RoomSpecs';
 import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import { formatBedLabel } from '../../utils/bedDisplay';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
@@ -413,7 +414,9 @@ const CustomerBookingPage = () => {
   if (loading) {
     return (
       <div className="booking-confirm-page">
-        <div className="booking-confirm-loading">Đang tải thông tin đặt phòng...</div>
+        <div className="booking-confirm-loading">
+          <CustomerLoadingState message="Đang tải thông tin đặt phòng..." />
+        </div>
       </div>
     );
   }
@@ -716,10 +719,18 @@ const CustomerBookingPage = () => {
             <button
               type="submit"
               form="booking-confirm-form"
-              className="booking-confirm-submit"
+              className={`booking-confirm-submit${submitting ? ' is-loading' : ''}`}
               disabled={submitting}
+              aria-busy={submitting ? 'true' : undefined}
             >
-              {submitting ? 'Đang xử lý...' : 'Tiếp tục đặt phòng'}
+              {submitting ? (
+                <>
+                  <Loader2 className="customer-cta-spinner" size={18} strokeWidth={2.25} aria-hidden />
+                  <span>Đang xử lý...</span>
+                </>
+              ) : (
+                'Tiếp tục đặt phòng'
+              )}
             </button>
           </div>
         </aside>

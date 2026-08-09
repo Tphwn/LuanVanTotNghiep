@@ -14,6 +14,7 @@ const HotelSearchBar = ({
   variant = 'page',
   className = '',
   searchButtonLabel = 'Tìm kiếm',
+  loading = false,
 }) => {
   const [dateOpen, setDateOpen] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
@@ -64,6 +65,7 @@ const HotelSearchBar = ({
   };
 
   const handleSubmit = () => {
+    if (loading) return;
     const data = normalizeForm(form);
     if (!validate(data)) return;
     saveSearchForm(data);
@@ -128,7 +130,7 @@ const HotelSearchBar = ({
         </div>
 
         <div className="home-search-btn-wrap">
-          <CustomerSearchButton onClick={handleSubmit} showIcon>
+          <CustomerSearchButton onClick={handleSubmit} showIcon loading={loading}>
             {searchButtonLabel}
           </CustomerSearchButton>
         </div>

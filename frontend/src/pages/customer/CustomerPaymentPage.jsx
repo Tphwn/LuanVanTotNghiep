@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Clock,
   CreditCard,
+  Loader2,
   Smartphone,
   Star,
   UserRound,
@@ -17,6 +18,7 @@ import {
 import BackButton from '../../components/common/BackButton';
 import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
 import ConfirmPaymentModal from '../../components/customer/ConfirmPaymentModal';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import PromoCodeModal from '../../components/customer/PromoCodeModal';
 import LoginForPromoModal from '../../components/customer/LoginForPromoModal';
 import Toast from '../../components/common/Toast';
@@ -462,7 +464,9 @@ const CustomerPaymentPage = () => {
   if (loading) {
     return (
       <div className="booking-payment-page">
-        <div className="booking-confirm-loading">Đang tải trang thanh toán...</div>
+        <div className="booking-confirm-loading">
+          <CustomerLoadingState message="Đang tải trang thanh toán..." />
+        </div>
       </div>
     );
   }
@@ -562,6 +566,14 @@ const CustomerPaymentPage = () => {
               <strong>{fmtMoney(total)}</strong>
             </div>
           </div>
+
+          <p className="booking-payment-thankyou-mail-note">
+            Hệ thống đã ghi nhận đơn hàng. Nếu bạn không nhận được email xác nhận, vui lòng kiểm tra mục
+            Thư rác (Spam) hoặc liên hệ Hotline
+            {' '}
+            <a href="tel:0777443088">0777443088</a>
+            .
+          </p>
 
           <div className="booking-payment-thankyou-actions">
             <Link to={detailPath} className="booking-payment-thankyou-primary">
@@ -763,11 +775,19 @@ const CustomerPaymentPage = () => {
 
             <button
               type="button"
-              className="booking-payment-submit"
+              className={`booking-payment-submit${paying ? ' is-loading' : ''}`}
               onClick={openConfirm}
               disabled={paying || expired}
+              aria-busy={paying ? 'true' : undefined}
             >
-              {paying ? 'Đang xử lý...' : `Thanh toán ${fmtMoney(total)}`}
+              {paying ? (
+                <>
+                  <Loader2 className="customer-cta-spinner" size={18} strokeWidth={2.25} aria-hidden />
+                  <span>Đang xử lý...</span>
+                </>
+              ) : (
+                `Thanh toán ${fmtMoney(total)}`
+              )}
             </button>
           </div>
         </section>

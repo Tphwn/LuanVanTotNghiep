@@ -11,6 +11,7 @@ import publicPromotionService from '../../services/publicPromotionService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CustomerAmenityTags from '../../components/customer/CustomerAmenityTags';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import { groupHotelAmenities } from '../../utils/hotelAmenityFilters';
 import { searchFormToParams, normalizeSearchGuests } from '../../utils/hotelSearchStorage';
 import { formatCurrency, formatNumber } from '../../utils/formatCurrency';
@@ -367,9 +368,11 @@ const HotelSearchPage = () => {
   )?.ten_dia_diem || 'Tất cả địa điểm';
 
   const nights = useMemo(() => {
-    if (!filters.ngay_nhan || !filters.ngay_tra) return 0;
-    const a = new Date(filters.ngay_nhan);
-    const b = new Date(filters.ngay_tra);
+    // Mặc định 1 đêm; khi khách chọn ngày thì theo kỳ tìm kiếm
+    if (!filters.ngay_nhan || !filters.ngay_tra) return 1;
+    const a = new Date(`${filters.ngay_nhan}T00:00:00`);
+    const b = new Date(`${filters.ngay_tra}T00:00:00`);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 1;
     return Math.max(Math.round((b - a) / (1000 * 60 * 60 * 24)), 1);
   }, [filters.ngay_nhan, filters.ngay_tra]);
 
@@ -463,6 +466,7 @@ const HotelSearchPage = () => {
             locations={locations}
             initialValues={searchBarInitial}
             onSearch={handleBarSearch}
+            loading={loading}
           />
         </div>
       </div>
@@ -508,8 +512,8 @@ const HotelSearchPage = () => {
           <CustomerPromotionStrip promotions={systemPromotions} variant="system" />
 
           {loading && (
-            <div className="content-card" style={{ textAlign: 'center', padding: 48, color: '#5a7a72' }}>
-              Đang tìm khách sạn phù hợp...
+            <div className="content-card">
+              <CustomerLoadingState message="Đang tìm khách sạn phù hợp..." />
             </div>
           )}
 
@@ -606,7 +610,7 @@ const HotelSearchPage = () => {
                             <CustomerPriceOffer
                               amount={hotel.gia_tu}
                               originalAmount={hotel.gia_goc}
-                              suffix={`/ phòng / ${nights} đêm`}
+                              suffix={`/ phòng / ${Math.max(Number(hotel.so_dem) || nights, 1)} đêm`}
                               className="hotel-result-price-block"
                             />
                           )}

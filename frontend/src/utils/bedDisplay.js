@@ -21,10 +21,6 @@ export const getBedSleepCapacity = (beds = {}) => {
   return don * 1 + doi * 2 + lon * 2;
 };
 
-/**
- * Ràng buộc: số người lớn ≤ tổng chỗ ngủ từ giường.
- * Cho phép giường thừa chỗ.
- */
 export const validateBedsByCapacity = (soNguoiLon, beds) => {
   const adults = Number(soNguoiLon);
   if (!adults || adults < 1) return 'Số người lớn phải từ 1 trở lên';

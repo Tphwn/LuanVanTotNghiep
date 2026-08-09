@@ -1,19 +1,11 @@
 const pad2 = (n) => String(n).padStart(2, '0');
 
-/** HH:mm dd/MM/yyyy (không giây) */
 export const formatNotifyDateTime = (value) => {
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 };
 
-/**
- * Thời gian thân thiện cho thông báo:
- * < 1 phút → Vừa xong
- * < 60 phút → X phút trước
- * < 24 giờ → X giờ trước
- * ≥ 24 giờ → HH:mm dd/MM/yyyy
- */
 export const formatRelativeTime = (value) => {
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return '—';

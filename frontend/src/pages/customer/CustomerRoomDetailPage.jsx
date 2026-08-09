@@ -5,6 +5,7 @@ import BackButton from '../../components/common/BackButton';
 import RoomSpecs from '../../components/customer/RoomSpecs';
 import CustomerAmenityTag from '../../components/customer/CustomerAmenityTag';
 import CustomerPriceOffer from '../../components/customer/CustomerPriceOffer';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import publicHotelService from '../../services/publicHotelService';
 import { resolveUploadUrl } from '../../utils/media';
 import { formatBedLabel } from '../../utils/bedDisplay';
@@ -85,8 +86,8 @@ const CustomerRoomDetailPage = () => {
   if (loading) {
     return (
       <div className="room-detail-page">
-        <div className="content-card" style={{ textAlign: 'center', padding: 64, color: '#5a7a72' }}>
-          Đang tải chi tiết loại phòng...
+        <div className="content-card">
+          <CustomerLoadingState message="Đang tải chi tiết loại phòng..." />
         </div>
       </div>
     );

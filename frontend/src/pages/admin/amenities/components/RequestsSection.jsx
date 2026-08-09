@@ -9,7 +9,7 @@ const PAGE_SIZE = 10;
 
 const formatTime = (d) => (d ? new Date(d).toLocaleString('vi-VN') : '—');
 
-/** Danh sách đề xuất tiện nghi (từ thông báo admin), không còn duyệt/từ chối */
+/** Danh sách đề xuất tiện nghi */
 export const RequestsSection = ({
   proposals = [],
   amenities = [],

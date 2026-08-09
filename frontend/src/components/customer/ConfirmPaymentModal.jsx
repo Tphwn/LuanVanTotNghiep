@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import formatCurrency from '../../utils/formatCurrency';
 
 const METHOD_LABEL = {
@@ -38,13 +39,19 @@ export default function ConfirmPaymentModal({
     ? `${fmtStayDate(luuTru.ngay_nhan)} → ${fmtStayDate(luuTru.ngay_tra)} · ${luuTru.so_dem || 1} đêm`
     : '—';
 
+  const handleOverlayClick = () => {
+    if (submitting) return;
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
+    <div className="modal-overlay" onClick={handleOverlayClick} role="presentation">
       <div
         className="modal-box confirm-payment-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-busy={submitting ? 'true' : undefined}
         aria-labelledby="confirm-payment-title"
       >
         <div className="modal-header">
@@ -102,6 +109,12 @@ export default function ConfirmPaymentModal({
             </li>
           </ul>
 
+          {submitting && (
+            <p className="confirm-payment-modal-loading-hint" role="status">
+              Đang xác nhận giao dịch, vui lòng chờ trong giây lát…
+            </p>
+          )}
+
           {error && <p className="confirm-payment-modal-error">{error}</p>}
         </div>
 
@@ -111,15 +124,20 @@ export default function ConfirmPaymentModal({
           </button>
           <button
             type="button"
-            className="confirm-payment-modal-confirm"
+            className={`confirm-payment-modal-confirm${submitting ? ' is-loading' : ''}`}
             onClick={onConfirm}
             disabled={submitting}
           >
-            {submitting
-              ? 'Đang xử lý...'
-              : method === 'vnpay'
-                ? 'Tiếp tục với VNPay'
-                : 'Xác nhận thanh toán'}
+            {submitting ? (
+              <>
+                <Loader2 className="confirm-payment-modal-spinner" size={18} strokeWidth={2.25} aria-hidden />
+                <span>Đang xử lý...</span>
+              </>
+            ) : method === 'vnpay' ? (
+              'Tiếp tục với VNPay'
+            ) : (
+              'Xác nhận thanh toán'
+            )}
           </button>
         </div>
       </div>

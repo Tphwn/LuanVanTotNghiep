@@ -24,13 +24,12 @@ const ENDPOINT_BY_TAB = {
 
 const SELF_CONTAINED_TABS = new Set(['finance', 'business', 'system']);
 
-/** Mapping bộ lọc thời gian → cách chia trục X biểu đồ */
 const PRESET_TO_NHOM = {
-  today: 'ngay',   // Hôm nay → theo giờ/ngày trong ngày
-  week: 'ngay',    // Tuần này → từng ngày trong tuần
-  month: 'ngay',   // Tháng này → từng ngày trong tháng
-  year: 'thang',   // Năm nay → từng tháng trong năm
-  custom: 'thang', // Tùy chọn → theo tháng trong khoảng chọn
+  today: 'ngay',   
+  week: 'ngay',  
+  month: 'ngay', 
+  year: 'thang',   
+  custom: 'thang', 
 };
 
 const ReportsPage = () => {

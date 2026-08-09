@@ -181,7 +181,6 @@ export const CountLine = ({ data, name = 'Số lượng', color = '#3C7363' }) =
   );
 };
 
-/** Area doanh thu + Line số đơn (dual axis) — dùng Dashboard tổng quan */
 export const RevenueBookingTrend = ({ revenueData, bookingData }) => {
   const rev = revenueData || [];
   const book = bookingData || [];
@@ -274,7 +273,6 @@ export const RevenueBookingTrend = ({ revenueData, bookingData }) => {
   );
 };
 
-/** Area GMV + Line hoa hồng (trục tiền chung) */
 export const FinanceDualTrend = ({ data }) => {
   const rows = data || [];
   const hasData = rows.some((r) => Number(r.gmv) > 0 || Number(r.hoa_hong) > 0 || Number(r.value) > 0);
@@ -334,7 +332,6 @@ export const FinanceDualTrend = ({ data }) => {
   );
 };
 
-/** Top KS — bar ngang + tooltip GMV / HH / số đơn */
 export const TopHotelsBar = ({ data }) => {
   if (!data?.length) return <EmptyChart />;
   return (
@@ -364,7 +361,6 @@ export const TopHotelsBar = ({ data }) => {
   );
 };
 
-/** Donut trạng thái — màu semantic + tổng ở giữa */
 export const StatusDonut = ({ data }) => {
   const rows = (data || []).filter((r) => Number(r.value) > 0);
   if (!rows.length) return <EmptyChart />;

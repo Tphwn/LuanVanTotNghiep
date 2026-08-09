@@ -81,7 +81,6 @@ const canPayOnline = (booking) => {
   return Date.now() < deadline.getTime();
 };
 
-/** Tự áp KM lần đặt đầu cho đơn chưa có mã (im lặng nếu không đủ điều kiện). */
 const tryAutoApplyFirstBookingPromo = async ({
   maKhachHang,
   maDatPhong,
@@ -236,8 +235,6 @@ const TRANSACTION_STEP_LABELS = {
   3: 'Đang xử lý thanh toán',
   4: 'Thanh toán thành công',
 };
-
-/** Bước giao dịch: 1 đặt phòng → 2 tiếp tục đặt → 3 thanh toán → 4 thành công */
 const resolveTransactionStep = (b) => {
   if (b.thanh_toan?.trang_thai === 'thanh_cong') return 4;
   if (canPayOnline(b)) return 3;
@@ -413,6 +410,21 @@ const buildNightDetails = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
 const loadPayableOnlineBooking = async (userId, maDatPhong, { isGuest = false } = {}) => {
   let booking;
 
+  const payableInclude = {
+    thanh_toan: true,
+    khach_hang: {
+      select: {
+        nguoi_dung: { select: { email: true } },
+      },
+    },
+    loai_phong: {
+      select: {
+        ten_loai: true,
+        khach_san: { select: { ten: true, ma_doi_tac: true } },
+      },
+    },
+  };
+
   if (isGuest) {
     await expireUnpaidOnlineHolds({ ma_dat_phong: Number(maDatPhong) });
     booking = await prisma.dat_phong.findFirst({
@@ -420,15 +432,7 @@ const loadPayableOnlineBooking = async (userId, maDatPhong, { isGuest = false } 
         ma_dat_phong: Number(maDatPhong),
         ma_khach_hang: null,
       },
-      include: {
-        thanh_toan: true,
-        loai_phong: {
-          select: {
-            ten_loai: true,
-            khach_san: { select: { ten: true, ma_doi_tac: true } },
-          },
-        },
-      },
+      include: payableInclude,
     });
   } else {
     const khachHang = await prisma.khach_hang.findUnique({
@@ -448,15 +452,7 @@ const loadPayableOnlineBooking = async (userId, maDatPhong, { isGuest = false } 
         ma_dat_phong: Number(maDatPhong),
         ma_khach_hang: khachHang.ma_khach_hang,
       },
-      include: {
-        thanh_toan: true,
-        loai_phong: {
-          select: {
-            ten_loai: true,
-            khach_san: { select: { ten: true, ma_doi_tac: true } },
-          },
-        },
-      },
+      include: payableInclude,
     });
   }
 
@@ -516,6 +512,35 @@ const markPaymentSuccess = async (booking, { cong_thanh_toan, ma_tham_chieu, ma_
     }
   } catch {
     /* ignore */
+  }
+
+  try {
+    const { sendBookingConfirmationEmail } = require('../../utils/mailer');
+    const to = String(
+      booking.email_nguoi_nhan
+      || booking.khach_hang?.nguoi_dung?.email
+      || '',
+    ).trim();
+    if (to) {
+      await sendBookingConfirmationEmail({
+        to,
+        maDonHang: booking.ma_don_hang,
+        tenKhachSan: booking.loai_phong?.khach_san?.ten,
+        tenLoaiPhong: booking.loai_phong?.ten_loai,
+        ngayNhan: booking.ngay_nhan_phong,
+        ngayTra: booking.ngay_tra_phong,
+        soPhong: booking.so_phong,
+        phuongThuc: updated.cong_thanh_toan || 'Trực tuyến',
+        tongTien: booking.thanh_toan_cuoi ?? updated.so_tien,
+      });
+    } else {
+      console.warn(`[mail] Bỏ qua xác nhận đơn ${booking.ma_don_hang}: thiếu email`);
+    }
+  } catch (mailErr) {
+    console.error(
+      `[mail] Gửi xác nhận đơn ${booking.ma_don_hang} thất bại:`,
+      mailErr?.message || mailErr,
+    );
   }
 
   return {
@@ -1467,6 +1492,11 @@ const customerBookingService = {
       },
       include: {
         thanh_toan: true,
+        khach_hang: {
+          select: {
+            nguoi_dung: { select: { email: true } },
+          },
+        },
         loai_phong: {
           select: {
             ten_loai: true,
@@ -1726,7 +1756,6 @@ const customerBookingService = {
     return mapCustomerReview(booking.danh_gia);
   },
 
-  /** Thanh toán / chi tiết / hủy cho đơn khách vãng lai (ma_khach_hang = null). */
   confirmPaymentGuest: async (maDatPhong, data = {}) => {
     const GATEWAY_MAP = { momo: 'MoMo', the_tin_dung: 'Thẻ tín dụng' };
     const gatewayKey = String(data.cong_thanh_toan || data.phuong_thuc || 'momo').trim();
@@ -1973,9 +2002,6 @@ const customerBookingService = {
     };
   },
 
-  /**
-   * Gắn đơn khách vãng lai vào tài khoản vừa đăng nhập (để áp voucher / quản lý đơn).
-   */
   claimGuestBooking: async (userId, maDatPhong, guestToken) => {
     if (!guestToken) {
       throw { statusCode: 400, message: 'Thiếu phiên thanh toán khách vãng lai' };

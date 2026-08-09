@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import CancelBookingModal from '../../components/customer/CancelBookingModal';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import Toast from '../../components/common/Toast';
 import guestBookingService, { GUEST_LOOKUP_TOKEN_KEY } from '../../services/guestBookingService';
 import ROUTES from '../../constants/routes';
@@ -203,6 +204,7 @@ const GuestBookingsPage = () => {
     setError('');
     setInfo('');
     showToast(successMsg, 'success');
+    setLoading(true);
     try {
       const res = await guestBookingService.getLookupBooking(sessionToken);
       setBooking(res.data?.data || null);
@@ -218,8 +220,21 @@ const GuestBookingsPage = () => {
           'error',
         );
       }
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (step === 'detail' && booking && loading) {
+    return (
+      <div className="booking-detail-page guest-bookings-page guest-bookings-page--detail">
+        <Toast toast={toast} />
+        <div className="booking-detail-card booking-detail-card--state">
+          <CustomerLoadingState message="Đang cập nhật đơn đặt chỗ..." />
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'detail' && booking) {
     const { khach_san, loai_phong, luu_tru, nguoi_dat, thanh_toan } = booking;
@@ -553,7 +568,7 @@ const GuestBookingsPage = () => {
         )}
 
         {loading && step === 'detail' && !booking && (
-          <p className="guest-bookings-desc">Đang tải...</p>
+          <CustomerLoadingState compact message="Đang tải thông tin đặt chỗ..." />
         )}
       </div>
     </div>

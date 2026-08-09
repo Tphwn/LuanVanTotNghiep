@@ -45,7 +45,6 @@ const toInputDate = (d) => {
   return `${y}-${m}-${day}`;
 };
 
-/** Khoảng ngày theo tuần (T2–CN) hoặc tháng hiện tại */
 const getCommPeriodRange = (period) => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -423,7 +422,6 @@ const AdminFinancePage = () => {
 
   return (
     <div className="admin-finance-page">
-      {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Quản lý tài chính</h1>
@@ -440,8 +438,6 @@ const AdminFinancePage = () => {
             : null
         }
       />
-
-      {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'0.5px solid #d4ede6', marginBottom:20 }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => handleTabChange(t.id)} style={{
@@ -760,8 +756,6 @@ const AdminFinancePage = () => {
           </div>
         </>
       )}
-
-      {/* ===== HOA HỒNG ===== */}
       {tab === 'commissions' && (
         <>
           <div className="admin-finance-metrics admin-finance-metrics--6">
@@ -1069,8 +1063,6 @@ const AdminFinancePage = () => {
           </div>
         </>
       )}
-
-      {/* ===== THANH TOÁN ĐỐI TÁC ===== */}
       {tab === 'partner' && (
         <>
           <div className="admin-finance-metrics admin-finance-metrics--3">

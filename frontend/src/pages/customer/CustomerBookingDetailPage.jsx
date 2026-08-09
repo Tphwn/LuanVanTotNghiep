@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import customerBookingService from '../../services/customerBookingService';
 import CustomerButton from '../../components/customer/CustomerButton';
 import CancelBookingModal from '../../components/customer/CancelBookingModal';
+import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
 import ROUTES from '../../constants/routes';
 import {
   CUSTOMER_PAYMENT_STATUS,
@@ -89,7 +90,7 @@ export default function CustomerBookingDetailPage() {
   if (loading) {
     return (
       <div className="booking-detail-card booking-detail-card--state">
-        Đang tải chi tiết đơn...
+        <CustomerLoadingState message="Đang tải chi tiết đơn..." compact />
       </div>
     );
   }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import customerBookingService from '../../services/customerBookingService';
 import CustomerPrice from './CustomerPrice';
+import CustomerLoadingState from './CustomerLoadingState';
 import { formatCurrency } from '../../utils/bookingDisplay';
 
 /**
@@ -90,9 +92,11 @@ export default function CancelBookingModal({
         </div>
 
         {loading && (
-          <p className="cancel-booking-modal-loading">
-            {isPaymentCancel ? 'Đang tải thông tin...' : 'Đang tải chính sách hủy...'}
-          </p>
+          <CustomerLoadingState
+            compact
+            className="cancel-booking-modal-loading"
+            message={isPaymentCancel ? 'Đang tải thông tin...' : 'Đang tải chính sách hủy...'}
+          />
         )}
 
         {!loading && preview && (
@@ -187,13 +191,19 @@ export default function CancelBookingModal({
           </button>
           <button
             type="button"
-            className="my-booking-cancel-btn cancel-booking-modal-confirm"
+            className={`my-booking-cancel-btn cancel-booking-modal-confirm${submitting ? ' is-loading' : ''}`}
             onClick={handleConfirm}
             disabled={loading || submitting || !preview}
+            aria-busy={submitting ? 'true' : undefined}
           >
-            {submitting
-              ? 'Đang hủy...'
-              : (isPaymentCancel ? 'Xác nhận hủy thanh toán' : 'Xác nhận hủy')}
+            {submitting ? (
+              <>
+                <Loader2 className="customer-cta-spinner" size={16} strokeWidth={2.25} aria-hidden />
+                <span>Đang hủy...</span>
+              </>
+            ) : (
+              isPaymentCancel ? 'Xác nhận hủy thanh toán' : 'Xác nhận hủy'
+            )}
           </button>
         </div>
       </div>

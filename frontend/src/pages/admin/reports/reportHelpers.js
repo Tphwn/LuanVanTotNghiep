@@ -119,7 +119,6 @@ export const PRESET_PERIOD_LABEL = {
   custom: 'tùy chọn',
 };
 
-/** Màu badge tỉ lệ rủi ro (hủy / hoàn): <30 xanh, 30–70 cam, ≥70 đỏ */
 export const riskRateTone = (rate) => {
   const n = Number(rate) || 0;
   if (n >= 70) return 'danger';

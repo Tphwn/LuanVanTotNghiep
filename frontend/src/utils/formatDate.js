@@ -1,4 +1,3 @@
-/** Options hiển thị ngày kiểu Việt Nam: dd/mm/yyyy */
 export const DATE_VN_OPTS = { day: '2-digit', month: '2-digit', year: 'numeric' };
 
 export const formatVN = (dateStr) => {
@@ -18,7 +17,6 @@ export const todayStr = () => {
   return `${y}-${m}-${day}`;
 };
 
-/** ISO yyyy-MM-dd → dd/mm/yyyy */
 export const isoToDisplayDate = (iso) => {
   if (!iso || typeof iso !== 'string') return '';
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -26,10 +24,6 @@ export const isoToDisplayDate = (iso) => {
   return `${match[3]}/${match[2]}/${match[1]}`;
 };
 
-/**
- * dd/mm/yyyy (hoặc d/m/yyyy) → ISO yyyy-MM-dd
- * Chuỗi rỗng → ''; không hợp lệ → null
- */
 export const displayDateToIso = (text) => {
   if (text == null) return null;
   const trimmed = String(text).trim();
@@ -51,7 +45,6 @@ export const displayDateToIso = (text) => {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
-/** Hiển thị ngày dd/mm/yyyy (2 chữ số) */
 export const formatDateVN = (date) => {
   if (!date) return '—';
   const d = date instanceof Date ? date : new Date(date);

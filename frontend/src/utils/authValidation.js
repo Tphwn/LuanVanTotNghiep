@@ -28,7 +28,6 @@ export const AUTH_MSG = {
   PHONE_DIGITS: 'Số điện thoại không được chứa chữ cái.',
 };
 
-/** Chỉ giữ chữ số, giới hạn độ dài (mặc định 10 — SĐT VN). */
 export const sanitizePhoneInput = (value, maxLength = 10) => (
   String(value ?? '').replace(/\D/g, '').slice(0, maxLength)
 );

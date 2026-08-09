@@ -103,7 +103,6 @@ export const getAmenityProposalContent = (proposal) => (
     .trim()
 );
 
-/** Khớp đúng hoặc tên tiện nghi nằm trong câu đề xuất (vd: "Hướng biển" ⊂ "...view phòng hướng biển") */
 const isAmenityNameMatched = (proposedName, amenityName) => {
   const proposed = normalizeAmenityText(proposedName);
   const amenity = normalizeAmenityText(amenityName);
