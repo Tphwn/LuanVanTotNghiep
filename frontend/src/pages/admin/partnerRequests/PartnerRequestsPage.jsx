@@ -8,6 +8,7 @@ import ActionButton, { ActionCell } from '../../../components/common/ActionButto
 import adminPartnerRequestService from '../../../services/adminPartnerRequestService';
 import useListPagination from '../../../hooks/useListPagination';
 import PartnerRequestDetailModal from './components/PartnerRequestDetailModal';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -103,7 +104,7 @@ const PartnerRequestsPage = () => {
   }, [statusFilter, keyword]);
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page admin-partner-requests-page">
       <ManagementHeader
         title="Yêu Cầu Hợp Tác"
         subtitle="Quản lý đăng ký hợp tác từ đối tác khách sạn"
@@ -134,7 +135,7 @@ const PartnerRequestsPage = () => {
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
       >
-        <select
+        <DownSelect
           className="mgmt-select-inline"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -145,7 +146,7 @@ const PartnerRequestsPage = () => {
           <option value="da_lien_he">Đã liên hệ</option>
           <option value="da_hop_tac">Đã hợp tác</option>
           <option value="tu_choi">Từ chối</option>
-        </select>
+        </DownSelect>
         <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 

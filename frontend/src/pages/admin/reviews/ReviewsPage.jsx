@@ -12,6 +12,7 @@ import AdminReviewConfirmModal from './components/AdminReviewConfirmModal';
 import AdminReviewDetailModal from './components/AdminReviewDetailModal';
 import { REVIEW_BADGE } from '../../../constants/statusConfig';
 import { formatDateVN as formatDate } from '../../../utils/formatDate';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -289,7 +290,7 @@ const ReviewsPage = () => {
       <div className="mgmt-toolbar mgmt-toolbar--filters admin-reviews-filters">
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-partner-filter">Đối tác</label>
-          <select
+          <DownSelect
             id="review-partner-filter"
             className="mgmt-select-inline"
             value={partnerFilter}
@@ -299,12 +300,12 @@ const ReviewsPage = () => {
             {partners.map((p) => (
               <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-hotel-filter">Khách sạn</label>
-          <select
+          <DownSelect
             id="review-hotel-filter"
             className="mgmt-select-inline"
             value={hotelFilter}
@@ -314,12 +315,12 @@ const ReviewsPage = () => {
             {hotelOptions.map((h) => (
               <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-star-filter">Số sao</label>
-          <select
+          <DownSelect
             id="review-star-filter"
             className="mgmt-select-inline"
             value={starFilter}
@@ -329,12 +330,12 @@ const ReviewsPage = () => {
             {[5, 4, 3, 2, 1].map((s) => (
               <option key={s} value={s}>{s} sao</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-status-filter">Trạng thái</label>
-          <select
+          <DownSelect
             id="review-status-filter"
             className="mgmt-select-inline"
             value={statusFilter}
@@ -343,12 +344,12 @@ const ReviewsPage = () => {
             <option value="all">Tất cả trạng thái</option>
             <option value="hien_thi">Hiển thị</option>
             <option value="an">Đã ẩn</option>
-          </select>
+          </DownSelect>
         </div>
 
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="review-time-filter">Thời gian</label>
-          <select
+          <DownSelect
             id="review-time-filter"
             className="mgmt-select-inline"
             value={timePreset}
@@ -357,7 +358,7 @@ const ReviewsPage = () => {
             {TIME_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         {timePreset === 'custom' && (

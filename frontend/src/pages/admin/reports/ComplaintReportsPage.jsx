@@ -8,6 +8,7 @@ import ListPagination from "../../../components/common/management/ListPagination
 import useListPagination from "../../../hooks/useListPagination";
 import Toast from "../../../components/common/Toast";
 import useToast from "../../../hooks/useToast";
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const REPORT_STATUS = {
   cho_xu_ly:    { label: "Chờ xử lý", cls: "badge-warning"},
@@ -400,27 +401,27 @@ const ReportsPage = () => {
           <div className="mgmt-toolbar mgmt-toolbar--filters" style={{ marginBottom: 16 }}>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="report-status-filter">Trạng thái</label>
-              <select id="report-status-filter" className="mgmt-select-inline" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <DownSelect id="report-status-filter" className="mgmt-select-inline" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                   <option value="all">Tất cả</option>
                   <option value="cho_xu_ly">Chờ xử lý</option>
                   <option value="da_chap_nhan">Đã chấp nhận</option>
                   <option value="tu_choi">Từ chối</option>
-                </select>
+                </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="report-type-filter">Loại báo cáo</label>
-              <select id="report-type-filter" className="mgmt-select-inline" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              <DownSelect id="report-type-filter" className="mgmt-select-inline" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                   <option value="all">Tất cả loại</option>
                   {Object.entries(REPORT_TYPE).map(([k, v]) => (
                     <option key={k} value={k}>{v.label}</option>
                   ))}
-                </select>
+                </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="report-time-filter">Thời gian</label>
-              <select id="report-time-filter" className="mgmt-select-inline" value={timePreset} onChange={(e) => setTimePreset(e.target.value)}>
+              <DownSelect id="report-time-filter" className="mgmt-select-inline" value={timePreset} onChange={(e) => setTimePreset(e.target.value)}>
                   {TIME_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                </DownSelect>
             </div>
               {timePreset ==="custom"&& (
                 <>

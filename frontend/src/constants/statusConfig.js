@@ -52,7 +52,6 @@ export const ACCOUNT_STATUS = {
 };
 // khuyến mãi
 export const PROMOTION_STATUS = {
-  cho_duyet: make('Chờ duyệt', 'warning'),
   hoat_dong: make('Đang hoạt động', 'success'),
   tu_choi: make('Từ chối', 'danger'),
   het_han: make('Hết hạn', 'muted'),
@@ -90,7 +89,7 @@ export const PROMOTION_BADGE = buildMap(PROMOTION_STATUS, 'badge');
 export const PROMOTION_TEXT = buildMap(PROMOTION_STATUS, 'text');
 
 export const getPromotionStatusMeta = (item, { variant = 'badge' } = {}) => {
-  const status = item?.trang_thai;
+  const status = item?.trang_thai === 'cho_duyet' ? 'hoat_dong' : item?.trang_thai;
   const asBadge = variant !== 'text';
   const toneCls = (tone) => (asBadge ? TONE[tone].badge : TONE[tone].text);
   const pick = (key) => (asBadge
@@ -101,7 +100,6 @@ export const getPromotionStatusMeta = (item, { variant = 'badge' } = {}) => {
     return { label: 'Bị khóa', cls: toneCls('locked') };
   }
   if (status === 'tu_choi') return pick('tu_choi');
-  if (status === 'cho_duyet') return pick('cho_duyet');
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

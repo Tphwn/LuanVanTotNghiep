@@ -45,6 +45,33 @@ const syncExpiredPromotions = async (prismaClient, scopeWhere = {}) => {
   return count;
 };
 
+const publishPendingPartnerPromotions = async (prismaClient, extraWhere = {}) => {
+  const todayStart = new Date(`${toLocalDateString()}T00:00:00.000Z`);
+  const pendingWhere = {
+    loai_nguon: 'doi_tac',
+    trang_thai: 'cho_duyet',
+    ...extraWhere,
+  };
+
+  const expired = await prismaClient.khuyen_mai.updateMany({
+    where: {
+      ...pendingWhere,
+      ngay_ket_thuc: { lt: todayStart },
+    },
+    data: { trang_thai: 'het_han', ly_do: null },
+  });
+
+  const active = await prismaClient.khuyen_mai.updateMany({
+    where: {
+      ...pendingWhere,
+      ngay_ket_thuc: { gte: todayStart },
+    },
+    data: { trang_thai: 'hoat_dong', ly_do: null },
+  });
+
+  return { expired: expired.count, active: active.count };
+};
+
 const isCustomerFirstBooking = async (prismaClient, maKhachHang, excludeMaDatPhong = null) => {
   const where = { ma_khach_hang: Number(maKhachHang) };
   if (excludeMaDatPhong != null) {
@@ -109,7 +136,7 @@ const assertPromotionFormValues = ({
       throwValidation('Giá trị giảm phải lớn hơn 0');
     }
     if (loai_giam === 'phan_tram') {
-      if (val > 100) throwValidation('Phần trăm giảm không được vượt quá 100%');
+      if (val > 50) throwValidation('Phần trăm giảm không được vượt quá 50%');
       if (giam_toi_da != null && giam_toi_da !== '') {
         const cap = Number(giam_toi_da);
         if (Number.isNaN(cap) || cap <= 0) {
@@ -310,6 +337,7 @@ module.exports = {
   startOfDay,
   isPastPromotionEndDate,
   syncExpiredPromotions,
+  publishPendingPartnerPromotions,
   isCustomerFirstBooking,
   findActiveFirstBookingPromo,
   assertPromotionFormValues,

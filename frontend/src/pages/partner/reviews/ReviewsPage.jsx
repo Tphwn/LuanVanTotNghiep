@@ -11,6 +11,7 @@ import useListPagination from '../../../hooks/useListPagination';
 import ReviewDetailModal from './components/ReviewDetailModal';
 import RespondModal from './components/RespondModal';
 import { formatDateVN as formatDate } from '../../../utils/formatDate';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const StarScore = ({ value }) => (
   <span className="review-star-score">{value ?? '—'}/5</span>
@@ -193,7 +194,7 @@ const ReviewsPage = () => {
       <div className="mgmt-toolbar mgmt-toolbar--filters partner-reviews-filters">
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-hotel">Khách sạn</label>
-          <select
+          <DownSelect
             id="partner-review-hotel"
             className="mgmt-select-inline"
             value={hotelFilter}
@@ -203,11 +204,11 @@ const ReviewsPage = () => {
             {hotels.map((h) => (
               <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-room">Loại phòng</label>
-          <select
+          <DownSelect
             id="partner-review-room"
             className="mgmt-select-inline"
             value={roomFilter}
@@ -218,11 +219,11 @@ const ReviewsPage = () => {
             {roomTypes.map((r) => (
               <option key={r.ma_loai_phong} value={r.ma_loai_phong}>{r.ten_loai}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-star">Số sao</label>
-          <select
+          <DownSelect
             id="partner-review-star"
             className="mgmt-select-inline"
             value={starFilter}
@@ -230,7 +231,7 @@ const ReviewsPage = () => {
           >
             <option value="">Tất cả sao</option>
             {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s} sao</option>)}
-          </select>
+          </DownSelect>
         </div>
         <div className="mgmt-filter-field">
           <label className="mgmt-filter-label" htmlFor="partner-review-from">Từ ngày</label>

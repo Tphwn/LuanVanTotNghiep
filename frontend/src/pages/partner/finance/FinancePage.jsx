@@ -16,6 +16,7 @@ import {
   formatDate,
 } from '../../../utils/bookingDisplay';
 import { getPresetRange } from '../../admin/reports/reportHelpers';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan' },
@@ -263,7 +264,7 @@ const FinancePage = () => {
       <div className="partner-finance-toolbar">
         <div className="partner-finance-toolbar-hotel">
           <label htmlFor="partner-finance-hotel">Khách sạn</label>
-          <select
+          <DownSelect
             id="partner-finance-hotel"
             className="mgmt-select-inline"
             value={hotelFilter}
@@ -275,7 +276,7 @@ const FinancePage = () => {
                 {hotel.ten}
               </option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="partner-finance-tabs" role="tablist" aria-label="Mục tài chính">

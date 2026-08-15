@@ -13,6 +13,7 @@ import useToast from '../../../hooks/useToast';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
 import { formatNumber as formatCurrency, formatCurrency as formatMoney } from '../../../utils/formatCurrency';
 import '../../../assets/styles/pricing-calendar.css';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const MIN_UNIT_PRICE = 50000;
@@ -700,7 +701,7 @@ const PricingPage = () => {
       <div className="mgmt-page mgmt-list-page partner-pricing-page">
         <ManagementHeader
           title="Quản lý giá và kho phòng"
-          subtitle="Danh sách khách sạn đang quản lý — chọn xem chi tiết để chỉnh giá và kho theo ngày"
+          subtitle="Danh sách khách sạn đang quản lý hãy chọn xem chi tiết để chỉnh giá và kho theo ngày"
         />
 
         <Toast toast={toast} />
@@ -806,7 +807,7 @@ const PricingPage = () => {
         <div className="price-inv-editing-label">Đang chỉnh giá</div>
         <div className="field field--hotel">
           <label>Khách sạn</label>
-          <select
+          <DownSelect
             className="search-input"
             value={detailHotelId || ''}
             onChange={(e) => handleHotelFilterChange(e.target.value)}
@@ -814,11 +815,11 @@ const PricingPage = () => {
             {hotels.map((h) => (
               <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
         <div className="field field--room">
           <label>Loại phòng <span style={{ color: '#e05c5c' }}>*</span></label>
-          <select
+          <DownSelect
             className={`search-input${fieldErrors.selectedRoom ? ' input-invalid' : ''}`}
             value={selectedRoom}
             onChange={(e) => {
@@ -840,7 +841,7 @@ const PricingPage = () => {
                 {r.ten_loai}
               </option>
             ))}
-          </select>
+          </DownSelect>
           {fieldErrors.selectedRoom && (
             <p className="form-field-error">{fieldErrors.selectedRoom}</p>
           )}

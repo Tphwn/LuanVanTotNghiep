@@ -11,6 +11,12 @@
   gap: 10px 12px;
   align-items: flex-end;
   margin-bottom: 4px;
+  overflow: visible;
+}
+
+.price-inv-toolbar .field .down-select,
+.price-inv-toolbar .field .down-select-trigger {
+  width: 100%;
 }
 
 .price-inv-editing-label {

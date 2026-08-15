@@ -4,6 +4,7 @@ const {
   assertPromotionFormValues,
   assertUniquePromotionCode,
   syncExpiredPromotions,
+  publishPendingPartnerPromotions,
   isPastPromotionEndDate,
 } = require('../../utils/promotionRules');
 
@@ -102,16 +103,15 @@ const assertPartnerPromo = async (doiTacId, id) => {
 };
 
 const computeStats = async (baseWhere) => {
-  const [total, choDuyet, hoatDong, tuChoi, hetHan, an] = await Promise.all([
+  const [total, hoatDong, tuChoi, hetHan, an] = await Promise.all([
     prisma.khuyen_mai.count({ where: baseWhere }),
-    prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'cho_duyet' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'hoat_dong' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'tu_choi' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'het_han' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'an' } }),
   ]);
   return {
-    total, cho_duyet: choDuyet, hoat_dong: hoatDong, tu_choi: tuChoi, het_han: hetHan, an,
+    total, hoat_dong: hoatDong, tu_choi: tuChoi, het_han: hetHan, an,
   };
 };
 
@@ -130,9 +130,12 @@ const partnerPromotionService = {
   list: async (doiTacId, filters = {}) => {
     const hotelIds = await getPartnerHotelIds(doiTacId);
     if (!hotelIds.length) {
-      return { data: [], stats: { total: 0, cho_duyet: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0 } };
+      return { data: [], stats: { total: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0 } };
     }
 
+    await publishPendingPartnerPromotions(prisma, {
+      ma_khach_san: { in: hotelIds },
+    });
     await syncExpiredPromotions(prisma, {
       loai_nguon: 'doi_tac',
       ma_khach_san: { in: hotelIds },

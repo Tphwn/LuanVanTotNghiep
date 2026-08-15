@@ -24,6 +24,7 @@ import {
   isAdminCancelledBooking,
   isCancelledBooking,
 } from '../../../utils/bookingDisplay';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 const VALID_STATUS_TABS = ['all', 'da_xac_nhan', 'da_checkin', 'hoan_thanh', 'da_huy', 'huy_admin'];
@@ -318,7 +319,7 @@ const AdminBookingsPage = () => {
           </div>
 
           <div className="admin-bookings-filters-row admin-bookings-filters-row--secondary">
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={partnerFilter}
               onChange={(e) => handlePartnerChange(e.target.value)}
@@ -328,9 +329,9 @@ const AdminBookingsPage = () => {
               {partners.map((p) => (
                 <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
               ))}
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={hotelFilter}
               onChange={(e) => setHotelFilter(e.target.value)}
@@ -340,9 +341,9 @@ const AdminBookingsPage = () => {
               {filteredHotels.map((h) => (
                 <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
               ))}
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={statusFilter}
               onChange={(e) => handleStatusTabChange(e.target.value)}
@@ -354,9 +355,9 @@ const AdminBookingsPage = () => {
               <option value="hoan_thanh">Hoàn thành</option>
               <option value="da_huy">Đã hủy</option>
               <option value="huy_admin">Bị hủy (admin hủy)</option>
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
@@ -367,7 +368,7 @@ const AdminBookingsPage = () => {
               <option value="cho_thanh_toan">Chờ thanh toán</option>
               <option value="da_hoan">Đã hoàn tiền</option>
               <option value="khong_hoan">Không hoàn tiền</option>
-            </select>
+            </DownSelect>
 
             <FilterActions showApply={false} onClear={clearFilters} />
           </div>

@@ -15,11 +15,12 @@ import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
 import { getPromotionStatusMeta } from '../../../constants/statusConfig';
 import { formatDateVN as formatDate } from '../../../utils/formatDate';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
 const EMPTY_STATS = {
-  total: 0, cho_duyet: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
+  total: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
 };
 
 const LOAI_GIAM = {
@@ -39,7 +40,6 @@ const CONFIRM_CONFIG = {
     variant: 'danger',
     confirmText: 'Tạm ngưng',
     icon: <Lock size={20} />,
-    // Lý do: bắt buộc với KM đối tác; KM hệ thống không cần (resolve ở confirmCfg)
     endpoint: (id, withReason) => ({
       url: `/admin/promotions/${id}/lock`,
       withReason,
@@ -299,7 +299,7 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label>Loại giảm</label>
-              <select
+              <DownSelect
                 className="search-input"
                 value={form.loai_giam}
                 onChange={(e) => updateField('loai_giam', e.target.value)}
@@ -307,14 +307,17 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
                 {Object.entries(LOAI_GIAM).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="form-group">
-              <label>{isPercent ? 'Giá trị giảm (%)' : 'Số tiền giảm (VNĐ)'}</label>
+              <label>{isPercent ? 'Giá trị giảm (%) — tối đa 50%' : 'Số tiền giảm (VNĐ)'}</label>
               {isPercent ? (
                 <input
                   className={inputCls(errors.gia_tri)}
                   type="number"
+                  min="0.01"
+                  max="50"
+                  step="0.01"
                   value={form.gia_tri}
                   onChange={(e) => updateField('gia_tri', e.target.value)}
                 />
@@ -364,7 +367,7 @@ const FormModal = ({ editing, form, updateField, errors, saving, onClose, onSubm
                 checked={Boolean(form.lan_dat_dau)}
                 onChange={(e) => updateField('lan_dat_dau', e.target.checked)}
               />
-              Khuyến mãi lần đặt đầu tiên (tự áp trên trang thanh toán, không hết hạn)
+              Khuyến mãi lần đặt đầu tiên
             </label>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: form.lan_dat_dau ? '1fr' : '1fr 1fr', gap: 12 }}>
@@ -528,8 +531,8 @@ const AdminPromotionsPage = () => {
     const giaTri = Number(f.gia_tri);
     if (f.gia_tri === '' || Number.isNaN(giaTri) || giaTri <= 0) {
       e.gia_tri = isPercent ? 'Giá trị giảm phải lớn hơn 0.' : 'Số tiền giảm phải lớn hơn 0.';
-    } else if (isPercent && giaTri > 100) {
-      e.gia_tri = 'Phần trăm giảm không được vượt quá 100%.';
+    } else if (isPercent && giaTri > 50) {
+      e.gia_tri = 'Phần trăm giảm không được vượt quá 50%.';
     } else if (!isPercent && giaTri < 0) {
       e.gia_tri = 'Số tiền giảm không được âm.';
     }
@@ -721,7 +724,7 @@ const AdminPromotionsPage = () => {
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="promo-loaigiam">Loại khuyến mãi</label>
-            <select
+            <DownSelect
               id="promo-loaigiam"
               className="mgmt-select-inline"
               value={loaiGiamFilter}
@@ -730,12 +733,12 @@ const AdminPromotionsPage = () => {
               <option value="all">Tất cả loại</option>
               <option value="phan_tram">Phần trăm (%)</option>
               <option value="so_tien">Số tiền (VNĐ)</option>
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="promo-role">Vai trò</label>
-            <select
+            <DownSelect
               id="promo-role"
               className="mgmt-select-inline"
               value={phamViFilter}
@@ -744,12 +747,12 @@ const AdminPromotionsPage = () => {
               <option value="all">Tất cả vai trò</option>
               <option value="he_thong">Admin</option>
               <option value="doi_tac">Đối tác</option>
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="promo-partner">Đối tác tạo</label>
-            <select
+            <DownSelect
               id="promo-partner"
               className="mgmt-select-inline"
               value={partnerFilter}
@@ -759,12 +762,12 @@ const AdminPromotionsPage = () => {
               {partners.map((p) => (
                 <option key={p.ma_doi_tac} value={String(p.ma_doi_tac)}>{p.ten_cong_ty}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="promo-time">Thời gian</label>
-            <select
+            <DownSelect
               id="promo-time"
               className="mgmt-select-inline"
               value={timePreset}
@@ -773,7 +776,7 @@ const AdminPromotionsPage = () => {
               {TIME_PRESETS.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
 
           {timePreset === 'custom' && (

@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { Check, Lock, Pencil, Unlock } from 'lucide-react';
 import api from '../../../services/api';
 import { resolveUploadUrl } from '../../../utils/media';
+import ActionButton, { ActionCell } from '../../../components/common/ActionButton';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 import { HotelAmenityPicker } from './components/HotelAmenityGroups';
 import PartnerHotelSubmitConfirmModal from './components/PartnerHotelSubmitConfirmModal';
 import {
@@ -38,9 +41,12 @@ const formatTimeValue = (value) => {
 };
 
 const mapPolicies = (policies) =>
-  (policies || []).map((p) => ({
-    so_ngay_truoc: Number(p.so_ngay_truoc),
-    phan_tram_hoan: Number(p.phan_tram_hoan),
+  (policies || []).map((p, idx) => ({
+    key: p.ma_chinh_sach ? `policy-${p.ma_chinh_sach}` : `policy-${idx}-${p.so_ngay_truoc}`,
+    ma_chinh_sach: p.ma_chinh_sach || null,
+    so_ngay_truoc: p.so_ngay_truoc === '' || p.so_ngay_truoc == null ? '' : Number(p.so_ngay_truoc),
+    phan_tram_hoan: p.phan_tram_hoan === '' || p.phan_tram_hoan == null ? '' : Number(p.phan_tram_hoan),
+    trang_thai: p.trang_thai === 'an' ? 'an' : 'hoat_dong',
   }));
 
 const onlyDigits = (value) => String(value ?? '').replace(/[^\d]/g, '');
@@ -59,6 +65,7 @@ const HotelFormContent = ({
   const isEdit = !!hotel;
   const needsApproval = !isEdit
     || ['cho_duyet', 'tu_choi'].includes(hotel?.trang_thai);
+  const canEditCancelPolicies = needsApproval;
   const submitLabel = needsApproval ? 'Gửi duyệt' : 'Lưu thay đổi';
   const [activeTab, setActiveTab] = useState('info');
   const [removedImageIds, setRemovedImageIds] = useState([]);
@@ -94,8 +101,17 @@ const HotelFormContent = ({
       : []
   );
 
-  // Quy định hoàn tiền là mặc định chung cho tất cả khách sạn — chỉ đọc
-  const cancelPolicies = mapPolicies(defaultCancelPolicies);
+  const [cancelPolicies, setCancelPolicies] = useState(() => {
+    const source = hotel?.chinh_sach_huy?.length ? hotel.chinh_sach_huy : defaultCancelPolicies;
+    const mapped = mapPolicies(source);
+    return mapped.length ? mapped : [
+      { key: 'default-7', so_ngay_truoc: 7, phan_tram_hoan: 100, trang_thai: 'hoat_dong' },
+      { key: 'default-3', so_ngay_truoc: 3, phan_tram_hoan: 50, trang_thai: 'hoat_dong' },
+      { key: 'default-1', so_ngay_truoc: 1, phan_tram_hoan: 0, trang_thai: 'hoat_dong' },
+    ];
+  });
+  const [editingPolicyKeys, setEditingPolicyKeys] = useState([]);
+  const [lockPolicyTarget, setLockPolicyTarget] = useState(null);
 
   const [showPropose, setShowPropose] = useState(false);
   const [proposeForm, setProposeForm] = useState({ ten_de_xuat: '', mo_ta: ''});
@@ -138,6 +154,31 @@ const HotelFormContent = ({
     if (form.phan_tram_vat === '' || !Number.isFinite(vat) || vat < 0 || vat > 100) {
       errors.phan_tram_vat = 'VAT phải từ 0 đến 100';
     }
+    if (canEditCancelPolicies) {
+      if (!cancelPolicies.length) {
+        errors.chinh_sach_huy = 'Vui lòng thêm ít nhất 1 mốc hoàn tiền';
+      } else if (!cancelPolicies.some((p) => p.trang_thai !== 'an')) {
+        errors.chinh_sach_huy = 'Cần ít nhất 1 mốc đang hoạt động';
+      } else {
+        const seenDays = new Set();
+        const invalid = cancelPolicies.some((p) => {
+          const daysRaw = String(p.so_ngay_truoc ?? '').trim();
+          const pctRaw = String(p.phan_tram_hoan ?? '').trim();
+          if (daysRaw === '' || pctRaw === '') return true;
+          const days = Number(daysRaw);
+          const pct = Number(pctRaw);
+          if (!Number.isInteger(days) || days < 0) return true;
+          if (!Number.isFinite(pct) || pct < 0 || pct > 100) return true;
+          if (p.trang_thai === 'an') return false;
+          if (seenDays.has(days)) return true;
+          seenDays.add(days);
+          return false;
+        });
+        if (invalid) {
+          errors.chinh_sach_huy = 'Số ngày phải là số nguyên ≥ 0, % hoàn tiền từ 0–100, không trùng số ngày đang hoạt động.';
+        }
+      }
+    }
     return errors;
   };
 
@@ -146,7 +187,7 @@ const HotelFormContent = ({
     const firstKey = Object.keys(errors)[0];
     if (['ten', 'dia_chi', 'ma_dia_diem'].includes(firstKey)) setActiveTab('info');
     else if (firstKey === 'images') setActiveTab('images');
-    else if (firstKey === 'phan_tram_vat') setActiveTab('policies');
+    else if (firstKey === 'phan_tram_vat' || firstKey === 'chinh_sach_huy') setActiveTab('policies');
     setFormAlert(
       needsApproval
         ? 'Gửi duyệt không thành công. Vui lòng điền đầy đủ thông tin bắt buộc.'
@@ -192,6 +233,77 @@ const HotelFormContent = ({
       ...prev,
       noi_quy_khac: prev.noi_quy_khac.filter((_, i) => i !== index),
     }));
+  };
+
+  const handleAddCancelPolicy = () => {
+    if (!canEditCancelPolicies) return;
+    const key = `new-${Date.now()}`;
+    setCancelPolicies((prev) => [...prev, {
+      key,
+      ma_chinh_sach: null,
+      so_ngay_truoc: '',
+      phan_tram_hoan: '',
+      trang_thai: 'hoat_dong',
+    }]);
+    setEditingPolicyKeys((prev) => [...prev, key]);
+    setFieldErrors((prev) => ({ ...prev, chinh_sach_huy: undefined }));
+  };
+
+  const handleCancelPolicyChange = (index, field, value) => {
+    if (!canEditCancelPolicies) return;
+    setCancelPolicies((prev) => prev.map((item, i) => (
+      i === index ? { ...item, [field]: value } : item
+    )));
+    setFieldErrors((prev) => ({ ...prev, chinh_sach_huy: undefined }));
+    if (formAlert) setFormAlert('');
+  };
+
+  const handleToggleEditCancelPolicy = (index) => {
+    if (!canEditCancelPolicies) return;
+    const item = cancelPolicies[index];
+    if (!item) return;
+    const isEditing = editingPolicyKeys.includes(item.key);
+    if (isEditing) {
+      const empty = String(item.so_ngay_truoc ?? '').trim() === ''
+        && String(item.phan_tram_hoan ?? '').trim() === '';
+      if (empty && !item.ma_chinh_sach) {
+        setCancelPolicies((prev) => prev.filter((_, i) => i !== index));
+        setEditingPolicyKeys((prev) => prev.filter((key) => key !== item.key));
+        return;
+      }
+      setEditingPolicyKeys((prev) => prev.filter((key) => key !== item.key));
+      return;
+    }
+    setEditingPolicyKeys((prev) => [...prev, item.key]);
+  };
+
+  const applyCancelPolicyStatus = (key, trangThai) => {
+    setCancelPolicies((prev) => prev.map((item) => (
+      item.key === key ? { ...item, trang_thai: trangThai } : item
+    )));
+    setFieldErrors((prev) => ({ ...prev, chinh_sach_huy: undefined }));
+    if (formAlert) setFormAlert('');
+  };
+
+  const handleToggleCancelPolicyStatus = (index) => {
+    if (!canEditCancelPolicies) return;
+    const item = cancelPolicies[index];
+    if (!item) return;
+    if (item.trang_thai === 'an') {
+      applyCancelPolicyStatus(item.key, 'hoat_dong');
+      showToast('Mở khóa mốc hoàn tiền thành công');
+      return;
+    }
+    const activeCount = cancelPolicies.filter((policy) => policy.trang_thai !== 'an').length;
+    if (activeCount <= 1) return;
+    setLockPolicyTarget(item);
+  };
+
+  const handleConfirmLockPolicy = () => {
+    if (!lockPolicyTarget) return;
+    applyCancelPolicyStatus(lockPolicyTarget.key, 'an');
+    setLockPolicyTarget(null);
+    showToast('Khóa mốc hoàn tiền thành công');
   };
 
   const handlePropose = async () => {
@@ -272,7 +384,15 @@ const HotelFormContent = ({
       ...form,
       noi_quy_khac: form.noi_quy_khac.map((s) => s.trim()).filter(Boolean),
       hinh_anh: hotelImages,
-      chinh_sach_huy: cancelPolicies,
+      ...(canEditCancelPolicies ? {
+        chinh_sach_huy: cancelPolicies
+          .map((p) => ({
+            so_ngay_truoc: parseInt(p.so_ngay_truoc, 10),
+            phan_tram_hoan: Number(p.phan_tram_hoan),
+            trang_thai: p.trang_thai === 'an' ? 'an' : 'hoat_dong',
+          }))
+          .sort((a, b) => b.so_ngay_truoc - a.so_ngay_truoc),
+      } : {}),
       removedImageIds,
     });
     setShowSubmitConfirm(true);
@@ -326,6 +446,22 @@ const HotelFormContent = ({
             onConfirm={handleConfirmSubmit}
           />
         )}
+
+        <ConfirmModal
+          open={Boolean(lockPolicyTarget)}
+          title="Xác nhận khóa mốc hoàn tiền"
+          intro="Bạn có chắc muốn ngưng hoạt động mốc hoàn tiền này?"
+          icon={<Lock size={20} />}
+          variant="danger"
+          infoRows={lockPolicyTarget ? [
+            { label: 'Hủy trước', value: `${lockPolicyTarget.so_ngay_truoc} ngày` },
+            { label: 'Hoàn tiền', value: `${lockPolicyTarget.phan_tram_hoan}%` },
+          ] : []}
+          warning="Mốc này sẽ không được áp dụng khi khách hủy phòng cho đến khi được mở khóa."
+          confirmText="Xác nhận khóa"
+          onClose={() => setLockPolicyTarget(null)}
+          onConfirm={handleConfirmLockPolicy}
+        />
 
         <div style={{
           display: 'flex', gap: 8, marginBottom: 20,
@@ -675,29 +811,114 @@ const HotelFormContent = ({
                 </div>
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <h4 style={{ margin: 0, fontSize: 14, color: '#1a2e28'}}>Quy định hoàn tiền khi hủy phòng</h4>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>
-                  Quy định này áp dụng mặc định cho tất cả khách sạn.
-                </p>
+              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 14, color: '#1a2e28'}}>Quy định hoàn tiền khi hủy phòng</h4>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>
+                    {canEditCancelPolicies
+                      ? 'Chỉnh số ngày hủy trước và % hoàn tiền theo chính sách của khách sạn.'
+                      : 'Quy định hoàn tiền đã được duyệt, không thể chỉnh sửa.'}
+                  </p>
+                </div>
+                {canEditCancelPolicies && (
+                  <button type="button" className="btn btn-outline btn-sm" onClick={handleAddCancelPolicy}>
+                    + Thêm mốc
+                  </button>
+                )}
               </div>
 
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Hủy trước (ngày)</th>
-                    <th>Hoàn tiền (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cancelPolicies.map((p, idx) => (
-                    <tr key={idx}>
-                      <td>{p.so_ngay_truoc} ngày</td>
-                      <td>{Number(p.phan_tram_hoan)}%</td>
+              {cancelPolicies.length === 0 ? (
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', fontStyle: 'italic' }}>
+                  {canEditCancelPolicies
+                    ? 'Chưa có mốc hoàn tiền. Nhấn "Thêm mốc" để bổ sung quy định hủy phòng.'
+                    : 'Chưa cấu hình quy định hoàn tiền.'}
+                </p>
+              ) : (
+                <table className="data-table hotel-form-cancel-table">
+                  <thead>
+                    <tr>
+                      <th>Hủy trước (ngày)</th>
+                      <th>Hoàn tiền (%)</th>
+                      <th>Trạng thái</th>
+                      {canEditCancelPolicies && <th>Thao tác</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {cancelPolicies.map((p, idx) => {
+                      const isEditing = canEditCancelPolicies && editingPolicyKeys.includes(p.key);
+                      const isActive = p.trang_thai !== 'an';
+                      const activeCount = cancelPolicies.filter((item) => item.trang_thai !== 'an').length;
+                      const pauseDisabled = isActive && activeCount <= 1;
+                      return (
+                        <tr key={p.key} className={isActive ? undefined : 'is-inactive'}>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                className="search-input hotel-form-cancel-input"
+                                value={p.so_ngay_truoc}
+                                onChange={(e) => handleCancelPolicyChange(idx, 'so_ngay_truoc', e.target.value)}
+                                onWheel={blurOnWheel}
+                                placeholder="VD: 7"
+                                aria-label={`Hủy trước (ngày) mốc ${idx + 1}`}
+                              />
+                            ) : (
+                              `${p.so_ngay_truoc} ngày`
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="1"
+                                className="search-input hotel-form-cancel-input"
+                                value={p.phan_tram_hoan}
+                                onChange={(e) => handleCancelPolicyChange(idx, 'phan_tram_hoan', e.target.value)}
+                                onWheel={blurOnWheel}
+                                placeholder="VD: 100"
+                                aria-label={`Hoàn tiền (%) mốc ${idx + 1}`}
+                              />
+                            ) : (
+                              `${p.phan_tram_hoan}%`
+                            )}
+                          </td>
+                          <td>
+                            <span className={`badge ${isActive ? 'badge-success' : 'badge-default'}`}>
+                              {isActive ? 'Hoạt động' : 'Ngưng HĐ'}
+                            </span>
+                          </td>
+                          {canEditCancelPolicies && (
+                            <ActionCell>
+                              <ActionButton
+                                variant={isEditing ? 'confirm' : 'edit'}
+                                iconOnly
+                                icon={isEditing ? Check : Pencil}
+                                title={isEditing ? 'Xong' : 'Chỉnh sửa'}
+                                onClick={() => handleToggleEditCancelPolicy(idx)}
+                              />
+                              <ActionButton
+                                variant={isActive ? 'lock' : 'unlock'}
+                                iconOnly
+                                icon={isActive ? Lock : Unlock}
+                                title={pauseDisabled ? 'Cần giữ ít nhất 1 mốc đang hoạt động' : (isActive ? 'Ngưng hoạt động' : 'Mở khóa')}
+                                disabled={pauseDisabled}
+                                onClick={() => handleToggleCancelPolicyStatus(idx)}
+                              />
+                            </ActionCell>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {fieldErrors.chinh_sach_huy && (
+                <p style={errSt} role="alert">{fieldErrors.chinh_sach_huy}</p>
+              )}
             </div>
           )}
 

@@ -11,13 +11,14 @@ import useListPagination from '../../../hooks/useListPagination';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import Toast from '../../../components/common/Toast';
 import useToast from '../../../hooks/useToast';
-import { PROMOTION_BADGE } from '../../../constants/statusConfig';
+import { getPromotionStatusMeta } from '../../../constants/statusConfig';
 import { formatDateVN as formatDate } from '../../../utils/formatDate';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
 const EMPTY_STATS = {
-  total: 0, cho_duyet: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
+  total: 0, hoat_dong: 0, tu_choi: 0, het_han: 0, an: 0,
 };
 
 const formatPromoUsage = (item) => {
@@ -122,7 +123,7 @@ const formatThousandInput = (v) => {
 
 const DetailModal = ({ item, onClose, onAction, onEdit, actionLoading }) => {
   if (!item) return null;
-  const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+  const st = getPromotionStatusMeta(item);
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
@@ -207,7 +208,7 @@ const FormModal = ({
         <form onSubmit={onSubmit} noValidate>
           <div className="form-group">
             <label>Khách sạn</label>
-            <select
+            <DownSelect
               className={inputCls(errors.ma_khach_san)}
               value={form.ma_khach_san}
               onChange={(e) => updateField('ma_khach_san', e.target.value)}
@@ -217,7 +218,7 @@ const FormModal = ({
               {hotels.map((h) => (
                 <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
               ))}
-            </select>
+            </DownSelect>
             <FieldError msg={errors.ma_khach_san} />
           </div>
           <div className="form-group">
@@ -243,7 +244,7 @@ const FormModal = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label>Loại giảm</label>
-              <select
+              <DownSelect
                 className="search-input"
                 value={form.loai_giam}
                 onChange={(e) => updateField('loai_giam', e.target.value)}
@@ -251,14 +252,17 @@ const FormModal = ({
                 {Object.entries(LOAI_GIAM).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="form-group">
-              <label>{isPercent ? 'Giá trị giảm (%)' : 'Số tiền giảm (VNĐ)'}</label>
+              <label>{isPercent ? 'Giá trị giảm (%) — tối đa 50%' : 'Số tiền giảm (VNĐ)'}</label>
               {isPercent ? (
                 <input
                   className={inputCls(errors.gia_tri)}
                   type="number"
+                  min="0.01"
+                  max="50"
+                  step="0.01"
                   value={form.gia_tri}
                   onChange={(e) => updateField('gia_tri', e.target.value)}
                 />
@@ -436,8 +440,8 @@ const PartnerPromotionsPage = () => {
     const giaTri = Number(f.gia_tri);
     if (f.gia_tri === '' || Number.isNaN(giaTri) || giaTri <= 0) {
       e.gia_tri = isPercent ? 'Giá trị giảm phải lớn hơn 0.' : 'Số tiền giảm phải lớn hơn 0.';
-    } else if (isPercent && giaTri > 100) {
-      e.gia_tri = 'Phần trăm giảm không được vượt quá 100%.';
+    } else if (isPercent && giaTri > 50) {
+      e.gia_tri = 'Phần trăm giảm không được vượt quá 50%.';
     } else if (!isPercent && giaTri < 0) {
       e.gia_tri = 'Số tiền giảm không được âm.';
     }
@@ -584,7 +588,7 @@ const PartnerPromotionsPage = () => {
     <div className="mgmt-page partner-promotions-page">
       <ManagementHeader
         title="Khuyến mãi"
-        subtitle="Tạo và quản lý mã giảm giá — áp dụng ngay; admin có thể khóa nếu không hợp lý"
+        subtitle="Tạo và quản lý mã giảm giá"
         actionLabel="Tạo khuyến mãi"
         onAction={openCreate}
       />
@@ -609,7 +613,7 @@ const PartnerPromotionsPage = () => {
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="partner-promo-hotel">Khách sạn</label>
-            <select
+            <DownSelect
               id="partner-promo-hotel"
               className="mgmt-select-inline"
               value={hotelFilter}
@@ -619,12 +623,12 @@ const PartnerPromotionsPage = () => {
               {hotels.map((h) => (
                 <option key={h.ma_khach_san} value={String(h.ma_khach_san)}>{h.ten}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="partner-promo-loaigiam">Loại khuyến mãi</label>
-            <select
+            <DownSelect
               id="partner-promo-loaigiam"
               className="mgmt-select-inline"
               value={loaiGiamFilter}
@@ -633,12 +637,12 @@ const PartnerPromotionsPage = () => {
               <option value="all">Tất cả loại</option>
               <option value="phan_tram">Phần trăm (%)</option>
               <option value="so_tien">Số tiền (VNĐ)</option>
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="partner-promo-status">Trạng thái</label>
-            <select
+            <DownSelect
               id="partner-promo-status"
               className="mgmt-select-inline"
               value={statusFilter}
@@ -648,12 +652,12 @@ const PartnerPromotionsPage = () => {
               <option value="hoat_dong">Đang hoạt động</option>
               <option value="an">Bị khóa</option>
               <option value="het_han">Hết hạn</option>
-            </select>
+            </DownSelect>
           </div>
 
           <div className="mgmt-filter-field">
             <label className="mgmt-filter-label" htmlFor="partner-promo-time">Thời gian</label>
-            <select
+            <DownSelect
               id="partner-promo-time"
               className="mgmt-select-inline"
               value={timePreset}
@@ -662,7 +666,7 @@ const PartnerPromotionsPage = () => {
               {TIME_PRESETS.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
 
           {timePreset === 'custom' && (
@@ -723,7 +727,7 @@ const PartnerPromotionsPage = () => {
                 </thead>
                 <tbody>
                   {pagedItems.map((item) => {
-                    const st = PROMOTION_BADGE[item.trang_thai] || { label: item.trang_thai, cls: 'badge-default' };
+                    const st = getPromotionStatusMeta(item);
                     return (
                       <tr key={item.ma_khuyen_mai}>
                         <td className="partner-col-code"><strong>{item.ma_code}</strong></td>

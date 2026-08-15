@@ -19,6 +19,7 @@ import HotelLockConfirmModal from "./components/HotelLockConfirmModal";
 import ConfirmModal from "../../../components/common/ConfirmModal";
 import { getHotelStatusMeta } from "../../../constants/statusConfig";
 import { buildAdminHotelsListPath } from "../../../utils/adminListReturn";
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -330,7 +331,7 @@ const HotelsPage = () => {
         activeTab={activeTab}
         onTabChange={handleTabChange}
       >
-        <select
+        <DownSelect
           className="mgmt-select-inline"
           value={partnerFilter}
           onChange={(e) => setPartnerFilter(e.target.value)}
@@ -342,8 +343,8 @@ const HotelsPage = () => {
               {partner.ten_cong_ty}
             </option>
           ))}
-        </select>
-        <select
+        </DownSelect>
+        <DownSelect
           className="mgmt-select-inline"
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
@@ -355,8 +356,8 @@ const HotelsPage = () => {
               {location.ten_dia_diem}
             </option>
           ))}
-        </select>
-        <select
+        </DownSelect>
+        <DownSelect
           className="mgmt-select-inline"
           value={starFilter}
           onChange={(e) => setStarFilter(e.target.value)}
@@ -366,7 +367,7 @@ const HotelsPage = () => {
           {[5, 4, 3, 2, 1].map((s) => (
             <option key={s} value={s}>{s} sao</option>
           ))}
-        </select>
+        </DownSelect>
         <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 

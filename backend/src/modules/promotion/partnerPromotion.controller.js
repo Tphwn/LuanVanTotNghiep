@@ -42,7 +42,7 @@ exports.create = async (req, res) => {
     res.status(201).json({
       success: true,
       data,
-      message: 'Đã gửi yêu cầu duyệt khuyến mãi',
+      message: 'Đã tạo khuyến mãi và áp dụng ngay',
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -61,7 +61,7 @@ exports.update = async (req, res) => {
     res.json({
       success: true,
       data,
-      message: 'Đã gửi yêu cầu duyệt lại khuyến mãi',
+      message: 'Đã cập nhật khuyến mãi',
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

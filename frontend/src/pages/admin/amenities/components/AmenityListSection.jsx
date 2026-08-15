@@ -3,6 +3,7 @@ import ActionButton, { ActionCell } from '../../../../components/common/ActionBu
 import ListPagination from '../../../../components/common/management/ListPagination';
 import useListPagination from '../../../../hooks/useListPagination';
 import { getAmenityLucideIcon } from '../../../../utils/amenityIcons';
+import DownSelect from '../../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -34,7 +35,7 @@ export const AmenityListSection = ({
           <span>Danh sách tiện nghi</span>
           <span className="amenity-list-count">{amenities.length}</span>
         </div>
-        <select
+        <DownSelect
           className="mgmt-select-inline amenity-category-select"
           value={categoryFilter}
           onChange={(e) => onCategoryChange(e.target.value)}
@@ -46,7 +47,7 @@ export const AmenityListSection = ({
               {group.label}
             </option>
           ))}
-        </select>
+        </DownSelect>
       </div>
 
       {loading ? (

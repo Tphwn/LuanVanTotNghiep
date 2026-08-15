@@ -3,6 +3,7 @@ import { ActionCell } from '../../../../components/common/ActionButton';
 import FilterTabs from '../../../../components/common/management/FilterTabs';
 import FilterActions from '../../../../components/common/management/FilterActions';
 import ListPagination from '../../../../components/common/management/ListPagination';
+import DownSelect from '../../../../components/common/management/DownSelect';
 import { HOTEL_STATUS } from '../constants';
 import { getMainImage } from '../utils';
 
@@ -36,13 +37,16 @@ export default function HotelListSection({
   onViewHotel,
   onClearFilters,
   pagination,
+  keyword = '',
+  onKeywordChange,
 }) {
   const showPartnerFilter = Boolean(partnerOptions?.length);
 
   const emptyListMessage = (() => {
     const hasExtraFilter = Boolean(partnerFilter)
       || Boolean(hotelNameFilter)
-      || Boolean(locationFilter);
+      || Boolean(locationFilter)
+      || Boolean(keyword?.trim());
     if (statusFilter === 'cho_duyet') {
       return hasExtraFilter
         ? 'Không tìm thấy khách sạn chờ duyệt phù hợp'
@@ -76,68 +80,80 @@ export default function HotelListSection({
       )}
 
       <div className="mgmt-toolbar mgmt-toolbar--filters partner-room-filters partner-room-filters--admin">
+        <div className="partner-room-filter-field partner-room-filter-field--search">
+          <label className="partner-room-filter-label" htmlFor="hotel-keyword-filter">Tìm kiếm</label>
+          <input
+            id="hotel-keyword-filter"
+            type="search"
+            className="mgmt-select-inline partner-room-filter-input"
+            placeholder="Tên khách sạn..."
+            value={keyword}
+            onChange={(e) => onKeywordChange?.(e.target.value)}
+          />
+        </div>
         {showPartnerFilter && (
           <div className="partner-room-filter-field">
             <label className="partner-room-filter-label" htmlFor="hotel-partner-filter">Đối tác</label>
-            <select
+            <DownSelect
               id="hotel-partner-filter"
               className="mgmt-select-inline partner-room-filter-input"
               value={partnerFilter}
               onChange={(e) => onPartnerFilterChange(e.target.value)}
-            >
-              <option value="">Tất cả đối tác</option>
-              {partnerOptions.map((partner) => (
-                <option key={partner.ma_doi_tac} value={String(partner.ma_doi_tac)}>
-                  {partner.ten_cong_ty}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: 'Tất cả đối tác' },
+                ...partnerOptions.map((partner) => ({
+                  value: String(partner.ma_doi_tac),
+                  label: partner.ten_cong_ty,
+                })),
+              ]}
+            />
           </div>
         )}
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="hotel-name-filter">Tên khách sạn</label>
-          <select
+          <DownSelect
             id="hotel-name-filter"
             className="mgmt-select-inline partner-room-filter-input"
             value={hotelNameFilter}
             onChange={(e) => onHotelNameFilterChange(e.target.value)}
-          >
-            <option value="">Tất cả khách sạn</option>
-            {hotelNameOptions.map((hotel) => (
-              <option key={hotel.ma_khach_san} value={String(hotel.ma_khach_san)}>
-                {hotel.ten}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'Tất cả khách sạn' },
+              ...hotelNameOptions.map((hotel) => ({
+                value: String(hotel.ma_khach_san),
+                label: hotel.ten,
+              })),
+            ]}
+          />
         </div>
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="hotel-location-filter">Địa điểm</label>
-          <select
+          <DownSelect
             id="hotel-location-filter"
             className="mgmt-select-inline partner-room-filter-input"
             value={locationFilter}
             onChange={(e) => onLocationFilterChange(e.target.value)}
-          >
-            <option value="">Tất cả địa điểm</option>
-            {locationOptions.map((loc) => (
-              <option key={loc.id} value={String(loc.id)}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'Tất cả địa điểm' },
+              ...locationOptions.map((loc) => ({
+                value: String(loc.id),
+                label: loc.name,
+              })),
+            ]}
+          />
         </div>
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="hotel-activity-filter">Trạng thái hoạt động</label>
-          <select
+          <DownSelect
             id="hotel-activity-filter"
             className="mgmt-select-inline partner-room-filter-input"
             value={statusFilter || 'all'}
             onChange={(e) => onStatusFilterChange(e.target.value)}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="hoat_dong">Đang hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
+            options={[
+              { value: 'all', label: 'Tất cả trạng thái' },
+              { value: 'hoat_dong', label: 'Đang hoạt động' },
+              { value: 'inactive', label: 'Không hoạt động' },
+            ]}
+          />
         </div>
         <div className="partner-room-filter-field partner-room-filter-field--action">
           <FilterActions onClear={onClearFilters} />

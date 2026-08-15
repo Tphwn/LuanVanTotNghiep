@@ -8,6 +8,7 @@ import { formatCurrency } from '../../../../utils/bookingDisplay';
 import { formatBedLabel } from '../../../../utils/bedDisplay';
 import { TRANG_THAI } from '../constants';
 import { getMainImage } from '../utils';
+import DownSelect from '../../../../components/common/management/DownSelect';
 
 export default function RoomListSection({
   rooms,
@@ -24,6 +25,8 @@ export default function RoomListSection({
   onClearFilters,
   variant = 'partner',
   pagination,
+  keyword = '',
+  onKeywordChange,
 }) {
   const isAdmin = variant === 'admin';
   const showStatusTabs = filterTabs?.length > 0;
@@ -35,9 +38,20 @@ export default function RoomListSection({
       )}
 
       <div className="mgmt-toolbar mgmt-toolbar--filters partner-room-filters partner-room-filters--room">
+        <div className="partner-room-filter-field partner-room-filter-field--search">
+          <label className="partner-room-filter-label" htmlFor="room-keyword-filter">Tìm kiếm</label>
+          <input
+            id="room-keyword-filter"
+            type="search"
+            className="mgmt-select-inline partner-room-filter-input"
+            placeholder="Tên loại phòng..."
+            value={keyword}
+            onChange={(e) => onKeywordChange?.(e.target.value)}
+          />
+        </div>
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="room-type-filter">Loại phòng</label>
-          <select
+          <DownSelect
             id="room-type-filter"
             className="mgmt-select-inline partner-room-filter-input"
             value={roomTypeFilter}
@@ -49,11 +63,11 @@ export default function RoomListSection({
                 {room.ten_loai}
               </option>
             ))}
-          </select>
+          </DownSelect>
         </div>
         <div className="partner-room-filter-field">
           <label className="partner-room-filter-label" htmlFor="room-status-filter">Trạng thái</label>
-          <select
+          <DownSelect
             id="room-status-filter"
             className="mgmt-select-inline partner-room-filter-input"
             value={statusFilter || 'all'}
@@ -62,7 +76,7 @@ export default function RoomListSection({
             <option value="all">Tất cả trạng thái</option>
             <option value="hoat_dong">Đang hoạt động</option>
             <option value="an">Đã ẩn</option>
-          </select>
+          </DownSelect>
         </div>
         <div className="partner-room-filter-field partner-room-filter-field--action">
           <FilterActions onClear={onClearFilters} />

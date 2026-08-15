@@ -17,6 +17,7 @@ import CreatePartnerModal from "./components/CreatePartnerModal";
 import UserLockConfirmModal from "./components/UserLockConfirmModal";
 import { ACCOUNT_BADGE } from "../../../constants/statusConfig";
 import { buildAdminUsersListPath } from "../../../utils/adminListReturn";
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 const VALID_STATUS_TABS = ["all", "hoat_dong", "bi_khoa"];
@@ -268,7 +269,7 @@ const UsersPage = () => {
         activeTab={statusFilter}
         onTabChange={handleStatusTabChange}
       >
-        <select
+        <DownSelect
           className="mgmt-select-inline"
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
@@ -277,8 +278,8 @@ const UsersPage = () => {
           <option value="all">Tất cả vai trò</option>
           <option value="khach_hang">Khách hàng</option>
           <option value="doi_tac">Đối tác</option>
-        </select>
-        <select
+        </DownSelect>
+        <DownSelect
           className="mgmt-select-inline"
           value={statusFilter}
           onChange={(e) => handleStatusTabChange(e.target.value)}
@@ -287,7 +288,7 @@ const UsersPage = () => {
           <option value="all">Tất cả trạng thái</option>
           <option value="hoat_dong">Đang hoạt động</option>
           <option value="bi_khoa">Đã khóa</option>
-        </select>
+        </DownSelect>
         <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 

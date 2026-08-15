@@ -37,8 +37,10 @@ const RoomTypesPage = () => {
   const [partnerFilter, setPartnerFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [hotelNameFilter, setHotelNameFilter] = useState('');
+  const [hotelKeyword, setHotelKeyword] = useState('');
   const [hotelStatusFilter, setHotelStatusFilter] = useState('all');
   const [roomTypeFilter, setRoomTypeFilter] = useState('');
+  const [roomKeyword, setRoomKeyword] = useState('');
   const [roomStatusFilter, setRoomStatusFilter] = useState('all');
 
   const showToast = (msg, type = 'success') => {
@@ -50,6 +52,7 @@ const RoomTypesPage = () => {
     const val = String(id);
     setSelectedHotel(val);
     setRoomTypeFilter('');
+    setRoomKeyword('');
     setRoomStatusFilter('all');
     navigate(id ? `/admin/room-types/hotels/${id}` : '/admin/room-types');
   };
@@ -171,8 +174,10 @@ const RoomTypesPage = () => {
     const matchStatus = hotelStatusFilter === 'all'
       || (hotelStatusFilter === 'hoat_dong' && isHotelActive(hotel))
       || (hotelStatusFilter === 'inactive' && !isHotelActive(hotel));
-    return matchPartner && matchName && matchLoc && matchStatus;
-  }), [hotels, partnerFilter, hotelNameFilter, locationFilter, hotelStatusFilter]);
+    const text = hotelKeyword.trim().toLowerCase();
+    const matchKeyword = !text || hotel.ten?.toLowerCase().includes(text);
+    return matchPartner && matchName && matchLoc && matchStatus && matchKeyword;
+  }), [hotels, partnerFilter, hotelNameFilter, locationFilter, hotelStatusFilter, hotelKeyword]);
 
   const hotelFilterTabs = useMemo(() => {
     const activeCount = hotels.filter(isHotelActive).length;
@@ -186,8 +191,10 @@ const RoomTypesPage = () => {
   const filteredRooms = useMemo(() => rooms.filter((room) => {
     const matchType = !roomTypeFilter || String(room.ma_loai_phong) === roomTypeFilter;
     const matchStatus = roomStatusFilter === 'all' || room.trang_thai === roomStatusFilter;
-    return matchType && matchStatus;
-  }), [rooms, roomTypeFilter, roomStatusFilter]);
+    const text = roomKeyword.trim().toLowerCase();
+    const matchKeyword = !text || room.ten_loai?.toLowerCase().includes(text);
+    return matchType && matchStatus && matchKeyword;
+  }), [rooms, roomTypeFilter, roomStatusFilter, roomKeyword]);
 
   const roomFilterTabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: rooms.length, tone: 'neutral' },
@@ -200,12 +207,14 @@ const RoomTypesPage = () => {
     hotelNameFilter,
     locationFilter,
     hotelStatusFilter,
+    hotelKeyword,
   ]);
 
   const roomPagination = useListPagination(filteredRooms, PAGE_SIZE, [
     selectedHotel,
     roomTypeFilter,
     roomStatusFilter,
+    roomKeyword,
   ]);
 
   const currentHotel = hotels.find((hotel) => String(hotel.ma_khach_san) === String(selectedHotel));
@@ -214,23 +223,27 @@ const RoomTypesPage = () => {
     partnerFilter
     || hotelNameFilter
     || locationFilter
+    || hotelKeyword.trim()
     || hotelStatusFilter !== 'all',
   );
 
   const hasRoomListFilter = Boolean(
     roomTypeFilter
+    || roomKeyword.trim()
     || roomStatusFilter !== 'all',
   );
 
   const clearHotelListFilters = () => {
     setPartnerFilter('');
     setHotelNameFilter('');
+    setHotelKeyword('');
     setLocationFilter('');
     setHotelStatusFilter('all');
   };
 
   const clearRoomListFilters = () => {
     setRoomTypeFilter('');
+    setRoomKeyword('');
     setRoomStatusFilter('all');
   };
 
@@ -308,6 +321,8 @@ const RoomTypesPage = () => {
               partnerOptions={partners}
               hotelNameFilter={hotelNameFilter}
               onHotelNameFilterChange={setHotelNameFilter}
+              keyword={hotelKeyword}
+              onKeywordChange={setHotelKeyword}
               locationFilter={locationFilter}
               onLocationFilterChange={setLocationFilter}
               locationOptions={locationOptions}
@@ -358,6 +373,8 @@ const RoomTypesPage = () => {
             loading={loadingRooms}
             roomTypeFilter={roomTypeFilter}
             onRoomTypeFilterChange={setRoomTypeFilter}
+            keyword={roomKeyword}
+            onKeywordChange={setRoomKeyword}
             statusFilter={roomStatusFilter}
             onStatusFilterChange={setRoomStatusFilter}
             filterTabs={roomFilterTabs}

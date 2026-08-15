@@ -516,7 +516,7 @@ const adminPaymentService = {
 
     const [all, choDoiSoat, daDoiSoat, tamGiu, revenueAgg, filterRows] = await Promise.all([
       prisma.hoa_hong.aggregate({
-        where,
+      where,
         _sum: { so_tien_hoa_hong: true },
         _count: { ma_hoa_hong: true },
       }),
@@ -540,15 +540,15 @@ const adminPaymentService = {
         select: {
           ma_doi_tac: true,
           doi_tac: { select: { ma_doi_tac: true, ten_cong_ty: true } },
-          dat_phong: {
-            select: {
-              loai_phong: {
-                select: {
+        dat_phong: {
+          select: {
+            loai_phong: {
+              select: {
                   khach_san: { select: { ma_khach_san: true, ten: true } },
-                },
               },
             },
           },
+        },
         },
       }),
     ]);
@@ -1015,7 +1015,7 @@ const adminPaymentService = {
     if (partnerIds.length) {
       const bankRows = await prisma.doi_tac.findMany({
         where: { ma_doi_tac: { in: partnerIds } },
-        select: {
+          select: {
           ma_doi_tac: true,
           so_tai_khoan: true,
           ten_chu_tai_khoan: true,
@@ -1210,7 +1210,7 @@ const adminPaymentService = {
       so_don_da_tt: soDonDaTt,
       so_don_tam_giu: 0,
       tong_doanh_thu: tongDoanhThu,
-      tong_hoa_hong: tongHoaHong,
+        tong_hoa_hong: tongHoaHong,
       so_tien_can_thanh_toan: conChoNhan,
       trang_thai: trangThai,
       tong_so_don: bookings.length,

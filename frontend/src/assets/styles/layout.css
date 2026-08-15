@@ -452,7 +452,8 @@ body {
   border: none;
   border-bottom: 1px solid #f5f5f5;
   background: #fff;
-  cursor: pointer;
+  cursor: default;
+  box-sizing: border-box;
   transition: background 0.15s;
 }
 
@@ -528,7 +529,6 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-bottom: 4px;
 }
 
 .partner-notify-item-title {
@@ -563,15 +563,42 @@ body {
 }
 
 .partner-notify-item-content {
+  margin-top: 6px;
   font-size: 12px;
   color: #64748b;
   line-height: 1.5;
 }
 
+.partner-notify-item-content.is-clickable {
+  cursor: pointer;
+}
+
+.partner-notify-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.partner-notify-detail-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3C7363;
+  cursor: pointer;
+}
+
+.partner-notify-detail-btn:hover {
+  text-decoration: underline;
+}
+
 .partner-notify-item-time {
   font-size: 11px;
   color: #94a3b8;
-  margin-top: 6px;
+  margin-left: auto;
 }
 
 .admin-user-block {
@@ -1277,11 +1304,11 @@ body {
 }
 
 .admin-finance-filters {
-  display: inline-flex;
+  display: flex;
   flex-wrap: nowrap;
   align-items: end;
-  gap: 16px;
-  width: fit-content;
+  gap: 10px;
+  width: 100%;
   max-width: 100%;
   margin-bottom: 16px;
   padding: 16px 20px;
@@ -1289,24 +1316,41 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .admin-finance-filters .mgmt-filter-field {
-  width: 170px;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
 }
 
 .admin-finance-filters .mgmt-filter-field--grow {
-  width: 220px;
+  flex: 1.4 1 0;
+  width: auto;
+  min-width: 0;
 }
 
 .admin-finance-filters .mgmt-filter-field--action {
+  flex: 0 0 auto;
   width: auto;
+  min-width: auto;
+  white-space: nowrap;
 }
 
 .admin-finance-filters .mgmt-select-inline,
-.admin-finance-filters input.mgmt-select-inline {
+.admin-finance-filters input.mgmt-select-inline,
+.admin-finance-filters .down-select,
+.admin-finance-filters .date-input,
+.admin-finance-filters .date-input.mgmt-select-inline {
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+}
+
+.admin-finance-filters .date-input {
+  min-width: 0;
+  height: 42px;
 }
 
 .admin-finance-payout-filters {
@@ -4566,53 +4610,36 @@ a.comm-receipt-order:hover {
 }
 
 .admin-users-page .mgmt-toolbar--filters.mgmt-toolbar-row,
-.admin-hotels-page .mgmt-toolbar--filters.mgmt-toolbar-row {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  width: fit-content;
-  max-width: 100%;
-  gap: 12px;
-}
+.admin-hotels-page .mgmt-toolbar--filters.mgmt-toolbar-row,
+.admin-partner-requests-page .mgmt-toolbar--filters.mgmt-toolbar-row,
 .partner-hotels-page .mgmt-toolbar--filters.mgmt-toolbar-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: end;
   width: 100%;
   max-width: 100%;
-  gap: 12px 14px;
+  gap: 12px;
   overflow: visible;
 }
 
-.partner-hotels-page .mgmt-toolbar--filters .mgmt-search-wrap {
-  flex: 1 1 260px;
+.partner-hotels-page .mgmt-toolbar--filters .mgmt-search-wrap,
+.admin-hotels-page .mgmt-toolbar--filters .mgmt-search-wrap,
+.admin-users-page .mgmt-toolbar--filters .mgmt-search-wrap,
+.admin-partner-requests-page .mgmt-toolbar--filters .mgmt-search-wrap {
+  flex: 1 1 240px;
   width: auto;
-  min-width: 240px;
+  min-width: 220px;
   max-width: 360px;
 }
 
-.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-location-filter {
-  flex: 0 0 auto;
-  width: 210px;
-  min-width: 210px;
-  max-width: none;
-}
-
-.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-activity-filter {
-  flex: 0 0 auto;
-  width: 280px;
-  min-width: 280px;
-  max-width: none;
-}
-
+.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-location-filter,
+.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-activity-filter,
 .partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-star-filter {
-  flex: 0 0 auto;
-  width: 170px;
-  min-width: 170px;
+  width: 100%;
+  min-width: 0;
   max-width: none;
 }
 
-.admin-hotels-page .mgmt-toolbar-row .mgmt-search-wrap,
-.admin-users-page .mgmt-toolbar-row .mgmt-search-wrap,
 .admin-bookings-page .mgmt-toolbar-row .mgmt-search-wrap,
 .partner-bookings-page .mgmt-toolbar-row .mgmt-search-wrap {
   flex: 0 1 260px;
@@ -4621,21 +4648,24 @@ a.comm-receipt-order:hover {
   width: 260px;
 }
 
-.admin-users-page .mgmt-toolbar--filters .mgmt-search-wrap,
-.admin-hotels-page .mgmt-toolbar--filters .mgmt-search-wrap {
-  flex: 0 0 auto;
-  width: 240px;
-  min-width: 200px;
-  max-width: 280px;
-}
-
 .admin-hotels-page .mgmt-toolbar-row .mgmt-select-inline,
 .admin-users-page .mgmt-toolbar-row .mgmt-select-inline,
 .admin-bookings-page .mgmt-toolbar-row .mgmt-select-inline,
 .partner-bookings-page .mgmt-toolbar-row .mgmt-select-inline,
-.admin-bookings-page .admin-bookings-date-filter {
-  width: 150px;
-  flex-shrink: 0;
+.admin-bookings-page .admin-bookings-date-filter,
+.admin-hotels-page .mgmt-toolbar-row > .down-select,
+.admin-users-page .mgmt-toolbar-row > .down-select,
+.admin-partner-requests-page .mgmt-toolbar-row > .down-select,
+.partner-hotels-page .mgmt-toolbar-row > .down-select {
+  flex: 1 1 180px;
+  width: 180px;
+  min-width: 180px;
+  max-width: 240px;
+}
+
+.mgmt-toolbar-row > .down-select .down-select-trigger {
+  width: 100%;
+  min-width: 0;
 }
 
 .admin-bookings-page .admin-bookings-date-filter {
@@ -4706,7 +4736,8 @@ a.comm-receipt-order:hover {
   width: 100%;
 }
 
-.admin-bookings-page .admin-bookings-filters-row .mgmt-select-inline {
+.admin-bookings-page .admin-bookings-filters-row .mgmt-select-inline,
+.admin-bookings-page .admin-bookings-filters-row .down-select {
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -4997,7 +5028,8 @@ a.comm-receipt-order:hover {
   width: 100%;
 }
 
-.partner-bookings-page .partner-bookings-filters-row .mgmt-select-inline {
+.partner-bookings-page .partner-bookings-filters-row .mgmt-select-inline,
+.partner-bookings-page .partner-bookings-filters-row .down-select {
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -5754,7 +5786,7 @@ a.comm-receipt-order:hover {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   box-sizing: border-box;
-  overflow-x: auto;
+  overflow: visible;
 }
 .admin-reviews-filters,
 .admin-promotions-filters,
@@ -5764,8 +5796,20 @@ a.comm-receipt-order:hover {
 }
 
 .admin-reviews-filters,
-.partner-reviews-filters {
-  overflow-x: visible;
+.partner-reviews-filters,
+.admin-promotions-filters,
+.partner-promotions-page .mgmt-toolbar--filters,
+.mgmt-toolbar--filters,
+.mgmt-toolbar-row,
+.admin-bookings-filters,
+.admin-bookings-filters-row,
+.partner-bookings-filters,
+.partner-bookings-filters-row,
+.admin-finance-filters,
+.admin-reports-finance-filters,
+.partner-finance-toolbar-hotel,
+.mgmt-filter-field {
+  overflow: visible;
 }
 .admin-promotions-filters,
 .partner-promotions-page .mgmt-toolbar--filters {
@@ -5773,7 +5817,7 @@ a.comm-receipt-order:hover {
   flex-wrap: nowrap;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: visible;
   align-items: flex-end;
   gap: 10px;
   padding: 12px 14px;
@@ -5891,21 +5935,11 @@ a.comm-receipt-order:hover {
   width: 100%;
 }
 
-.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-location-filter {
-  width: 210px;
-  min-width: 210px;
-  max-width: none;
-}
-
-.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-activity-filter {
-  width: 280px;
-  min-width: 280px;
-  max-width: none;
-}
-
+.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-location-filter,
+.partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-activity-filter,
 .partner-hotels-page .mgmt-toolbar--filters .mgmt-select-inline.partner-hotels-star-filter {
-  width: 170px;
-  min-width: 170px;
+  width: 100%;
+  min-width: 0;
   max-width: none;
 }
 
@@ -6753,6 +6787,107 @@ a.comm-receipt-order:hover {
 }
 
 .mgmt-select-inline:focus { border-color: #3C7363; }
+
+.down-select {
+  position: relative;
+  min-width: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+.mgmt-filter-field .down-select,
+.partner-room-filter-field .down-select,
+.admin-bookings-filters-row .down-select,
+.partner-bookings-filters-row .down-select,
+.admin-finance-filters .down-select,
+.partner-finance-toolbar-hotel .down-select,
+.admin-reports-finance-filter-field .down-select,
+.price-inv-toolbar .field .down-select,
+.amenity-list-toolbar .down-select {
+  width: 100%;
+}
+
+.down-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.down-select-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.down-select-caret {
+  flex-shrink: 0;
+  color: #64748b;
+  transition: transform 0.15s ease;
+}
+
+.down-select.is-open {
+  z-index: 40;
+}
+
+.partner-room-filter-field:has(.down-select.is-open),
+.mgmt-filter-field:has(.down-select.is-open) {
+  z-index: 40;
+}
+
+.down-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.down-select-option {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #1a2e28;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+}
+
+.down-select-option.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.down-select-option:hover,
+.down-select-option:focus,
+.down-select-option:focus-visible,
+.down-select-option.is-active {
+  background: #e8f5f1;
+  color: #3C7363;
+  outline: none;
+}
+
+.down-select-option.is-disabled:hover,
+.down-select-option.is-disabled.is-active {
+  background: #fff;
+  color: #1a2e28;
+}
 
 /* DateInput: hiển thị dd/mm/yyyy (thay input type=date theo locale OS) */
 .date-input {
@@ -8317,11 +8452,33 @@ a.comm-receipt-order:hover {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   box-sizing: border-box;
+  overflow: visible;
+  position: relative;
+  z-index: 4;
 }
 
 .partner-room-filters--room,
 .partner-room-filters--admin {
+  width: 100%;
   max-width: 100%;
+}
+
+.partner-room-filters--room .partner-room-filter-field,
+.partner-room-filters--admin .partner-room-filter-field {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+.partner-room-filters--room .partner-room-filter-field--search,
+.partner-room-filters--admin .partner-room-filter-field--search {
+  flex: 1.3 1 0;
+}
+
+.partner-room-filters--room .partner-room-filter-field--action,
+.partner-room-filters--admin .partner-room-filter-field--action {
+  flex: 0 0 auto;
+  width: auto;
 }
 
 .partner-room-page-subtitle {
@@ -8337,6 +8494,9 @@ a.comm-receipt-order:hover {
   flex: 0 0 auto;
   width: 200px;
   min-width: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
 .partner-room-filter-field--action {
@@ -8677,14 +8837,33 @@ a.comm-receipt-order:hover {
   .partner-room-filters--admin {
     width: 100%;
     max-width: 100%;
+    flex-wrap: wrap;
   }
 
-  .partner-room-filter-field {
+  .partner-room-filter-field,
+  .partner-room-filters--room .partner-room-filter-field,
+  .partner-room-filters--admin .partner-room-filter-field {
     width: 100%;
     flex: 1 1 100%;
   }
 
-  .partner-room-filter-field--action {
+  .partner-room-filter-field--action,
+  .partner-room-filters--room .partner-room-filter-field--action,
+  .partner-room-filters--admin .partner-room-filter-field--action {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .admin-finance-filters {
+    flex-wrap: wrap;
+  }
+
+  .admin-finance-filters .mgmt-filter-field {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .admin-finance-filters .mgmt-filter-field--action {
     flex: 0 0 auto;
     width: auto;
   }
@@ -9979,6 +10158,28 @@ a.comm-receipt-order:hover {
 
 .partner-hotel-policy-table {
   margin-top: 8px;
+}
+
+.hotel-form-cancel-table th,
+.hotel-form-cancel-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.hotel-form-cancel-table tr.is-inactive td {
+  opacity: 0.7;
+}
+
+.hotel-form-cancel-input {
+  width: 110px;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.hotel-form-cancel-table .table-action-cell {
+  width: 118px;
 }
 
 .partner-form-success-banner {
@@ -11330,7 +11531,9 @@ a.comm-receipt-order:hover {
 
 .admin-reports-finance-filter-field select,
 .admin-reports-finance-filter-field input,
-.admin-reports-finance-filter-field .date-input {
+.admin-reports-finance-filter-field .date-input,
+.admin-reports-finance-filter-field .down-select,
+.admin-reports-finance-filter-field .down-select-trigger {
   height: 34px;
   border: 1px solid #d4ede6;
   border-radius: 8px;
@@ -11340,6 +11543,14 @@ a.comm-receipt-order:hover {
   background: #fff;
   min-width: 160px;
   box-sizing: border-box;
+}
+
+.admin-reports-finance-filter-field .down-select {
+  height: auto;
+  border: 0;
+  padding: 0;
+  min-width: 160px;
+  width: 100%;
 }
 
 .admin-reports-finance-filter-field .date-input {

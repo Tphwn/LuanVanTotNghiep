@@ -7,6 +7,7 @@ import useListPagination from '../../../../hooks/useListPagination';
 import { formatCurrency } from '../../../../utils/bookingDisplay';
 import { getPresetRange, REPORT_DATE_PRESETS, riskRateTone } from '../reportHelpers';
 import { KpiCard, KpiGrid } from './ReportUI';
+import DownSelect from '../../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -267,7 +268,7 @@ const ReportFinancePanel = () => {
       <div className="admin-reports-finance-filters">
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="finance-preset">Thời gian</label>
-          <select
+          <DownSelect
             id="finance-preset"
             value={draft.preset}
             onChange={(e) => handlePresetChange(e.target.value)}
@@ -275,7 +276,7 @@ const ReportFinancePanel = () => {
             {REPORT_DATE_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         {draft.preset === 'custom' ? (
@@ -302,7 +303,7 @@ const ReportFinancePanel = () => {
 
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="finance-partner">Đối tác</label>
-          <select
+          <DownSelect
             id="finance-partner"
             value={draft.ma_doi_tac}
             onChange={(e) =>
@@ -316,12 +317,12 @@ const ReportFinancePanel = () => {
             {partners.map((p) => (
               <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="finance-hotel">Khách sạn</label>
-          <select
+          <DownSelect
             id="finance-hotel"
             value={draft.ma_khach_san}
             onChange={(e) => updateDraft({ ma_khach_san: e.target.value })}
@@ -330,12 +331,12 @@ const ReportFinancePanel = () => {
             {filteredHotels.map((h) => (
               <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="finance-city">Thành phố</label>
-          <select
+          <DownSelect
             id="finance-city"
             value={draft.thanh_pho}
             onChange={(e) =>
@@ -349,7 +350,7 @@ const ReportFinancePanel = () => {
             {cities.map((city) => (
               <option key={city} value={city}>{city}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="admin-reports-finance-filter-actions">
@@ -370,7 +371,7 @@ const ReportFinancePanel = () => {
         </div>
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="finance-sort">Sắp xếp</label>
-          <select
+          <DownSelect
             id="finance-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value)}
@@ -378,7 +379,7 @@ const ReportFinancePanel = () => {
             {(subTab === 'doanh_thu' ? REVENUE_SORT_OPTIONS : REFUND_SORT_OPTIONS).map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ const fetchHotelFull = async (hotelId) => {
       dia_diem: true,
       khach_san_tien_nghi: { include: { tien_nghi: true } },
       chinh_sach_khach_san: true,
-      chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+      chinh_sach_huy: { orderBy: { so_ngay_truoc: 'desc' } },
       _count: { select: { loai_phong: true } },
     },
   });
@@ -47,16 +47,26 @@ const fetchHotelFull = async (hotelId) => {
 };
 
 const saveCancelPolicies = async (tx, hotelId, policies) => {
-  await tx.chinh_sach_huy.deleteMany({ where: { ma_khach_san: hotelId } });
-  if (policies.length > 0) {
-    await tx.chinh_sach_huy.createMany({
-      data: policies.map((cs) => ({
-        ma_khach_san: hotelId,
-        so_ngay_truoc: parseInt(cs.so_ngay_truoc),
-        phan_tram_hoan: parseFloat(cs.phan_tram_hoan),
-        trang_thai: 'hoat_dong',
-      })),
+  const seenDays = new Set();
+  const cleaned = [];
+  (Array.isArray(policies) ? policies : []).forEach((cs) => {
+    const soNgay = parseInt(cs.so_ngay_truoc, 10);
+    const phanTram = Number(cs.phan_tram_hoan);
+    if (!Number.isInteger(soNgay) || soNgay < 0) return;
+    if (!Number.isFinite(phanTram) || phanTram < 0 || phanTram > 100) return;
+    if (seenDays.has(soNgay)) return;
+    seenDays.add(soNgay);
+    cleaned.push({
+      ma_khach_san: hotelId,
+      so_ngay_truoc: soNgay,
+      phan_tram_hoan: phanTram,
+      trang_thai: cs.trang_thai === 'an' ? 'an' : 'hoat_dong',
     });
+  });
+
+  await tx.chinh_sach_huy.deleteMany({ where: { ma_khach_san: hotelId } });
+  if (cleaned.length > 0) {
+    await tx.chinh_sach_huy.createMany({ data: cleaned });
   }
 };
 
@@ -216,7 +226,7 @@ exports.getMyHotels = async (req, res) => {
         dia_diem: true,
         khach_san_tien_nghi: { include: { tien_nghi: true } },
         chinh_sach_khach_san: true,
-        chinh_sach_huy: { where: { trang_thai: 'hoat_dong' }, orderBy: { so_ngay_truoc: 'desc' } },
+        chinh_sach_huy: { orderBy: { so_ngay_truoc: 'desc' } },
         _count: { select: { loai_phong: true } },
       },
       orderBy: { ngay_tao: 'desc' },
@@ -346,7 +356,7 @@ exports.updateHotel = async (req, res) => {
     );
     const hasContentChange = contentFieldKeys.length > 0
       || tien_nghi_ids !== undefined
-      || chinh_sach_huy !== undefined
+      || (chinh_sach_huy !== undefined && ['cho_duyet', 'tu_choi'].includes(existing.trang_thai))
       || Object.keys(hotelRules).length > 0
       || removedImageIds.length > 0
       || Boolean(req.files?.length)
@@ -389,7 +399,7 @@ exports.updateHotel = async (req, res) => {
         }
       }
 
-      if (chinh_sach_huy !== undefined) {
+      if (chinh_sach_huy !== undefined && ['cho_duyet', 'tu_choi'].includes(existing.trang_thai)) {
         await saveCancelPolicies(tx, hotelId, chinh_sach_huy);
       }
 

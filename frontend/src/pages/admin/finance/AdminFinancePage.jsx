@@ -33,6 +33,7 @@ import Toast from '../../../components/common/Toast';
 import AdminFinanceOverviewPanel from './AdminFinanceOverviewPanel';
 import formatCurrency from '../../../utils/formatCurrency';
 import { formatDateVN } from '../../../utils/formatDate';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 // ===== HELPERS =====
 const fmt = formatCurrency;
@@ -116,12 +117,6 @@ const StatCard = ({ title, value, subtitle, tone }) => (
     </span>
   </div>
 );
-
-const inputSt = {
-  padding:'9px 12px', border:'1px solid #d4ede6',
-  borderRadius:8, fontSize:14, outline:'none',
-  fontFamily:'inherit', background:'#fff',
-};
 
 const FINANCE_TABS = ['overview', 'transactions', 'refunds', 'commissions', 'partner'];
 
@@ -476,7 +471,6 @@ const AdminFinancePage = () => {
               <input
                 id="tx-keyword"
                 className="mgmt-select-inline"
-                style={inputSt}
                 placeholder="Mã GD, tham chiếu, mã đơn..."
                 value={txFilter.keyword}
                 onChange={(e) => setTxFilter({ ...txFilter, keyword: e.target.value })}
@@ -484,10 +478,9 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="tx-status">Trạng thái</label>
-              <select
+              <DownSelect
                 id="tx-status"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={txFilter.trang_thai}
                 onChange={(e) => setTxFilter({ ...txFilter, trang_thai: e.target.value })}
               >
@@ -496,28 +489,26 @@ const AdminFinancePage = () => {
                 <option value="that_bai">Thất bại</option>
                 <option value="da_hoan_tien">Đã hoàn tiền</option>
                 <option value="hoan_thanh">Hoàn thành</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="tx-method">Phương thức</label>
-              <select
+              <DownSelect
                 id="tx-method"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={txFilter.phuong_thuc}
                 onChange={(e) => setTxFilter({ ...txFilter, phuong_thuc: e.target.value })}
               >
                 <option value="all">Tất cả</option>
                 <option value="vnpay">VNPay</option>
                 <option value="momo">MoMo</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="tx-from">Từ ngày</label>
               <DateInput
                 id="tx-from"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={txFilter.tu_ngay}
                 onChange={(e) => setTxFilter({ ...txFilter, tu_ngay: e.target.value })}
               />
@@ -527,7 +518,6 @@ const AdminFinancePage = () => {
               <DateInput
                 id="tx-to"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={txFilter.den_ngay}
                 onChange={(e) => setTxFilter({ ...txFilter, den_ngay: e.target.value })}
               />
@@ -629,7 +619,6 @@ const AdminFinancePage = () => {
               <input
                 id="rf-keyword"
                 className="mgmt-select-inline"
-                style={inputSt}
                 placeholder="Mã đơn hoặc tên khách hàng..."
                 value={rfFilter.keyword}
                 onChange={(e) => setRfFilter({ ...rfFilter, keyword: e.target.value })}
@@ -637,10 +626,9 @@ const AdminFinancePage = () => {
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="rf-status">Trạng thái</label>
-              <select
+              <DownSelect
                 id="rf-status"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={rfFilter.trang_thai}
                 onChange={(e) => setRfFilter({ ...rfFilter, trang_thai: e.target.value })}
               >
@@ -648,14 +636,13 @@ const AdminFinancePage = () => {
                 <option value="cho_xu_ly">Chờ xử lý</option>
                 <option value="dang_xu_ly">Đang xử lý</option>
                 <option value="da_hoan">Đã hoàn</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="rf-from">Từ ngày</label>
               <DateInput
                 id="rf-from"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={rfFilter.tu_ngay}
                 onChange={(e) => setRfFilter({ ...rfFilter, tu_ngay: e.target.value })}
               />
@@ -665,7 +652,6 @@ const AdminFinancePage = () => {
               <DateInput
                 id="rf-to"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={rfFilter.den_ngay}
                 onChange={(e) => setRfFilter({ ...rfFilter, den_ngay: e.target.value })}
               />
@@ -799,10 +785,9 @@ const AdminFinancePage = () => {
           <div className="admin-finance-filters">
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-partner">Đối tác</label>
-              <select
+              <DownSelect
                 id="comm-partner"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.doi_tac_id}
                 onChange={(e) => setCommFilter({
                   ...commFilter,
@@ -814,14 +799,13 @@ const AdminFinancePage = () => {
                 {(commissionStats?.partners || []).map((p) => (
                   <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-hotel">Khách sạn</label>
-              <select
+              <DownSelect
                 id="comm-hotel"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.khach_san_id}
                 disabled={commFilter.doi_tac_id === 'all'}
                 onChange={(e) => setCommFilter({ ...commFilter, khach_san_id: e.target.value })}
@@ -832,14 +816,13 @@ const AdminFinancePage = () => {
                 {commissionHotelsForPartner.map((h) => (
                   <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-period">Khoảng thời gian</label>
-              <select
+              <DownSelect
                 id="comm-period"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.period}
                 onChange={(e) => {
                   const period = e.target.value;
@@ -858,14 +841,13 @@ const AdminFinancePage = () => {
                 <option value="">Tùy chọn / Tất cả</option>
                 <option value="week">Trong tuần</option>
                 <option value="month">Trong tháng</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-status">Trạng thái</label>
-              <select
+              <DownSelect
                 id="comm-status"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.trang_thai}
                 onChange={(e) => setCommFilter({ ...commFilter, trang_thai: e.target.value })}
               >
@@ -873,14 +855,13 @@ const AdminFinancePage = () => {
                 <option value="chua_thu">Chờ đối soát</option>
                 <option value="da_thu">Đã đối soát</option>
                 <option value="tam_giu">Tạm giữ</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="comm-from">Từ ngày trả</label>
               <DateInput
                 id="comm-from"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.tu_ngay}
                 onChange={(e) => setCommFilter({
                   ...commFilter,
@@ -894,7 +875,6 @@ const AdminFinancePage = () => {
               <DateInput
                 id="comm-to"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={commFilter.den_ngay}
                 onChange={(e) => setCommFilter({
                   ...commFilter,
@@ -1089,10 +1069,9 @@ const AdminFinancePage = () => {
           <div className="admin-finance-filters">
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-partner">Đối tác</label>
-              <select
+              <DownSelect
                 id="payout-partner"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.doi_tac_id}
                 onChange={(e) => setPayoutFilter({
                   ...payoutFilter,
@@ -1104,14 +1083,13 @@ const AdminFinancePage = () => {
                 {(partnerPayoutStats?.partners || []).map((p) => (
                   <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten_cong_ty}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-hotel">Khách sạn</label>
-              <select
+              <DownSelect
                 id="payout-hotel"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.khach_san_id}
                 disabled={payoutFilter.doi_tac_id === 'all'}
                 onChange={(e) => setPayoutFilter({ ...payoutFilter, khach_san_id: e.target.value })}
@@ -1122,28 +1100,26 @@ const AdminFinancePage = () => {
                 {payoutHotelsForPartner.map((h) => (
                   <option key={h.ma_khach_san} value={h.ma_khach_san}>{h.ten}</option>
                 ))}
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-status">Trạng thái</label>
-              <select
+              <DownSelect
                 id="payout-status"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.trang_thai}
                 onChange={(e) => setPayoutFilter({ ...payoutFilter, trang_thai: e.target.value })}
               >
                 <option value="all">Tất cả</option>
                 <option value="cho_thanh_toan">Chờ thanh toán</option>
                 <option value="da_thanh_toan">Đã thanh toán</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-period">Khoảng thời gian</label>
-              <select
+              <DownSelect
                 id="payout-period"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.period}
                 onChange={(e) => {
                   const period = e.target.value;
@@ -1162,14 +1138,13 @@ const AdminFinancePage = () => {
                 <option value="">Tùy chọn / Tất cả</option>
                 <option value="week">Trong tuần</option>
                 <option value="month">Trong tháng</option>
-              </select>
+              </DownSelect>
             </div>
             <div className="mgmt-filter-field">
               <label className="mgmt-filter-label" htmlFor="payout-from">Từ ngày trả</label>
               <DateInput
                 id="payout-from"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.tu_ngay}
                 onChange={(e) => setPayoutFilter({
                   ...payoutFilter,
@@ -1183,7 +1158,6 @@ const AdminFinancePage = () => {
               <DateInput
                 id="payout-to"
                 className="mgmt-select-inline"
-                style={inputSt}
                 value={payoutFilter.den_ngay}
                 onChange={(e) => setPayoutFilter({
                   ...payoutFilter,

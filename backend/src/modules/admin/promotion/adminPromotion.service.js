@@ -9,6 +9,7 @@ const {
   assertPromotionFormValues,
   assertUniquePromotionCode,
   syncExpiredPromotions,
+  publishPendingPartnerPromotions,
   isPastPromotionEndDate,
   FIRST_BOOKING_PROMO_END,
 } = require('../../../utils/promotionRules');
@@ -104,6 +105,7 @@ const enrichAuditFields = async (items) => {
 };
 
 const getPromotions = async (filters = {}) => {
+  await publishPendingPartnerPromotions(prisma);
   await syncExpiredPromotions(prisma);
   const where = buildWhere(filters);
   const rows = await prisma.khuyen_mai.findMany({
@@ -115,11 +117,11 @@ const getPromotions = async (filters = {}) => {
 };
 
 const getStats = async (filters = {}) => {
+  await publishPendingPartnerPromotions(prisma);
   await syncExpiredPromotions(prisma);
   const baseWhere = buildWhere({ ...filters, trang_thai: 'all' });
-  const [total, choDuyet, hoatDong, tuChoi, hetHan, an] = await Promise.all([
+  const [total, hoatDong, tuChoi, hetHan, an] = await Promise.all([
     prisma.khuyen_mai.count({ where: baseWhere }),
-    prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'cho_duyet' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'hoat_dong' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'tu_choi' } }),
     prisma.khuyen_mai.count({ where: { ...baseWhere, trang_thai: 'het_han' } }),
@@ -127,7 +129,6 @@ const getStats = async (filters = {}) => {
   ]);
   return {
     total,
-    cho_duyet: choDuyet,
     hoat_dong: hoatDong,
     tu_choi: tuChoi,
     het_han: hetHan,

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { formatNotifyDateTime, formatRelativeTime } from '../../utils/formatRelativeTime';
+import NotifyListItem from '../common/NotifyListItem';
 
 const LOAI_LABEL = {
   tien_nghi: 'Tiện nghi',
@@ -129,6 +129,7 @@ const PartnerNotificationBell = () => {
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [expandedIds, setExpandedIds] = useState([]);
   const ref = useRef(null);
 
   const load = async () => {
@@ -155,6 +156,10 @@ const PartnerNotificationBell = () => {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  useEffect(() => {
+    if (!open) setExpandedIds([]);
+  }, [open]);
+
   const handleOpen = async () => {
     setOpen((v) => !v);
     if (!open) await load();
@@ -180,8 +185,18 @@ const PartnerNotificationBell = () => {
     const meta = getPartnerNotifyMeta(n);
     if (meta.path) {
       setOpen(false);
+      setExpandedIds([]);
       navigate(meta.path, meta.state ? { state: meta.state } : undefined);
     }
+  };
+
+  const toggleDetail = async (n) => {
+    const id = n.ma_thong_bao;
+    const willExpand = !expandedIds.includes(id);
+    setExpandedIds((prev) => (
+      willExpand ? [...prev, id] : prev.filter((itemId) => itemId !== id)
+    ));
+    if (willExpand && !n.da_doc) await markRead(id);
   };
 
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
@@ -222,40 +237,16 @@ const PartnerNotificationBell = () => {
           <div className="partner-notify-dropdown-body">
             {items.length === 0 ? (
               <div className="partner-notify-empty">Chưa có thông báo</div>
-            ) : items.map((n) => {
-              const meta = getPartnerNotifyMeta(n);
-              const Icon = meta.Icon;
-              const unread = !n.da_doc;
-
-              return (
-                <button
-                  key={n.ma_thong_bao}
-                  type="button"
-                  onClick={() => handleClickItem(n)}
-                  className={`partner-notify-item${unread ? ' is-unread' : ''}`}
-                >
-                  <span className={`partner-notify-icon partner-notify-icon--${meta.kind}`} aria-hidden>
-                    <Icon size={14} strokeWidth={2.4} />
-                  </span>
-
-                  <div className="partner-notify-item-main">
-                    <div className="partner-notify-item-title-row">
-                      <div className="partner-notify-item-title">
-                        {n.tieu_de}
-                        {meta.badge && (
-                          <span className="partner-notify-type">{meta.badge}</span>
-                        )}
-                      </div>
-                      {unread && <span className="partner-notify-unread-dot" aria-label="Chưa đọc" />}
-                    </div>
-                    <div className="partner-notify-item-content">{n.noi_dung}</div>
-                    <div className="partner-notify-item-time" title={formatNotifyDateTime(n.ngay_gui)}>
-                      {formatRelativeTime(n.ngay_gui)}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            ) : items.map((n) => (
+              <NotifyListItem
+                key={n.ma_thong_bao}
+                item={n}
+                meta={getPartnerNotifyMeta(n)}
+                expanded={expandedIds.includes(n.ma_thong_bao)}
+                onToggleDetail={toggleDetail}
+                onOpenRelated={handleClickItem}
+              />
+            ))}
           </div>
         </div>
       )}

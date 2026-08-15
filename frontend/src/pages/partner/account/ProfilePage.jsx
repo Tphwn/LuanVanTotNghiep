@@ -400,7 +400,6 @@ const ProfilePage = () => {
                     readOnly
                     disabled
                   />
-                  <span className="partner-account-hint">Chỉ admin được thay đổi</span>
                 </div>
 
                 <div className="partner-account-field">
@@ -434,7 +433,6 @@ const ProfilePage = () => {
                     readOnly
                     disabled
                   />
-                  <span className="partner-account-hint">Chỉ admin được thay đổi</span>
                 </div>
 
                 <div className="partner-account-field">
@@ -445,8 +443,7 @@ const ProfilePage = () => {
                     value={profile?.phan_tram_hoa_hong != null ? `${profile.phan_tram_hoa_hong}` : '15'}
                     readOnly
                     disabled
-                  />
-                  <span className="partner-account-hint">Do admin thiết lập khi tạo tài khoản</span>
+                  />  
                 </div>
               </div>
 
@@ -469,9 +466,7 @@ const ProfilePage = () => {
             </form>
           ) : activeTab === 'bank' ? (
             <form onSubmit={handleSaveBank} className="partner-account-form" noValidate>
-              <p className="partner-account-hint" style={{ marginBottom: 12 }}>
-                Tài khoản nhận tiền thanh toán doanh thu.
-              </p>
+              
 
               <div className="partner-account-field">
                 <label htmlFor="ten_chu_tai_khoan">Tên chủ tài khoản</label>
@@ -549,13 +544,17 @@ const ProfilePage = () => {
                   </div>
                 )}
               </div>
-
+              <p className="partner-account-hint" style={{ marginBottom: 12 }}>
+                Tài khoản nhận tiền thanh toán doanh thu.
+              </p>
               <div className="partner-account-form-actions">
                 <button type="submit" className="btn btn-primary" disabled={savingBank || banksLoading}>
                   {savingBank ? 'Đang lưu...' : 'Cập nhật tài khoản'}
                 </button>
               </div>
+              
             </form>
+
           ) : (
             <form onSubmit={handleChangePassword} className="partner-account-form" noValidate>
               {[

@@ -18,6 +18,7 @@ import HotelThumb from '../../../components/common/management/HotelThumb';
 import PartnerHotelPauseConfirmModal from './components/PartnerHotelPauseConfirmModal';
 import { ACTIVITY_FILTER, TAB_FILTER } from './constants';
 import { getHotelStatusMeta } from '../../../constants/statusConfig';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const VALID_TABS = ['all', 'da_duyet', 'cho_duyet', 'tu_choi', 'khong_hoat_dong'];
 
@@ -203,7 +204,7 @@ const HotelsPage = () => {
         activeTab={activeTab}
         onTabChange={handleTabChange}
       >
-        <select
+        <DownSelect
           className="mgmt-select-inline partner-hotels-location-filter"
           value={diaDiemFilter}
           onChange={(e) => setDiaDiemFilter(e.target.value)}
@@ -213,18 +214,18 @@ const HotelsPage = () => {
           {diaDiem.map((d) => (
             <option key={d.ma_dia_diem} value={String(d.ma_dia_diem)}>{d.ten_dia_diem}</option>
           ))}
-        </select>
-        <select
+        </DownSelect>
+        <DownSelect
           className="mgmt-select-inline partner-hotels-activity-filter"
           value={activityFilter}
           onChange={(e) => setActivityFilter(e.target.value)}
           aria-label="Lọc theo trạng thái hoạt động"
         >
-          <option value="all">Tất cả trạng thái hoạt động</option>
+          <option value="all">Tất cả trạng thái</option>
           <option value="hoat_dong">Đang hoạt động</option>
           <option value="khong_hoat_dong">Không hoạt động</option>
-        </select>
-        <select
+        </DownSelect>
+        <DownSelect
           className="mgmt-select-inline partner-hotels-star-filter"
           value={starFilter}
           onChange={(e) => setStarFilter(e.target.value)}
@@ -234,7 +235,7 @@ const HotelsPage = () => {
           {[5, 4, 3, 2, 1].map((s) => (
             <option key={s} value={s}>{s} sao</option>
           ))}
-        </select>
+        </DownSelect>
         <FilterActions showApply={false} onClear={clearFilters} />
       </ManagementToolbar>
 

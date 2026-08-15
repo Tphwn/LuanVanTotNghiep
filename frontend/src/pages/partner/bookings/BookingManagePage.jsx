@@ -18,6 +18,7 @@ import {
   isAdminCancelledBooking,
   isCancelledBooking,
 } from '../../../utils/bookingDisplay';
+import DownSelect from '../../../components/common/management/DownSelect';
 
 const toDateKey = (value) => {
   if (!value) return '';
@@ -357,7 +358,7 @@ const BookingManagePage = () => {
     <div className="mgmt-page mgmt-list-page partner-bookings-page">
       <ManagementHeader
         title="Quản Lý Đặt phòng"
-        subtitle="Trợ lý nhắc việc cho lễ tân — ưu tiên check-in / check-out hôm nay"
+        subtitle="Quản lý các đơn đặt phòng và trạng thái đơn"
       />
 
       {successMsg && <div className="mgmt-toast success">{successMsg}</div>}
@@ -435,7 +436,7 @@ const BookingManagePage = () => {
           </div>
 
           <div className="partner-bookings-filters-row partner-bookings-filters-row--secondary">
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={hotelFilter}
               onChange={(e) => handleHotelFilterChange(e.target.value)}
@@ -447,9 +448,9 @@ const BookingManagePage = () => {
                   {hotel.ten}
                 </option>
               ))}
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={quickAction || 'all'}
               onChange={(e) => applyQuickPreset(e.target.value)}
@@ -459,9 +460,9 @@ const BookingManagePage = () => {
               <option value="staying">Khách đang lưu trú</option>
               <option value="arrive_tomorrow">Khách đến vào ngày mai</option>
               <option value="booked_today">Đặt phòng mới hôm nay</option>
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
@@ -473,9 +474,9 @@ const BookingManagePage = () => {
               <option value="hoan_thanh">Đã hoàn thành</option>
               <option value="da_huy">Đã hủy</option>
               <option value="huy_admin">Bị hủy (admin hủy)</option>
-            </select>
+            </DownSelect>
 
-            <select
+            <DownSelect
               className="mgmt-select-inline"
               value={paymentFilter}
               onChange={(e) => handlePaymentChange(e.target.value)}
@@ -486,7 +487,7 @@ const BookingManagePage = () => {
               <option value="cho_thanh_toan">Chờ thanh toán</option>
               <option value="da_hoan">Đã hoàn tiền</option>
               <option value="khong_hoan">Không hoàn tiền</option>
-            </select>
+            </DownSelect>
 
             <FilterActions showApply={false} onClear={clearFilters} />
           </div>

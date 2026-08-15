@@ -10,6 +10,7 @@ import {
 } from '../../../../constants/statusConfig';
 import { formatDateVN } from '../../../../utils/formatDate';
 import { getPresetRange, REPORT_DATE_PRESETS } from '../reportHelpers';
+import DownSelect from '../../../../components/common/management/DownSelect';
 
 const PAGE_SIZE = 10;
 
@@ -238,7 +239,7 @@ const ReportSystemPanel = () => {
       <div className="admin-reports-finance-filters">
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="system-role">Vai trò</label>
-          <select
+          <DownSelect
             id="system-role"
             value={draft.vai_tro}
             onChange={(e) => handleRoleChange(e.target.value)}
@@ -246,12 +247,12 @@ const ReportSystemPanel = () => {
             {ROLE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="system-preset">Thời gian</label>
-          <select
+          <DownSelect
             id="system-preset"
             value={draft.preset}
             onChange={(e) => handlePresetChange(e.target.value)}
@@ -259,7 +260,7 @@ const ReportSystemPanel = () => {
             {REPORT_DATE_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
 
         {draft.preset === 'custom' ? (
@@ -287,7 +288,7 @@ const ReportSystemPanel = () => {
         {showCityFilter ? (
           <div className="admin-reports-finance-filter-field">
             <label htmlFor="system-city">Thành phố</label>
-            <select
+            <DownSelect
               id="system-city"
               value={draft.thanh_pho}
               onChange={(e) =>
@@ -301,14 +302,14 @@ const ReportSystemPanel = () => {
               {cities.map((city) => (
                 <option key={city} value={city}>{city}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
         ) : null}
 
         {showPartnerFilter ? (
           <div className="admin-reports-finance-filter-field">
             <label htmlFor="system-partner">Đối tác</label>
-            <select
+            <DownSelect
               id="system-partner"
               value={draft.ma_doi_tac}
               onChange={(e) =>
@@ -322,14 +323,14 @@ const ReportSystemPanel = () => {
               {partners.map((p) => (
                 <option key={p.ma_doi_tac} value={p.ma_doi_tac}>{p.ten}</option>
               ))}
-            </select>
+            </DownSelect>
           </div>
         ) : null}
 
         {showCustomerFilter ? (
           <div className="admin-reports-finance-filter-field">
             <label htmlFor="system-customer">Khách hàng</label>
-            <select
+            <DownSelect
               id="system-customer"
               value={draft.ma_khach_hang}
               onChange={(e) => updateDraft({ ma_khach_hang: e.target.value })}
@@ -340,7 +341,7 @@ const ReportSystemPanel = () => {
                   {formatCustomerOptionLabel(c)}
                 </option>
               ))}
-            </select>
+            </DownSelect>
           </div>
         ) : null}
 
@@ -366,7 +367,7 @@ const ReportSystemPanel = () => {
         </div>
         <div className="admin-reports-finance-filter-field">
           <label htmlFor="system-sort">Sắp xếp</label>
-          <select
+          <DownSelect
             id="system-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value)}
@@ -374,7 +375,7 @@ const ReportSystemPanel = () => {
             {sortOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
-          </select>
+          </DownSelect>
         </div>
       </div>
 
