@@ -1,3 +1,16 @@
+const BANK_NAME_REGEX = /^[A-Z\s]+$/;
+const BANK_ACCOUNT_REGEX = /^\d{6,19}$/;
+
+const isValidBankAccountName = (tenChu) => {
+  const name = String(tenChu || '').trim();
+  return name.length > 2 && BANK_NAME_REGEX.test(name);
+};
+
+const isValidBankAccountNumber = (soTk) => {
+  const account = String(soTk || '').trim();
+  return BANK_ACCOUNT_REGEX.test(account);
+};
+
 /**
  * Validate partner bank account fields.
  * @returns {string|null} Error message or null if valid
@@ -17,15 +30,15 @@ const validateBankAccount = ({
   if (tenChu.length <= 2) {
     return 'Tên chủ tài khoản phải lớn hơn 2 ký tự';
   }
+  if (!BANK_NAME_REGEX.test(tenChu)) {
+    return 'Tên chủ tài khoản phải viết hoa, không dấu và không chứa số/ký tự đặc biệt (VD: NGUYEN VAN A)';
+  }
 
   if (!soTk) {
     return 'Vui lòng nhập số tài khoản';
   }
-  if (!/^\d+$/.test(soTk)) {
-    return 'Số tài khoản chỉ được chứa chữ số';
-  }
-  if (soTk.length <= 1) {
-    return 'Số tài khoản phải lớn hơn 1 chữ số';
+  if (!BANK_ACCOUNT_REGEX.test(soTk)) {
+    return 'Số tài khoản phải bao gồm từ 6 đến 19 chữ số';
   }
 
   if (!maNh) {
@@ -40,9 +53,12 @@ const hasCompleteBankAccount = (partner) => {
   const soTk = String(partner.so_tai_khoan || '').trim();
   const tenChu = String(partner.ten_chu_tai_khoan || '').trim();
   const maNh = String(partner.ma_ngan_hang || '').trim();
-  return Boolean(soTk && tenChu && maNh && soTk.length > 1 && tenChu.length > 2);
+  return Boolean(
+    maNh
+    && isValidBankAccountName(tenChu)
+    && isValidBankAccountNumber(soTk),
+  );
 };
-
 const mapBankAccount = (partner) => {
   if (!partner) {
     return {
@@ -85,6 +101,10 @@ const parsePayoutProofNote = (ghiChu) => {
 };
 
 module.exports = {
+  BANK_NAME_REGEX,
+  BANK_ACCOUNT_REGEX,
+  isValidBankAccountName,
+  isValidBankAccountNumber,
   validateBankAccount,
   hasCompleteBankAccount,
   mapBankAccount,

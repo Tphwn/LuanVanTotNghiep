@@ -118,11 +118,9 @@ const changePhone = async (userId, so_dien_thoai) => {
     where: { ma_nguoi_dung: parseInt(userId, 10) },
     include: { khach_hang: true },
   });
-
   if (!user?.khach_hang) {
     throw new Error('Không tìm thấy hồ sơ khách hàng');
   }
-
   const phoneExists = await prisma.nguoi_dung.findFirst({
     where: {
       so_dien_thoai: phone,

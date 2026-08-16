@@ -1,3 +1,6 @@
+const BANK_NAME_REGEX = /^[A-Z\s]+$/;
+const BANK_ACCOUNT_REGEX = /^\d{6,19}$/;
+
 /**
  * Validate partner bank account (shared FE).
  * @returns {{ field?: string, message: string }|null}
@@ -17,15 +20,18 @@ export const validateBankAccountForm = ({
   if (tenChu.length <= 2) {
     return { field: 'ten_chu_tai_khoan', message: 'Tên chủ tài khoản phải lớn hơn 2 ký tự' };
   }
+  if (!BANK_NAME_REGEX.test(tenChu)) {
+    return {
+      field: 'ten_chu_tai_khoan',
+      message: 'Tên chủ tài khoản phải viết hoa, không dấu và không chứa số/ký tự đặc biệt',
+    };
+  }
 
   if (!soTk) {
     return { field: 'so_tai_khoan', message: 'Vui lòng nhập số tài khoản' };
   }
-  if (!/^\d+$/.test(soTk)) {
-    return { field: 'so_tai_khoan', message: 'Số tài khoản chỉ được chứa chữ số' };
-  }
-  if (soTk.length <= 1) {
-    return { field: 'so_tai_khoan', message: 'Số tài khoản phải lớn hơn 1 chữ số' };
+  if (!BANK_ACCOUNT_REGEX.test(soTk)) {
+    return { field: 'so_tai_khoan', message: 'Số tài khoản phải bao gồm từ 6 đến 19 chữ số' };
   }
 
   if (!maNh) {

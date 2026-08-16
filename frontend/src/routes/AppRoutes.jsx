@@ -26,9 +26,7 @@ import CustomerPaymentPage from '../pages/customer/CustomerPaymentPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import TransactionsPage from '../pages/customer/TransactionsPage';
 import CustomerTransactionDetailPage from '../pages/customer/TransactionDetailPage';
-import PromotionsPage from '../pages/customer/PromotionsPage';
 import ContactPage from '../pages/customer/ContactPage';
-import BookingGuidePage from '../pages/customer/BookingGuidePage';
 import PartnerContactPage from '../pages/customer/PartnerContactPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import RefundsPage from '../pages/customer/RefundsPage';
@@ -129,14 +127,8 @@ const AppRoutes = () => {
         <Route path="/hotels/:id" element={
           <MainLayout><CustomerHotelDetailPage /></MainLayout>
         } />
-        <Route path={ROUTES.CUSTOMER.PROMOTIONS} element={
-          <MainLayout><PromotionsPage /></MainLayout>
-        } />
         <Route path={ROUTES.CUSTOMER.CONTACT} element={
           <MainLayout><ContactPage /></MainLayout>
-        } />
-        <Route path={ROUTES.CUSTOMER.BOOKING_GUIDE} element={
-          <MainLayout><BookingGuidePage /></MainLayout>
         } />
         <Route path={ROUTES.CUSTOMER.PARTNER_CONTACT} element={
           <MainLayout><PartnerContactPage /></MainLayout>

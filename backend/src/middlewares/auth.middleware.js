@@ -2,7 +2,7 @@ const { verifyToken } = require('../utils/jwt');
 const { error } = require('../utils/response');
 const MSG = require('../constants/messages');
 const HTTP = require('../constants/httpStatus');
-
+//kiểm tra token
 const auth = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;

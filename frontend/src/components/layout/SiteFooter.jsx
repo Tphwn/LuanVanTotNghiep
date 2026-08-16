@@ -55,11 +55,6 @@ const SiteFooter = () => (
           <h3 className="site-footer-heading">Hỗ trợ khách hàng</h3>
           <ul className="site-footer-nav">
             <li>
-              <FooterNavItem to={ROUTES.CUSTOMER.BOOKING_GUIDE}>
-                Hướng dẫn đặt phòng
-              </FooterNavItem>
-            </li>
-            <li>
               <FooterNavItem to={ROUTES.CUSTOMER.CONTACT}>
                 Câu hỏi thường gặp
               </FooterNavItem>

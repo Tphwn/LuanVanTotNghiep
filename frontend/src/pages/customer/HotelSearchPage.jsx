@@ -27,7 +27,9 @@ const SORT_OPTIONS = [
   { value: 'price_asc', label: 'Giá thấp → cao' },
   { value: 'price_desc', label: 'Giá cao → thấp' },
   { value: 'stars_desc', label: 'Hạng sao cao nhất' },
+  { value: 'stars_asc', label: 'Hạng sao thấp nhất' },
   { value: 'rating_desc', label: 'Đánh giá cao nhất' },
+  { value: 'rating_asc', label: 'Đánh giá thấp nhất' },
   { value: 'popularity_desc', label: 'Độ phổ biến' },
 ];
 
@@ -358,6 +360,12 @@ const HotelSearchPage = () => {
     } else if (sortBy === 'popularity_desc') {
       list.sort((a, b) => (b.so_dat || 0) - (a.so_dat || 0)
         || (b.diem_trung_binh || 0) - (a.diem_trung_binh || 0));
+    }
+    else if (sortBy === 'stars_asc') {
+      list.sort((a, b) => (a.so_sao || 0) - (b.so_sao || 0));
+    }
+    else if (sortBy === 'rating_asc') {
+      list.sort((a, b) => (a.diem_trung_binh || 0) - (b.diem_trung_binh || 0));
     }
 
     return list;

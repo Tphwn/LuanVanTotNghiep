@@ -478,7 +478,7 @@ const ProfilePage = () => {
                     setBankForm({ ...bankForm, ten_chu_tai_khoan: e.target.value });
                     setBankFieldErrors((prev) => ({ ...prev, ten_chu_tai_khoan: undefined }));
                   }}
-                  placeholder="VD: Nguyen Van A"
+                  placeholder="VD: NGUYEN VAN A "
                 />
                 {bankFieldErrors.ten_chu_tai_khoan && (
                   <p className="form-field-error">{bankFieldErrors.ten_chu_tai_khoan}</p>

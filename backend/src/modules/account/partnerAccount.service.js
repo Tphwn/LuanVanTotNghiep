@@ -22,10 +22,8 @@ const getPartnerProfile = async (userId) => {
   if (!user || user.vai_tro !== 'doi_tac') {
     throw new Error('Không tìm thấy tài khoản đối tác');
   }
-
   const partner = user.doi_tac_doi_tac_ma_nguoi_dungTonguoi_dung;
   if (!partner) throw new Error('Không tìm thấy hồ sơ đối tác');
-
   return {
     ma_nguoi_dung: user.ma_nguoi_dung,
     email_dang_ky: user.email,

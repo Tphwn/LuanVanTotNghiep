@@ -27,7 +27,7 @@ const MSG = {
   PHONE_DIGITS: 'Số điện thoại không được chứa chữ cái.',
   PHONE_EXISTS: 'Số điện thoại đã được sử dụng bởi tài khoản khác.',
 };
-
+//kiểm tra email
 const validateEmail = (email, { required = true } = {}) => {
   const value = String(email ?? '');
   if (!value.trim()) {
@@ -38,7 +38,7 @@ const validateEmail = (email, { required = true } = {}) => {
   if (!EMAIL_REGEX.test(value)) return MSG.EMAIL_FORMAT;
   return null;
 };
-
+//kiểm tra mật khẩu
 const validatePassword = (password, { required = true, checkComplexity = true } = {}) => {
   const value = String(password ?? '');
   if (!value) {
@@ -52,20 +52,21 @@ const validatePassword = (password, { required = true, checkComplexity = true } 
   return null;
 };
 
+//kiểm tra xác nhận mật khẩu
 const validatePasswordConfirm = (password, confirm) => {
   if (String(password ?? '') !== String(confirm ?? '')) {
     return MSG.PASSWORD_CONFIRM_MISMATCH;
   }
   return null;
 };
-
+//kiểm tra mật khẩu mới không trùng mật khẩu hiện tại
 const validateNewPasswordNotSame = (currentPassword, newPassword) => {
   if (String(currentPassword ?? '') === String(newPassword ?? '')) {
     return MSG.PASSWORD_SAME_AS_OLD;
   }
   return null;
 };
-
+//kiểm tra số điện thoại
 const validatePhone = (phone, { required = true } = {}) => {
   const value = String(phone ?? '').trim();
   if (!value) {
@@ -77,7 +78,7 @@ const validatePhone = (phone, { required = true } = {}) => {
   if (!PHONE_REGEX.test(value)) return MSG.PHONE_LENGTH;
   return null;
 };
-
+//
 const validateChangePassword = ({ mat_khau_cu, mat_khau_moi, xac_nhan_mat_khau }) => {
   const currentErr = validatePassword(mat_khau_cu, { checkComplexity: false });
   if (currentErr) {
