@@ -18,15 +18,17 @@ import DownSelect from '../../../components/common/management/DownSelect';
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const MIN_UNIT_PRICE = 50000;
 
-const formatPriceShort = (v) => {
-  const n = Number(v) || 0;
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${m % 1 === 0 ? m : m.toFixed(1)}M`;
-  }
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(n);
-};
+const LOAI_GIA_OPTIONS = [
+  { value: 'co_ban', label: 'Cơ bản' },
+  { value: 'cuoi_tuan', label: 'Cuối tuần' },
+  { value: 'le_tet', label: 'Lễ/Tết' },
+  { value: 'cao_diem', label: 'Cao điểm' },
+];
+
+const LOAI_GIA_LABELS = LOAI_GIA_OPTIONS.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
 
 const parseCurrency = (s) =>
   Number(String(s).replace(/\./g, '').replace(/,/g, ''));
@@ -47,11 +49,6 @@ const normalizeNgay = (ngay) => {
     return toDateKey(new Date(ngay));
   }
   return toDateKey(ngay);
-};
-
-const getDefaultLoaiGia = (dateStr) => {
-  const day = new Date(`${dateStr}T12:00:00`).getDay();
-  return day === 0 || day === 6 ? 'cuoi_tuan' : 'co_ban';
 };
 
 const formatDisplayDate = (dateStr) => {
@@ -75,6 +72,27 @@ const getDatesInRange = (from, to) => {
 const getInclusiveDayCount = (from, to) => {
   if (!from || !to) return 0;
   return getDatesInRange(from, to).length;
+};
+
+const getWeekdayIndex = (dateStr) => new Date(`${dateStr}T12:00:00`).getDay();
+
+const isSaturday = (dateStr) => getWeekdayIndex(dateStr) === 6;
+
+const isSunday = (dateStr) => getWeekdayIndex(dateStr) === 0;
+
+const filterDatesByWeekdaySelection = (dates, applySaturday, applySunday) => {
+  if (!applySaturday && !applySunday) return dates;
+  return dates.filter((ngay) => (
+    (applySaturday && isSaturday(ngay)) || (applySunday && isSunday(ngay))
+  ));
+};
+
+const buildWeekdayFilterLabel = (applySaturday, applySunday) => {
+  if (!applySaturday && !applySunday) return 'Tất cả các ngày trong khoảng';
+  const parts = [];
+  if (applySaturday) parts.push('Thứ 7');
+  if (applySunday) parts.push('Chủ nhật');
+  return parts.join(' và ');
 };
 
 const buildMonthWeeks = (year, month) => {
@@ -165,7 +183,7 @@ const MonthCalendar = ({
                       {info ? (
                         <>
                           <span className={`price-inv-cell-price ${isCustom || selected ? 'custom' : ''}`}>
-                            {formatPriceShort(info.don_gia)}
+                            {formatCurrency(info.don_gia)}
                           </span>
                           <span className={`price-inv-cell-inv${hasBooking ? ' booked' : ''}`}>
                             {info.con_lai}/{info.tong_phong} Phòng
@@ -213,6 +231,9 @@ const PricingPage = () => {
 
   const [donGia, setDonGia] = useState('');
   const [moBan, setMoBan] = useState('');
+  const [loaiGia, setLoaiGia] = useState('');
+  const [applySaturday, setApplySaturday] = useState(false);
+  const [applySunday, setApplySunday] = useState(false);
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -294,6 +315,9 @@ const PricingPage = () => {
     setRangeAnchor(null);
     clearDateRange();
     setDonGia('');
+    setLoaiGia('');
+    setApplySaturday(false);
+    setApplySunday(false);
     setFieldErrors({});
     setViewYear(now.getFullYear());
     setViewMonth(now.getMonth());
@@ -312,6 +336,9 @@ const PricingPage = () => {
     setRangeAnchor(null);
     clearDateRange();
     setDonGia('');
+    setLoaiGia('');
+    setApplySaturday(false);
+    setApplySunday(false);
     setFieldErrors({});
   };
 
@@ -445,6 +472,10 @@ const PricingPage = () => {
           setMoBan(String(info.so_luong_ap_dung));
           clearFieldError('moBan');
         }
+        if (info.loai_gia) {
+          setLoaiGia(info.loai_gia);
+          clearFieldError('loaiGia');
+        }
       }
       return;
     }
@@ -465,6 +496,10 @@ const PricingPage = () => {
       if (info.so_luong_ap_dung != null) {
         setMoBan(String(info.so_luong_ap_dung));
         clearFieldError('moBan');
+      }
+      if (info.loai_gia) {
+        setLoaiGia(info.loai_gia);
+        clearFieldError('loaiGia');
       }
     }
   };
@@ -534,6 +569,24 @@ const PricingPage = () => {
         if (tongPhongHienTai > 0 && moBanValue > tongPhongHienTai) {
           errors.moBan = `Số phòng không được vượt quá ${tongPhongHienTai}`;
         }
+      }
+    }
+
+    const loaiGiaRaw = String(loaiGia ?? '').trim();
+    if (!loaiGiaRaw) {
+      errors.loaiGia = 'Loại giá là bắt buộc';
+    } else if (!LOAI_GIA_LABELS[loaiGiaRaw]) {
+      errors.loaiGia = 'Loại giá không hợp lệ';
+    }
+
+    if (from && to && (applySaturday || applySunday)) {
+      const filteredDates = filterDatesByWeekdaySelection(
+        getDatesInRange(from, to),
+        applySaturday,
+        applySunday,
+      );
+      if (!filteredDates.length) {
+        errors.weekdayFilter = 'Khoảng ngày đã chọn không có ngày Thứ 7 hoặc Chủ nhật tương ứng';
       }
     }
 
@@ -615,7 +668,11 @@ const PricingPage = () => {
     const moBanValue = Number(moBan);
     const roomInfo = calendarData.room;
     const giaCoBan = Number(roomInfo?.gia_co_ban || 0);
-    const dates = getDatesInRange(selectedFrom, selectedTo);
+    const dates = filterDatesByWeekdaySelection(
+      getDatesInRange(selectedFrom, selectedTo),
+      applySaturday,
+      applySunday,
+    );
 
     const entries = [];
     const toDelete = [];
@@ -626,7 +683,7 @@ const PricingPage = () => {
           ma_loai_phong: Number(selectedRoom),
           ngay,
           don_gia: priceValue,
-          loai_gia: getDefaultLoaiGia(ngay),
+          loai_gia: loaiGia,
           so_luong_ap_dung: moBanValue,
         });
       } else {
@@ -644,7 +701,7 @@ const PricingPage = () => {
       }
 
       setShowSaveConfirm(false);
-      showToast('Lưu thay đổi thành công');
+      showToast('Cập nhật thành công');
       setRangeAnchor(null);
       await loadCalendar();
     } catch (err) {
@@ -679,12 +736,24 @@ const PricingPage = () => {
     ? `${formatDisplayDate(selectedFrom)} – ${formatDisplayDate(selectedTo)}`
     : 'Chưa chọn';
 
+  const applicableSaveDates = useMemo(() => {
+    if (!selectedFrom || !selectedTo) return [];
+    return filterDatesByWeekdaySelection(
+      getDatesInRange(selectedFrom, selectedTo),
+      applySaturday,
+      applySunday,
+    );
+  }, [selectedFrom, selectedTo, applySaturday, applySunday]);
+
   const saveConfirmRows = [
     { label: 'Khách sạn', value: detailHotel?.ten || '—' },
     { label: 'Loại phòng', value: selectedRoomName },
     { label: 'Từ ngày', value: formatDisplayDate(selectedFrom) },
     { label: 'Đến ngày', value: formatDisplayDate(selectedTo) },
+    { label: 'Ngày áp dụng', value: buildWeekdayFilterLabel(applySaturday, applySunday) },
+    { label: 'Số ngày cập nhật', value: String(applicableSaveDates.length) },
     { label: 'Đơn giá', value: formatMoney(parseCurrency(donGia)) },
+    { label: 'Loại giá', value: LOAI_GIA_LABELS[loaiGia] || '—' },
     { label: 'Số phòng mở bán', value: String(moBan || '—') },
   ];
 
@@ -827,6 +896,9 @@ const PricingPage = () => {
               clearFieldError('selectedRoom');
               setRangeAnchor(null);
               clearDateRange();
+              setLoaiGia('');
+              setApplySaturday(false);
+              setApplySunday(false);
               setFieldErrors((prev) => {
                 const next = { ...prev };
                 delete next.selectedFrom;
@@ -944,11 +1016,7 @@ const PricingPage = () => {
               {fieldErrors.selectedTo && (
                 <p className="form-field-error">{fieldErrors.selectedTo}</p>
               )}
-              {selectedFrom && selectedTo && !fieldErrors.selectedFrom && !fieldErrors.selectedTo && (
-                <p className="price-inv-hint">
-                  Áp dụng cho {selectedDayCount} ngày (từ {formatDisplayDate(selectedFrom)} đến {formatDisplayDate(selectedTo)}, bao gồm cả hai ngày)
-                </p>
-              )}
+             
             </div>
 
             <div className="price-inv-panel-section">
@@ -979,28 +1047,82 @@ const PricingPage = () => {
             </div>
 
             <div className="price-inv-panel-section">
-              <h3>Số phòng mở bán</h3>
-              <div className="form-row">
-                <label>Số phòng <span style={{ color: '#e05c5c' }}>*</span></label>
-                <input
-                  type="number"
-                  min={1}
-                  max={tongPhong || undefined}
-                  className={fieldErrors.moBan ? 'input-invalid' : ''}
-                  value={moBan}
-                  onChange={(e) => {
-                    setMoBan(e.target.value);
-                    clearFieldError('moBan');
-                  }}
-                />
-                {fieldErrors.moBan ? (
-                  <p className="form-field-error">{fieldErrors.moBan}</p>
-                ) : (
-                  <p className="price-inv-hint">
-                    Áp dụng: {moBan || '—'} / {tongPhong || '—'} phòng
-                  </p>
-                )}
+              <h3>Số phòng mở bán &amp; Loại giá</h3>
+              <div className="price-inv-panel-split">
+                <div className="form-row price-inv-panel-split__field">
+                  <label>Số phòng <span style={{ color: '#e05c5c' }}>*</span></label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={tongPhong || undefined}
+                    className={fieldErrors.moBan ? 'input-invalid' : ''}
+                    value={moBan}
+                    onChange={(e) => {
+                      setMoBan(e.target.value);
+                      clearFieldError('moBan');
+                    }}
+                  />
+                  {fieldErrors.moBan ? (
+                    <p className="form-field-error">{fieldErrors.moBan}</p>
+                  ) : (
+                    <p className="price-inv-hint">
+                      Áp dụng: {moBan || '—'} / {tongPhong || '—'} phòng
+                    </p>
+                  )}
+                </div>
+
+                <div className="form-row price-inv-panel-split__field">
+                  <label>Loại giá <span style={{ color: '#e05c5c' }}>*</span></label>
+                  <DownSelect
+                    className={fieldErrors.loaiGia ? 'input-invalid' : ''}
+                    value={loaiGia}
+                    onChange={(e) => {
+                      setLoaiGia(e.target.value);
+                      clearFieldError('loaiGia');
+                    }}
+                  >
+                    <option value="">-- Chọn loại giá --</option>
+                    {LOAI_GIA_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </DownSelect>
+                  {fieldErrors.loaiGia && (
+                    <p className="form-field-error">{fieldErrors.loaiGia}</p>
+                  )}
+                </div>
               </div>
+            </div>
+
+            <div className="price-inv-weekday-filter">
+              <p className="price-inv-weekday-filter-title">Chỉ áp dụng cho</p>
+              <div className="price-inv-weekday-filter-options">
+                <label className="price-inv-weekday-filter-option">
+                  <input
+                    type="checkbox"
+                    checked={applySaturday}
+                    onChange={(e) => {
+                      setApplySaturday(e.target.checked);
+                      clearFieldError('weekdayFilter');
+                    }}
+                  />
+                  <span>Thứ 7</span>
+                </label>
+                <label className="price-inv-weekday-filter-option">
+                  <input
+                    type="checkbox"
+                    checked={applySunday}
+                    onChange={(e) => {
+                      setApplySunday(e.target.checked);
+                      clearFieldError('weekdayFilter');
+                    }}
+                  />
+                  <span>Chủ nhật</span>
+                </label>
+              </div>
+              
+              {fieldErrors.weekdayFilter && (
+                <p className="form-field-error">{fieldErrors.weekdayFilter}</p>
+              )}
             </div>
 
             <div className="price-inv-panel-actions">

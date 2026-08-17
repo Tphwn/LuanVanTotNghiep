@@ -44,7 +44,7 @@ const getDatesInRange = (checkIn, checkOut) => {
   }
   return dates;
 };
-
+// Đếm số lượng booking trùng lặp
 const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
   const result = await prisma.dat_phong.aggregate({
     where: {
@@ -57,7 +57,7 @@ const countOverlappingBookings = async (maLoaiPhong, checkIn, checkOut) => {
   });
   return Number(result._sum.so_phong) || 0;
 };
-
+// Đếm số lượng phòng đã đặt
 const countActiveBookedRooms = async (maLoaiPhong) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -95,7 +95,7 @@ const countActiveBookedRoomsMap = async (maLoaiPhongList = []) => {
   });
   return result;
 };
-
+// Tính số lượng phòng còn lại
 const calcRoomAvailability = (room, daDat) => {
   const tong = Number(room.so_luong_phong) || 0;
   const moBan = Number(room.so_luong_mo_ban) || 0;
@@ -103,61 +103,173 @@ const calcRoomAvailability = (room, daDat) => {
   return { phong_con_lai: phongConLai, da_dat: daDat, so_luong_phong: tong };
 };
 
-const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
-  const base = Number(giaCoBan);
-  if (!checkIn || !checkOut) {
-    return {
-      gia_tu_dem: base,
-      gia_goc_dem: base,
-      co_giam_gia: false,
-      tong_luong_tru: base,
-      tong_goc: base,
-      so_dem: 1,
-    };
-  }
+const buildEmptyStayPrice = (base, roomCount = 1) => ({
+  gia_tu_dem: base,
+  gia_goc_dem: base,
+  co_giam_gia: false,
+  la_gia_trung_binh: false,
+  tong_luong_tru: base,
+  tong_goc: base,
+  tong_luong_tru_tat_ca: base * roomCount,
+  so_dem: 1,
+  so_phong: roomCount,
+  phong_gia_khuyen_mai_con: null,
+  chi_tiet_dem: [],
+});
 
+const fetchNightPricingContext = async (maLoaiPhong, checkIn, checkOut) => {
   const dates = getDatesInRange(checkIn, checkOut);
   if (!dates.length) {
+    return { dates: [], priceMap: new Map(), bookedByNight: {} };
+  }
+
+  const customPrices = await prisma.bang_gia_phong.findMany({
+    where: {
+      ma_loai_phong: Number(maLoaiPhong),
+      ngay: { in: dates.map((date) => parseDate(date)) },
+    },
+  });
+
+  const priceMap = new Map();
+  customPrices.forEach((row) => {
+    priceMap.set(formatDateKey(row.ngay), {
+      don_gia: Number(row.don_gia),
+      so_luong_ap_dung: row.so_luong_ap_dung != null ? Number(row.so_luong_ap_dung) : null,
+    });
+  });
+
+  const bookings = await prisma.dat_phong.findMany({
+    where: {
+      ma_loai_phong: Number(maLoaiPhong),
+      trang_thai: { in: ACTIVE_BOOKING },
+      ngay_nhan_phong: { lt: checkOut },
+      ngay_tra_phong: { gt: checkIn },
+    },
+    select: { ngay_nhan_phong: true, ngay_tra_phong: true, so_phong: true },
+  });
+
+  const bookedByNight = {};
+  dates.forEach((dateKey) => {
+    const nightStart = parseDate(dateKey);
+    let booked = 0;
+    bookings.forEach((booking) => {
+      const checkInKey = formatDateKey(booking.ngay_nhan_phong);
+      const checkOutKey = formatDateKey(booking.ngay_tra_phong);
+      if (dateKey >= checkInKey && dateKey < checkOutKey) {
+        booked += Number(booking.so_phong) || 0;
+      }
+    });
+    bookedByNight[dateKey] = booked;
+  });
+
+  return { dates, priceMap, bookedByNight };
+};
+
+const computeNightAllocation = (priceRow, base, roomCount, bookedOnNight) => {
+  const hasCustom = priceRow != null;
+  const customPrice = hasCustom ? priceRow.don_gia : base;
+  const isDiscount = hasCustom && customPrice < base;
+
+  if (!isDiscount || priceRow.so_luong_ap_dung == null) {
+    const unitPrice = hasCustom ? customPrice : base;
     return {
-      gia_tu_dem: base,
-      gia_goc_dem: base,
-      co_giam_gia: false,
-      tong_luong_tru: base,
-      tong_goc: base,
-      so_dem: 1,
+      so_phong_giam_gia: isDiscount ? roomCount : 0,
+      so_phong_gia_goc: isDiscount ? 0 : roomCount,
+      don_gia_giam: isDiscount ? customPrice : null,
+      don_gia_goc: base,
+      tong_dem: unitPrice * roomCount,
+      tong_goc_dem: base * roomCount,
+      quota_con_lai: null,
     };
   }
 
-  const customPrices = dates.length
-    ? await prisma.bang_gia_phong.findMany({
-      where: {
-        ma_loai_phong: Number(maLoaiPhong),
-        ngay: { in: dates.map((date) => parseDate(date)) },
-      },
-    })
-    : [];
-
-  const priceMap = customPrices.reduce((acc, row) => {
-    acc[formatDateKey(row.ngay)] = Number(row.don_gia);
-    return acc;
-  }, {});
-
-  let total = 0;
-  let totalBase = 0;
-  for (const date of dates) {
-    total += priceMap[date] ?? base;
-    totalBase += base;
-  }
+  const quotaRemaining = Math.max(0, priceRow.so_luong_ap_dung - bookedOnNight);
+  const discountRooms = Math.min(roomCount, quotaRemaining);
+  const fullRooms = roomCount - discountRooms;
 
   return {
-    gia_tu_dem: Math.round(total / dates.length),
-    gia_goc_dem: Math.round(totalBase / dates.length),
-    co_giam_gia: total < totalBase,
-    tong_luong_tru: total,
-    tong_goc: totalBase,
-    so_dem: dates.length,
+    so_phong_giam_gia: discountRooms,
+    so_phong_gia_goc: fullRooms,
+    don_gia_giam: customPrice,
+    don_gia_goc: base,
+    tong_dem: (discountRooms * customPrice) + (fullRooms * base),
+    tong_goc_dem: base * roomCount,
+    quota_con_lai: quotaRemaining,
   };
 };
+
+// Tính giá phòng (hỗ trợ quota giảm giá theo ngày)
+const calcStayPrice = async (maLoaiPhong, giaCoBan, checkIn, checkOut, roomCount = 1) => {
+  const base = Number(giaCoBan);
+  const rooms = Math.max(Number(roomCount) || 1, 1);
+
+  if (!checkIn || !checkOut) {
+    return buildEmptyStayPrice(base, rooms);
+  }
+
+  const ctx = await fetchNightPricingContext(maLoaiPhong, checkIn, checkOut);
+  if (!ctx.dates.length) {
+    return buildEmptyStayPrice(base, rooms);
+  }
+
+  let totalAll = 0;
+  let totalBaseAll = 0;
+  let laGiaTrungBinh = false;
+  let minQuotaRemaining = Infinity;
+  let hasPromoQuota = false;
+  const chiTietDem = [];
+
+  ctx.dates.forEach((dateKey) => {
+    const priceRow = ctx.priceMap.get(dateKey) || null;
+    const booked = ctx.bookedByNight[dateKey] || 0;
+    const night = computeNightAllocation(priceRow, base, rooms, booked);
+
+    totalAll += night.tong_dem;
+    totalBaseAll += night.tong_goc_dem;
+
+    if (night.so_phong_giam_gia > 0 && night.so_phong_gia_goc > 0) {
+      laGiaTrungBinh = true;
+    }
+
+    if (
+      priceRow?.so_luong_ap_dung != null
+      && priceRow.don_gia < base
+    ) {
+      hasPromoQuota = true;
+      minQuotaRemaining = Math.min(minQuotaRemaining, night.quota_con_lai);
+    }
+
+    chiTietDem.push({
+      ngay: dateKey,
+      so_phong_giam_gia: night.so_phong_giam_gia,
+      so_phong_gia_goc: night.so_phong_gia_goc,
+      don_gia_giam: night.don_gia_giam,
+      don_gia_goc: night.don_gia_goc,
+      tong_tien_dem: night.tong_dem,
+      gia_trung_binh_dem: Math.round(night.tong_dem / rooms),
+      quota_con_lai: night.quota_con_lai,
+    });
+  });
+
+  const nights = ctx.dates.length;
+
+  return {
+    gia_tu_dem: Math.round(totalAll / rooms / nights),
+    gia_goc_dem: Math.round(totalBaseAll / rooms / nights),
+    co_giam_gia: totalAll < totalBaseAll,
+    la_gia_trung_binh: laGiaTrungBinh,
+    tong_luong_tru: Math.round(totalAll / rooms),
+    tong_goc: Math.round(totalBaseAll / rooms),
+    tong_luong_tru_tat_ca: totalAll,
+    so_dem: nights,
+    so_phong: rooms,
+    phong_gia_khuyen_mai_con: hasPromoQuota && minQuotaRemaining !== Infinity
+      ? minQuotaRemaining
+      : null,
+    chi_tiet_dem: chiTietDem,
+  };
+};
+
 const isAutoCompletedBooking = (booking) =>
   Boolean(booking?.ghi_chu?.includes(AUTO_COMPLETE_MARKER));
 
@@ -172,7 +284,7 @@ const appendAutoCompleteMarker = (ghiChu) => {
   if (ghiChu?.includes(AUTO_COMPLETE_MARKER)) return ghiChu;
   return ghiChu ? `${ghiChu}\n${AUTO_COMPLETE_MARKER}` : AUTO_COMPLETE_MARKER;
 };
-
+// Tự động hoàn thành booking hết hạn
 const autoCompleteExpiredCheckIns = async (where = {}) => {
   const candidates = await prisma.dat_phong.findMany({
     where: {
@@ -221,6 +333,7 @@ module.exports = {
   PENDING_CHECKIN_STATUS,
   AUTO_COMPLETE_MARKER,
   parseDate,
+  formatDateKey,
   getDatesInRange,
   countOverlappingBookings,
   countActiveBookedRooms,

@@ -35,6 +35,7 @@ const RoomDetailModal = ({
   const amenities = room.tien_nghi || [];
   const featuredAmenities = amenities.slice(0, 5);
   const roomsLeft = room.phong_con_lai ?? null;
+  const promoRoomsLeft = room.phong_gia_khuyen_mai_con;
   const isSoldOut = roomsLeft == null || roomsLeft < soPhong;
 
   const prevImg = () => {
@@ -145,9 +146,16 @@ const RoomDetailModal = ({
                   )}
                 </ul>
                 {roomsLeft != null && (
-                  <p className={`room-detail-modal-stock${isSoldOut ? ' room-detail-modal-stock--sold-out' : ''}`}>
-                    {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng`}
-                  </p>
+                  <div className="room-detail-modal-stock-group">
+                    <p className={`room-detail-modal-stock${isSoldOut ? ' room-detail-modal-stock--sold-out' : ''}`}>
+                      {isSoldOut ? 'Hết phòng' : `Chỉ còn ${roomsLeft} phòng trống`}
+                    </p>
+                    {promoRoomsLeft != null && !isSoldOut && (
+                      <p className="room-detail-modal-stock room-detail-modal-stock--promo">
+                        Chỉ còn {promoRoomsLeft} phòng ở mức giá này
+                      </p>
+                    )}
+                  </div>
                 )}
               </section>
 
@@ -195,6 +203,7 @@ const RoomDetailModal = ({
                     suffix={`/ phòng / ${stayNights} đêm`}
                     align="left"
                     showTaxNote={false}
+                    isAveragePrice={Boolean(room.la_gia_trung_binh)}
                     className="room-detail-modal-price-row"
                   />
                   <p className="room-detail-modal-tax-note">(Đã bao gồm thuế và phí)</p>

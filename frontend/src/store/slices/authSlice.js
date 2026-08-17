@@ -6,6 +6,7 @@ const mapAuthUser = (raw = {}) => ({
   id: raw.ma_nguoi_dung ?? raw.id ?? null,
   email: raw.email ?? null,
   vai_tro: raw.vai_tro ?? null,
+  trang_thai: raw.trang_thai ?? null,
   so_dien_thoai: raw.so_dien_thoai ?? null,
   ho_ten: raw.khach_hang?.ho_ten || raw.ho_ten || null,
   khach_hang: raw.khach_hang ?? null,

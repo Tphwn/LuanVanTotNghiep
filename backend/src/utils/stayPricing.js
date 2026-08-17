@@ -1,3 +1,4 @@
+
 const parseChildAges = (raw) => {
   if (Array.isArray(raw)) {
     return raw.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n >= 0);
@@ -7,7 +8,7 @@ const parseChildAges = (raw) => {
   }
   return [];
 };
-
+// Tính phụ thu trẻ em
 const calcChildSurcharge = ({
   tuoi_tre_em = [],
   tuoi_toi_da_mien_phi = null,

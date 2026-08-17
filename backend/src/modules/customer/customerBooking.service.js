@@ -11,7 +11,6 @@ const {
 const {
   parseDate,
   calcStayPrice,
-  getDatesInRange,
   countOverlappingBookings,
   autoCompleteExpiredCheckIns,
   isAutoCompletedBooking,
@@ -385,25 +384,12 @@ const generateOrderCode = () => {
   return `DH${now}${rand}`;
 };
 
-const buildNightDetails = async (maLoaiPhong, giaCoBan, checkIn, checkOut) => {
-  const dates = getDatesInRange(checkIn, checkOut);
-  const customPrices = await prisma.bang_gia_phong.findMany({
-    where: {
-      ma_loai_phong: maLoaiPhong,
-      ngay: { gte: checkIn, lt: checkOut },
-    },
-  });
-
-  const priceMap = customPrices.reduce((acc, row) => {
-    acc[row.ngay.toISOString().slice(0, 10)] = Number(row.don_gia);
-    return acc;
-  }, {});
-
-  const base = Number(giaCoBan);
-  return dates.map((date) => ({
-    ngay: new Date(date),
-    don_gia: priceMap[date] ?? base,
-    loai_gia: 'co_ban',
+const buildNightDetails = async (maLoaiPhong, giaCoBan, checkIn, checkOut, roomCount = 1) => {
+  const pricing = await calcStayPrice(maLoaiPhong, giaCoBan, checkIn, checkOut, roomCount);
+  return (pricing.chi_tiet_dem || []).map((row) => ({
+    ngay: parseDate(row.ngay),
+    don_gia: row.gia_trung_binh_dem,
+    loai_gia: row.so_phong_giam_gia > 0 ? 'giam_gia' : 'co_ban',
   }));
 };
 
@@ -1084,9 +1070,22 @@ const customerBookingService = {
     }
 
     const policy = room.khach_san.chinh_sach_khach_san || {};
-    const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
-    const tienPhong = pricing.tong_luong_tru * roomCount;
-    const chiTietRows = (await buildNightDetails(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut))
+    const pricing = await calcStayPrice(
+      room.ma_loai_phong,
+      room.gia_co_ban,
+      checkIn,
+      checkOut,
+      roomCount,
+    );
+    const tienPhong = pricing.tong_luong_tru_tat_ca
+      || pricing.tong_luong_tru * roomCount;
+    const chiTietRows = (await buildNightDetails(
+      room.ma_loai_phong,
+      room.gia_co_ban,
+      checkIn,
+      checkOut,
+      roomCount,
+    ))
       .map((row) => ({
         ...row,
         don_gia: Number(row.don_gia) * roomCount,

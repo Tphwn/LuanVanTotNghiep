@@ -24,6 +24,7 @@ const RoomOfferCard = ({
   const [detailOpen, setDetailOpen] = useState(false);
   const currentImg = images[imgIdx] || images.find((i) => i.la_anh_chinh) || images[0];
   const roomsLeft = room.phong_con_lai ?? null;
+  const promoRoomsLeft = room.phong_gia_khuyen_mai_con;
   const isSoldOut = roomsLeft == null || roomsLeft < soPhong;
 
   const prevImg = () => setImgIdx((i) => (images.length ? (i - 1 + images.length) % images.length : 0));
@@ -91,13 +92,21 @@ const RoomOfferCard = ({
             label=""
             suffix={`/ phòng / ${stayNights} đêm`}
             showTaxNote={false}
+            isAveragePrice={Boolean(room.la_gia_trung_binh)}
             className="hotel-room-offer-price-wrap"
           />
           <p className="hotel-room-offer-tax-note">(Đã bao gồm thuế và phí)</p>
           {roomsLeft != null && (
-            <p className={`hotel-room-offer-stock${isSoldOut ? ' hotel-room-offer-stock--sold-out' : ''}`}>
-              {isSoldOut ? 'Hết phòng' : `Còn ${roomsLeft} phòng`}
-            </p>
+            <div className="hotel-room-offer-stock-group">
+              <p className={`hotel-room-offer-stock${isSoldOut ? ' hotel-room-offer-stock--sold-out' : ''}`}>
+                {isSoldOut ? 'Hết phòng' : `Chỉ còn ${roomsLeft} phòng trống`}
+              </p>
+              {promoRoomsLeft != null && !isSoldOut && (
+                <p className="hotel-room-offer-stock hotel-room-offer-stock--promo">
+                  Chỉ còn {promoRoomsLeft} phòng ở mức giá này
+                </p>
+              )}
+            </div>
           )}
           <CustomerButton
             className="hotel-room-offer-cta"

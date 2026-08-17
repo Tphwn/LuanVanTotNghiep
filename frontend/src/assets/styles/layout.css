@@ -5290,7 +5290,7 @@ a.comm-receipt-order:hover {
   vertical-align: middle;
 }
 
-.data-table-grid td:not(.table-action-cell) {
+.data-table-grid td:not(.table-action-cell):not(.partner-col-thumb) {
   overflow: hidden;
 }
 
@@ -6639,6 +6639,10 @@ a.comm-receipt-order:hover {
 
 .partner-room-mgmt .partner-room-hotels-table .partner-col-thumb {
   width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  overflow: visible;
+  box-sizing: border-box;
 }
 .partner-room-mgmt .partner-room-hotels-table .partner-col-name {
   width: 28%;
@@ -6649,8 +6653,30 @@ a.comm-receipt-order:hover {
 .partner-room-mgmt .partner-room-hotels-table .partner-col-actions { width: 148px; }
 .partner-room-mgmt .partner-room-hotels-table .partner-col-partner { width: 14%; }
 
-.partner-room-mgmt .partner-room-types-table .partner-col-thumb { width: 88px; }
-.partner-room-mgmt .partner-room-types-table .partner-col-name { width: 22%; }
+.partner-room-mgmt .partner-room-table.partner-room-types-table {
+  min-width: 980px;
+}
+
+.partner-room-mgmt .partner-room-types-table .partner-col-thumb {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  overflow: visible;
+  box-sizing: border-box;
+  padding: 8px 6px;
+}
+
+.partner-room-mgmt .partner-room-types-table .partner-col-thumb .partner-room-thumb {
+  width: 72px;
+  height: 48px;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.partner-room-mgmt .partner-room-types-table .partner-col-name {
+  width: 20%;
+  padding-left: 14px;
+}
 .partner-room-mgmt .partner-room-types-table .partner-col-area,
 .partner-room-mgmt .partner-room-types-table .partner-col-capacity { width: 10%; }
 .partner-room-mgmt .partner-room-types-table .partner-col-beds,

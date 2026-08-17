@@ -266,10 +266,11 @@
 }
 
 .price-inv-cell-price {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   color: #1b8a4a;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .price-inv-cell-price.custom {
@@ -463,6 +464,28 @@
   font-family: inherit;
 }
 
+.price-inv-panel-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.price-inv-panel-split__field {
+  margin-bottom: 0;
+}
+
+.price-inv-panel-split .down-select,
+.price-inv-panel-split .down-select-trigger {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .price-inv-panel-split {
+    grid-template-columns: 1fr;
+  }
+}
+
 .price-inv-hint {
   font-size: 11px;
   color: #757575;
@@ -474,6 +497,44 @@
   flex-direction: column;
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.price-inv-weekday-filter {
+  margin: 4px 0 14px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f9fbfa;
+}
+
+.price-inv-weekday-filter-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3a5a52;
+}
+
+.price-inv-weekday-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.price-inv-weekday-filter-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1a3a32;
+  cursor: pointer;
+  user-select: none;
+}
+
+.price-inv-weekday-filter-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3C7363;
+  cursor: pointer;
 }
 
 .price-inv-panel-actions .btn {

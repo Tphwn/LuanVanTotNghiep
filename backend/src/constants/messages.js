@@ -7,6 +7,7 @@ const MSG = {
   EMAIL_EXISTS:         'Email đã được đăng ký vui lòng chọn email khác.',
   PHONE_EXISTS:         'Số điện thoại đã được sử dụng bởi tài khoản khác.',
   ACCOUNT_LOCKED:       'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ bộ phận hỗ trợ để được hỗ trợ.',
+  EMAIL_LOCKED:         'Email thuộc tài khoản đã bị khóa, liên hệ quản trị viên để được hỗ trợ.',
   UNAUTHORIZED:         'Vui lòng đăng nhập',
   FORBIDDEN:            'Bạn không có quyền thực hiện',
   TOKEN_INVALID:        'Token không hợp lệ hoặc đã hết hạn',

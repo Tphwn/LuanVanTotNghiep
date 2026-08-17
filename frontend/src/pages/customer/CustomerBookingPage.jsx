@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, MapPin, Star } from 'lucide-react';
+import { Info, Loader2, MapPin, Star } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import { useSelector } from 'react-redux';
 import publicHotelService from '../../services/publicHotelService';
@@ -8,6 +8,7 @@ import customerBookingService from '../../services/customerBookingService';
 import RoomSpecs from '../../components/customer/RoomSpecs';
 import BookingFlowStepper from '../../components/customer/BookingFlowStepper';
 import CustomerLoadingState from '../../components/customer/CustomerLoadingState';
+import PriceNightBreakdownModal from '../../components/customer/PriceNightBreakdownModal';
 import { formatBedLabel } from '../../utils/bedDisplay';
 import { resolveUploadUrl } from '../../utils/media';
 import ROUTES from '../../constants/routes';
@@ -132,6 +133,7 @@ const CustomerBookingPage = () => {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [toast, setToast] = useState(null);
+  const [nightBreakdownOpen, setNightBreakdownOpen] = useState(false);
 
   const [form, setForm] = useState({
     ten_nguoi_nhan: '',
@@ -189,8 +191,6 @@ const CustomerBookingPage = () => {
     bookingParams.so_phong,
     searchParams,
   ]);
-
-  /** Ưu tiên trang vừa tới (chi tiết KS); không có thì về chi tiết KS theo ma_khach_san. */
   const handleBack = () => {
     const from = location.state?.from;
     if (
@@ -230,19 +230,16 @@ const CustomerBookingPage = () => {
   const priceBreakdown = useMemo(() => {
     const invoice = room?.chi_tiet_gia;
     const vatRate = Number(invoice?.phan_tram_vat ?? hotel?.phan_tram_vat) || 10;
-    const withVat = (amount) => Math.round(Math.max(Number(amount) || 0, 0) * (1 + vatRate / 100));
 
     if (invoice) {
-      const tienPhong = Number(invoice.tien_phong) || 0;
+      const giaPhong = Number(invoice.tien_phong) || 0;
       const phuThuTreEm = Number(invoice.phu_thu_tre_em) || 0;
-      const tienGiam = Number(invoice.tien_giam) || 0;
       const thueVat = Number(invoice.thue_vat) || 0;
       const soDem = Math.max(Number(invoice.so_dem) || nights, 1);
       const soPhongInv = Math.max(Number(invoice.so_phong) || roomCount, 1);
       return {
-        giaPhongDaVat: withVat(tienPhong),
-        phuThuDaVat: withVat(phuThuTreEm),
-        khuyenMaiDaVat: withVat(tienGiam),
+        giaPhong,
+        phuThuTreEm,
         thueVat,
         phanTramVat: vatRate,
         total: Number(invoice.thanh_toan_cuoi) || Number(room?.tong_thanh_toan) || 0,
@@ -250,18 +247,30 @@ const CustomerBookingPage = () => {
         soPhong: soPhongInv,
       };
     }
-    const total = Number(room?.tong_thanh_toan) || Number(room?.tong_gia) || 0;
+
+    const tongGia = Number(room?.tong_gia) || 0;
+    const thueVatFallback = Math.round(tongGia * vatRate / 100);
     return {
-      giaPhongDaVat: total,
-      phuThuDaVat: 0,
-      khuyenMaiDaVat: 0,
-      thueVat: 0,
+      giaPhong: tongGia,
+      phuThuTreEm: 0,
+      thueVat: thueVatFallback,
       phanTramVat: vatRate,
-      total,
+      total: Number(room?.tong_thanh_toan) || tongGia + thueVatFallback,
       soDem: Math.max(nights, 1),
       soPhong: roomCount,
     };
   }, [room, nights, hotel?.phan_tram_vat, roomCount]);
+
+  const chiTietDemForModal = useMemo(() => {
+    const rows = room?.chi_tiet_dem || [];
+    const vatRate = priceBreakdown.phanTramVat;
+    return rows.map((row) => ({
+      ...row,
+      tong_dem_vat: Math.round((Number(row.tong_tien_dem) || 0) * (1 + vatRate / 100)),
+    }));
+  }, [room?.chi_tiet_dem, priceBreakdown.phanTramVat]);
+
+  const hasNightBreakdown = chiTietDemForModal.length > 0;
 
   const isCustomer = Boolean(token && user?.vai_tro === ROLES.KHACH_HANG);
   const isGuest = !token;
@@ -684,32 +693,40 @@ const CustomerBookingPage = () => {
                   )
                 </span>
               </div>
-              <strong>{formatCurrency(priceBreakdown.giaPhongDaVat)}</strong>
+              <strong>{formatCurrency(priceBreakdown.giaPhong)}</strong>
+            </div>
+
+            <div className="booking-confirm-price-row">
+              <span>
+                Thuế VAT (
+                {priceBreakdown.phanTramVat}
+                %)
+              </span>
+              <strong>{formatCurrency(priceBreakdown.thueVat)}</strong>
             </div>
 
             <div className="booking-confirm-price-row">
               <span>Phụ thu trẻ em</span>
-              <strong>{formatCurrency(priceBreakdown.phuThuDaVat)}</strong>
+              <strong>{formatCurrency(priceBreakdown.phuThuTreEm)}</strong>
             </div>
 
-            <div className="booking-confirm-price-row">
-              <span>Khuyến mãi</span>
-              <strong className={priceBreakdown.khuyenMaiDaVat > 0 ? 'is-discount' : undefined}>
-                {priceBreakdown.khuyenMaiDaVat > 0 ? '-' : ''}
-                {formatCurrency(priceBreakdown.khuyenMaiDaVat)}
-              </strong>
-            </div>
+            {hasNightBreakdown && (
+              <button
+                type="button"
+                className="booking-confirm-night-detail-link"
+                onClick={() => setNightBreakdownOpen(true)}
+              >
+                <Info size={14} aria-hidden />
+                Chi tiết giá từng đêm
+              </button>
+            )}
 
             <div className="booking-confirm-price-divider booking-confirm-price-divider--dashed" aria-hidden />
 
             <div className="booking-confirm-price-total booking-confirm-price-total--plain">
               <div>
                 <span className="booking-confirm-price-total-label">Tổng thanh toán</span>
-                {priceBreakdown.thueVat > 0 && (
-                  <span className="booking-confirm-price-vat-note">
-                    (Đã bao gồm VAT)
-                  </span>
-                )}
+                
               </div>
               <strong className="booking-confirm-price-total-value">
                 {formatCurrency(priceBreakdown.total)}
@@ -735,6 +752,15 @@ const CustomerBookingPage = () => {
           </div>
         </aside>
       </div>
+
+      <PriceNightBreakdownModal
+        open={nightBreakdownOpen}
+        onClose={() => setNightBreakdownOpen(false)}
+        chiTietDem={chiTietDemForModal}
+        soPhong={roomCount}
+        nights={priceBreakdown.soDem}
+        mode="booking"
+      />
     </div>
   );
 };

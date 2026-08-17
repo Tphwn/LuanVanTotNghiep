@@ -2900,6 +2900,144 @@ button.customer-amenity-tag {
   line-height: 1.35;
 }
 
+.customer-price-offer-detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary, #3C7363);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.customer-price-offer-detail-link:hover {
+  color: #2d5a4e;
+}
+
+.hotel-room-offer-stock-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.hotel-room-offer-stock--promo,
+.room-detail-modal-stock--promo {
+  color: #c27803;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.room-detail-modal-stock-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.price-night-modal-overlay {
+  z-index: 1200;
+}
+
+.price-night-modal {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+.price-night-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.price-night-modal-eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.price-night-modal-title {
+  margin: 0;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+.price-night-modal-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.price-night-modal-body {
+  padding: 16px 24px;
+  overflow: auto;
+}
+
+.price-night-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.price-night-table th,
+.price-night-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.price-night-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.price-night-table td:last-child {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.price-night-modal-footer {
+  padding: 12px 24px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.price-night-modal-close-btn {
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #333;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.price-night-modal-close-btn:hover {
+  background: #f7f7f7;
+}
+
 .hotel-room-offer-price-wrap .customer-price-offer-value {
   font-size: 24px;
 }
@@ -5789,6 +5927,55 @@ a.hotel-result-cta:visited {
   font-size: 12px;
   color: #64748b;
   line-height: 1.4;
+}
+
+.booking-confirm-night-detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary, #3C7363);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.booking-confirm-night-detail-link:hover {
+  color: #2d5a4e;
+}
+
+.price-night-booking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.price-night-booking-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  color: #3a5a52;
+}
+
+.price-night-booking-item strong {
+  font-weight: 700;
+  color: #1a3a32;
+  white-space: nowrap;
+}
+
+.price-night-modal-tax-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .booking-confirm-price-total-value {

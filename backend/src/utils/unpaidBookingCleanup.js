@@ -4,7 +4,7 @@ const { decrementPromotionUsage } = require('./promotionRules');
 const CANCELLABLE_STATUS = ['cho_xac_nhan', 'da_xac_nhan'];
 const PAY_HOLD_MS = 30 * 60 * 1000;
 
-
+// Xóa booking không thanh toán
 const purgeUnpaidBooking = async (tx, booking) => {
   const id = Number(booking.ma_dat_phong);
   if (booking.ma_khuyen_mai) {
@@ -23,7 +23,7 @@ const purgeUnpaidBooking = async (tx, booking) => {
   await tx.chi_tiet_dat_phong.deleteMany({ where: { ma_dat_phong: id } });
   await tx.dat_phong.delete({ where: { ma_dat_phong: id } });
 };
-
+// Hết hạn booking không thanh toán trực tuyến
 const expireUnpaidOnlineHolds = async (arg1, arg2) => {
   let prismaClient = prisma;
   let scope = {};
@@ -59,7 +59,7 @@ const expireUnpaidOnlineHolds = async (arg1, arg2) => {
 
   return expired.length;
 };
-
+// Xóa booking hủy không thanh toán
 const purgeCancelledUnpaidBookings = async (prismaClient = prisma, limit = 200) => {
   const rows = await prismaClient.dat_phong.findMany({
     where: {

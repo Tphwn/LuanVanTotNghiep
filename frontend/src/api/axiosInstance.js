@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getToken } from '../utils/storage';
 import { getLoginRouteFromPath } from '../utils/authPortal';
+import { handleAccountLockedResponse } from '../utils/accountLocked';
 
 const axiosInstance = axios.create({
   baseURL: 'http://localhost:5000/api',
@@ -23,7 +24,13 @@ axiosInstance.interceptors.response.use(
       || url.includes('/auth/forgot-password')
       || url.includes('/auth/verify-reset-otp')
       || url.includes('/auth/reset-password')
-      || url.includes('/auth/resend-otp');
+      || url.includes('/auth/resend-otp')
+      || url.includes('/auth/verify-register-otp');
+
+    if (!isAuthRequest && handleAccountLockedResponse(error)) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

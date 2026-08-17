@@ -44,7 +44,8 @@ const buildSearchContext = (soKhach, treEm, soPhong = 1, tuoiTreEm = []) => {
 
 const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx, vatRate = 10) => {
   const roomCount = searchCtx.roomCount || 1;
-  const tienPhong = Number(pricing.tong_luong_tru) * roomCount;
+  const tienPhong = Number(pricing.tong_luong_tru_tat_ca)
+    || Number(pricing.tong_luong_tru) * roomCount;
   const invoice = buildStayInvoice({
     tien_phong: tienPhong,
     so_dem: pricing.so_dem,
@@ -59,12 +60,21 @@ const mapRoomWithInvoice = (room, pricing, hotelPolicy, searchCtx, vatRate = 10)
   const roomStayPreVat = Number(pricing.tong_luong_tru) || 0;
   const roomStayBasePreVat = Number(pricing.tong_goc) || roomStayPreVat;
   const roomPerNight = Math.round(roomStayPreVat / nights);
+  const chiTietDem = (pricing.chi_tiet_dem || []).map((row) => ({
+    ...row,
+    gia_trung_binh_dem_vat: priceWithVat(row.gia_trung_binh_dem, vatRate),
+    don_gia_giam_vat: row.don_gia_giam != null ? priceWithVat(row.don_gia_giam, vatRate) : null,
+    don_gia_goc_vat: priceWithVat(row.don_gia_goc, vatRate),
+  }));
   return {
     ...room,
     gia_co_ban: Number(room.gia_co_ban),
     gia_hien_thi: priceWithVat(roomStayPreVat, vatRate),
     gia_goc: pricing.co_giam_gia ? priceWithVat(roomStayBasePreVat, vatRate) : null,
     gia_moi_dem: priceWithVat(roomPerNight, vatRate),
+    la_gia_trung_binh: Boolean(pricing.la_gia_trung_binh),
+    phong_gia_khuyen_mai_con: pricing.phong_gia_khuyen_mai_con,
+    chi_tiet_dem: chiTietDem,
     tong_gia: preVatTotal,
     tong_thanh_toan: invoice.thanh_toan_cuoi,
     so_dem: pricing.so_dem,
@@ -453,8 +463,16 @@ const publicHotelService = {
       let giaTu = Infinity;
       let bestPricing = null;
 
+      const searchCtx = buildSearchContext(so_khach, tre_em, so_phong);
+
       for (const room of availableRooms) {
-        const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
+        const pricing = await calcStayPrice(
+          room.ma_loai_phong,
+          room.gia_co_ban,
+          checkIn,
+          checkOut,
+          searchCtx.roomCount,
+        );
         const priceVat = priceWithVat(pricing.tong_luong_tru, vatRate);
         if (priceVat < giaTu) {
           giaTu = priceVat;
@@ -555,7 +573,13 @@ const publicHotelService = {
     const target = roomsWithAvailability.find((r) => r.ma_loai_phong === Number(roomId));
     if (!target) return null;
 
-    const pricing = await calcStayPrice(target.ma_loai_phong, target.gia_co_ban, checkIn, checkOut);
+    const pricing = await calcStayPrice(
+      target.ma_loai_phong,
+      target.gia_co_ban,
+      checkIn,
+      checkOut,
+      searchCtx.roomCount,
+    );
     const roomMapped = mapRoomWithInvoice(target, pricing, flatHotel, searchCtx, hotelVatRate);
     const [roomWithImages] = await attachRoomImages([{
       ...roomMapped,
@@ -566,7 +590,13 @@ const publicHotelService = {
       roomsWithAvailability
         .filter((r) => r.ma_loai_phong !== Number(roomId) && r.phong_con_lai >= searchCtx.roomCount)
         .map(async (room) => {
-          const p = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
+          const p = await calcStayPrice(
+            room.ma_loai_phong,
+            room.gia_co_ban,
+            checkIn,
+            checkOut,
+            searchCtx.roomCount,
+          );
           return mapRoomWithInvoice(room, p, flatHotel, searchCtx, hotelVatRate);
         })
     );
@@ -670,7 +700,13 @@ const publicHotelService = {
     );
     const roomsWithPrice = await Promise.all(
       roomsWithAvailability.map(async (room) => {
-        const pricing = await calcStayPrice(room.ma_loai_phong, room.gia_co_ban, checkIn, checkOut);
+        const pricing = await calcStayPrice(
+          room.ma_loai_phong,
+          room.gia_co_ban,
+          checkIn,
+          checkOut,
+          searchCtx.roomCount,
+        );
         return {
           ...mapRoomWithInvoice(room, pricing, flatHotel, searchCtx, hotelVatRate),
           tien_nghi: (room.loai_phong_tien_nghi || []).map((t) => t.tien_nghi).filter(Boolean),

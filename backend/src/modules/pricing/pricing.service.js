@@ -34,6 +34,8 @@ const getDefaultLoaiGia = (dateStr) => {
   return d === 0 || d === 6 ? 'cuoi_tuan' : 'co_ban';
 };
 
+const VALID_LOAI_GIA = new Set(['co_ban', 'cuoi_tuan', 'le_tet', 'cao_diem']);
+
 const pricingService = {
 
   getMyHotels: async (doiTacId) => {
@@ -193,9 +195,12 @@ const pricingService = {
         const apDung = so_luong_ap_dung != null && so_luong_ap_dung !== ''
           ? Number(so_luong_ap_dung)
           : null;
+        if (!loai_gia || !VALID_LOAI_GIA.has(String(loai_gia))) {
+          throw new Error('Loại giá không hợp lệ');
+        }
         const payload = {
           don_gia: Number(don_gia),
-          loai_gia,
+          loai_gia: String(loai_gia),
           so_luong_ap_dung: apDung,
           ngay: ngayDate,
         };

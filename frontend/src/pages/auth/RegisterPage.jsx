@@ -19,6 +19,7 @@ import Card from '../../components/common/Card';
 import AuthSplitLayout from '../../components/auth/AuthSplitLayout';
 
 const OTP_FALLBACK_TTL_SEC = 10 * 60;
+const REGISTER_SUCCESS_REDIRECT_MS = 2000;
 
 const formatOtpRemain = (totalSec) => {
   const sec = Math.max(0, Number(totalSec) || 0);
@@ -54,6 +55,8 @@ const RegisterPage = () => {
     location.state?.step === 'otp' ? Date.now() + OTP_FALLBACK_TTL_SEC * 1000 : null
   ));
   const [otpRemainSec, setOtpRemainSec] = useState(OTP_FALLBACK_TTL_SEC);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [verifiedUser, setVerifiedUser] = useState(null);
 
   const startOtpCountdown = useCallback((payload) => {
     setOtpExpiresAt(resolveOtpExpiresAt(payload));
@@ -120,6 +123,7 @@ const RegisterPage = () => {
     const errors = validateRegisterFields();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      setInfo('');
       setFormError(
         isRegisterFormIncomplete()
           ? 'Vui lòng điền đủ thông tin.'
@@ -130,6 +134,8 @@ const RegisterPage = () => {
 
     setFieldErrors({});
     setFormError('');
+    setInfo('');
+    dispatch(clearError());
     const { xac_nhan_mat_khau, ...dataToSend } = formData;
     try {
       const result = await dispatch(register({
@@ -140,6 +146,8 @@ const RegisterPage = () => {
       })).unwrap();
       if (result?.needs_otp) {
         setPendingEmail(result.email || dataToSend.email.trim());
+        dispatch(clearError());
+        setFormError('');
         setInfo(result.message || 'Đã gửi mã OTP tới email của bạn.');
         setStep('otp');
         setOtp('');
@@ -147,6 +155,7 @@ const RegisterPage = () => {
       }
     } catch (err) {
       const msg = typeof err === 'string' ? err : 'Đăng ký thất bại';
+      setInfo('');
       if (msg.includes('Email')) setFieldErrors({ email: msg });
       else if (msg.includes('điện thoại') || msg.includes('Số điện thoại')) {
         setFieldErrors({ so_dien_thoai: msg });
@@ -158,7 +167,9 @@ const RegisterPage = () => {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setFormError('');
+    dispatch(clearError());
     if (!otp.trim() || otp.trim().length !== 6) {
+      setInfo('');
       setFormError('Mã OTP gồm 6 chữ số.');
       return;
     }
@@ -168,9 +179,14 @@ const RegisterPage = () => {
         otp: otp.trim(),
       })).unwrap();
       if (result?.user) {
-        navigate(getRedirectRoute(result.user), { replace: true });
+        setInfo('');
+        setFormError('');
+        dispatch(clearError());
+        setRegisterSuccess(true);
+        setVerifiedUser(result.user);
       }
     } catch (err) {
+      setInfo('');
       setFormError(typeof err === 'string' ? err : 'Xác thực OTP thất bại');
     }
   };
@@ -178,6 +194,7 @@ const RegisterPage = () => {
   const handleResendOtp = async () => {
     setResendLoading(true);
     setFormError('');
+    dispatch(clearError());
     try {
       const res = await authService.resendOtp({ email: pendingEmail, purpose: 'register' });
       const data = res.data?.data || res.data || {};
@@ -185,6 +202,7 @@ const RegisterPage = () => {
       startOtpCountdown(data);
       setOtp('');
     } catch (err) {
+      setInfo('');
       setFormError(err.response?.data?.message || 'Không gửi lại được OTP');
     } finally {
       setResendLoading(false);
@@ -192,29 +210,42 @@ const RegisterPage = () => {
   };
 
   useEffect(() => {
+    if (!registerSuccess || !verifiedUser) return undefined;
+    const timer = setTimeout(() => {
+      navigate(getRedirectRoute(verifiedUser), { replace: true });
+    }, REGISTER_SUCCESS_REDIRECT_MS);
+    return () => clearTimeout(timer);
+  }, [registerSuccess, verifiedUser, navigate]);
+
+  useEffect(() => {
     // Chỉ khách hàng đã login mới bỏ qua trang đăng ký
-    if (user?.vai_tro === ROLES.KHACH_HANG && step !== 'otp') {
+    if (user?.vai_tro === ROLES.KHACH_HANG && step !== 'otp' && !registerSuccess) {
       navigate(getRedirectRoute(user), { replace: true });
     }
-  }, [user, navigate, step]);
+  }, [user, navigate, step, registerSuccess]);
 
   const displayError = formError || error;
+  const noticeMessage = displayError
+    || (registerSuccess ? 'Đang chuyển về trang chủ...' : (step === 'otp' ? info : ''));
+  const noticeType = displayError ? 'error' : (registerSuccess || info) ? 'success' : null;
 
   return (
     <AuthSplitLayout>
       <Card className="auth-form-card" style={{ width: '100%', textAlign: 'left' }}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>
           <h2 style={{ margin: 0, fontSize: 'var(--font-size-title)', color: 'var(--color-text)' }}>
-            {step === 'otp' ? 'Xác thực email' : 'ĐĂNG KÝ TÀI KHOẢN'}
+            {registerSuccess ? 'Đăng ký thành công' : step === 'otp' ? 'Xác thực email' : 'ĐĂNG KÝ TÀI KHOẢN'}
           </h2>
           <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-md)' }}>
-            {step === 'otp'
-              ? `Nhập mã OTP đã gửi tới ${pendingEmail}`
-              : 'Đăng ký để trải nghiệm dịch vụ'}
+            {registerSuccess
+              ? 'Tài khoản của bạn đã được tạo thành công.'
+              : step === 'otp'
+                ? `Nhập mã OTP đã gửi tới ${pendingEmail}`
+                : 'Đăng ký để trải nghiệm dịch vụ'}
           </p>
         </div>
 
-        {displayError && (
+        {noticeType === 'error' && (
           <div style={{
             background: '#fff2f0',
             border: '1px solid #ffccc7',
@@ -225,12 +256,14 @@ const RegisterPage = () => {
             fontSize: 'var(--font-size-md)',
           }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Đăng ký thất bại</div>
-            <div>{displayError}</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              {step === 'otp' ? 'Xác thực thất bại' : 'Đăng ký thất bại'}
+            </div>
+            <div>{noticeMessage}</div>
           </div>
         )}
 
-        {info && step === 'otp' && (
+        {noticeType === 'success' && (
           <div style={{
             background: '#f6ffed',
             border: '1px solid #b7eb8f',
@@ -241,35 +274,13 @@ const RegisterPage = () => {
             fontSize: 'var(--font-size-md)',
           }}
           >
-            {info}
+            {registerSuccess && (
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Tạo tài khoản thành công</div>
+            )}
+            <div>{noticeMessage}</div>
           </div>
         )}
 
-        {step === 'otp' && (
-          <div style={{
-            marginBottom: 'var(--spacing-md)',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            background: otpRemainSec > 0 ? '#f0f7f5' : '#fff7e6',
-            border: `1px solid ${otpRemainSec > 0 ? '#c5ddd2' : '#ffd591'}`,
-            color: otpRemainSec > 0 ? '#3C7363' : '#ad6800',
-            fontSize: 14,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-          >
-            <span>
-              {otpRemainSec > 0 ? 'Thời gian hiệu lực mã OTP' : 'Mã OTP đã hết hạn'}
-            </span>
-            <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16 }}>
-              {otpRemainSec > 0
-                ? formatOtpRemain(otpRemainSec)
-                : '0:00 — vui lòng gửi lại mã'}
-            </strong>
-          </div>
-        )}
 
         {step === 'form' ? (
           <form onSubmit={handleSubmit} noValidate>
@@ -335,7 +346,7 @@ const RegisterPage = () => {
               Đăng ký
             </Button>
           </form>
-        ) : (
+        ) : registerSuccess ? null : (
           <form onSubmit={handleVerifyOtp} noValidate>
             <Input
               label="Mã OTP"

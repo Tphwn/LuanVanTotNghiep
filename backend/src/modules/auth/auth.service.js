@@ -68,7 +68,7 @@ const assertOtpValid = (user, otp) => {
     throw { statusCode: 400, message: 'Không có mã OTP đang chờ xác thực' };
   }
   if (new Date(user.otp_het_han).getTime() < Date.now()) {
-    throw { statusCode: 400, message: 'Mã OTP đã hết hạn. Vui lòng gửi lại mã mới' };
+    throw { statusCode: 400, message: 'Mã OTP đã hết hạn. Vui lòng nhấn gửi lại mã mới' };
   }
   if (String(user.otp_code) !== String(otp).trim()) {
     throw { statusCode: 400, message: 'Mã OTP không đúng' };
@@ -88,6 +88,9 @@ const clearOtp = async (maNguoiDung) => {
 const register = async ({ email, so_dien_thoai, mat_khau, ho_ten }) => {
   const emailExists = await prisma.nguoi_dung.findUnique({ where: { email } });
   if (emailExists) {
+    if (emailExists.trang_thai === 'bi_khoa') {
+      throw { statusCode: 403, message: MSG.EMAIL_LOCKED, code: 'EMAIL_LOCKED' };
+    }
     if (emailExists.reset_token === 'register' && emailExists.vai_tro === 'khach_hang') {
       const otp = generateOtp();
       const hetHan = await setUserOtp(emailExists.ma_nguoi_dung, otp, 'register');
@@ -189,7 +192,7 @@ const resendOtp = async ({ email, purpose = 'register', vai_tro }) => {
     };
   }
   if (nguoiDung.trang_thai === 'bi_khoa') {
-    throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+    throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
   }
   if (purpose === 'register') {
     if (nguoiDung.reset_token !== 'register') {
@@ -215,7 +218,7 @@ const login = async ({ email, mat_khau, vai_tro }) => {
     include: { khach_hang: true },
   });
   if (!nguoiDung) throw { statusCode: 401, message: MSG.INVALID_CREDENTIALS };
-  if (nguoiDung.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+  if (nguoiDung.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
   assertPortalRole(nguoiDung, vai_tro);
   if (nguoiDung.otp_code && nguoiDung.reset_token === 'register') {
     throw {
@@ -270,7 +273,7 @@ const loginWithGoogle = async ({ id_token: idToken }) => {
     });
     if (byEmail) {
       if (byEmail.trang_thai === 'bi_khoa') {
-        throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+        throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
       }
       if (byEmail.vai_tro !== 'khach_hang') {
         throw {
@@ -327,7 +330,7 @@ const created = await prisma.nguoi_dung.create({
       where: { ma_nguoi_dung: userId },
     });
     if (!existing) throw { statusCode: 404, message: MSG.NOT_FOUND };
-    if (existing.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+    if (existing.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
     if (existing.vai_tro !== 'khach_hang') {
       throw {
         statusCode: 403,
@@ -358,7 +361,7 @@ const forgotPassword = async ({ email, vai_tro }) => {
     };
   }
   if (nguoiDung.trang_thai === 'bi_khoa') {
-    throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+    throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
   }
   assertPortalRole(nguoiDung, vai_tro);
 
@@ -393,7 +396,7 @@ const forgotPassword = async ({ email, vai_tro }) => {
 const verifyResetOtp = async ({ email, otp, vai_tro }) => {
   const nguoiDung = await prisma.nguoi_dung.findUnique({ where: { email } });
   if (!nguoiDung) throw { statusCode: 404, message: 'Không tìm thấy tài khoản' };
-  if (nguoiDung.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED };
+  if (nguoiDung.trang_thai === 'bi_khoa') throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
   assertPortalRole(nguoiDung, vai_tro);
 
   assertOtpValid(nguoiDung, otp);
@@ -467,6 +470,9 @@ const getMe = async (userId) => {
     },
   });
   if (!nguoiDung) throw { statusCode: 404, message: MSG.NOT_FOUND };
+  if (nguoiDung.trang_thai === 'bi_khoa') {
+    throw { statusCode: 403, message: MSG.ACCOUNT_LOCKED, code: 'ACCOUNT_LOCKED' };
+  }
   return nguoiDung;
 };
 

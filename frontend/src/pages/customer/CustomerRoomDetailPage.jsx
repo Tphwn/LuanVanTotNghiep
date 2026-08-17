@@ -216,10 +216,11 @@ const CustomerRoomDetailPage = () => {
             <CustomerPriceOffer
               amount={room.gia_hien_thi}
               originalAmount={room.gia_goc}
-              label="Giá tham khảo:"
+              label={room.la_gia_trung_binh ? 'Giá trung bình:' : 'Giá tham khảo:'}
               align="left"
               showTaxNote
               suffix={`/ phòng / ${Math.max(Number(room.so_dem) || nights || 1, 1)} đêm`}
+              isAveragePrice={Boolean(room.la_gia_trung_binh)}
               className="room-detail-price-row"
             />
           </div>

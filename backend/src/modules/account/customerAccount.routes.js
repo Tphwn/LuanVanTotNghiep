@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const ctrl = require('./customerAccount.controller');
 const authMiddleware = require('../../middlewares/auth.middleware');
+const requireActiveUser = require('../../middlewares/activeUser.middleware');
+
+const customerAuth = [authMiddleware, requireActiveUser];
 
 const uploadDir = path.join(__dirname, '../../../uploads/');
 if (!fs.existsSync(uploadDir)) {
@@ -27,9 +30,9 @@ const upload = multer({
   },
 });
 
-router.get('/profile', authMiddleware, ctrl.getProfile);
-router.put('/profile', authMiddleware, upload.single('avatar'), ctrl.updateProfile);
-router.put('/password', authMiddleware, ctrl.changePassword);
-router.put('/phone', authMiddleware, ctrl.changePhone);
+router.get('/profile', customerAuth, ctrl.getProfile);
+router.put('/profile', customerAuth, upload.single('avatar'), ctrl.updateProfile);
+router.put('/password', customerAuth, ctrl.changePassword);
+router.put('/phone', customerAuth, ctrl.changePhone);
 
 module.exports = router;
